@@ -1,0 +1,286 @@
+@import './fonts.css';
+@custom-variant dark (&:is(.dark *));
+
+:root {
+  --font-size: 16px;
+  /* Typography variables */
+  --text-h1: 24px;
+  --text-h2: 20px;
+  --text-h3: 16px;
+  --text-h4: 14px;
+  --text-base: 14px;
+  --text-label: 12px;
+  --font-weight-extrabold: 800;
+  --font-weight-bold: 700;
+  --font-weight-semibold: 600;
+  --font-weight-medium: 500;
+  --font-weight-normal: 400;
+  --font-family-primary: 'Inter', sans-serif;
+
+  /* DUAR Palette - #E54B4B | #FFA987 | #F7EBE8 | #444140 */
+  --duar-red: #E54B4B;
+  --duar-salmon: #FFA987;
+  --duar-cream: #F7EBE8;
+  --duar-dark: #444140;
+
+  /* Background: cream */
+  --background: #F7EBE8;
+  /* Text / foreground: dark charcoal */
+  --foreground: #444140;
+  /* Card: pure white */
+  --card: #FFFFFF;
+  --card-foreground: #444140;
+  /* Popovers */
+  --popover: #FFFFFF;
+  --popover-foreground: #444140;
+  /* Primary: DUAR red */
+  --primary: #E54B4B;
+  --primary-foreground: #FFFFFF;
+  /* Secondary: salmon tint */
+  --secondary: rgba(255, 169, 135, 0.18);
+  --secondary-foreground: #444140;
+  /* Muted */
+  --muted: rgba(68, 65, 64, 0.06);
+  --muted-foreground: rgba(68, 65, 64, 0.55);
+  /* Accent: salmon */
+  --accent: #FFA987;
+  --accent-foreground: #444140;
+  /* Destructive */
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+  /* Borders */
+  --border: rgba(68, 65, 64, 0.15);
+  /* Inputs */
+  --input: rgba(68, 65, 64, 0.08);
+  --input-background: #FFFFFF;
+  /* Focus ring */
+  --ring: #E54B4B;
+  /* Elevation */
+  --elevation-sm: 0px 4px 24px 0px rgba(68, 65, 64, 0.10);
+  --elevation-md: 0px 8px 32px 0px rgba(68, 65, 64, 0.14);
+
+  /* Charts */
+  --chart-1: #E54B4B;
+  --chart-2: #FFA987;
+  --chart-3: #444140;
+  --chart-4: #c0392b;
+  --chart-5: #d4886a;
+
+  /* Radius */
+  --radius: 10px;
+  --radius-button: 8px;
+  --radius-card: 14px;
+  --radius-input: 8px;
+
+  /* Sidebar: dark charcoal */
+  --sidebar: #444140;
+  --sidebar-foreground: #F7EBE8;
+  --sidebar-primary: #E54B4B;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: rgba(247, 235, 232, 0.10);
+  --sidebar-accent-foreground: #F7EBE8;
+  --sidebar-border: rgba(247, 235, 232, 0.10);
+  --sidebar-ring: #E54B4B;
+}
+
+.dark {
+  --background: #1c1917;
+  --foreground: #F7EBE8;
+  --card: #2a2725;
+  --card-foreground: #F7EBE8;
+  --popover: #2a2725;
+  --popover-foreground: #F7EBE8;
+  --primary: #E54B4B;
+  --primary-foreground: #FFFFFF;
+  --secondary: rgba(255, 169, 135, 0.15);
+  --secondary-foreground: #F7EBE8;
+  --muted: rgba(247, 235, 232, 0.08);
+  --muted-foreground: rgba(247, 235, 232, 0.50);
+  --accent: #FFA987;
+  --accent-foreground: #1c1917;
+  --destructive: #ef4444;
+  --destructive-foreground: #ffffff;
+  --border: rgba(247, 235, 232, 0.12);
+  --input: rgba(247, 235, 232, 0.10);
+  --input-background: #2a2725;
+  --ring: #E54B4B;
+  --elevation-sm: 0px 4px 24px 0px rgba(0, 0, 0, 0.30);
+  --elevation-md: 0px 8px 32px 0px rgba(0, 0, 0, 0.40);
+  --chart-1: #E54B4B;
+  --chart-2: #FFA987;
+  --chart-3: #F7EBE8;
+  --chart-4: #c0392b;
+  --chart-5: #d4886a;
+  --sidebar: #111010;
+  --sidebar-foreground: #F7EBE8;
+  --sidebar-primary: #E54B4B;
+  --sidebar-primary-foreground: #FFFFFF;
+  --sidebar-accent: rgba(247, 235, 232, 0.08);
+  --sidebar-accent-foreground: #F7EBE8;
+  --sidebar-border: rgba(247, 235, 232, 0.08);
+  --sidebar-ring: #E54B4B;
+}
+
+@theme inline {
+  --color-background: var(--background);
+  --color-foreground: var(--foreground);
+  --color-card: var(--card);
+  --color-card-foreground: var(--card-foreground);
+  --color-popover: var(--popover);
+  --color-popover-foreground: var(--popover-foreground);
+  --color-primary: var(--primary);
+  --color-primary-foreground: var(--primary-foreground);
+  --color-secondary: var(--secondary);
+  --color-secondary-foreground: var(--secondary-foreground);
+  --color-muted: var(--muted);
+  --color-muted-foreground: var(--muted-foreground);
+  --color-accent: var(--accent);
+  --color-accent-foreground: var(--accent-foreground);
+  --color-destructive: var(--destructive);
+  --color-destructive-foreground: var(--destructive-foreground);
+  --color-border: var(--border);
+  --color-input: var(--input);
+  --color-input-background: var(--input-background);
+  --color-ring: var(--ring);
+  --color-chart-1: var(--chart-1);
+  --color-chart-2: var(--chart-2);
+  --color-chart-3: var(--chart-3);
+  --color-chart-4: var(--chart-4);
+  --color-chart-5: var(--chart-5);
+  --radius-sm: calc(var(--radius) - 4px);
+  --radius-md: calc(var(--radius) - 2px);
+  --radius-lg: var(--radius);
+  --radius-xl: calc(var(--radius) + 4px);
+  --radius-button: var(--radius-button);
+  --radius-card: var(--radius-card);
+  --radius-input: var(--radius-input);
+  --color-sidebar: var(--sidebar);
+  --color-sidebar-foreground: var(--sidebar-foreground);
+  --color-sidebar-primary: var(--sidebar-primary);
+  --color-sidebar-primary-foreground: var(--sidebar-primary-foreground);
+  --color-sidebar-accent: var(--sidebar-accent);
+  --color-sidebar-accent-foreground: var(--sidebar-accent-foreground);
+  --color-sidebar-border: var(--sidebar-border);
+  --color-sidebar-ring: var(--sidebar-ring);
+  --shadow-elevation-sm: var(--elevation-sm);
+  --shadow-elevation-md: var(--elevation-md);
+}
+
+@layer base {
+  * {
+    @apply border-border outline-ring/50;
+  }
+
+  body {
+    @apply bg-background text-foreground;
+    font-family: var(--font-family-primary);
+  }
+}
+
+@layer base {
+  :where(:not(:has([class*=" text-"]), :not(:has([class^="text-"])))) {
+    h1 {
+      font-family: var(--font-family-primary);
+      font-size: var(--text-h1);
+      font-weight: var(--font-weight-bold);
+      line-height: 1.3;
+    }
+
+    h2 {
+      font-family: var(--font-family-primary);
+      font-size: var(--text-h2);
+      font-weight: var(--font-weight-semibold);
+      line-height: 1.4;
+    }
+
+    h3 {
+      font-family: var(--font-family-primary);
+      font-size: var(--text-h3);
+      font-weight: var(--font-weight-semibold);
+      line-height: 1.5;
+    }
+
+    h4 {
+      font-family: var(--font-family-primary);
+      font-size: var(--text-h4);
+      font-weight: var(--font-weight-medium);
+      line-height: 1.5;
+    }
+
+    p {
+      font-family: var(--font-family-primary);
+      font-size: var(--text-base);
+      font-weight: var(--font-weight-normal);
+      line-height: 1.6;
+    }
+
+    label {
+      font-family: var(--font-family-primary);
+      font-size: var(--text-label);
+      font-weight: var(--font-weight-semibold);
+      line-height: 1.5;
+    }
+
+    button {
+      font-family: var(--font-family-primary);
+      font-size: var(--text-h4);
+      font-weight: var(--font-weight-semibold);
+      line-height: 1.5;
+    }
+
+    input, select, textarea {
+      font-family: var(--font-family-primary);
+      font-size: var(--text-base);
+      font-weight: var(--font-weight-normal);
+      line-height: 1.5;
+    }
+  }
+}
+
+html {
+  font-size: var(--font-size);
+}
+
+/* Print styles for Informe */
+@media print {
+  .no-print {
+    display: none !important;
+  }
+  .print-only {
+    display: block !important;
+  }
+  body {
+    background: white !important;
+  }
+}
+
+/* ── Spin animation (used by refresh icons) ────────────────────────────────── */
+@keyframes spin {
+  from { transform: rotate(0deg); }
+  to   { transform: rotate(360deg); }
+}
+
+/* ── Leaflet map overrides ─────────────────────────────────────────────────
+   Tailwind's preflight sets max-width: 100% on img/svg which breaks
+   Leaflet tile rendering. These rules restore correct map behaviour.      */
+.leaflet-container img {
+  max-width: none !important;
+  max-height: none !important;
+}
+.leaflet-container svg {
+  max-width: none;
+}
+/* Keep Leaflet's z-index stacking intact */
+.leaflet-pane,
+.leaflet-tile,
+.leaflet-marker-icon,
+.leaflet-marker-shadow,
+.leaflet-tile-container,
+.leaflet-map-pane svg,
+.leaflet-map-pane canvas {
+  z-index: auto;
+}
+.leaflet-popup-content p {
+  margin: 0;
+  line-height: 1.5;
+}
