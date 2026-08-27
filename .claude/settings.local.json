@@ -1,0 +1,12 @@
+{
+  "permissions": {
+    "allow": [
+      "Bash(command -v pnpm)",
+      "Bash(echo \"pnpm: $\\(command -v pnpm || echo NO\\)\")",
+      "Bash(command -v npm)",
+      "Bash(echo \"npm: $\\(command -v npm || echo NO\\)\")",
+      "Bash(command -v npx)",
+      "Bash(npm install *)"
+    ]
+  }
+}
