@@ -2,6 +2,10 @@
   "name": "@figma/my-make-file",
   "private": true,
   "version": "0.0.1",
+  "allowScripts": {
+  "esbuild": true,
+  "@tailwindcss/oxide": true
+  },
   "type": "module",
   "scripts": {
     "build": "vite build",
