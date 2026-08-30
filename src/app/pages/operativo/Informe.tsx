@@ -3,6 +3,7 @@ import { useApp } from '../../context/AppContext';
 import { FileText, Printer, Shield, MapPin, Calendar, Users, CheckCircle2, Activity } from 'lucide-react';
 import { differenceInDays } from 'date-fns';
 import StatusBadge from '../../components/shared/StatusBadge';
+import { institucionLabel } from '../../data/mockData';
 
 export default function Informe() {
   const { id } = useParams<{ id: string }>();
@@ -196,7 +197,7 @@ export default function Informe() {
                         <td className="px-4 py-2.5" style={{ color: 'var(--foreground)', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-medium)' }}>{a.nombre} {a.apellido}</td>
                         <td className="px-4 py-2.5" style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-label)' }}>{a.dni}</td>
                         <td className="px-4 py-2.5 capitalize" style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-label)' }}>{a.especialidad || '—'}</td>
-                        <td className="px-4 py-2.5" style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-label)' }}>{a.dotacion || '—'}</td>
+                        <td className="px-4 py-2.5" style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-label)' }}>{institucionLabel(a)}</td>
                         <td className="px-4 py-2.5" style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-label)' }}>{a.grupo_sanguineo || '—'}</td>
                       </tr>
                     ))}

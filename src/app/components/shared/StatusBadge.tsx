@@ -13,6 +13,13 @@ const statusConfig: Record<string, { label: string; bg: string; text: string; do
   eliminado: { label: 'Eliminado', bg: '#fce7f3', text: '#9d174d', dot: '#be185d' },
   rastrillando: { label: 'Rastrillando', bg: '#dcfce7', text: '#15803d', dot: '#16a34a' },
   descansando: { label: 'Descansando', bg: '#fef9c3', text: '#a16207', dot: '#ca8a04' },
+  // Catálogo estado_grupo (7 valores, espejo del ENUM de PostgreSQL)
+  en_formacion: { label: 'En Formación', bg: '#f3f4f6', text: '#4b5563', dot: '#9ca3af' },
+  en_apresto: { label: 'En Apresto', bg: 'rgba(255,169,135,0.2)', text: '#7c3d0f', dot: '#FFA987' },
+  desplegado: { label: 'Desplegado', bg: '#fef3c7', text: '#92400e', dot: '#d97706' },
+  en_pausa: { label: 'En Pausa', bg: '#fef9c3', text: '#a16207', dot: '#ca8a04' },
+  replegado: { label: 'Replegado', bg: '#e5e7eb', text: '#374151', dot: '#6b7280' },
+  disuelto: { label: 'Disuelto', bg: '#fce7f3', text: '#9d174d', dot: '#be185d' },
   pendiente: { label: 'Pendiente', bg: 'rgba(255,169,135,0.2)', text: '#7c3d0f', dot: '#FFA987' },
   completado: { label: 'Completado', bg: '#dcfce7', text: '#15803d', dot: '#16a34a' },
 };

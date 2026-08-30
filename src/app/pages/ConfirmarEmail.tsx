@@ -1,13 +1,14 @@
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate, Navigate } from 'react-router';
+import { useParams, useNavigate } from 'react-router';
 import { Shield, CheckCircle, XCircle, Loader, MailCheck } from 'lucide-react';
 import { useApp } from '../context/AppContext';
+import { authApi } from '../services/api';
 
 type Estado = 'verificando' | 'exitoso' | 'invalido' | 'ya_confirmado';
 
 export default function ConfirmarEmail() {
   const { token } = useParams<{ token: string }>();
-  const { confirmarEmail, isAuthenticated, usuario } = useApp();
+  const { isAuthenticated, usuario } = useApp();
   const navigate = useNavigate();
   const [estado, setEstado] = useState<Estado>('verificando');
 
@@ -16,15 +17,14 @@ export default function ConfirmarEmail() {
       setEstado('invalido');
       return;
     }
-
-    // Simular latencia de verificación (en producción sería una llamada al backend)
-    const timer = setTimeout(() => {
-      const resultado = confirmarEmail(token);
-      setEstado(resultado === 'ok' ? 'exitoso' : resultado === 'ya_confirmado' ? 'ya_confirmado' : 'invalido');
-    }, 1200);
-
-    return () => clearTimeout(timer);
-  }, [token, confirmarEmail]);
+    let vigente = true;
+    authApi.confirmarEmail(token)
+      .then(({ estado: r }) => { if (vigente) setEstado(r === 'ok' ? 'exitoso' : r); })
+      // 410 = vencido/inexistente; cualquier otro fallo cae igual en
+      // "inválido" — no hay una tercera pantalla útil que mostrar.
+      .catch(() => { if (vigente) setEstado('invalido'); });
+    return () => { vigente = false; };
+  }, [token]);
 
   const handleIrAlPanel = () => {
     if (isAuthenticated) {

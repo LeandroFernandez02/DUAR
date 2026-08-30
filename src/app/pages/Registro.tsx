@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router';
 import {
   Shield, Eye, EyeOff, CheckCircle, X, Lock, Mail, AlertTriangle,
@@ -7,24 +7,18 @@ import {
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { RecuperarContrasenaModal } from '../components/auth/RecuperarContrasenaModal';
-import { Especialidad } from '../data/mockData';
-import { enviarEmailConfirmacion, generarTokenConfirmacion } from '../services/emailService';
-import { validateQRToken } from '../utils/qrToken';
+import { catInstituciones, catEspecialidades, catAlergias, dotacionesDe } from '../data/mockData';
+import { qrApi, registroApi, setToken, ApiError, OperativoQRApi } from '../services/api';
 
 /* ── Tipos ────────────────────────────────────────────────── */
 type Modo = 'inicial' | 'login' | 'registro' | 'confirmar' | 'verificarEmail' | 'confirmacion';
-
-const ESTADOS_ACTIVOS: string[] = ['activo', 'en_proceso', 'planificación', 'nuevo'];
 
 /* ── Componente ───────────────────────────────────────────── */
 export default function Registro() {
   const { operativoId } = useParams<{ operativoId: string }>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const {
-    data, login, addUsuario, updateUsuario,
-    addAgenteToOperativo, removeAgenteFromOperativo, getOperativo,
-  } = useApp();
+  const { login } = useApp();
 
   /* ── Core state ── */
   const [modo, setModo] = useState<Modo>('inicial');
@@ -34,7 +28,9 @@ export default function Registro() {
 
   /* ── Flujo post-auth ── */
   const [pendingUserId, setPendingUserId] = useState('');
-  const [conflictoOpId, setConflictoOpId] = useState('');
+  /** Operativo que hoy ocupa al agente, para nombrarlo en el modal de Ubicuidad. */
+  const [operativoConflicto, setOperativoConflicto] =
+    useState<{ id: string; nombre: string; ubicacion: string } | null>(null);
 
   /**
    * showConflictoModal: true cuando se detecta conflicto de operativo.
@@ -47,8 +43,9 @@ export default function Registro() {
   const [loginForm, setLoginForm] = useState({ email: '', password: '' });
   const [regForm, setRegForm] = useState({
     dni: '', nombre: '', apellido: '', email: '', password: '',
-    fechaNacimiento: '', telefono: '', alergias: '', dotacion: '',
-    especialidad: '' as Especialidad | '',
+    fechaNacimiento: '', telefono: '', institucionId: '', dotacionId: '',
+    especialidadId: '',
+    alergiaIds: [] as string[],
     grupo_sanguineo: '',
   });
 
@@ -57,10 +54,54 @@ export default function Registro() {
   const [nuevoUserNombre, setNuevoUserNombre] = useState('');
   const [urlConfirmacionDev, setUrlConfirmacionDev] = useState('');
 
-  /* ── Token QR ── */
+  /* ── Token QR ──
+   * El token se valida contra el BACKEND, no contra localStorage. Es la
+   * corrección de fondo del flujo: el agente escanea con su propio celular, así
+   * que el código sólo puede verificarse contra la base, que es lo único que
+   * ambos dispositivos comparten (CU-15 pasos 4-5).
+   */
   const qrToken = searchParams.get('qr');
-  const operativo = getOperativo(operativoId!);
-  const isValidQR = validateQRToken(operativoId!, qrToken);
+  const [accesoQR, setAccesoQR] = useState<OperativoQRApi | null>(null);
+  const [cargandoQR, setCargandoQR] = useState(true);
+
+  useEffect(() => {
+    if (!qrToken) { setCargandoQR(false); return; }
+    let vigente = true;
+    qrApi.validar(qrToken)
+      .then(({ operativo: op }) => { if (vigente) setAccesoQR(op); })
+      .catch(() => { if (vigente) setAccesoQR(null); })
+      .finally(() => { if (vigente) setCargandoQR(false); });
+    return () => { vigente = false; };
+  }, [qrToken]);
+
+  /**
+   * Se adapta la respuesta de la API a los nombres que ya usa esta pantalla,
+   * para no tocar la maqueta entera: `titulo`→`nombre`, `localidad`→`ubicacion`.
+   */
+  const operativo = accesoQR && {
+    id: accesoQR.id,
+    nombre: accesoQR.titulo,
+    ubicacion: accesoQR.localidad,
+    estado: accesoQR.estado.toLowerCase(),
+  };
+  const isValidQR = Boolean(accesoQR);
+
+  /* ────────────────────────────────────────────────────────── */
+  /* Pantalla: verificando el QR contra el servidor             */
+  /* ────────────────────────────────────────────────────────── */
+  if (cargandoQR) {
+    return (
+      <div
+        className="min-h-screen flex flex-col items-center justify-center gap-4 p-4"
+        style={{ background: 'var(--background)', fontFamily: 'var(--font-family-primary)' }}
+      >
+        <RefreshCw size={30} style={{ color: 'var(--primary)', animation: 'spin 0.9s linear infinite' }} />
+        <p style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-base)' }}>
+          Verificando el código de acceso…
+        </p>
+      </div>
+    );
+  }
 
   /* ────────────────────────────────────────────────────────── */
   /* Pantalla: Operativo no encontrado                          */
@@ -221,31 +262,39 @@ export default function Registro() {
   /* Lógica de negocio                                          */
   /* ────────────────────────────────────────────────────────── */
 
-  /** Detecta si un usuario ya está en otro operativo activo diferente al actual */
-  const detectarConflicto = (userId: string): string | null => {
-    const otrosActivos = data.operativos.filter(op =>
-      op.id !== operativoId &&
-      ESTADOS_ACTIVOS.includes(op.estado) &&
-      op.agenteIds.includes(userId)
-    );
-    return otrosActivos.length > 0 ? otrosActivos[0].id : null;
-  };
-
-  /** Lógica post-autenticación: detectar conflicto o pedir confirmación */
-  const postAuth = (userId: string) => {
-    if (operativo.agenteIds.includes(userId)) {
-      setPendingUserId(userId);
+  /**
+   * Intenta el alta en el operativo (CU-15 pasos 6-8).
+   *
+   * La Regla de Ubicuidad la evalúa el BACKEND, no esta pantalla: es él quien
+   * conoce todos los operativos y quien tiene el índice que la hace cumplir. Si
+   * el agente ya está en otro, responde 409 con `regla_ubicuidad` y acá sólo se
+   * abre el modal para que decida. La decisión es del agente (paso 6.2).
+   */
+  const intentarAlta = async (abandonarAnterior = false) => {
+    if (!qrToken || !operativoId) return;
+    setLoading(true);
+    setError('');
+    try {
+      await registroApi.altaEnOperativo(operativoId, qrToken, abandonarAnterior);
+      setShowConflictoModal(false);
+      // Siempre a la confirmación final: el paso intermedio de "revisá tu correo"
+      // queda para cuando haya SMTP (CU-02 paso 7, hoy fuera de alcance).
       setModo('confirmacion');
-      return;
-    }
-    const conflicto = detectarConflicto(userId);
-    if (conflicto) {
-      setPendingUserId(userId);
-      setConflictoOpId(conflicto);
-      setShowConflictoModal(true); // abre MODAL, no cambia modo
-    } else {
-      setPendingUserId(userId);
-      setModo('confirmar');
+    } catch (err) {
+      if (err instanceof ApiError && err.motivo === 'regla_ubicuidad') {
+        const actual = err.datos.operativoActual as
+          { id: string; titulo: string; localidad: string } | undefined;
+        setOperativoConflicto(actual
+          ? { id: actual.id, nombre: actual.titulo, ubicacion: actual.localidad }
+          : null);
+        setShowConflictoModal(true);
+      } else if (err instanceof ApiError && err.motivo === 'ya_en_este_operativo') {
+        setModo('confirmacion');            // ya estaba dado de alta: no es un error
+      } else {
+        setError(err instanceof ApiError ? err.message : 'No se pudo completar el alta.');
+      }
+    } finally {
+      setLoading(false);
     }
   };
 
@@ -256,33 +305,16 @@ export default function Registro() {
       return;
     }
     setLoading(true);
-    await new Promise(r => setTimeout(r, 600));
-
-    // Pre-verificar estado de cuenta cuando las credenciales son correctas
-    const found = data.usuarios.find(
-      u => u.email.toLowerCase() === loginForm.email.toLowerCase() && u.password === loginForm.password
-    );
-    if (found) {
-      if (found.estado === 'eliminado') {
-        setLoading(false);
-        setError('eliminado');
-        return;
-      }
-      if (found.estado === 'inactivo') {
-        setLoading(false);
-        setError('inactivo');
-        return;
-      }
-    }
-
-    const result = login(loginForm.email, loginForm.password);
+    const result = await login(loginForm.email, loginForm.password);
     setLoading(false);
+
     if (result === 'ok') {
-      const user = data.usuarios.find(u => u.email.toLowerCase() === loginForm.email.toLowerCase());
-      if (user) postAuth(user.id);
-    } else {
-      setError('credentials');
+      setPendingUserId('sesion');           // ya hay sesión; el alta usa el token
+      setModo('confirmar');                 // CU-02 paso 6: confirma antes del alta
+      return;
     }
+    // El backend distingue credenciales de cuenta suspendida (CU-01 paso 4.2).
+    setError(result === 'inactive' ? 'inactivo' : result === 'sin_conexion' ? 'conexion' : 'credentials');
   };
 
   const handleRegistro = async () => {
@@ -291,61 +323,51 @@ export default function Registro() {
       setError('Completá todos los campos obligatorios (*).');
       return;
     }
+    if (regForm.password.length < 8) {
+      setError('La contraseña debe tener al menos 8 caracteres.');
+      return;
+    }
+    if (!qrToken) { setError('Falta el código del QR.'); return; }
+
     setLoading(true);
-    await new Promise(r => setTimeout(r, 800));
-    const newId = addUsuario({
-      dni: regForm.dni, nombre: regForm.nombre, apellido: regForm.apellido,
-      email: regForm.email, password: regForm.password,
-      rol: 'agente', estado: 'activo',
-      fechaNacimiento: regForm.fechaNacimiento || undefined,
-      telefono: regForm.telefono || undefined,
-      alergias: regForm.alergias || undefined,
-      dotacion: regForm.dotacion || undefined,
-      especialidad: (regForm.especialidad as Especialidad) || undefined,
-      grupo_sanguineo: regForm.grupo_sanguineo || undefined,
-      // `caminante` ya no se guarda en el perfil global: es un dato TÁCTICO.
-      // Se infiere por especialidad al darse de alta en el operativo (Decisión C).
-      emailConfirmado: false,
-    });
-
-    const usuarioCreado = data.usuarios.find(u => u.id === newId) ??
-      { id: newId, email: regForm.email, nombre: regForm.nombre, tokenConfirmacion: generarTokenConfirmacion() } as any;
-
-    const resultado = await enviarEmailConfirmacion({
-      destinatario: regForm.email,
-      nombreUsuario: `${regForm.nombre} ${regForm.apellido}`,
-      tokenConfirmacion: usuarioCreado.tokenConfirmacion ?? '',
-      operativoNombre: operativo.nombre,
-    });
-
-    setLoading(false);
-    setNuevoUserEmail(regForm.email);
-    setNuevoUserNombre(regForm.nombre);
-    setUrlConfirmacionDev(resultado.urlConfirmacionDev);
-    setPendingUserId(newId);
-    setModo('confirmar');
-  };
-
-  /** Confirmar participación en el operativo actual */
-  const handleConfirmar = () => {
-    addAgenteToOperativo(operativoId!, pendingUserId);
-    if (nuevoUserEmail) {
-      setModo('verificarEmail');
-    } else {
-      setModo('confirmacion');
+    try {
+      // CU-02 paso 5: el registro se persiste en PostgreSQL y queda auditado.
+      // El backend devuelve sesión abierta para poder encadenar el alta sin
+      // volver a pedir la contraseña recién elegida.
+      const { token } = await registroApi.registrar({
+        qrToken,
+        dni: regForm.dni,
+        nombre: regForm.nombre,
+        apellido: regForm.apellido,
+        email: regForm.email,
+        password: regForm.password,
+        telefono: regForm.telefono || undefined,
+        fechaNacimiento: regForm.fechaNacimiento || undefined,
+        institucionId: regForm.institucionId || undefined,
+        dotacionId: regForm.dotacionId || undefined,
+        especialidadId: regForm.especialidadId || undefined,
+        grupoSanguineo: regForm.grupo_sanguineo || undefined,
+        alergiaIds: regForm.alergiaIds,
+      });
+      setToken(token);
+      setNuevoUserEmail(regForm.email);
+      setNuevoUserNombre(regForm.nombre);
+      setPendingUserId('sesion');
+      // CU-02 paso 6: creado el usuario, se le ofrece darse de alta — y puede
+      // cancelar sin perder la cuenta (alternativa 6.1).
+      setModo('confirmar');
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'No se pudo completar el registro.');
+    } finally {
+      setLoading(false);
     }
   };
 
-  /**
-   * Darme de alta: abandona el operativo anterior y se une al actual.
-   * Registra estado operativo como 'disponible' (CU-14, Paso 6).
-   */
-  const handleDarmeDeAlta = () => {
-    removeAgenteFromOperativo(conflictoOpId, pendingUserId);
-    addAgenteToOperativo(operativoId!, pendingUserId);
-    setShowConflictoModal(false);
-    setModo('confirmacion');
-  };
+  /** CU-02 paso 7 / CU-15 paso 8 — "Confirmar Ingreso". */
+  const handleConfirmar = () => { void intentarAlta(false); };
+
+  /** CU-15 paso 6.2 — el agente acepta abandonar el operativo anterior. */
+  const handleDarmeDeAlta = () => { void intentarAlta(true); };
 
   /* ────────────────────────────────────────────────────────── */
   /* Helpers de estilos                                         */
@@ -358,8 +380,6 @@ export default function Registro() {
     fontFamily: 'var(--font-family-primary)',
     fontSize: 'var(--text-base)',
   };
-
-  const operativoConflicto = conflictoOpId ? data.operativos.find(o => o.id === conflictoOpId) : null;
 
   /* ────────────────────────────────────────────────────────── */
   /* Render                                                     */
@@ -638,7 +658,6 @@ export default function Registro() {
                 { label: 'Contraseña *',       key: 'password',        type: 'password', placeholder: 'Mínimo 6 caracteres' },
                 { label: 'Fecha de Nacimiento', key: 'fechaNacimiento', type: 'date',     placeholder: '' },
                 { label: 'Teléfono',           key: 'telefono',        type: 'tel',      placeholder: 'Ej: 351-5551234' },
-                { label: 'Dotación',           key: 'dotacion',        type: 'text',     placeholder: 'Ej: Bomberos Córdoba' },
               ].map(f => (
                 <div key={f.key}>
                   <label
@@ -660,21 +679,63 @@ export default function Registro() {
                 </div>
               ))}
 
+              {/* ── Institución ── */}
+              <div>
+                <label className="block mb-1" style={{ color: 'var(--foreground)', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)' }}>
+                  Institución *
+                </label>
+                <select
+                  value={regForm.institucionId}
+                  // Cambiar de institución limpia la dotación: una base del DUAR
+                  // no puede quedar colgada de otra fuerza (la BD lo rechaza).
+                  onChange={e => setRegForm({ ...regForm, institucionId: e.target.value, dotacionId: '' })}
+                  className={inputCls}
+                  style={inputStyle}
+                >
+                  <option value="">— Seleccioná tu institución —</option>
+                  {catInstituciones.map(i => (
+                    <option key={i.id} value={i.id}>{i.nombre}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* ── Dotación: aparece sólo si la institución tiene destacamentos ── */}
+              {dotacionesDe(regForm.institucionId).length > 0 && (
+                <div>
+                  <label className="block mb-1" style={{ color: 'var(--foreground)', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)' }}>
+                    Dotación *
+                  </label>
+                  <select
+                    value={regForm.dotacionId}
+                    onChange={e => setRegForm({ ...regForm, dotacionId: e.target.value })}
+                    className={inputCls}
+                    style={inputStyle}
+                  >
+                    <option value="">— Seleccioná tu dotación —</option>
+                    {dotacionesDe(regForm.institucionId).map(d => (
+                      <option key={d.id} value={d.id}>{d.nombre}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
               <div>
                 <label className="block mb-1" style={{ color: 'var(--foreground)', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)' }}>
                   Especialidad
                 </label>
                 <select
-                  value={regForm.especialidad}
-                  onChange={e => setRegForm({ ...regForm, especialidad: e.target.value as Especialidad | '' })}
+                  value={regForm.especialidadId}
+                  onChange={e => setRegForm({ ...regForm, especialidadId: e.target.value })}
                   className={inputCls}
                   style={inputStyle}
                 >
+                  {/* Se envía el id del catálogo, no el slug: es lo que espera la
+                      API y de lo que el backend deriva si el agente camina el
+                      polígono o es un recurso crítico que se queda en Punto Cero. */}
                   <option value="">— Seleccioná tu especialidad —</option>
-                  <option value="paramédico">Paramédico</option>
-                  <option value="conductor">Conductor</option>
-                  <option value="bombero">Bombero</option>
-                  <option value="bombero voluntario">Bombero voluntario</option>
+                  {catEspecialidades.map(e => (
+                    <option key={e.id} value={e.id}>{e.nombre}</option>
+                  ))}
                 </select>
               </div>
 
@@ -697,29 +758,34 @@ export default function Registro() {
 
               <div>
                 <label className="block mb-1" style={{ color: 'var(--foreground)', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)' }}>
-                  Alergias
+                  Alergias {regForm.alergiaIds.length > 0 && `(${regForm.alergiaIds.length})`}
                 </label>
-                <select
-                  value={regForm.alergias}
-                  onChange={e => setRegForm({ ...regForm, alergias: e.target.value })}
-                  className={inputCls}
-                  style={inputStyle}
+                {/* Relación N:M real contra cat_alergias: un agente puede tener
+                    más de una, y en campo este dato puede ser crítico. */}
+                <div
+                  className="grid grid-cols-1 gap-2 p-3 rounded-xl"
+                  style={{ background: '#fff', border: '1.5px solid var(--border)' }}
                 >
-                  <option value="">— Ninguna —</option>
-                  <option value="Penicilina">Penicilina</option>
-                  <option value="Amoxicilina / Ampicilina">Amoxicilina / Ampicilina</option>
-                  <option value="Aspirina / AINEs">Aspirina / AINEs</option>
-                  <option value="Polen">Polen</option>
-                  <option value="Ácaros del polvo">Ácaros del polvo</option>
-                  <option value="Látex">Látex</option>
-                  <option value="Frutos secos">Frutos secos</option>
-                  <option value="Mariscos / Crustáceos">Mariscos / Crustáceos</option>
-                  <option value="Gluten">Gluten</option>
-                  <option value="Lácteos">Lácteos</option>
-                  <option value="Picadura de insectos">Picadura de insectos</option>
-                  <option value="Yodo / Contraste radiológico">Yodo / Contraste radiológico</option>
-                  <option value="Otros">Otros</option>
-                </select>
+                  {catAlergias.map(a => (
+                    <label
+                      key={a.id}
+                      className="flex items-center gap-2.5 cursor-pointer"
+                      style={{ fontSize: 'var(--text-base)', color: 'var(--foreground)' }}
+                    >
+                      <input
+                        type="checkbox"
+                        checked={regForm.alergiaIds.includes(a.id)}
+                        onChange={e => setRegForm({
+                          ...regForm,
+                          alergiaIds: e.target.checked
+                            ? [...regForm.alergiaIds, a.id]
+                            : regForm.alergiaIds.filter(id => id !== a.id),
+                        })}
+                      />
+                      {a.nombre}
+                    </label>
+                  ))}
+                </div>
               </div>
 
               {error && (
@@ -901,21 +967,10 @@ export default function Registro() {
               Entendido — ir a mi panel
             </button>
 
-            <button
-              onClick={() => {
-                enviarEmailConfirmacion({
-                  destinatario: nuevoUserEmail,
-                  nombreUsuario: nuevoUserNombre,
-                  tokenConfirmacion: data.usuarios.find(u => u.id === pendingUserId)?.tokenConfirmacion ?? '',
-                  operativoNombre: operativo.nombre,
-                }).then(r => setUrlConfirmacionDev(r.urlConfirmacionDev));
-              }}
-              className="flex items-center justify-center gap-2 w-full py-2.5 rounded-[var(--radius-card)]"
-              style={{ color: 'var(--muted-foreground)', background: 'var(--muted)', fontSize: 'var(--text-base)', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-family-primary)' }}
-            >
-              <RefreshCw size={14} />
-              Reenviar correo de confirmación
-            </button>
+            {/* El reenvío de correo se quita hasta tener SMTP real: el CU-02
+                paso 7 pide confirmación por mail, pero todavía no hay acceso al
+                servidor de correo (nota del docx). Ofrecer un botón que no
+                enviaría nada sería engañar al agente en pleno operativo. */}
           </div>
         )}
 

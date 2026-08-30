@@ -1,12 +1,10 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useParams, useNavigate } from 'react-router';
 import {
   Shield, Lock, Eye, EyeOff, AlertCircle,
   CheckCircle, ArrowLeft, XCircle, RefreshCw,
 } from 'lucide-react';
-
-// Tokens that simulate an invalid/expired link in the demo
-const INVALID_TOKENS = ['token-invalido', 'expired', 'used', 'vencido'];
+import { authApi, ApiError } from '../services/api';
 
 type FormStep = 'form' | 'success';
 
@@ -18,7 +16,20 @@ export default function RecuperarContrasena() {
   const { token } = useParams<{ token: string }>();
   const navigate = useNavigate();
 
-  const tokenInvalid = !token || INVALID_TOKENS.includes(token.toLowerCase());
+  /**
+   * CU-03 paso 6.1: la vigencia se chequea contra el BACKEND antes de mostrar
+   * el formulario — el aviso de "vencido" debe aparecer al hacer clic en el
+   * enlace, no recién al enviar la nueva contraseña.
+   */
+  const [tokenInvalid, setTokenInvalid] = useState<boolean | null>(null);
+  useEffect(() => {
+    if (!token) { setTokenInvalid(true); return; }
+    let vigente = true;
+    authApi.chequearTokenRecuperacion(token)
+      .then(() => { if (vigente) setTokenInvalid(false); })
+      .catch(() => { if (vigente) setTokenInvalid(true); });
+    return () => { vigente = false; };
+  }, [token]);
 
   // --- New password form state ---
   const [step, setStep] = useState<FormStep>('form');
@@ -28,6 +39,7 @@ export default function RecuperarContrasena() {
   const [showConfirm, setShowConfirm] = useState(false);
   const [touched, setTouched] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
 
   const mismatch = touched && pwdConfirm.length > 0 && pwd !== pwdConfirm;
   const weakPwd = touched && pwd.length > 0 && !isStrongEnough(pwd);
@@ -36,11 +48,23 @@ export default function RecuperarContrasena() {
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
     setTouched(true);
-    if (!canSubmit) return;
+    setError('');
+    if (!canSubmit || !token) return;
     setLoading(true);
-    await new Promise(r => setTimeout(r, 700));
-    setLoading(false);
-    setStep('success');
+    try {
+      await authApi.restablecerContrasena(token, pwd);
+      setStep('success');
+    } catch (err) {
+      // El token pudo vencer o usarse justo entre que se chequeó y se envió
+      // el formulario (dos pestañas, doble clic): se trata igual que "vencido".
+      if (err instanceof ApiError && err.motivo === 'token_invalido') {
+        setTokenInvalid(true);
+      } else {
+        setError(err instanceof ApiError ? err.message : 'No se pudo actualizar la contraseña.');
+      }
+    } finally {
+      setLoading(false);
+    }
   };
 
   // ─── Shared layout wrapper ─────────────────────────────────────────────────
@@ -122,6 +146,20 @@ export default function RecuperarContrasena() {
       </div>
     </div>
   );
+
+  // ─── VERIFICANDO EL ENLACE CONTRA EL SERVIDOR ──────────────────────────────
+  if (tokenInvalid === null) {
+    return (
+      <Wrapper>
+        <div className="flex flex-col items-center gap-4 py-6">
+          <RefreshCw size={28} style={{ color: 'var(--primary)', animation: 'spin 0.9s linear infinite' }} />
+          <p style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-base)', fontFamily: 'var(--font-family-primary)' }}>
+            Verificando el enlace…
+          </p>
+        </div>
+      </Wrapper>
+    );
+  }
 
   // ─── TOKEN INVÁLIDO / VENCIDO ──────────────────────────────────────────────
   if (tokenInvalid) {
@@ -330,6 +368,16 @@ export default function RecuperarContrasena() {
       </p>
 
       <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
+        {error && (
+          <div
+            className="flex items-start gap-2 p-3 rounded-lg"
+            style={{ background: '#fee2e2', border: '1px solid #fecaca', color: '#b91c1c', fontSize: 'var(--text-label)' }}
+          >
+            <AlertCircle size={15} style={{ marginTop: 1, flexShrink: 0 }} />
+            <span>{error}</span>
+          </div>
+        )}
+
         {/* Nueva contraseña */}
         <div>
           <label

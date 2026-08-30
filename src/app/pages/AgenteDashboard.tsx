@@ -1,4 +1,4 @@
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { Navigate, useNavigate } from 'react-router';
 import {
   Shield, LogOut, MapPin, Calendar, Users, User,
@@ -6,11 +6,41 @@ import {
   Target, Clock, Search, History, MailWarning, ExternalLink, RefreshCw
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { Operativo } from '../data/mockData';
+import { Operativo, EstadoOperativo, institucionLabel } from '../data/mockData';
 import { enviarEmailConfirmacion } from '../services/emailService';
+import { authApi, OperativoApi, ApiError } from '../services/api';
 
 /** Estados que representan que un agente está actualmente activo en un operativo */
 const ESTADOS_ACTIVOS = new Set(['activo', 'en_proceso', 'planificación', 'nuevo']);
+
+const ESTADO_API_A_MOCK: Record<string, EstadoOperativo> = {
+  NUEVO: 'nuevo', ACTIVO: 'activo', INACTIVO: 'inactivo',
+  EN_PLANIFICACION: 'planificación', EN_PROCESO: 'en_proceso',
+  FINALIZADO: 'finalizado', ELIMINADO: 'eliminado',
+};
+
+/** Traduce el operativo de la API al modelo que ya consume esta pantalla. */
+function mapearOperativo(o: OperativoApi): Operativo {
+  return {
+    id: o.id,
+    nombre: o.titulo,
+    estado: ESTADO_API_A_MOCK[o.estado] ?? 'nuevo',
+    ubicacion: o.localidad,
+    fiscal: o.fiscalInstruccion,
+    punto0: { lat: o.puntoCeroLat, lng: o.puntoCeroLng },
+    fechaInicio: o.fechaHoraInicio,
+    fechaFin: o.fechaHoraFin ?? undefined,
+    descripcion: o.descripcion ?? undefined,
+    // "Objetivo Buscado" (CU-12..14) y grupos (Módulo 4) todavía no tienen
+    // endpoint — quedan sin datos hasta que se migren esos CU.
+    agenteIds: Array.from({ length: o.cantidadAgentes }, (_, i) => `sin-migrar-${i}`),
+    grupoIds: [],
+    sectores: [],
+    puntos: [],
+    kmRastrillados: 0,
+    coordinadorId: o.coordinadorId,
+  };
+}
 
 const ESTADO_CONFIG: Record<string, { label: string; bg: string; color: string; dot: string }> = {
   activo:        { label: 'Activo',        bg: '#dcfce7', color: '#16a34a', dot: '#16a34a' },
@@ -250,15 +280,30 @@ export default function AgenteDashboard() {
   const [reenvioExitoso, setReenvioExitoso] = useState(false);
   const [urlConfirmacionDev, setUrlConfirmacionDev] = useState<string | undefined>();
 
+  /* ── Operativo actual: REAL desde la API (Decisión B — a lo sumo uno) ──
+   * Antes leía de `data.operativos` (mock), por eso mostraba "Sin operativo
+   * asignado" aunque el alta ya estuviera en PostgreSQL. */
+  const [operativoActual, setOperativoActual] = useState<Operativo | null>(null);
+  const [cargandoOperativo, setCargandoOperativo] = useState(true);
+
+  useEffect(() => {
+    if (!isAuthenticated || usuario?.rol !== 'agente') { setCargandoOperativo(false); return; }
+    let vigente = true;
+    authApi.miOperativoActual()
+      .then(({ operativo }) => { if (vigente) setOperativoActual(operativo ? mapearOperativo(operativo) : null); })
+      .catch(() => { if (vigente) setOperativoActual(null); })
+      .finally(() => { if (vigente) setCargandoOperativo(false); });
+    return () => { vigente = false; };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
   if (!isAuthenticated) return <Navigate to="/login" replace />;
   if (usuario?.rol !== 'agente') return <Navigate to="/dashboard" replace />;
 
-  // Un agente solo puede estar en UN operativo activo a la vez
-  const operativoActual = data.operativos.find(
-    op => ESTADOS_ACTIVOS.has(op.estado) && op.agenteIds.includes(usuario.id)
-  ) ?? null;
-
-  // Historial: operativos ya finalizados/inactivos donde participó
+  // Historial: todavía no migrado (requeriría un endpoint de participaciones
+  // cerradas). `data.operativos` sigue vacío para operativos reales, así que
+  // esta sección simplemente no aparece — no muestra datos incorrectos,
+  // sólo no muestra nada hasta que se migre.
   const historial = data.operativos.filter(
     op => !ESTADOS_ACTIVOS.has(op.estado) && op.agenteIds.includes(usuario.id)
   );
@@ -309,9 +354,9 @@ export default function AgenteDashboard() {
                 {usuario.nombre} {usuario.apellido}
               </h1>
               <p style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-base)' }}>{usuario.email}</p>
-              {usuario.dotacion && (
+              {usuario.institucionId && (
                 <p className="mt-0.5" style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-label)' }}>
-                  {usuario.dotacion}
+                  {institucionLabel(usuario)}
                 </p>
               )}
             </div>
@@ -430,7 +475,14 @@ export default function AgenteDashboard() {
             </h2>
           </div>
 
-          {operativoActual ? (
+          {cargandoOperativo ? (
+            <div
+              className="rounded-[var(--radius-card)] p-8 flex items-center justify-center"
+              style={{ background: 'var(--card)', border: '1px dashed var(--border)', color: 'var(--muted-foreground)' }}
+            >
+              Cargando…
+            </div>
+          ) : operativoActual ? (
             <OperativoCard op={operativoActual} variant="current" />
           ) : (
             <div

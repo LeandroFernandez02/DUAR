@@ -240,18 +240,20 @@ export function MapPickerModal({ onConfirm, initialLat, initialLng }: MapPickerM
               )}
             </div>
 
-            {/* Footer */}
+            {/* Footer
+                En mobile no entran la caja de coordenadas + los dos botones en
+                una sola fila (el minWidth:200 de la caja los empujaba fuera
+                de la pantalla) — se apilan debajo de ~480px. */}
             <div
-              className="flex items-center justify-between px-5 py-4 flex-shrink-0"
+              className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 px-5 py-4 flex-shrink-0"
               style={{ borderTop: '1px solid var(--border)' }}
             >
               {/* Coordinates display */}
               <div
-                className="flex items-center gap-3 px-3 py-2 rounded-[var(--radius-input)]"
+                className="flex items-center gap-3 px-3 py-2 rounded-[var(--radius-input)] sm:min-w-[200px]"
                 style={{
                   background: selected ? 'rgba(229,75,75,0.07)' : 'var(--muted)',
                   border: selected ? '1px solid rgba(229,75,75,0.3)' : '1px solid var(--border)',
-                  minWidth: 200,
                 }}
               >
                 <MapPin size={13} style={{ color: selected ? 'var(--primary)' : 'var(--muted-foreground)', flexShrink: 0 }} />
@@ -281,7 +283,7 @@ export function MapPickerModal({ onConfirm, initialLat, initialLng }: MapPickerM
               </div>
 
               {/* Actions */}
-              <div className="flex gap-2">
+              <div className="flex gap-2 justify-end">
                 <button
                   type="button"
                   onClick={handleClose}

@@ -1,29 +1,25 @@
 import { createBrowserRouter, redirect, Outlet } from 'react-router';
 import MainLayout from './components/layout/MainLayout';
 import Login from './pages/Login';
-import RecuperarContrasena from './pages/RecuperarContrasena';
-import Registro from './pages/Registro';
-import ConfirmarEmail from './pages/ConfirmarEmail';
-import AgenteDashboard from './pages/AgenteDashboard';
-import FamiliaDashboard from './pages/FamiliaDashboard';
-import GlobalDashboard from './pages/GlobalDashboard';
-import Operativos from './pages/Operativos';
 import Usuarios from './pages/Usuarios';
-import OperativoLayout from './pages/operativo/OperativoLayout';
-import OperativoDashboard from './pages/operativo/Dashboard';
-import Agentes from './pages/operativo/Agentes';
-import Mapa from './pages/operativo/Mapa';
-import Clima from './pages/operativo/Clima';
-import Informe from './pages/operativo/Informe';
-import ObjetivoBuscado from './pages/operativo/ObjetivoBuscado';
 
 /**
- * RootLayout is a thin shell — AppProvider lives in App.tsx, wrapping
- * RouterProvider, so every route here is already inside the context tree.
+ * Carga de rutas: eager vs. lazy.
+ *
+ * Login y Usuarios se importan de entrada porque son la puerta del sistema y el
+ * Módulo 2; que aparezcan al instante es lo que más se nota.
+ *
+ * El resto se carga bajo demanda con `lazy`. El motivo es concreto: las páginas
+ * de Mapa y Clima arrastran Leaflet, y los dashboards arrastran Recharts. Sin
+ * dividir, un coordinador que sólo entra a loguearse igual se descargaba todo
+ * ese código. Cada `lazy` genera un archivo aparte que sólo viaja si se visita
+ * esa pantalla.
  */
-function RootLayout() {
-  return <Outlet />;
-}
+const RootLayout = () => <Outlet />;
+
+/** Envuelve un import dinámico en la forma que espera react-router. */
+const cargar = (importar: () => Promise<{ default: React.ComponentType }>) =>
+  async () => ({ Component: (await importar()).default });
 
 export const router = createBrowserRouter([
   {
@@ -44,25 +40,25 @@ export const router = createBrowserRouter([
       {
         // Registro vía QR (con operativoId)
         path: 'registro/:operativoId',
-        Component: Registro,
+        lazy: cargar(() => import('./pages/Registro')),
       },
       {
         // Confirmación de email via link enviado al correo
         path: 'confirmar-email/:token',
-        Component: ConfirmarEmail,
+        lazy: cargar(() => import('./pages/ConfirmarEmail')),
       },
       {
         path: 'recuperar-contrasena/:token',
-        Component: RecuperarContrasena,
+        lazy: cargar(() => import('./pages/RecuperarContrasena')),
       },
       {
         // Portal dedicado para agentes (sin sidebar)
         path: 'agente',
-        Component: AgenteDashboard,
+        lazy: cargar(() => import('./pages/AgenteDashboard')),
       },
       {
         path: 'familia/:id',
-        Component: FamiliaDashboard,
+        lazy: cargar(() => import('./pages/FamiliaDashboard')),
       },
       {
         path: '/',
@@ -74,11 +70,11 @@ export const router = createBrowserRouter([
           },
           {
             path: 'dashboard',
-            Component: GlobalDashboard,
+            lazy: cargar(() => import('./pages/GlobalDashboard')),
           },
           {
             path: 'operativos',
-            Component: Operativos,
+            lazy: cargar(() => import('./pages/Operativos')),
           },
           {
             path: 'usuarios',
@@ -86,7 +82,7 @@ export const router = createBrowserRouter([
           },
           {
             path: 'operativo/:id',
-            Component: OperativoLayout,
+            lazy: cargar(() => import('./pages/operativo/OperativoLayout')),
             children: [
               {
                 index: true,
@@ -94,27 +90,27 @@ export const router = createBrowserRouter([
               },
               {
                 path: 'dashboard',
-                Component: OperativoDashboard,
+                lazy: cargar(() => import('./pages/operativo/Dashboard')),
               },
               {
                 path: 'agentes',
-                Component: Agentes,
+                lazy: cargar(() => import('./pages/operativo/Agentes')),
               },
               {
                 path: 'mapa',
-                Component: Mapa,
+                lazy: cargar(() => import('./pages/operativo/Mapa')),
               },
               {
                 path: 'clima',
-                Component: Clima,
+                lazy: cargar(() => import('./pages/operativo/Clima')),
               },
               {
                 path: 'informe',
-                Component: Informe,
+                lazy: cargar(() => import('./pages/operativo/Informe')),
               },
               {
                 path: 'objetivo',
-                Component: ObjetivoBuscado,
+                lazy: cargar(() => import('./pages/operativo/ObjetivoBuscado')),
               },
             ],
           },

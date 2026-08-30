@@ -1,7 +1,48 @@
 export type Rol = 'administrador' | 'coordinador' | 'agente';
 export type EstadoUsuario = 'activo' | 'inactivo' | 'eliminado';
 export type EstadoOperativo = 'activo' | 'planificación' | 'inactivo' | 'nuevo' | 'finalizado' | 'eliminado' | 'en_proceso';
-export type EstadoGrupo = 'rastrillando' | 'descansando' | 'inactivo';
+/**
+ * Ciclo de vida del grupo — espejo del ENUM `estado_grupo` de PostgreSQL (7 valores).
+ *  · en_formacion → recién creado, armando la cuadrilla
+ *  · en_apresto   → completo, preparándose para salir
+ *  · desplegado   → en camino / en posición, aún sin rastrillar
+ *  · rastrillando → trabajando el polígono
+ *  · en_pausa     → detenido en el terreno (CU-26 lo setea por Binomio Mínimo)
+ *  · replegado    → volvió al Punto Cero
+ *  · disuelto     → terminal, baja lógica (CU-25). Nunca se hace DELETE.
+ */
+export type EstadoGrupo =
+  | 'en_formacion'
+  | 'en_apresto'
+  | 'desplegado'
+  | 'rastrillando'
+  | 'en_pausa'
+  | 'replegado'
+  | 'disuelto';
+
+/** Grupo "en zona caliente": no se puede disolver (CU-25 paso 2.1). */
+export const ESTADOS_GRUPO_EN_TERRENO: EstadoGrupo[] = ['desplegado', 'rastrillando'];
+
+/**
+ * Grupo EN OPERACIÓN: ya salió, la conformación quedó firme. Marca la frontera
+ * entre las dos fases de vida de un grupo:
+ *
+ *  · ARMADO (en_formacion, en_apresto) → el Coordinador prueba combinaciones y
+ *    puede mover gente libremente. NO se registra historial: un agente podría
+ *    pasar por cinco grupos en dos minutos y eso no prueba nada.
+ *  · OPERACIÓN (estos estados)         → recién acá es cierto que el agente
+ *    trabajó en ese grupo. Se abren los períodos de `agentesGrupoHistorial`
+ *    (valor judicial) y sacar a alguien exige la ceremonia de CU-26.
+ *
+ * Se usa para tres cosas: precondición de CU-26, apertura/cierre de períodos,
+ * y bloqueo del drag & drop.
+ */
+export const ESTADOS_GRUPO_EN_OPERACION: EstadoGrupo[] = ['desplegado', 'rastrillando', 'en_pausa'];
+
+/** ¿El grupo ya salió a terreno? (ver ESTADOS_GRUPO_EN_OPERACION) */
+export function grupoEnOperacion(estado: EstadoGrupo): boolean {
+  return ESTADOS_GRUPO_EN_OPERACION.includes(estado);
+}
 export type EstadoSector = 'pendiente' | 'en_progreso' | 'completado';
 /**
  * Especialidad TÉCNICA: lo que el agente SABE HACER.
@@ -77,8 +118,24 @@ export interface Usuario {
   fechaNacimiento?: string; // YYYY-MM-DD
   telefono?: string;
   alergias?: string;
-  dotacion?: string;
+  /**
+   * Institución a la que pertenece (FK a cat_instituciones). Determina, vía
+   * `esDuar()`, si puede ser Líder de grupo. La declara el propio usuario al
+   * registrarse (CU-02).
+   */
+  institucionId?: string;
+  /** Destacamento dentro de esa institución. Sólo si la institución tiene. */
+  dotacionId?: string;
+  /**
+   * Especialidad TÉCNICA del perfil global (FK a cat_especialidades).
+   * `especialidad` (el slug) sigue existiendo para el override TÁCTICO en
+   * AgenteOperativo (Decisión C); acá, a nivel de perfil, se referencia por id
+   * — mismo patrón que institucionId/dotacionId — porque viene de la API real.
+   */
+  especialidadId?: string;
   especialidad?: Especialidad;
+  /** Alergias del perfil global (FK N:M a cat_alergias). Ver catAlergias. */
+  alergiaIds?: string[];
   grupo_sanguineo?: string;
   estado: EstadoUsuario;
   createdAt: string;
@@ -131,12 +188,40 @@ export interface AgenteOperativo {
   fechaEgreso?: string;
 }
 
+/**
+ * Período de pertenencia de un agente a un grupo — espejo de la tabla
+ * `agentes_grupo_historial` (CU-26, Observación 1).
+ *
+ * Existe porque `AgenteOperativo.grupoId` es un único campo mutable: al extraer
+ * a alguien (grupoId → undefined) se perdería el rastro de que estuvo ahí.
+ * Esta tabla permite reconstruir en el informe final "el agente integró el
+ * Grupo X desde la hora A hasta la hora B", que es la trazabilidad judicial.
+ */
+export interface AgenteGrupoHistorial {
+  id: string;
+  agenteOperativoId: string;
+  grupoId: string;
+  fechaInicio: string;
+  /** ISO. undefined = sigue integrando el grupo. */
+  fechaFin?: string;
+  /** CU-26 paso 3: "Lesión", "Emergencia Personal", "Reasignación"... */
+  motivoSalida?: string;
+  /** Usuario (Coordinador) que ejecutó la baja. */
+  registradoPor?: string;
+}
+
 export interface GrupoRastrillaje {
   id: string;
   nombre: string;
   lider: string;
+  /**
+   * Snapshot histórico de integrantes. Si estado==='disuelto', NO se vuelve a
+   * tocar (CU-25 obs.: "el Grupo existió de 08:00 a 12:00, integrado por X,Y,Z").
+   */
   agenteIds: string[];
   estado: EstadoGrupo;
+  /** ISO. Baja lógica — se setea junto con estado='disuelto' (CU-25). */
+  eliminadoEn?: string;
   sectorAsignado?: string;
   color: string;
   kmRecorridos: number;
@@ -219,6 +304,8 @@ export interface AppData {
    * pertenencia para el código que aún la consume.
    */
   agentesOperativo: AgenteOperativo[];
+  /** Períodos de pertenencia a grupos — registro forense (CU-26). */
+  agentesGrupoHistorial: AgenteGrupoHistorial[];
 }
 
 export const initialData: AppData = {
@@ -245,7 +332,7 @@ export const initialData: AppData = {
       rol: 'coordinador',
       fechaNacimiento: '1984-06-14',
       telefono: '351-4201234',
-      dotacion: 'DUAR Córdoba',
+      institucionId: '11c7a8ed-de50-4f54-a62a-ff170b67a10f', dotacionId: 'a470cfbc-33bb-4f3e-9e06-df96a40d08d4', // DUAR · Capital
       estado: 'activo',
       createdAt: '2025-01-15',
       emailConfirmado: true,
@@ -263,7 +350,7 @@ export const initialData: AppData = {
       especialidad: 'paramédico',
       grupo_sanguineo: 'A+',
       alergias: 'Ninguna',
-      dotacion: 'DUAR Champaquí',
+      institucionId: '11c7a8ed-de50-4f54-a62a-ff170b67a10f', dotacionId: '183397ca-f4fd-4f79-8dc6-3a33809c2a1e', // DUAR · Otros (no estaba en el catálogo oficial)
       estado: 'activo',
       createdAt: '2025-02-01',
       emailConfirmado: true,
@@ -281,7 +368,7 @@ export const initialData: AppData = {
       especialidad: 'bombero',
       grupo_sanguineo: 'O+',
       alergias: 'Polen',
-      dotacion: 'Bomberos Córdoba',
+      institucionId: 'e9abb177-b4ff-4beb-9200-7c06f07deb5a', // Bomberos Voluntarios
       estado: 'activo',
       createdAt: '2025-02-05',
       emailConfirmado: true,
@@ -299,7 +386,7 @@ export const initialData: AppData = {
       // 'Conductor' ya no es especialidad: es esConductor en AgenteOperativo
       grupo_sanguineo: 'B-',
       alergias: 'Ninguna',
-      dotacion: 'DUAR Córdoba',
+      institucionId: '11c7a8ed-de50-4f54-a62a-ff170b67a10f', dotacionId: 'a470cfbc-33bb-4f3e-9e06-df96a40d08d4', // DUAR · Capital
       estado: 'activo',
       createdAt: '2025-02-10',
       emailConfirmado: true,
@@ -317,7 +404,7 @@ export const initialData: AppData = {
       especialidad: 'bombero voluntario',
       grupo_sanguineo: 'AB+',
       alergias: 'Penicilina',
-      dotacion: 'Bomberos Voluntarios Alta Gracia',
+      institucionId: 'e9abb177-b4ff-4beb-9200-7c06f07deb5a', // Bomberos Voluntarios
       estado: 'activo',
       createdAt: '2025-02-12',
       emailConfirmado: true,
@@ -335,7 +422,7 @@ export const initialData: AppData = {
       especialidad: 'paramédico',
       grupo_sanguineo: 'O-',
       alergias: 'Ninguna',
-      dotacion: 'DUAR Traslasierra',
+      institucionId: '11c7a8ed-de50-4f54-a62a-ff170b67a10f', dotacionId: '183397ca-f4fd-4f79-8dc6-3a33809c2a1e', // DUAR · Otros (no estaba en el catálogo oficial)
       estado: 'activo',
       createdAt: '2025-02-18',
       emailConfirmado: true,
@@ -353,7 +440,7 @@ export const initialData: AppData = {
       // 'Conductor' ya no es especialidad: es esConductor en AgenteOperativo
       grupo_sanguineo: 'A-',
       alergias: 'Aspirina',
-      dotacion: 'DUAR Córdoba',
+      institucionId: '11c7a8ed-de50-4f54-a62a-ff170b67a10f', dotacionId: 'a470cfbc-33bb-4f3e-9e06-df96a40d08d4', // DUAR · Capital
       estado: 'inactivo',
       createdAt: '2025-01-25',
       emailConfirmado: true,
@@ -371,7 +458,7 @@ export const initialData: AppData = {
       especialidad: 'bombero',
       grupo_sanguineo: 'B+',
       alergias: 'Ninguna',
-      dotacion: 'Bomberos Córdoba',
+      institucionId: 'e9abb177-b4ff-4beb-9200-7c06f07deb5a', // Bomberos Voluntarios
       estado: 'activo',
       createdAt: '2025-03-01',
       emailConfirmado: true,
@@ -389,7 +476,7 @@ export const initialData: AppData = {
       // 'Conductor' ya no es especialidad: es esConductor en AgenteOperativo
       grupo_sanguineo: 'A+',
       alergias: 'Ninguna',
-      dotacion: 'DUAR Córdoba',
+      institucionId: '11c7a8ed-de50-4f54-a62a-ff170b67a10f', dotacionId: 'a470cfbc-33bb-4f3e-9e06-df96a40d08d4', // DUAR · Capital
       estado: 'activo',
       createdAt: '2025-03-05',
       emailConfirmado: true,
@@ -432,7 +519,7 @@ export const initialData: AppData = {
       nombre: 'Grupo Gamma',
       lider: 'u10',
       agenteIds: ['u10'],
-      estado: 'inactivo',
+      estado: 'en_formacion',
       color: '#c0392b',
       kmRecorridos: 0,
     },
@@ -677,6 +764,20 @@ export const initialData: AppData = {
     { id: 'ao10', usuarioId: 'u9',  operativoId: 'op6', estado: 'rastrillando', esCaminante: true,  esConductor: false, grupoId: 'g3', fechaIngreso: '2026-03-17T06:30:00.000Z' },
     { id: 'ao11', usuarioId: 'u10', operativoId: 'op6', estado: 'disponible',   esCaminante: false, esConductor: true,  grupoId: 'g4', fechaIngreso: '2026-03-17T06:30:00.000Z' },
   ],
+
+  /**
+   * Períodos de pertenencia ABIERTOS. Solo existen para grupos EN OPERACIÓN:
+   * g1/g2/g3 están rastrillando. g4 está en_formacion (fase de armado), así que
+   * su integrante NO tiene período: todavía no se confirmó que trabajara ahí.
+   */
+  agentesGrupoHistorial: [
+    { id: 'agh1', agenteOperativoId: 'ao1',  grupoId: 'g1', fechaInicio: '2026-02-28T07:00:00.000Z' },
+    { id: 'agh2', agenteOperativoId: 'ao2',  grupoId: 'g1', fechaInicio: '2026-02-28T07:00:00.000Z' },
+    { id: 'agh3', agenteOperativoId: 'ao7',  grupoId: 'g2', fechaInicio: '2026-03-10T08:00:00.000Z' },
+    { id: 'agh4', agenteOperativoId: 'ao8',  grupoId: 'g2', fechaInicio: '2026-03-10T08:00:00.000Z' },
+    { id: 'agh5', agenteOperativoId: 'ao9',  grupoId: 'g3', fechaInicio: '2026-03-17T06:30:00.000Z' },
+    { id: 'agh6', agenteOperativoId: 'ao10', grupoId: 'g3', fechaInicio: '2026-03-17T06:30:00.000Z' },
+  ],
 };
 
 /* ────────────────────────────────────────────────────────────────────────────
@@ -709,9 +810,142 @@ export const catEspecialidades: CatEspecialidad[] = [
   { id: 'e0322446-d6eb-4335-85e3-558d484e2334', nombre: 'Defensa Civil',      slug: 'defensa civil',       esRecursoCritico: false },
 ];
 
+/* ────────────────────────────────────────────────────────────────────────────
+ * Institución y Dotación — espejo de cat_instituciones / cat_dotaciones
+ * ────────────────────────────────────────────────────────────────────────────
+ * Reemplazan al viejo campo de texto libre `Usuario.dotacion`, que obligaba a
+ * resolver la regla del Líder con un `dotacion.includes('duar')`. Los datos de
+ * prueba ya mostraban por qué eso fallaba: existían "DUAR Champaquí" y "DUAR
+ * Traslasierra", que no son dotaciones reales del organismo.
+ *
+ * Los `id` son los UUID REALES de `duar-test`: al conectar el backend, estas
+ * constantes se reemplazan por un fetch sin tocar nada más.
+ */
+
+export interface CatInstitucion {
+  id: string;
+  nombre: string;
+  /** Único criterio válido para poder ser Líder de grupo. Es un dato, no el nombre. */
+  esDuar: boolean;
+}
+
+export interface CatDotacion {
+  id: string;
+  nombre: string;
+  /** Destacamento DENTRO de una institución. */
+  institucionId: string;
+}
+
+export const catInstituciones: CatInstitucion[] = [
+  { id: '11c7a8ed-de50-4f54-a62a-ff170b67a10f', nombre: 'DUAR',                 esDuar: true  },
+  { id: '7c6d12ff-3af1-417f-b295-27f661281bbc', nombre: 'ETAC',                 esDuar: false },
+  { id: 'e9abb177-b4ff-4beb-9200-7c06f07deb5a', nombre: 'Bomberos Voluntarios', esDuar: false },
+  { id: '80ac6de6-9133-45f1-85c3-d3099894a45a', nombre: 'Policía de Córdoba',   esDuar: false },
+  { id: 'c120cfd5-4e0e-4ac0-baf9-40ac5f7dc4f8', nombre: 'Defensa Civil',        esDuar: false },
+  { id: '14a0e83e-3e0c-40b8-9cb9-5401bdad9c47', nombre: 'Otra',                 esDuar: false },
+];
+
+const ID_DUAR = '11c7a8ed-de50-4f54-a62a-ff170b67a10f';
+
+/** Las 11 dotaciones reales del DUAR. Otras instituciones aún no tienen cargadas. */
+export const catDotaciones: CatDotacion[] = [
+  { id: 'a470cfbc-33bb-4f3e-9e06-df96a40d08d4', nombre: 'DUAR Capital (Cuartel Central)',   institucionId: ID_DUAR },
+  { id: 'cfc5d89c-9a45-4fac-9bcc-05193d026c88', nombre: 'Miramar',                          institucionId: ID_DUAR },
+  { id: '50a48133-503f-4e30-a18a-7a14d44333f4', nombre: 'Cruz del Eje',                     institucionId: ID_DUAR },
+  { id: '3f747c49-7854-4f46-bfaf-0c52bb9b7171', nombre: 'Villa Cura Brochero (San Javier)', institucionId: ID_DUAR },
+  { id: 'c8701839-a1ee-49dd-ba20-800dd4cf9c43', nombre: 'Dique La Viña',                    institucionId: ID_DUAR },
+  { id: 'fb7fbaee-6e45-406f-a975-244fb649142f', nombre: 'Carlos Paz (Villa Carlos Paz)',    institucionId: ID_DUAR },
+  { id: '7a838992-c4b4-4533-ba27-9ccb57f08cc6', nombre: 'Potrero de Garay',                 institucionId: ID_DUAR },
+  { id: 'bb4a7cc6-e42a-446c-b9a0-6a7c04d278a2', nombre: 'Dique Embalse (Río Tercero)',      institucionId: ID_DUAR },
+  { id: '0173f98f-2701-4be1-b4ef-50641d76ecd9', nombre: 'Río Cuarto',                       institucionId: ID_DUAR },
+  { id: '80eb1d2f-fe47-4bd5-88b7-4294fcb47d9e', nombre: 'Dique La Quebrada',                institucionId: ID_DUAR },
+  { id: '183397ca-f4fd-4f79-8dc6-3a33809c2a1e', nombre: 'Otros',                            institucionId: ID_DUAR },
+];
+
+export function getInstitucion(id?: string): CatInstitucion | undefined {
+  return id ? catInstituciones.find(i => i.id === id) : undefined;
+}
+
+export function getDotacion(id?: string): CatDotacion | undefined {
+  return id ? catDotaciones.find(d => d.id === id) : undefined;
+}
+
+/**
+ * Dotaciones disponibles para una institución.
+ * El formulario muestra el desplegable sólo si esto devuelve algo: hoy pasa
+ * únicamente con el DUAR, pero sin ningún "if DUAR" escrito en el código.
+ * Cargar comisarías para la Policía lo habilitaría sin tocar una línea.
+ */
+export function dotacionesDe(institucionId?: string): CatDotacion[] {
+  return institucionId ? catDotaciones.filter(d => d.institucionId === institucionId) : [];
+}
+
+/** ¿Pertenece al DUAR? Se lee del catálogo, nunca del nombre. */
+export function esDuar(u?: { institucionId?: string }): boolean {
+  return getInstitucion(u?.institucionId)?.esDuar ?? false;
+}
+
+/**
+ * Regla del Líder (CU-21/22/24/26): sólo personal del DUAR puede conducir una
+ * cuadrilla, porque son los capacitados para dar instrucciones en terreno.
+ *
+ * Se encapsula acá a propósito: si mañana el cliente habilita a otra fuerza,
+ * se cambia esta única función y no los ~20 lugares que la consultan.
+ */
+export function puedeSerLider(u?: { institucionId?: string }): boolean {
+  return esDuar(u);
+}
+
+/** Etiqueta legible: "DUAR · Río Cuarto" o sólo "Policía de Córdoba". */
+export function institucionLabel(u?: { institucionId?: string; dotacionId?: string }): string {
+  const inst = getInstitucion(u?.institucionId);
+  if (!inst) return '—';
+  const dot = getDotacion(u?.dotacionId);
+  return dot ? `${inst.nombre} · ${dot.nombre}` : inst.nombre;
+}
+
+/** Nombre de la especialidad del PERFIL GLOBAL a partir de su id (o '—'). */
+export function especialidadNombrePorId(especialidadId?: string): string {
+  if (!especialidadId) return '—';
+  return catEspecialidades.find(e => e.id === especialidadId)?.nombre ?? '—';
+}
+
 /** Busca una especialidad del catálogo por su slug. */
 export function getEspecialidad(slug?: Especialidad): CatEspecialidad | undefined {
   return slug ? catEspecialidades.find(e => e.slug === slug) : undefined;
+}
+
+/**
+ * Catálogo de alergias — espejo de `cat_alergias`. Relación N:M real con el
+ * usuario (`usuarios_alergias`): un agente puede tener más de una, por eso el
+ * perfil global la referencia como `alergiaIds: string[]`, no como texto libre.
+ * (El viejo campo `Usuario.alergias?: string` sigue existiendo aparte: lo usan
+ * Registro.tsx y AgenteDashboard.tsx, que todavía no migraron a la API real.)
+ */
+export interface CatAlergia {
+  id: string;
+  nombre: string;
+}
+
+export const catAlergias: CatAlergia[] = [
+  { id: '3543185c-cba2-46fc-a2f3-ece98cd3be4a', nombre: 'Penicilina (Amoxicilina)' },
+  { id: '39bf8a20-39cd-4a5a-ae55-70c43824fb64', nombre: 'Antiinflamatorios' },
+  { id: '31586d7d-f1b2-4bbb-b543-38a845784d7b', nombre: 'Anestesia local (Lidocaína)' },
+  { id: 'f8db92bc-6ceb-4763-8efa-5a7a8ae1e61d', nombre: 'Yodo / Pervinox' },
+  { id: '0e7bb52f-179b-435b-a4e3-66af8bb9aa88', nombre: 'Corticoides' },
+  { id: 'faf58898-026b-4aed-92a0-59cccd7c8655', nombre: 'Picadura de abejas o avispas' },
+  { id: '62facb83-09dd-405f-b3df-da4fd2960ed2', nombre: 'Picadura de hormigas o arañas' },
+  { id: '73e86bdb-031e-49d7-8d40-54b7a48d89ce', nombre: 'Látex (Guantes médicos)' },
+  { id: '1052f1c7-e3a0-4723-be8a-9b9f7fa7793d', nombre: 'Cintas adhesivas o apósitos' },
+];
+
+/** Nombres de las alergias del usuario a partir de sus ids, para mostrar en tablas/detalle. */
+export function alergiasNombres(alergiaIds?: string[]): string {
+  if (!alergiaIds || alergiaIds.length === 0) return '—';
+  return alergiaIds
+    .map(id => catAlergias.find(a => a.id === id)?.nombre)
+    .filter((n): n is string => !!n)
+    .join(', ');
 }
 
 /**

@@ -1,5 +1,6 @@
 import { useState, useRef, useEffect } from 'react';
 import { Mail, X, ArrowRight, AlertCircle, CheckCircle, Shield } from 'lucide-react';
+import { authApi } from '../../services/api';
 
 interface Props {
   onClose: () => void;
@@ -39,9 +40,15 @@ export function RecuperarContrasenaModal({ onClose }: Props) {
     setTouched(true);
     if (!email.trim() || !isValidEmail(email)) return;
     setLoading(true);
-    await new Promise(r => setTimeout(r, 700));
-    setLoading(false);
-    setStep('sent');
+    // CU-03 paso 4.1: el backend responde igual exista o no ese email — nunca
+    // hay un caso de error real acá salvo que el servidor esté caído, y ni
+    // siquiera entonces conviene revelarlo distinto (se ve como "enviado" igual).
+    try {
+      await authApi.solicitarRecuperacion(email);
+    } finally {
+      setLoading(false);
+      setStep('sent');
+    }
   };
 
   const handleBackdropClick = (e: React.MouseEvent) => {
@@ -309,67 +316,6 @@ export function RecuperarContrasenaModal({ onClose }: Props) {
               >
                 El enlace expira en <strong style={{ color: 'var(--foreground)' }}>60 minutos</strong>. Revisá también la carpeta de spam. Si no lo recibís, podés volver a intentarlo.
               </p>
-
-              {/* Demo navigation links (visual prototype only) */}
-              <div
-                className="rounded-xl p-3.5 mb-5"
-                style={{
-                  background: 'var(--muted)',
-                  border: '1px solid var(--border)',
-                }}
-              >
-                <p
-                  className="mb-2"
-                  style={{
-                    color: 'var(--muted-foreground)',
-                    fontSize: 'var(--text-label)',
-                    fontWeight: 'var(--font-weight-semibold)',
-                    fontFamily: 'var(--font-family-primary)',
-                    letterSpacing: '0.04em',
-                    textTransform: 'uppercase',
-                  }}
-                >
-                  Demo — simular apertura de enlace
-                </p>
-                <div className="flex flex-col gap-2">
-                  <a
-                    href="/recuperar-contrasena/token-demo-valido"
-                    className="flex items-center gap-2 py-2 px-3 rounded-lg transition-colors"
-                    style={{
-                      background: 'var(--card)',
-                      color: 'var(--foreground)',
-                      fontSize: 'var(--text-label)',
-                      fontFamily: 'var(--font-family-primary)',
-                      fontWeight: 'var(--font-weight-medium)',
-                      textDecoration: 'none',
-                      border: '1px solid var(--border)',
-                    }}
-                    onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--primary)')}
-                    onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}
-                  >
-                    <CheckCircle size={13} style={{ color: 'var(--primary)', flexShrink: 0 }} />
-                    Token válido → Formulario nueva contraseña
-                  </a>
-                  <a
-                    href="/recuperar-contrasena/token-invalido"
-                    className="flex items-center gap-2 py-2 px-3 rounded-lg transition-colors"
-                    style={{
-                      background: 'var(--card)',
-                      color: 'var(--foreground)',
-                      fontSize: 'var(--text-label)',
-                      fontFamily: 'var(--font-family-primary)',
-                      fontWeight: 'var(--font-weight-medium)',
-                      textDecoration: 'none',
-                      border: '1px solid var(--border)',
-                    }}
-                    onMouseEnter={e => (e.currentTarget.style.borderColor = 'var(--destructive)')}
-                    onMouseLeave={e => (e.currentTarget.style.borderColor = 'var(--border)')}
-                  >
-                    <AlertCircle size={13} style={{ color: 'var(--destructive)', flexShrink: 0 }} />
-                    Token inválido / vencido → Error de enlace
-                  </a>
-                </div>
-              </div>
 
               <button
                 type="button"

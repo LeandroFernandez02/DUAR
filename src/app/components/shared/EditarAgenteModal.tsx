@@ -16,7 +16,7 @@ import { X, Check, Pencil, User, AlertTriangle } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import {
   EstadoOperativoAgente, Especialidad, Usuario, AgenteOperativo,
-  catEspecialidades, esRecursoCritico, getEspecialidad,
+  catEspecialidades, esRecursoCritico, getEspecialidad, puedeSerLider, institucionLabel,
 } from '../../data/mockData';
 
 /* ── Catálogos de colores / etiquetas ─────────────────────── */
@@ -146,7 +146,7 @@ export default function EditarAgenteModal({ agente, operativoId, onClose }: Prop
     setConfirmExcepcion(null);
   };
 
-  const isDUAR = agente.dotacion?.toLowerCase().includes('duar') ?? false;
+  const isDUAR = puedeSerLider(agente);
 
   const handleSave = () => {
     if (!agenteOp) return;
@@ -254,7 +254,7 @@ export default function EditarAgenteModal({ agente, operativoId, onClose }: Prop
                 color: 'var(--muted-foreground)', fontSize: '11px',
                 fontFamily: 'var(--font-family-primary)',
               }}>
-                DNI {agente.dni}{agente.dotacion ? ` · ${agente.dotacion}` : ''}
+                DNI {agente.dni}{agente.institucionId ? ` · ${institucionLabel(agente)}` : ''}
               </p>
             </div>
           </div>

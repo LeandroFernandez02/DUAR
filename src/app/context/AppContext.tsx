@@ -1,9 +1,37 @@
 import React, { createContext, useContext, useState, useEffect, useCallback } from 'react';
 import {
   initialData, Usuario, Operativo, GrupoRastrillaje, AppData, HistorialPuestoCom,
-  AgenteOperativo, inferirCaminante,
+  AgenteOperativo, AgenteGrupoHistorial, EstadoOperativoAgente,
+  inferirCaminante, ESTADOS_GRUPO_EN_TERRENO, ESTADOS_GRUPO_EN_OPERACION, grupoEnOperacion,
 } from '../data/mockData';
 import { generarTokenConfirmacion } from '../services/emailService';
+import { authApi, setToken, getToken, ApiError, UsuarioApi } from '../services/api';
+
+/**
+ * Traduce el usuario que devuelve la API al modelo que usa el frontend.
+ *
+ * La base guarda los enums en MAYÚSCULAS ('ACTIVO') y el rol como nombre del
+ * catálogo; el frontend viene usando minúsculas. Este mapeo es el puente
+ * mientras se completa la migración de los datos mock a la base real.
+ */
+function mapearUsuarioApi(u: UsuarioApi): Usuario {
+  return {
+    id: u.id,
+    dni: u.dni,
+    nombre: u.nombre,
+    apellido: u.apellido,
+    email: u.email,
+    password: '',                       // la clave nunca vuelve del servidor
+    rol: u.rol.toLowerCase() as Usuario['rol'],
+    telefono: u.telefono ?? undefined,
+    institucionId: u.institucionId ?? undefined,
+    dotacionId: u.dotacionId ?? undefined,
+    grupo_sanguineo: u.grupoSanguineo ?? undefined,
+    estado: u.estado.toLowerCase() as Usuario['estado'],
+    createdAt: new Date().toISOString().slice(0, 10),
+    emailConfirmado: true,
+  };
+}
 
 // Counter-based unique ID generator to avoid timestamp collisions
 // when multiple entities are created synchronously in the same millisecond.
@@ -32,19 +60,24 @@ function sanitizeData(raw: AppData): AppData {
 
   const rawGrupos = dedupeById(raw.grupos ?? []);
 
-  // Build agent ownership map: each agent belongs to at most one group.
-  // Leaders are claimed first (first-occurrence of leader wins), then non-leader members.
+  // Build agent ownership map: each agent belongs to at most one ACTIVE group.
+  // Los grupos DISUELTOS quedan afuera de este cómputo: su agenteIds es una foto
+  // histórica (CU-25), no una reclamación de pertenencia vigente. Si no los
+  // excluyéramos, un ex-integrante que ya se unió a un grupo nuevo podría perder
+  // esa membresía porque el grupo disuelto (más viejo, primero en el array) "gana"
+  // la disputa de ownership por orden de aparición.
   const agentOwnership = new Map<string, string>(); // agentId → groupId
+  const gruposActivosParaOwnership = rawGrupos.filter(g => g.estado !== 'disuelto');
 
   // Pass 1: claim leaders (first group per leader wins)
-  rawGrupos.forEach(g => {
+  gruposActivosParaOwnership.forEach(g => {
     if (g.lider && !agentOwnership.has(g.lider)) {
       agentOwnership.set(g.lider, g.id);
     }
   });
 
   // Pass 2: claim non-leader members (first occurrence wins)
-  rawGrupos.forEach(g => {
+  gruposActivosParaOwnership.forEach(g => {
     g.agenteIds.forEach(aid => {
       if (!agentOwnership.has(aid)) {
         agentOwnership.set(aid, g.id);
@@ -52,8 +85,11 @@ function sanitizeData(raw: AppData): AppData {
     });
   });
 
-  // Pass 3: rebuild each group keeping only agents owned by that group
+  // Pass 3: rebuild each ACTIVE group keeping only agents owned by that group.
+  // Los grupos DISUELTOS se preservan intactos — no se les toca agenteIds/lider,
+  // es el registro forense de quién los integró (CU-25).
   const grupos = rawGrupos.map(g => {
+    if (g.estado === 'disuelto') return g;
     const filteredIds = g.agenteIds.filter(aid => agentOwnership.get(aid) === g.id);
     const leaderBelongsHere = agentOwnership.get(g.lider) === g.id;
     const finalAgenteIds =
@@ -117,8 +153,23 @@ function sanitizeData(raw: AppData): AppData {
     grupos,
     operativos,
     agentesOperativo,
+    agentesGrupoHistorial: dedupeById(raw.agentesGrupoHistorial ?? []),
   };
 }
+
+/** Resultado de evaluar una extracción de grupo (CU-26). */
+export type EvaluacionExtraccion =
+  | { permitido: false; motivo: 'sin_grupo' | 'estado_grupo' | 'minimo_integrantes'; grupo?: GrupoRastrillaje }
+  | {
+      permitido: true;
+      grupo: GrupoRastrillaje;
+      /** Paso 4.1: el agente es el líder ⇒ sucesión de mando obligatoria */
+      requiereSucesion: boolean;
+      candidatosLider: string[];
+      /** Paso 5.1: el grupo quedará con 1 integrante */
+      alertaBinomio: boolean;
+      miembrosRestantes: number;
+    };
 
 interface AppContextType {
   usuario: Usuario | null;
@@ -126,8 +177,8 @@ interface AppContextType {
   isDark: boolean;
   toggleDark: () => void;
   data: AppData;
-  login: (email: string, password: string) => 'ok' | 'credentials' | 'inactive';
-  logout: () => void;
+  login: (email: string, password: string) => Promise<'ok' | 'credentials' | 'inactive' | 'sin_conexion'>;
+  logout: () => Promise<void>;
   // Operativos CRUD
   addOperativo: (op: Omit<Operativo, 'id'>) => string;
   updateOperativo: (id: string, op: Partial<Operativo>) => void;
@@ -140,7 +191,14 @@ interface AppContextType {
   // Grupos CRUD
   addGrupo: (grupo: Omit<GrupoRastrillaje, 'id'>) => string;
   updateGrupo: (id: string, grupo: Partial<GrupoRastrillaje>) => void;
-  deleteGrupo: (id: string) => void;
+  /** Mueve un agente entre grupos manteniendo agenteIds + grupoId + historial. */
+  moverAgenteAGrupo: (operativoId: string, usuarioId: string, destinoGrupoId: string | null) => 'ok' | 'lider' | 'sin_agente' | 'origen_en_operacion';
+  /** CU-26: evalúa si se puede extraer un agente (sin mutar). */
+  evaluarExtraccion: (agenteOperativoId: string) => EvaluacionExtraccion;
+  /** CU-26: ejecuta la extracción con motivo, nuevo estado y sucesión de mando. */
+  extraerAgenteDeGrupo: (agenteOperativoId: string, opciones: { motivo: string; nuevoEstado: EstadoOperativoAgente; nuevoLiderUsuarioId?: string }) => void;
+  /** CU-25: disolución con baja lógica. 'bloqueado' si el grupo está rastrillando. */
+  deleteGrupo: (id: string) => 'ok' | 'bloqueado';
   // Agentes en operativo
   addAgenteToOperativo: (operativoId: string, agenteId: string) => void;
   removeAgenteFromOperativo: (operativoId: string, agenteId: string) => void;
@@ -187,7 +245,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const [data, setData] = useState<AppData>(() => {
     // Schema version: bump this whenever the data shape changes to force a reset
-    const SCHEMA_VERSION = '6'; // v6: AgenteOperativo (Decisión A) + esConductor
+    const SCHEMA_VERSION = '8'; // v8: institucionId/dotacionId (catalogos) en Usuario
     const storedVersion = localStorage.getItem('duar-schema-version');
     if (storedVersion !== SCHEMA_VERSION) {
       // Wipe stale data and start fresh with the updated initialData
@@ -234,21 +292,73 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     setIsDark(prev => !prev);
   }, []);
 
-  const login = useCallback((email: string, password: string): 'ok' | 'credentials' | 'inactive' => {
-    const found = data.usuarios.find(
-      u => u.email.toLowerCase() === email.toLowerCase() && u.password === password
-    );
-    if (!found) return 'credentials';
-    // Los usuarios eliminados son invisibles — tratarlos como credenciales incorrectas
-    // para no revelar que la cuenta existió alguna vez.
-    if (found.estado === 'eliminado') return 'credentials';
-    if (found.estado === 'inactivo') return 'inactive';
-    setUsuario(found);
-    return 'ok';
-  }, [data.usuarios]);
+  /**
+   * CU-01 — Iniciar Sesión contra la API real.
+   * La validación de credenciales, el estado de la cuenta y la creación de la
+   * sesión ocurren en el backend (`sesiones_activas`); acá sólo se guarda el
+   * token y el usuario devuelto.
+   */
+  const login = useCallback(async (
+    email: string,
+    password: string
+  ): Promise<'ok' | 'credentials' | 'inactive' | 'sin_conexion'> => {
+    try {
+      const { token, usuario: u } = await authApi.login(email, password);
+      setToken(token);
+      setUsuario(mapearUsuarioApi(u));
+      return 'ok';
+    } catch (err) {
+      if (err instanceof ApiError) {
+        if (err.motivo === 'inactive') return 'inactive';
+        return 'credentials';
+      }
+      // fetch falló: el backend no está levantado
+      return 'sin_conexion';
+    }
+  }, []);
 
-  const logout = useCallback(() => {
+  const logout = useCallback(async () => {
+    try {
+      await authApi.logout();       // revoca la sesión del lado del servidor
+    } catch {
+      // Si el servidor no responde igual se cierra la sesión local.
+    }
+    setToken(null);
     setUsuario(null);
+  }, []);
+
+  /**
+   * Al recargar la página se revalida la sesión contra el servidor.
+   *
+   * Antes esto sólo corría si NO había usuario en memoria — pero `usuario` se
+   * restaura de localStorage al montar, así que en la práctica nunca revalidaba:
+   * con un token vencido o revocado la app te mostraba adentro y recién fallaba
+   * en cada request con 401. Ahora se revalida siempre que haya token, y si no
+   * hay token se descarta el usuario guardado (estado incoherente).
+   */
+  useEffect(() => {
+    if (!getToken()) {
+      setUsuario(null);
+      return;
+    }
+    authApi.me()
+      .then(({ usuario: u }) => setUsuario(mapearUsuarioApi(u)))
+      .catch(() => { setToken(null); setUsuario(null); });
+    // Sólo al montar: restaurar sesión previa.
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, []);
+
+  /**
+   * La sesión también puede caerse MIENTRAS se usa el sistema: expira, o un
+   * administrador revoca al usuario (CU-07). `api.ts` detecta el 401 y limpia el
+   * token, pero no puede tocar el estado de React — avisa con este evento para
+   * que la app cierre la sesión y mande al login, en vez de quedar mostrando una
+   * pantalla donde ya nada funciona.
+   */
+  useEffect(() => {
+    const alExpirar = () => setUsuario(null);
+    window.addEventListener('duar:sesion-expirada', alExpirar);
+    return () => window.removeEventListener('duar:sesion-expirada', alExpirar);
   }, []);
 
   /* ── Operativos CRUD ── */
@@ -357,43 +467,123 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const addGrupo = useCallback((grupo: Omit<GrupoRastrillaje, 'id'>): string => {
     const id = uniqueId('g');
-    setData(d => ({ ...d, grupos: [...d.grupos, { ...grupo, id }] }));
+    setData(d => ({
+      ...d,
+      grupos: [...d.grupos, { ...grupo, id }],
+      // Sincroniza la pertenencia táctica. NO abre períodos de historial: un
+      // grupo nace en fase de ARMADO y todavía no se confirmó que nadie
+      // trabajara en él (ver ESTADOS_GRUPO_EN_OPERACION).
+      agentesOperativo: d.agentesOperativo.map(ao =>
+        !ao.fechaEgreso && grupo.agenteIds.includes(ao.usuarioId)
+          ? { ...ao, grupoId: id }
+          : ao
+      ),
+    }));
     return id;
   }, []);
 
   const updateGrupo = useCallback((id: string, grupo: Partial<GrupoRastrillaje>) => {
+    const ahora = new Date().toISOString();
+    const ejecutor = usuario?.id;
+
     setData(d => {
       const anterior = d.grupos.find(g => g.id === id);
       const grupos = d.grupos.map(g => (g.id === id ? { ...g, ...grupo } : g));
+      if (!anterior) return { ...d, grupos };
+
+      const estadoNuevo = grupo.estado ?? anterior.estado;
+      const operabaAntes = grupoEnOperacion(anterior.estado);
+      const operaAhora = grupoEnOperacion(estadoNuevo);
+
+      const miembros = d.agentesOperativo.filter(ao => ao.grupoId === id && !ao.fechaEgreso);
+
+      let agentesGrupoHistorial = d.agentesGrupoHistorial;
+
+      // ── El grupo SALE a terreno ⇒ se abren los períodos ────────────────────
+      // Recién acá se confirma que estos agentes trabajaron en este grupo. Todo
+      // el movimiento previo fue armado y no dejó rastro (a propósito).
+      if (!operabaAntes && operaAhora) {
+        const yaAbierto = new Set(
+          d.agentesGrupoHistorial.filter(h => h.grupoId === id && !h.fechaFin).map(h => h.agenteOperativoId)
+        );
+        agentesGrupoHistorial = [
+          ...agentesGrupoHistorial,
+          ...miembros
+            .filter(ao => !yaAbierto.has(ao.id))
+            .map(ao => ({
+              id: uniqueId('agh'),
+              agenteOperativoId: ao.id,
+              grupoId: id,
+              fechaInicio: ahora,
+            })),
+        ];
+      }
+
+      // ── El grupo REGRESA (replegado / vuelve a armado) ⇒ se cierran ────────
+      // Así el informe distingue tiempo realmente trabajado en terreno de
+      // tiempo en base. Si vuelve a salir, se abre un período nuevo.
+      if (operabaAntes && !operaAhora) {
+        agentesGrupoHistorial = agentesGrupoHistorial.map(h =>
+          h.grupoId === id && !h.fechaFin
+            ? { ...h, fechaFin: ahora, motivoSalida: `Grupo ${estadoNuevo}`, registradoPor: ejecutor }
+            : h
+        );
+      }
 
       // ── Regla del Conductor (nota de negocio · CU-18) ──────────────────────
       // El conductor entra al grupo junto con los demás, pero cuando el grupo
       // arranca el rastrillaje él se queda con el vehículo: pasa a EN_ESPERA.
       // Es automático y silencioso, igual que DESPLEGADO/RASTRILLANDO en CU-18.
-      // Sigue perteneciendo al grupo, pero deja de contar como rastrillador
-      // efectivo para el Binomio Mínimo de CU-26 (ver contarRastrilladores).
       const arrancaRastrillaje =
-        grupo.estado === 'rastrillando' && anterior?.estado !== 'rastrillando';
+        grupo.estado === 'rastrillando' && anterior.estado !== 'rastrillando';
 
-      if (!arrancaRastrillaje) {
-        return { ...d, grupos };
-      }
+      const agentesOperativo = arrancaRastrillaje
+        ? d.agentesOperativo.map(ao =>
+            ao.grupoId === id && !ao.fechaEgreso && ao.esConductor && !ao.esCaminante
+              ? { ...ao, estado: 'en_espera' as const }
+              : ao
+          )
+        : d.agentesOperativo;
 
-      return {
-        ...d,
-        grupos,
-        agentesOperativo: d.agentesOperativo.map(ao =>
-          ao.grupoId === id && !ao.fechaEgreso && ao.esConductor && !ao.esCaminante
-            ? { ...ao, estado: 'en_espera' as const }
-            : ao
-        ),
-      };
+      return { ...d, grupos, agentesOperativo, agentesGrupoHistorial };
     });
-  }, []);
+  }, [usuario?.id]);
 
-  const deleteGrupo = useCallback((id: string) => {
-    setData(d => ({ ...d, grupos: d.grupos.filter(g => g.id !== id) }));
-  }, []);
+  /**
+   * Disolución de Grupo (CU-25). Baja lógica — nunca DELETE:
+   *  · Precondición de seguridad: bloquea si el grupo está en el terreno
+   *    ('rastrillando'); el Coordinador debe replegarlo primero.
+   *  · Transacción única: estado→'disuelto' + eliminadoEn, y libera a todos
+   *    los agentes vinculados (grupoId=undefined, estado→'disponible').
+   *  · agenteIds/lider del grupo NO se tocan: quedan como registro histórico
+   *    para el informe final ("el Grupo existió de 08:00 a 12:00...").
+   */
+  const deleteGrupo = useCallback((id: string): 'ok' | 'bloqueado' => {
+    const grupo = data.grupos.find(g => g.id === id);
+    if (!grupo) return 'ok';
+    if (ESTADOS_GRUPO_EN_TERRENO.includes(grupo.estado)) return 'bloqueado';
+
+    const ahora = new Date().toISOString();
+    const ejecutor = usuario?.id;
+    setData(d => ({
+      ...d,
+      grupos: d.grupos.map(g =>
+        g.id === id ? { ...g, estado: 'disuelto' as const, eliminadoEn: ahora } : g
+      ),
+      agentesOperativo: d.agentesOperativo.map(ao =>
+        ao.grupoId === id
+          ? { ...ao, grupoId: undefined, estado: 'disponible' as const }
+          : ao
+      ),
+      // Cierra los períodos abiertos de ese grupo (trazabilidad, CU-25/CU-26)
+      agentesGrupoHistorial: d.agentesGrupoHistorial.map(h =>
+        h.grupoId === id && !h.fechaFin
+          ? { ...h, fechaFin: ahora, motivoSalida: 'Disolución del grupo', registradoPor: ejecutor }
+          : h
+      ),
+    }));
+    return 'ok';
+  }, [data.grupos, usuario?.id]);
 
   /* ── Agentes en operativo ── */
 
@@ -477,8 +667,181 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           ? { ...ao, fechaEgreso: ahora, estado: 'replegado' as const, grupoId: undefined }
           : ao
       ),
+      // Si estaba en un grupo, cerrar su período (CU-20 también deja rastro)
+      agentesGrupoHistorial: d.agentesGrupoHistorial.map(h => {
+        const suyo = d.agentesOperativo.find(
+          ao => ao.id === h.agenteOperativoId && ao.usuarioId === agenteId && ao.operativoId === operativoId
+        );
+        return suyo && !h.fechaFin
+          ? { ...h, fechaFin: ahora, motivoSalida: 'Baja del operativo' }
+          : h;
+      }),
     }));
   }, []);
+
+  /**
+   * Mueve a un agente entre grupos (o al pool "Sin grupo" con destino null).
+   *
+   * Es la ÚNICA vía para cambiar la pertenencia a un grupo por arrastre. Mantiene
+   * de forma atómica las tres representaciones que conviven en el modelo:
+   *   1. `grupo.agenteIds`            — lo que dibuja el tablero
+   *   2. `agenteOperativo.grupoId`    — la pertenencia táctica (Decisión A)
+   *   3. `agentesGrupoHistorial`      — los períodos, registro forense (CU-26)
+   *
+   * Antes cada drop tocaba sólo (1) y dejaba que `sanitizeData` dedujera el resto,
+   * con lo cual (2) y (3) quedaban desincronizados y se perdía la trazabilidad.
+   *
+   * Devuelve 'lider' si se intenta mover al líder: para cambiarlo hay que editar
+   * el grupo (CU-24) o extraerlo con sucesión de mando (CU-26).
+   */
+  const moverAgenteAGrupo = useCallback((
+    operativoId: string,
+    usuarioId: string,
+    destinoGrupoId: string | null
+  ): 'ok' | 'lider' | 'sin_agente' | 'origen_en_operacion' => {
+    const ao = data.agentesOperativo.find(
+      a => a.operativoId === operativoId && a.usuarioId === usuarioId && !a.fechaEgreso
+    );
+    if (!ao) return 'sin_agente';
+    if (ao.grupoId === destinoGrupoId) return 'ok'; // nada que hacer
+
+    const origen = ao.grupoId ? data.grupos.find(g => g.id === ao.grupoId) : undefined;
+    if (origen && origen.lider === usuarioId) return 'lider';
+
+    // Si el grupo de origen YA salió a terreno, sacar a alguien no es un
+    // reacomodo: es una baja parcial con consecuencias (sucesión de mando,
+    // binomio mínimo, motivo registrado). Eso es CU-26, no un arrastre.
+    if (origen && grupoEnOperacion(origen.estado)) return 'origen_en_operacion';
+
+    const ahora = new Date().toISOString();
+    const destino = destinoGrupoId ? data.grupos.find(g => g.id === destinoGrupoId) : undefined;
+    // Sólo se abre período si el destino YA está operando (refuerzo en terreno).
+    // Entre grupos en armado no se registra nada: es tanteo del Coordinador.
+    const destinoOperando = !!destino && grupoEnOperacion(destino.estado);
+
+    setData(d => ({
+      ...d,
+      grupos: d.grupos.map(g => {
+        if (g.id === ao.grupoId) {
+          return { ...g, agenteIds: g.agenteIds.filter(uid => uid !== usuarioId) };
+        }
+        if (g.id === destinoGrupoId && !g.agenteIds.includes(usuarioId)) {
+          return { ...g, agenteIds: [...g.agenteIds, usuarioId] };
+        }
+        return g;
+      }),
+      agentesOperativo: d.agentesOperativo.map(a =>
+        a.id === ao.id ? { ...a, grupoId: destinoGrupoId ?? undefined } : a
+      ),
+      agentesGrupoHistorial: destinoOperando
+        ? [...d.agentesGrupoHistorial, {
+            id: uniqueId('agh'),
+            agenteOperativoId: ao.id,
+            grupoId: destinoGrupoId!,
+            fechaInicio: ahora,
+          }]
+        : d.agentesGrupoHistorial,
+    }));
+
+    return 'ok';
+  }, [data.agentesOperativo, data.grupos]);
+
+  /* ── CU-26: Extraer Agente de Grupo Activo (Baja Parcial / Contingencia) ── */
+
+  /**
+   * Evalúa si se puede extraer a un agente de su grupo, SIN mutar nada.
+   * La vista la usa para decidir qué modales mostrar antes de confirmar.
+   */
+  const evaluarExtraccion = useCallback((agenteOperativoId: string): EvaluacionExtraccion => {
+    const ao = data.agentesOperativo.find(a => a.id === agenteOperativoId);
+    if (!ao?.grupoId) return { permitido: false as const, motivo: 'sin_grupo' as const };
+
+    const grupo = data.grupos.find(g => g.id === ao.grupoId);
+    if (!grupo) return { permitido: false as const, motivo: 'sin_grupo' as const };
+
+    // Precondición CU-26: grupo DESPLEGADO, RASTRILLANDO o EN PAUSA
+    if (!ESTADOS_GRUPO_EN_OPERACION.includes(grupo.estado)) {
+      return { permitido: false as const, motivo: 'estado_grupo' as const, grupo };
+    }
+
+    // Miembros vigentes del grupo (los que NO egresaron del operativo)
+    const miembros = data.agentesOperativo.filter(
+      a => a.grupoId === grupo.id && !a.fechaEgreso
+    );
+
+    // Precondición CU-26: al menos 2 integrantes asignados
+    if (miembros.length < 2) {
+      return { permitido: false as const, motivo: 'minimo_integrantes' as const, grupo };
+    }
+
+    const esLider = grupo.lider === ao.usuarioId;
+    const restantes = miembros.filter(m => m.id !== ao.id);
+
+    return {
+      permitido: true as const,
+      grupo,
+      /** Paso 4.1 — sucesión de mando obligatoria */
+      requiereSucesion: esLider,
+      /** Candidatos a nuevo líder (usuarioId), excluyendo al que se retira */
+      candidatosLider: restantes.map(m => m.usuarioId),
+      /** Paso 5.1 — quedará por debajo del binomio mínimo */
+      alertaBinomio: restantes.length === 1,
+      miembrosRestantes: restantes.length,
+    };
+  }, [data.agentesOperativo, data.grupos]);
+
+  /**
+   * Ejecuta la extracción (CU-26 pasos 7 y 8) como una transacción única:
+   *  7. grupo_id = NULL en el agente + su estado individual al elegido.
+   *  8.1 Si quedan 2+, el estado del grupo NO se modifica.
+   *  8.2 Si queda 1 solo, el grupo pasa automáticamente a EN PAUSA.
+   *  Obs.1 Cierra el período en agentesGrupoHistorial (trazabilidad judicial):
+   *        NO se borra la participación, se sella con fechaFin y motivo.
+   */
+  const extraerAgenteDeGrupo = useCallback((
+    agenteOperativoId: string,
+    opciones: { motivo: string; nuevoEstado: EstadoOperativoAgente; nuevoLiderUsuarioId?: string }
+  ) => {
+    const ahora = new Date().toISOString();
+    const ejecutor = usuario?.id;
+
+    setData(d => {
+      const ao = d.agentesOperativo.find(a => a.id === agenteOperativoId);
+      if (!ao?.grupoId) return d;
+      const grupoId = ao.grupoId;
+
+      const restantes = d.agentesOperativo.filter(
+        a => a.grupoId === grupoId && !a.fechaEgreso && a.id !== ao.id
+      );
+
+      return {
+        ...d,
+        // Paso 7: liberar al agente y aplicar su nuevo estado individual
+        agentesOperativo: d.agentesOperativo.map(a =>
+          a.id === ao.id
+            ? { ...a, grupoId: undefined, estado: opciones.nuevoEstado }
+            : a
+        ),
+        grupos: d.grupos.map(g => {
+          if (g.id !== grupoId) return g;
+          return {
+            ...g,
+            agenteIds: g.agenteIds.filter(uid => uid !== ao.usuarioId),
+            // Paso 4.1: sucesión de mando si el que sale era el líder
+            lider: opciones.nuevoLiderUsuarioId ?? (g.lider === ao.usuarioId ? '' : g.lider),
+            // Paso 8: aislamiento táctico ⇒ EN PAUSA; si no, no se toca
+            estado: restantes.length === 1 ? ('en_pausa' as const) : g.estado,
+          };
+        }),
+        // Observación 1: cerrar el período, nunca borrarlo
+        agentesGrupoHistorial: d.agentesGrupoHistorial.map(h =>
+          h.agenteOperativoId === ao.id && h.grupoId === grupoId && !h.fechaFin
+            ? { ...h, fechaFin: ahora, motivoSalida: opciones.motivo, registradoPor: ejecutor }
+            : h
+        ),
+      };
+    });
+  }, [usuario?.id]);
 
   /* ── AgenteOperativo (datos tácticos) ── */
 
@@ -593,6 +956,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       deleteGrupo,
       addAgenteToOperativo,
       removeAgenteFromOperativo,
+      moverAgenteAGrupo,
+      evaluarExtraccion,
+      extraerAgenteDeGrupo,
       getAgenteOperativo,
       updateAgenteOperativo,
       confirmarEmail,

@@ -1,9 +1,9 @@
-import React, { useState, useMemo, ReactNode } from 'react';
+import React, { useState, useEffect, useMemo, ReactNode } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import {
   Plus, MapPin, Calendar, Users, ArrowRight, QrCode, X, Trash2, Edit2,
-  User, Package, LayoutGrid, List, Search,
-  Crosshair, AlertCircle, Lock, Flag, CheckCircle2, Clock,
+  User, Package, LayoutGrid, List, Search, AlertCircle,
+  Crosshair, Lock, Flag, CheckCircle2, Clock,
 } from 'lucide-react';
 import { toast } from 'sonner';
 import StatusBadge from '../components/shared/StatusBadge';
@@ -13,12 +13,67 @@ import { useApp } from '../context/AppContext';
 import {
   Operativo, EstadoOperativo, TipoObjetivo,
 } from '../data/mockData';
+import { operativosApi, ApiError, OperativoApi } from '../services/api';
 import {
   ObjetivoFormContent,
   PersonaForm, ObjetoForm,
   emptyPersonaForm, emptyObjetoForm,
   buildPersonaForm, buildObjetoForm,
 } from '../components/shared/ObjetivoFormContent';
+
+/**
+ * CU-08..11 (Módulo 3) ya hablan con la API real; CU-12..14 (Objetivo Buscado)
+ * todavía no — por eso el formulario sigue mostrando esa pestaña (no tiene
+ * sentido sacarla, el Coordinador puede seguir cargándola) pero al guardar NO
+ * se envía al backend: `objetivo_buscado` no tiene endpoint todavía. Se pierde
+ * al refrescar hasta que se migre ese CU.
+ */
+const ESTADO_API_A_MOCK: Record<string, EstadoOperativo> = {
+  NUEVO: 'nuevo',
+  ACTIVO: 'activo',
+  INACTIVO: 'inactivo',
+  EN_PLANIFICACION: 'planificación',
+  EN_PROCESO: 'en_proceso',
+  FINALIZADO: 'finalizado',
+  ELIMINADO: 'eliminado',
+};
+
+/**
+ * "Vigente" = todavía no se cerró: incluye NUEVO y EN_PLANIFICACION, no sólo
+ * lo que ya está en curso. Se exporta como función, no como filtro inline
+ * duplicado, porque ya se repitió dos veces con definiciones DISTINTAS en
+ * este mismo archivo (el contador del botón no coincidía con lo que
+ * realmente se mostraba) — mismo criterio que ESTADOS_ACTIVOS en
+ * AgenteDashboard.tsx, que ya lo tenía bien.
+ */
+function esVigente(estado: EstadoOperativo): boolean {
+  return estado === 'nuevo' || estado === 'planificación' || estado === 'en_proceso' || estado === 'activo';
+}
+
+/** Traduce el operativo de la API al modelo que ya consume esta pantalla. */
+function mapearOperativo(o: OperativoApi): Operativo {
+  return {
+    id: o.id,
+    nombre: o.titulo,
+    estado: ESTADO_API_A_MOCK[o.estado] ?? 'nuevo',
+    ubicacion: o.localidad,
+    fiscal: o.fiscalInstruccion,
+    punto0: { lat: o.puntoCeroLat, lng: o.puntoCeroLng },
+    fechaInicio: o.fechaHoraInicio,
+    fechaFin: o.fechaHoraFin ?? undefined,
+    descripcion: o.descripcion ?? undefined,
+    // El backend hoy sólo da la CANTIDAD (CU-11 paso 6), no los IDs reales —
+    // Módulo 4 (agentes/grupos) todavía no está migrado. Se arma un array del
+    // tamaño correcto sólo para que sigan andando los `.length` que ya usaba
+    // esta pantalla; nunca se lee como IDs de verdad (ver `hasGpxPending`).
+    agenteIds: Array.from({ length: o.cantidadAgentes }, (_, i) => `sin-migrar-${i}`),
+    grupoIds: [],
+    sectores: [],
+    puntos: [],
+    kmRastrillados: 0,
+    coordinadorId: o.coordinadorId,
+  };
+}
 
 type ModalType = 'create' | 'edit' | 'qr' | 'delete' | 'finalize' | null;
 type ViewMode = 'card' | 'list';
@@ -81,8 +136,31 @@ function readOnlyInputStyle(): React.CSSProperties {
 /* ── Component ── */
 export default function Operativos() {
   const navigate = useNavigate();
-  const { data, addOperativo, updateOperativo, deleteOperativo, usuario } = useApp();
-  const { operativos } = data;
+  const { usuario } = useApp();
+
+  /* ── Datos REALES desde la API (CU-11) ──────────────────────────────────
+   * Igual patrón que Usuarios.tsx: se pide la lista completa y el filtrado
+   * por estado / búsqueda sigue siendo client-side (más abajo, sin cambios) —
+   * el dataset de un sistema de este tamaño no lo justifica todavía.        */
+  const [operativos, setOperativos] = useState<Operativo[]>([]);
+  const [cargando, setCargando] = useState(true);
+  const [errorApi, setErrorApi] = useState('');
+
+  const cargarOperativos = async () => {
+    setCargando(true);
+    setErrorApi('');
+    try {
+      const { operativos: lista } = await operativosApi.listar();
+      setOperativos(lista.map(mapearOperativo));
+    } catch (err) {
+      setErrorApi(err instanceof ApiError ? err.message : 'No se pudo contactar al servidor.');
+    } finally {
+      setCargando(false);
+    }
+  };
+
+  useEffect(() => { cargarOperativos(); }, []);
+
   const [modal, setModal] = useState<ModalType>(null);
   const [selected, setSelected] = useState<Operativo | null>(null);
   const [form, setForm] = useState(emptyForm);
@@ -170,8 +248,27 @@ export default function Operativos() {
   const openQr = (op: Operativo) => { setSelected(op); setModal('qr'); };
   const openDelete = (op: Operativo) => { setSelected(op); setModal('delete'); };
 
-  /* ── finalize helpers ── */
-  const hasGpxPending = (op: Operativo) => op.agenteIds.length > 1;
+  /**
+   * CU-08 paso 8 (Transición Automática): entrar por primera vez a un
+   * operativo NUEVO lo pasa a ACTIVO. Se espera la respuesta antes de navegar
+   * para que el panel ya encuentre el estado correcto — si se generara un QR
+   * ahí mismo, la precondición de CU-15 (ACTIVO/EN_PLANIFICACION) tiene que
+   * estar cumplida.
+   */
+  const entrarAOperativo = async (op: Operativo) => {
+    if (op.estado === 'nuevo') {
+      try { await operativosApi.activar(op.id); } catch { /* no bloquea la navegación */ }
+    }
+    navigate(`/operativo/${op.id}/dashboard`);
+  };
+
+  /* ── finalize helpers ──
+   * El aviso de "GPX sin sincronizar" (CU-10 paso 5.1) necesita el subsistema
+   * de tracking real (Módulo 5, todavía no construido) para saber si hay algo
+   * pendiente de verdad. Con el conteo de agentes como aproximación se
+   * mostraría la advertencia con datos inventados; se desactiva hasta que
+   * exista una fuente real que consultar. */
+  const hasGpxPending = (_op: Operativo) => false;
 
   const openFinalize = (op: Operativo) => {
     setSelected(op);
@@ -189,24 +286,28 @@ export default function Operativos() {
     }
   };
 
-  const handleFinalizeExec = () => {
+  const handleFinalizeExec = async () => {
     if (!selected) return;
-    updateOperativo(selected.id, {
-      estado: 'finalizado',
-      fechaFin: new Date().toISOString(),
-      notaFinal: finalizeNota.trim() || undefined,
-    });
-    setModal(null);
-    toast.success('Operativo finalizado correctamente. Personal liberado.', {
-      duration: 5000,
-      style: {
-        background: '#f0fdf4',
-        border: '1px solid #86efac',
-        color: '#15803d',
-        fontFamily: 'var(--font-family-primary)',
-        fontSize: 'var(--text-base)',
-      },
-    });
+    try {
+      // CU-10 paso 7: el backend libera a TODO el personal asignado en la
+      // misma operación — no es sólo cambiar el estado del operativo.
+      await operativosApi.finalizar(selected.id, finalizeNota.trim() || undefined);
+      setModal(null);
+      await cargarOperativos();
+      toast.success('Operativo finalizado correctamente. Personal liberado.', {
+        duration: 5000,
+        style: {
+          background: '#f0fdf4',
+          border: '1px solid #86efac',
+          color: '#15803d',
+          fontFamily: 'var(--font-family-primary)',
+          fontSize: 'var(--text-base)',
+        },
+      });
+    } catch (err) {
+      setModal(null);
+      toast.error(err instanceof ApiError ? err.message : 'No se pudo finalizar el operativo.');
+    }
   };
 
   /* ── build objetivoBusqueda payload ── */
@@ -256,7 +357,7 @@ export default function Operativos() {
     return undefined;
   };
 
-  const handleCreate = () => {
+  const handleCreate = async () => {
     const errors = new Set<string>();
     if (!form.nombre.trim())      errors.add('nombre');
     if (!form.ubicacion.trim())   errors.add('ubicacion');
@@ -275,27 +376,28 @@ export default function Operativos() {
     if (isNaN(lng) || lng < -180 || lng > 180) { setFormErrors(new Set(['punto0lng'])); setFormErrorMsg('Longitud inválida (–180 a 180).'); return; }
     setFormErrors(new Set());
     setFormErrorMsg('');
-    addOperativo({
-      nombre: form.nombre.trim(),
-      estado: 'nuevo',
-      ubicacion: form.ubicacion.trim(),
-      fiscal: form.fiscal.trim(),
-      punto0: { lat, lng },
-      fechaInicio: form.fechaInicio,
-      descripcion: form.descripcion,
-      objetivo: form.objetivo,
-      objetivoBusqueda: buildObjetivo(),
-      agenteIds: [],
-      grupoIds: [],
-      sectores: [],
-      puntos: [],
-      kmRastrillados: 0,
-      coordinadorId: usuario?.id || 'u2',
-    });
-    setModal(null);
+    try {
+      // El "Objetivo Buscado" cargado en la otra pestaña (buildObjetivo()) NO
+      // se envía todavía: CU-12..14 no tienen endpoint. Se pierde al cerrar el
+      // modal hasta que se migre — ver el comentario junto a mapearOperativo.
+      await operativosApi.crear({
+        titulo: form.nombre.trim(),
+        localidad: form.ubicacion.trim(),
+        fiscalInstruccion: form.fiscal.trim(),
+        descripcion: form.descripcion || undefined,
+        puntoCeroLat: lat,
+        puntoCeroLng: lng,
+        fechaHoraInicio: form.fechaInicio,
+      });
+      setModal(null);
+      await cargarOperativos();
+    } catch (err) {
+      // Incluye el 409 de carátula duplicada en 24h (CU-08 Observaciones).
+      setFormErrorMsg(err instanceof ApiError ? err.message : 'No se pudo crear el operativo.');
+    }
   };
 
-  const handleEdit = () => {
+  const handleEdit = async () => {
     if (!selected) return;
     const errors = new Set<string>();
     if (!form.nombre.trim())      errors.add('nombre');
@@ -312,34 +414,49 @@ export default function Operativos() {
     const lngVal = parseFloat(form.punto0lng);
     if (isNaN(latVal) || latVal < -90 || latVal > 90)   { setFormErrors(new Set(['punto0lat'])); setFormErrorMsg('Latitud inválida (–90 a 90).'); return; }
     if (isNaN(lngVal) || lngVal < -180 || lngVal > 180) { setFormErrors(new Set(['punto0lng'])); setFormErrorMsg('Longitud inválida (–180 a 180).'); return; }
-    const punto0 = { lat: latVal, lng: lngVal };
     setFormErrors(new Set());
     setFormErrorMsg('');
-    updateOperativo(selected.id, {
-      nombre: form.nombre.trim(),
-      estado: form.estado,
-      ubicacion: form.ubicacion.trim(),
-      fiscal: form.fiscal.trim() || undefined,
-      punto0,
-      fechaInicio: form.fechaInicio,
-      descripcion: form.descripcion,
-      objetivo: form.objetivo,
-      objetivoBusqueda: buildObjetivo(),
-    });
-    setModal(null);
+    try {
+      // `estado` no se manda: el backend rechaza intentar transicionarlo por
+      // esta vía genérica (existen endpoints dedicados — activar/finalizar —
+      // mismo criterio que ya se usa para usuarios con ELIMINADO en CU-06).
+      await operativosApi.actualizar(selected.id, {
+        titulo: form.nombre.trim(),
+        localidad: form.ubicacion.trim(),
+        fiscalInstruccion: form.fiscal.trim(),
+        descripcion: form.descripcion || undefined,
+        puntoCeroLat: latVal,
+        puntoCeroLng: lngVal,
+        fechaHoraInicio: form.fechaInicio,
+      });
+      setModal(null);
+      await cargarOperativos();
+    } catch (err) {
+      // Incluye el 409 de "sólo lectura" si el operativo pasó a
+      // Finalizado/Eliminado mientras el modal estaba abierto (CU-09 obs.).
+      setFormErrorMsg(err instanceof ApiError ? err.message : 'No se pudo modificar el operativo.');
+    }
   };
 
-  const handleDelete = () => {
+  const handleDelete = async () => {
     if (!selected) return;
-    deleteOperativo(selected.id);
-    setModal(null);
+    try {
+      // El backend sólo la permite si sigue en NUEVO — no hay CU formal de
+      // "Eliminar Operativo"; uno ya en curso se cierra con Finalizar (CU-10).
+      await operativosApi.eliminar(selected.id);
+      setModal(null);
+      await cargarOperativos();
+    } catch (err) {
+      setModal(null);
+      toast.error(err instanceof ApiError ? err.message : 'No se pudo eliminar el operativo.');
+    }
   };
 
   /* ── filtered list ── */
   const filteredOperativos = useMemo(() => {
     let list = [...operativos];
     if (filterEstado === 'vigentes') {
-      list = list.filter(o => o.estado === 'activo' || o.estado === 'en_proceso');
+      list = list.filter(o => esVigente(o.estado));
     } else if (filterEstado !== 'all') {
       list = list.filter(o => o.estado === filterEstado);
     }
@@ -398,8 +515,27 @@ export default function Operativos() {
         </div>
 
         {/* Stats strip */}
-        
+
       </div>
+
+      {/* Rechazos del servidor: carátula duplicada (CU-08 obs.), solo-lectura
+          (CU-09 obs.), o caída de la API. */}
+      {errorApi && (
+        <div
+          className="flex items-start gap-2.5 p-3 rounded-lg mb-4"
+          style={{ background: '#fee2e2', border: '1px solid #fecaca', color: '#b91c1c', fontSize: 'var(--text-base)' }}
+        >
+          <AlertCircle size={16} style={{ marginTop: 1, flexShrink: 0 }} />
+          <span>{errorApi}</span>
+          <button
+            onClick={() => setErrorApi('')}
+            style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#b91c1c', cursor: 'pointer' }}
+            aria-label="Cerrar aviso"
+          >
+            <X size={14} />
+          </button>
+        </div>
+      )}
 
       {/* ── Toolbar: Search + Tabs + View Toggle ── */}
       <div
@@ -493,7 +629,7 @@ export default function Operativos() {
         >
           {([
             { value: 'all',           label: 'Todos',           dot: 'var(--muted-foreground)', count: operativos.length },
-            { value: 'vigentes',      label: 'Vigentes',        dot: '#16a34a',  count: operativos.filter(o => o.estado === 'activo' || o.estado === 'en_proceso').length },
+            { value: 'vigentes',      label: 'Vigentes',        dot: '#16a34a',  count: operativos.filter(o => esVigente(o.estado)).length },
             { value: 'nuevo',        label: 'Nuevo',           dot: '#FFA987',  count: operativos.filter(o => o.estado === 'nuevo').length },
             { value: 'activo',       label: 'Activos',         dot: '#16a34a',  count: operativos.filter(o => o.estado === 'activo').length },
             { value: 'planificación',label: 'En Planificación',dot: '#ca8a04',  count: operativos.filter(o => o.estado === 'planificación').length },
@@ -544,7 +680,14 @@ export default function Operativos() {
       </div>
 
       {/* ── Content area ── */}
-      {operativos.length === 0 ? (
+      {cargando ? (
+        <div
+          className="flex items-center justify-center py-20 rounded-[var(--radius-card)]"
+          style={{ background: 'var(--card)', boxShadow: 'var(--elevation-sm)', color: 'var(--muted-foreground)', fontFamily: 'var(--font-family-primary)' }}
+        >
+          Cargando operativos…
+        </div>
+      ) : operativos.length === 0 ? (
         /* Empty — no operativos at all */
         <div
           className="flex flex-col items-center justify-center py-20 rounded-[var(--radius-card)]"
@@ -617,10 +760,7 @@ export default function Operativos() {
 
               {/* Clickeable body → navega al panel */}
               <button
-                onClick={() => {
-                  if (op.estado === 'nuevo') updateOperativo(op.id, { estado: 'activo' });
-                  navigate(`/operativo/${op.id}/dashboard`);
-                }}
+                onClick={() => { void entrarAOperativo(op); }}
                 className="p-5 flex-1 flex flex-col text-left w-full"
                 style={{ background: 'none', border: 'none', cursor: 'pointer' }}
               >
@@ -749,10 +889,7 @@ export default function Operativos() {
 
                 {/* Acceder al panel */}
                 <button
-                  onClick={() => {
-                    if (op.estado === 'nuevo') updateOperativo(op.id, { estado: 'activo' });
-                    navigate(`/operativo/${op.id}/dashboard`);
-                  }}
+                  onClick={() => { void entrarAOperativo(op); }}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg"
                   style={{
                     color: 'var(--primary)',
@@ -893,10 +1030,7 @@ export default function Operativos() {
                   <Trash2 size={14} />
                 </button>
                 <button
-                  onClick={() => {
-                    if (op.estado === 'nuevo') updateOperativo(op.id, { estado: 'activo' });
-                    navigate(`/operativo/${op.id}/dashboard`);
-                  }}
+                  onClick={() => { void entrarAOperativo(op); }}
                   title="Acceder al panel"
                   className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg ml-1"
                   style={{ color: 'var(--primary)', background: 'rgba(229,75,75,0.08)', border: '1px solid rgba(229,75,75,0.2)', cursor: 'pointer', fontFamily: 'var(--font-family-primary)', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)' }}

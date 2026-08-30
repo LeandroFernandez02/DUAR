@@ -14,10 +14,11 @@ export default function OperativoDashboard() {
   if (!operativo) return null;
 
   const agentes = data.usuarios.filter(u => u.estado !== 'eliminado' && operativo.agenteIds.includes(u.id));
-  const grupos = data.grupos.filter(g => operativo.grupoIds.includes(g.id));
+  // Los grupos disueltos (CU-25) no cuentan para los indicadores en vivo
+  const grupos = data.grupos.filter(g => operativo.grupoIds.includes(g.id) && g.estado !== 'disuelto');
 
   const rastrillando = grupos.filter(g => g.estado === 'rastrillando').reduce((acc, g) => acc + g.agenteIds.length, 0);
-  const descansando = grupos.filter(g => g.estado === 'descansando').reduce((acc, g) => acc + g.agenteIds.length, 0);
+  const descansando = grupos.filter(g => g.estado === 'en_pausa').reduce((acc, g) => acc + g.agenteIds.length, 0);
   const inactivos = agentes.length - rastrillando - descansando;
   const sectoresCompletados = operativo.sectores.filter(s => s.estado === 'completado').length;
   const totalSectores = operativo.sectores.length;

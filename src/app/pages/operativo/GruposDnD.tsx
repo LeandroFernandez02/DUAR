@@ -1,7 +1,8 @@
 import { useState } from 'react';
-import { GrupoRastrillaje, Usuario } from '../../data/mockData';
+import { GrupoRastrillaje, Usuario, grupoEnOperacion, puedeSerLider, institucionLabel } from '../../data/mockData';
 import { useApp } from '../../context/AppContext';
 import StatusBadge from '../../components/shared/StatusBadge';
+import ExtraerAgenteModal from '../../components/shared/ExtraerAgenteModal';
 import {
   ShieldCheck,
   AlertTriangle,
@@ -10,9 +11,10 @@ import {
   GripVertical,
   Users,
   UserX,
+  UserMinus,
 } from 'lucide-react';
 
-const isDUAR = (u: Usuario) => u.dotacion?.toLowerCase().includes('duar') ?? false;
+const isDUAR = (u: Usuario) => puedeSerLider(u);
 
 // ──────────────────────────────────────────────
 // Drag state stored in a module-level ref
@@ -29,20 +31,27 @@ function DraggableAgente({
   fromGrupoId,
   isLeader,
   compact = false,
+  onExtraer,
+  enOperacion = false,
 }: {
   agente: Usuario;
   fromGrupoId: string | null;
   isLeader?: boolean;
   compact?: boolean;
+  /** CU-26: retirar del grupo. Sólo se pasa cuando el agente ESTÁ en un grupo. */
+  onExtraer?: (usuarioId: string) => void;
+  /** El grupo ya salió a terreno: no se puede arrastrar, hay que usar CU-26. */
+  enOperacion?: boolean;
 }) {
   const [isDragging, setIsDragging] = useState(false);
   const esDUAR = isDUAR(agente);
+  const fijo = isLeader || enOperacion;
 
   return (
     <div
-      draggable={!isLeader}
+      draggable={!fijo}
       onDragStart={(e) => {
-        if (isLeader) { e.preventDefault(); return; }
+        if (fijo) { e.preventDefault(); return; }
         dragPayload = { agenteId: agente.id, fromGrupoId };
         e.dataTransfer.effectAllowed = 'move';
         // Store in dataTransfer as fallback
@@ -53,11 +62,13 @@ function DraggableAgente({
       title={
         isLeader
           ? 'El líder no puede ser movido desde aquí. Editá el grupo para cambiar el líder.'
+          : enOperacion
+          ? 'El grupo ya salió a terreno. Para retirarlo usá "Retirar del Grupo" (CU-26).'
           : 'Arrastrar a un grupo'
       }
       style={{
         opacity: isDragging ? 0.25 : 1,
-        cursor: isLeader ? 'not-allowed' : 'grab',
+        cursor: fijo ? 'not-allowed' : 'grab',
         background: isLeader ? 'rgba(229,75,75,0.07)' : 'var(--muted)',
         border: isLeader
           ? '1px dashed rgba(229,75,75,0.3)'
@@ -125,11 +136,37 @@ function DraggableAgente({
               lineHeight: 1.2,
             }}
           >
-            {isLeader ? 'Líder' : esDUAR ? 'DUAR' : agente.dotacion?.split(' ')[0]}
+            {isLeader ? 'Líder' : esDUAR ? 'DUAR' : institucionLabel(agente)}
             {agente.especialidad ? ` · ${agente.especialidad}` : ''}
           </p>
         )}
       </div>
+
+      {/* CU-26 · Retirar del Grupo (baja parcial sin desarmar la cuadrilla) */}
+      {onExtraer && (
+        <button
+          onClick={(e) => { e.stopPropagation(); onExtraer(agente.id); }}
+          title="Retirar del Grupo (CU-26)"
+          aria-label={`Retirar del grupo a ${agente.nombre} ${agente.apellido}`}
+          style={{
+            marginLeft: 'auto',
+            display: 'flex',
+            alignItems: 'center',
+            justifyContent: 'center',
+            background: 'none',
+            border: 'none',
+            padding: 2,
+            borderRadius: 4,
+            cursor: 'pointer',
+            color: 'var(--muted-foreground)',
+            flexShrink: 0,
+          }}
+          onMouseEnter={(e) => { e.currentTarget.style.color = '#dc2626'; }}
+          onMouseLeave={(e) => { e.currentTarget.style.color = 'var(--muted-foreground)'; }}
+        >
+          <UserMinus size={12} />
+        </button>
+      )}
       {isLeader && (
         <span
           style={{
@@ -155,15 +192,17 @@ function DraggableAgente({
 // ──────────────────────────────────────────────
 // Unassigned Pool (drop zone)
 // ──────────────────────────────────────────────
-function UnassignedPool({ agentes }: { agentes: Usuario[] }) {
-  const { data, updateGrupo } = useApp();
+function UnassignedPool({ agentes, operativoId }: { agentes: Usuario[]; operativoId: string }) {
+  const { data, moverAgenteAGrupo } = useApp();
   const [isOver, setIsOver] = useState(false);
   const [canDrop, setCanDrop] = useState(false);
 
   const checkCanDrop = () => {
     if (!dragPayload?.fromGrupoId) return false;
     const fromGrupo = data.grupos.find((g) => g.id === dragPayload!.fromGrupoId);
-    return !!fromGrupo && fromGrupo.lider !== dragPayload!.agenteId;
+    if (!fromGrupo || fromGrupo.lider === dragPayload!.agenteId) return false;
+    // De un grupo ya desplegado sólo se sale por CU-26, no arrastrando
+    return !grupoEnOperacion(fromGrupo.estado);
   };
 
   const isActive = isOver && canDrop;
@@ -192,11 +231,8 @@ function UnassignedPool({ agentes }: { agentes: Usuario[] }) {
         setIsOver(false);
         setCanDrop(false);
         if (!dragPayload?.fromGrupoId) return;
-        const fromGrupo = data.grupos.find((g) => g.id === dragPayload!.fromGrupoId);
-        if (!fromGrupo || fromGrupo.lider === dragPayload!.agenteId) return;
-        updateGrupo(dragPayload!.fromGrupoId, {
-          agenteIds: fromGrupo.agenteIds.filter((id) => id !== dragPayload!.agenteId),
-        });
+        // Una sola vía: mantiene agenteIds + grupoId + historial coherentes
+        moverAgenteAGrupo(operativoId, dragPayload.agenteId, null);
         dragPayload = null;
       }}
       style={{
@@ -323,16 +359,21 @@ function UnassignedPool({ agentes }: { agentes: Usuario[] }) {
 // ──────────────────────────────────────────────
 function DroppableGrupoCard({
   grupo,
+  operativoId,
   sectorNombre,
   onEdit,
   onDelete,
+  onExtraer,
 }: {
   grupo: GrupoRastrillaje;
+  operativoId: string;
   sectorNombre?: string;
   onEdit: () => void;
   onDelete: () => void;
+  /** CU-26: retirar a un integrante de este grupo. */
+  onExtraer: (usuarioId: string) => void;
 }) {
-  const { data, updateGrupo } = useApp();
+  const { data, moverAgenteAGrupo } = useApp();
   const [isOver, setIsOver] = useState(false);
   const [canDrop, setCanDrop] = useState(false);
 
@@ -377,10 +418,9 @@ function DroppableGrupoCard({
         setCanDrop(false);
         if (!dragPayload) return;
         if (dragPayload.fromGrupoId === grupo.id) return;
-        if (!grupo.agenteIds.includes(dragPayload.agenteId)) {
-          updateGrupo(grupo.id, {
-            agenteIds: [...grupo.agenteIds, dragPayload.agenteId],
-          });
+        const r = moverAgenteAGrupo(operativoId, dragPayload.agenteId, grupo.id);
+        if (r === 'origen_en_operacion') {
+          alert('Ese agente pertenece a un grupo que ya salió a terreno. Para retirarlo usá "Retirar del Grupo" (CU-26), que registra el motivo y gestiona la sucesión de mando.');
         }
         dragPayload = null;
       }}
@@ -522,6 +562,8 @@ function DroppableGrupoCard({
                 fromGrupoId={grupo.id}
                 isLeader
                 compact
+                onExtraer={onExtraer}
+                enOperacion={grupoEnOperacion(grupo.estado)}
               />
             )}
             {miembros.map((m) => (
@@ -530,6 +572,8 @@ function DroppableGrupoCard({
                 agente={m}
                 fromGrupoId={grupo.id}
                 compact
+                onExtraer={onExtraer}
+                enOperacion={grupoEnOperacion(grupo.estado)}
               />
             ))}
           </div>
@@ -621,12 +665,23 @@ interface GruposDnDProps {
 export default function GruposDnD({
   grupos,
   agentes,
+  operativoId,
   sectores,
   onEditGrupo,
   onDeleteGrupo,
 }: GruposDnDProps) {
+  const { getAgenteOperativo } = useApp();
   const assignedIds = new Set(grupos.flatMap((g) => g.agenteIds));
   const unassigned = agentes.filter((a) => !assignedIds.has(a.id));
+
+  // CU-26: usuario cuya extracción se está gestionando
+  const [extraerUsuarioId, setExtraerUsuarioId] = useState<string | null>(null);
+  const usuarioAExtraer = extraerUsuarioId
+    ? agentes.find((a) => a.id === extraerUsuarioId)
+    : undefined;
+  const agenteOpAExtraer = extraerUsuarioId
+    ? getAgenteOperativo(operativoId, extraerUsuarioId)
+    : undefined;
 
   return (
     <div>
@@ -670,7 +725,7 @@ export default function GruposDnD({
       >
         {/* LEFT: Unassigned pool */}
         <div style={{ position: 'sticky', top: 16 }}>
-          <UnassignedPool agentes={unassigned} />
+          <UnassignedPool agentes={unassigned} operativoId={operativoId} />
         </div>
 
         {/* RIGHT: Group cards */}
@@ -687,14 +742,25 @@ export default function GruposDnD({
               <DroppableGrupoCard
                 key={grupo.id}
                 grupo={grupo}
+                operativoId={operativoId}
                 sectorNombre={sector?.nombre}
                 onEdit={() => onEditGrupo(grupo.id)}
                 onDelete={() => onDeleteGrupo(grupo.id)}
+                onExtraer={setExtraerUsuarioId}
               />
             );
           })}
         </div>
       </div>
+
+      {/* CU-26 · Extraer Agente de Grupo Activo */}
+      {usuarioAExtraer && agenteOpAExtraer && (
+        <ExtraerAgenteModal
+          agenteOp={agenteOpAExtraer}
+          usuario={usuarioAExtraer}
+          onClose={() => setExtraerUsuarioId(null)}
+        />
+      )}
     </div>
   );
 }

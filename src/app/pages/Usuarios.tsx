@@ -1,8 +1,36 @@
-import { useState } from 'react';
-import { Plus, Search, Edit2, Trash2, X, Shield, User, UserCheck } from 'lucide-react';
+import { useState, useEffect } from 'react';
+import { Plus, Search, Edit2, Trash2, X, Shield, User, UserCheck, AlertCircle } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { Usuario, Rol, EstadoUsuario, Especialidad } from '../data/mockData';
+import { Usuario, Rol, EstadoUsuario, catInstituciones, catEspecialidades, catAlergias, dotacionesDe, institucionLabel, especialidadNombrePorId } from '../data/mockData';
+import { usuariosApi, ApiError, UsuarioApi } from '../services/api';
 import StatusBadge from '../components/shared/StatusBadge';
+
+/**
+ * Traduce el usuario de la API al modelo del frontend.
+ * La base usa enums en MAYÚSCULAS y el rol como nombre del catálogo; el
+ * frontend viene trabajando en minúsculas.
+ */
+function mapearUsuario(u: UsuarioApi): Usuario {
+  return {
+    id: u.id,
+    dni: u.dni,
+    nombre: u.nombre,
+    apellido: u.apellido,
+    email: u.email,
+    password: '',
+    rol: u.rol.toLowerCase() as Rol,
+    telefono: u.telefono ?? undefined,
+    fechaNacimiento: u.fechaNacimiento ?? undefined,
+    institucionId: u.institucionId ?? undefined,
+    dotacionId: u.dotacionId ?? undefined,
+    especialidadId: u.especialidadId ?? undefined,
+    alergiaIds: u.alergias.map(a => a.id),
+    grupo_sanguineo: u.grupoSanguineo ?? undefined,
+    estado: u.estado.toLowerCase() as EstadoUsuario,
+    createdAt: '',
+    emailConfirmado: true,
+  };
+}
 
 type ModalType = 'create' | 'edit' | 'delete' | null;
 
@@ -20,22 +48,41 @@ const rolColor = (rol: Rol) => {
 
 const emptyForm = {
   dni: '', nombre: '', apellido: '', email: '', password: '',
-  rol: 'agente' as Rol, fechaNacimiento: '', telefono: '', alergias: '',
-  dotacion: '', especialidad: '' as Especialidad | '', grupo_sanguineo: '',
+  rol: 'agente' as Rol, fechaNacimiento: '', telefono: '',
+  alergiaIds: [] as string[],
+  institucionId: '', dotacionId: '', especialidadId: '', grupo_sanguineo: '',
   estado: 'activo' as EstadoUsuario,
 };
 
 export default function Usuarios() {
-  const { data, usuario: usuarioActual, addUsuario, updateUsuario, deleteUsuario } = useApp();
-  const { usuarios } = data;
+  const { usuario: usuarioActual } = useApp();
   const [modal, setModal] = useState<ModalType>(null);
   const [selected, setSelected] = useState<Usuario | null>(null);
   const [form, setForm] = useState<typeof emptyForm>(emptyForm);
   const [search, setSearch] = useState('');
   const [filterRol, setFilterRol] = useState<Rol | ''>('');
 
-  // Los usuarios eliminados son invisibles en toda la UI — es un tombstone de base de datos
-  const usuariosVisibles = usuarios.filter(u => u.estado !== 'eliminado');
+  /* ── Datos REALES desde la API (CU-04) ──────────────────────────────────
+   * Este módulo ya no usa los mocks del contexto: la lista sale de la tabla
+   * `usuarios` de PostgreSQL. El backend ya excluye los ELIMINADOS.        */
+  const [usuariosVisibles, setUsuariosVisibles] = useState<Usuario[]>([]);
+  const [cargando, setCargando] = useState(true);
+  const [errorApi, setErrorApi] = useState('');
+
+  const cargarUsuarios = async () => {
+    setCargando(true);
+    setErrorApi('');
+    try {
+      const { usuarios } = await usuariosApi.listar();
+      setUsuariosVisibles(usuarios.map(mapearUsuario));
+    } catch (err) {
+      setErrorApi(err instanceof ApiError ? err.message : 'No se pudo contactar al servidor.');
+    } finally {
+      setCargando(false);
+    }
+  };
+
+  useEffect(() => { cargarUsuarios(); }, []);
 
   const filtered = usuariosVisibles.filter(u => {
     const q = search.toLowerCase();
@@ -57,41 +104,74 @@ export default function Usuarios() {
       dni: u.dni, nombre: u.nombre, apellido: u.apellido,
       email: u.email, password: u.password,
       rol: u.rol, fechaNacimiento: u.fechaNacimiento || '',
-      telefono: u.telefono || '', alergias: u.alergias || '',
-      dotacion: u.dotacion || '', especialidad: u.especialidad || '',
+      telefono: u.telefono || '', alergiaIds: u.alergiaIds || [],
+      institucionId: u.institucionId || '', dotacionId: u.dotacionId || '', especialidadId: u.especialidadId || '',
       grupo_sanguineo: u.grupo_sanguineo || '', estado: u.estado,
     });
     setModal('edit');
   };
 
-  const handleSave = () => {
+  /** CU-05 Crear / CU-06 Modificar — persisten contra PostgreSQL. */
+  const handleSave = async () => {
     if (!form.nombre || !form.apellido || !form.email || !form.dni) return;
-    const userData = {
-      dni: form.dni, nombre: form.nombre, apellido: form.apellido,
-      email: form.email, password: form.password || '1234',
+    setErrorApi('');
+
+    const datos = {
+      dni: form.dni,
+      nombre: form.nombre,
+      apellido: form.apellido,
+      email: form.email,
       rol: form.rol,
-      // On create: always 'activo'. On edit: use form value.
-      estado: modal === 'create' ? ('activo' as EstadoUsuario) : form.estado,
-      fechaNacimiento: form.fechaNacimiento || undefined,
       telefono: form.telefono || undefined,
-      alergias: form.alergias || undefined,
-      dotacion: form.dotacion || undefined,
-      especialidad: (form.especialidad as Especialidad) || undefined,
-      grupo_sanguineo: form.grupo_sanguineo || undefined,
+      fechaNacimiento: form.fechaNacimiento || undefined,
+      institucionId: form.institucionId || undefined,
+      dotacionId: form.dotacionId || undefined,
+      // BUG reportado: faltaba mandar esto. El backend siempre lo soportó
+      // (usuario.model.js ya tenía especialidad_id en el UPDATE); el payload
+      // simplemente nunca lo incluía.
+      especialidadId: form.especialidadId || undefined,
+      grupoSanguineo: form.grupo_sanguineo || undefined,
+      // Siempre se manda, incluso vacío: `[]` es "sin alergias", no "no tocar".
+      alergiaIds: form.alergiaIds,
       // `caminante` es TÁCTICO: se infiere al dar de alta al agente en un
       // operativo, no al crear el usuario global (Decisión A/C).
     };
-    if (modal === 'create') {
-      addUsuario(userData);
-    } else if (selected) {
-      updateUsuario(selected.id, userData);
+
+    try {
+      if (modal === 'create') {
+        // El backend hashea con bcrypt (CU-05 paso 4); acá nunca se guarda en claro.
+        await usuariosApi.crear({ ...datos, password: form.password || '1234' });
+      } else if (selected) {
+        await usuariosApi.actualizar(selected.id, {
+          ...datos,
+          // CU-06 paso 5: la contraseña sólo se sobrescribe si se cargó una nueva.
+          ...(form.password ? { password: form.password } : {}),
+          // Otro campo que nunca se enviaba: el toggle Activo/Inactivo del
+          // formulario no hacía nada al guardar. La BD usa MAYÚSCULAS.
+          estado: form.estado.toUpperCase(),
+        });
+      }
+      setModal(null);
+      await cargarUsuarios();
+    } catch (err) {
+      // Duplicado de DNI/email (CU-05 paso 3.1) u otro rechazo del servidor
+      setErrorApi(err instanceof ApiError ? err.message : 'No se pudo guardar el usuario.');
     }
-    setModal(null);
   };
 
-  const handleDelete = () => {
-    if (selected) deleteUsuario(selected.id);
-    setModal(null);
+  /** CU-07 Eliminar — baja lógica + invalidación de sesiones, todo en el backend. */
+  const handleDelete = async () => {
+    if (!selected) return;
+    setErrorApi('');
+    try {
+      await usuariosApi.eliminar(selected.id);
+      setModal(null);
+      await cargarUsuarios();
+    } catch (err) {
+      // Incluye el autobloqueo (paso 4.1) y el último administrador
+      setErrorApi(err instanceof ApiError ? err.message : 'No se pudo eliminar el usuario.');
+      setModal(null);
+    }
   };
 
   const fieldStyle = {
@@ -109,7 +189,9 @@ export default function Usuarios() {
         <div>
           <h1 className="mb-1" style={{ color: 'var(--foreground)', fontSize: 'var(--text-h1)', fontWeight: 'var(--font-weight-bold)' }}>Usuarios</h1>
           <p style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-base)' }}>
-            Gestión de usuarios del sistema — {usuariosVisibles.length} registrados
+            {cargando
+              ? 'Cargando usuarios…'
+              : `Gestión de usuarios del sistema — ${usuariosVisibles.length} registrados`}
           </p>
         </div>
         <button
@@ -121,6 +203,25 @@ export default function Usuarios() {
           Nuevo Usuario
         </button>
       </div>
+
+      {/* Rechazos del servidor: duplicados (CU-05 3.1), autobloqueo (CU-07 4.1),
+          último administrador, o caída de la API. */}
+      {errorApi && (
+        <div
+          className="flex items-start gap-2.5 p-3 rounded-lg mb-4"
+          style={{ background: '#fee2e2', border: '1px solid #fecaca', color: '#b91c1c', fontSize: 'var(--text-base)' }}
+        >
+          <AlertCircle size={16} style={{ marginTop: 1, flexShrink: 0 }} />
+          <span>{errorApi}</span>
+          <button
+            onClick={() => setErrorApi('')}
+            style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#b91c1c', cursor: 'pointer' }}
+            aria-label="Cerrar aviso"
+          >
+            <X size={14} />
+          </button>
+        </div>
+      )}
 
       {/* Filters */}
       <div className="flex gap-3 mb-5 flex-wrap">
@@ -148,9 +249,100 @@ export default function Usuarios() {
         </select>
       </div>
 
-      {/* Table */}
+      {/* Mobile: tarjetas (md:hidden). Antes la tabla se achicaba con
+          overflow-x-auto, pero eso escondía Rol/Especialidad/Dotación/Estado
+          Y los botones de editar/eliminar fuera de pantalla, sin ninguna
+          pista de que había que scrollear para llegar a ellos. */}
+      <div className="flex flex-col gap-3 md:hidden">
+        {filtered.map(u => {
+          const rolC = rolColor(u.rol);
+          return (
+            <div
+              key={u.id}
+              className="rounded-[var(--radius-card)] p-4"
+              style={{ background: 'var(--card)', boxShadow: 'var(--elevation-sm)' }}
+            >
+              <div className="flex items-start justify-between gap-2">
+                <div className="flex items-center gap-3 min-w-0">
+                  <div
+                    className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
+                    style={{ background: 'var(--primary)', color: '#fff', fontSize: '12px', fontWeight: 'var(--font-weight-bold)' }}
+                  >
+                    {u.nombre.charAt(0)}{u.apellido.charAt(0)}
+                  </div>
+                  <div className="min-w-0">
+                    <p className="truncate" style={{ color: 'var(--foreground)', fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-medium)' }}>
+                      {u.nombre} {u.apellido}
+                    </p>
+                    <p className="truncate" style={{ color: 'var(--muted-foreground)', fontSize: '11px' }}>{u.email}</p>
+                  </div>
+                </div>
+                <div className="flex items-center gap-1 flex-shrink-0">
+                  <button
+                    onClick={() => openEdit(u)}
+                    className="p-2 rounded-lg"
+                    style={{ color: 'var(--muted-foreground)', background: 'var(--muted)' }}
+                    aria-label="Editar"
+                  >
+                    <Edit2 size={14} />
+                  </button>
+                  <button
+                    onClick={() => { setSelected(u); setModal('delete'); }}
+                    disabled={u.id === usuarioActual?.id}
+                    title={u.id === usuarioActual?.id ? 'No podés eliminar tu propia cuenta' : 'Eliminar usuario'}
+                    className="p-2 rounded-lg"
+                    style={{
+                      color: u.id === usuarioActual?.id ? 'var(--border)' : 'var(--muted-foreground)',
+                      background: 'var(--muted)',
+                    }}
+                    aria-label="Eliminar"
+                  >
+                    <Trash2 size={14} />
+                  </button>
+                </div>
+              </div>
+
+              <div className="flex items-center gap-2 flex-wrap mt-3">
+                <span
+                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full"
+                  style={{ background: rolC.bg, color: rolC.color, fontSize: '11px', fontWeight: 'var(--font-weight-semibold)' }}
+                >
+                  {rolIcon(u.rol)}
+                  <span className="capitalize">{u.rol}</span>
+                </span>
+                <StatusBadge estado={u.estado} size="sm" />
+              </div>
+
+              <div className="grid grid-cols-2 gap-2 mt-3 pt-3" style={{ borderTop: '1px solid var(--border)' }}>
+                <div>
+                  <p style={{ color: 'var(--muted-foreground)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>DNI</p>
+                  <p style={{ color: 'var(--foreground)', fontSize: 'var(--text-label)' }}>{u.dni}</p>
+                </div>
+                <div>
+                  <p style={{ color: 'var(--muted-foreground)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Especialidad</p>
+                  <p style={{ color: 'var(--foreground)', fontSize: 'var(--text-label)' }}>{especialidadNombrePorId(u.especialidadId)}</p>
+                </div>
+                <div className="col-span-2">
+                  <p style={{ color: 'var(--muted-foreground)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Dotación</p>
+                  <p style={{ color: 'var(--foreground)', fontSize: 'var(--text-label)' }}>{institucionLabel(u)}</p>
+                </div>
+              </div>
+            </div>
+          );
+        })}
+        {filtered.length === 0 && (
+          <div
+            className="rounded-[var(--radius-card)] px-4 py-10 text-center"
+            style={{ background: 'var(--card)', boxShadow: 'var(--elevation-sm)', color: 'var(--muted-foreground)', fontSize: 'var(--text-base)' }}
+          >
+            No se encontraron usuarios
+          </div>
+        )}
+      </div>
+
+      {/* Desktop: tabla completa (oculta en mobile, ver arriba) */}
       <div
-        className="rounded-[var(--radius-card)] overflow-hidden"
+        className="rounded-[var(--radius-card)] overflow-hidden hidden md:block"
         style={{ background: 'var(--card)', boxShadow: 'var(--elevation-sm)' }}
       >
         <div className="overflow-x-auto">
@@ -198,11 +390,11 @@ export default function Usuarios() {
                         <span className="capitalize">{u.rol}</span>
                       </span>
                     </td>
-                    <td className="px-4 py-3 capitalize" style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-base)' }}>
-                      {u.especialidad || '—'}
+                    <td className="px-4 py-3" style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-base)' }}>
+                      {especialidadNombrePorId(u.especialidadId)}
                     </td>
                     <td className="px-4 py-3" style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-base)' }}>
-                      {u.dotacion || '—'}
+                      {institucionLabel(u)}
                     </td>
                     <td className="px-4 py-3">
                       <StatusBadge estado={u.estado} size="sm" />
@@ -282,7 +474,6 @@ export default function Usuarios() {
                 { label: 'Contraseña', key: 'password', type: 'password', span: false },
                 { label: 'Fecha de Nacimiento', key: 'fechaNacimiento', type: 'date', span: false },
                 { label: 'Teléfono', key: 'telefono', type: 'tel', span: false },
-                { label: 'Dotación', key: 'dotacion', type: 'text', span: false },
               ].map(f => (
                 <div key={f.key} className={f.span ? 'col-span-2' : ''}>
                   <label className="block mb-1" style={{ color: 'var(--foreground)', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)' }}>
@@ -297,6 +488,42 @@ export default function Usuarios() {
                   />
                 </div>
               ))}
+
+              {/* ── Institución (determina si puede ser Líder de grupo) ── */}
+              <div>
+                <label className="block mb-1" style={{ color: 'var(--foreground)', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)' }}>Institución</label>
+                <select
+                  value={form.institucionId}
+                  // Al cambiar de institución se limpia la dotación: una base del
+                  // DUAR no puede quedar colgada de la Policía (la BD lo rechaza).
+                  onChange={e => setForm({ ...form, institucionId: e.target.value, dotacionId: '' })}
+                  className="w-full px-3 py-2 rounded-lg border outline-none"
+                  style={fieldStyle}
+                >
+                  <option value="">— Seleccioná la institución —</option>
+                  {catInstituciones.map(i => (
+                    <option key={i.id} value={i.id}>{i.nombre}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* ── Dotación: sólo si la institución elegida tiene destacamentos ── */}
+              {dotacionesDe(form.institucionId).length > 0 && (
+                <div>
+                  <label className="block mb-1" style={{ color: 'var(--foreground)', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)' }}>Dotación</label>
+                  <select
+                    value={form.dotacionId}
+                    onChange={e => setForm({ ...form, dotacionId: e.target.value })}
+                    className="w-full px-3 py-2 rounded-lg border outline-none"
+                    style={fieldStyle}
+                  >
+                    <option value="">— Seleccioná la dotación —</option>
+                    {dotacionesDe(form.institucionId).map(d => (
+                      <option key={d.id} value={d.id}>{d.nombre}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
 
               <div>
                 <label className="block mb-1" style={{ color: 'var(--foreground)', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)' }}>Rol</label>
@@ -315,16 +542,19 @@ export default function Usuarios() {
               <div>
                 <label className="block mb-1" style={{ color: 'var(--foreground)', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)' }}>Especialidad</label>
                 <select
-                  value={form.especialidad}
-                  onChange={e => setForm({ ...form, especialidad: e.target.value as Especialidad | '' })}
+                  value={form.especialidadId}
+                  onChange={e => setForm({ ...form, especialidadId: e.target.value })}
                   className="w-full px-3 py-2 rounded-lg border outline-none"
                   style={fieldStyle}
                 >
-                  <option value="">—</option>
-                  <option value="paramédico">Paramédico</option>
-                  <option value="conductor">Conductor</option>
-                  <option value="bombero">Bombero</option>
-                  <option value="bombero voluntario">Bombero voluntario</option>
+                  {/* Derivadas del catálogo real. Antes esta lista estaba
+                      hardcodeada: incluía "Conductor" (ya no es una
+                      especialidad, es un estado táctico) y le faltaban
+                      Canes, Defensa Civil y Dron. */}
+                  <option value="">— No especificado —</option>
+                  {catEspecialidades.map(e => (
+                    <option key={e.id} value={e.id}>{e.nombre}</option>
+                  ))}
                 </select>
               </div>
 
@@ -344,28 +574,31 @@ export default function Usuarios() {
               </div>
 
               <div className="col-span-2">
-                <label className="block mb-1" style={{ color: 'var(--foreground)', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)' }}>Alergias</label>
-                <select
-                  value={form.alergias}
-                  onChange={e => setForm({ ...form, alergias: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg border outline-none"
-                  style={fieldStyle}
+                <label className="block mb-1" style={{ color: 'var(--foreground)', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)' }}>
+                  Alergias {form.alergiaIds.length > 0 && `(${form.alergiaIds.length} seleccionadas)`}
+                </label>
+                {/* N:M real contra cat_alergias: un agente puede tener más de
+                    una, por eso es un grupo de checkboxes y no un <select>. */}
+                <div
+                  className="grid grid-cols-2 gap-x-3 gap-y-2 p-3 rounded-lg border"
+                  style={{ background: 'var(--input-background)', borderColor: 'var(--border)' }}
                 >
-                  <option value="">— Ninguna —</option>
-                  <option value="Penicilina">Penicilina</option>
-                  <option value="Amoxicilina / Ampicilina">Amoxicilina / Ampicilina</option>
-                  <option value="Aspirina / AINEs">Aspirina / AINEs</option>
-                  <option value="Polen">Polen</option>
-                  <option value="Ácaros del polvo">Ácaros del polvo</option>
-                  <option value="Látex">Látex</option>
-                  <option value="Frutos secos">Frutos secos</option>
-                  <option value="Mariscos / Crustáceos">Mariscos / Crustáceos</option>
-                  <option value="Gluten">Gluten</option>
-                  <option value="Lácteos">Lácteos</option>
-                  <option value="Picadura de insectos">Picadura de insectos</option>
-                  <option value="Yodo / Contraste radiológico">Yodo / Contraste radiológico</option>
-                  <option value="Otros">Otros</option>
-                </select>
+                  {catAlergias.map(a => (
+                    <label key={a.id} className="flex items-center gap-2 cursor-pointer" style={{ fontSize: 'var(--text-base)', color: 'var(--foreground)' }}>
+                      <input
+                        type="checkbox"
+                        checked={form.alergiaIds.includes(a.id)}
+                        onChange={e => setForm({
+                          ...form,
+                          alergiaIds: e.target.checked
+                            ? [...form.alergiaIds, a.id]
+                            : form.alergiaIds.filter(id => id !== a.id),
+                        })}
+                      />
+                      {a.nombre}
+                    </label>
+                  ))}
+                </div>
               </div>
 
               {/* Estado: solo visible al editar, nunca al crear */}

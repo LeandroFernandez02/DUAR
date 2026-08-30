@@ -28,22 +28,16 @@ export default function Login() {
       return;
     }
     setLoading(true);
-    await new Promise(r => setTimeout(r, 600));
-    const result = login(email, password);
+    const result = await login(email, password);
     setLoading(false);
     if (result === 'ok') {
-      // Determinar destino según rol
-      const loggedUser = data.usuarios.find(u => u.email.toLowerCase() === email.toLowerCase());
-      if (loggedUser?.rol === 'agente') {
-        navigate('/agente');
-      } else {
-        navigate('/dashboard');
-      }
-    } else if (result === 'inactive') {
-      setError('inactive');
-    } else {
-      setError('credentials');
+      // No hace falta navegar acá: al setearse el usuario en el contexto,
+      // el guard `isAuthenticated` de arriba redirige según el rol (CU-01 paso 6).
+      return;
     }
+    if (result === 'inactive') setError('inactive');
+    else if (result === 'sin_conexion') setError('sin_conexion');
+    else setError('credentials');
   };
 
   return (
@@ -187,6 +181,21 @@ export default function Login() {
               </div>
             </div>
 
+            {/* El backend no responde: es un problema de infraestructura, no
+                de credenciales, y conviene distinguirlo para no confundir. */}
+            {error === 'sin_conexion' && (
+              <div
+                className="flex items-start gap-2.5 p-3 rounded-lg"
+                style={{ background: '#fef9c3', border: '1px solid #fde047', color: '#854d0e', fontSize: 'var(--text-base)' }}
+              >
+                <AlertCircle size={16} style={{ marginTop: '1px', flexShrink: 0 }} />
+                <span>
+                  No se pudo contactar al servidor. Verificá que la API esté levantada
+                  (<code>npm --prefix server run dev</code>).
+                </span>
+              </div>
+            )}
+
             {/* Error */}
             {error === 'credentials' && (
               <div
@@ -263,22 +272,6 @@ export default function Login() {
               </button>
             </div>
           </form>
-
-          {/* Demo credentials */}
-          <div
-            className="mt-6 p-4 rounded-lg border"
-            style={{ background: 'rgba(255,169,135,0.1)', borderColor: 'rgba(255,169,135,0.3)', color: 'var(--muted-foreground)', fontSize: 'var(--text-label)' }}
-          >
-            <p className="mb-2" style={{ fontWeight: 'var(--font-weight-semibold)', color: 'var(--foreground)' }}>Credenciales de acceso:</p>
-            <div className="flex flex-col gap-1">
-              <span><strong>Admin:</strong> admin@duar.cba.gob.ar / 1234</span>
-              <span><strong>Coordinador:</strong> coord@duar.cba.gob.ar / 1234</span>
-              <span><strong>Agente:</strong> agente1@duar.cba.gob.ar / 1234</span>
-              <span style={{ color: 'var(--duar-salmon)' }}>
-                <strong>Inactivo:</strong> agente6@duar.cba.gob.ar / 1234
-              </span>
-            </div>
-          </div>
         </div>
       </div>
 

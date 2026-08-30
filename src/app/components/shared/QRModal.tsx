@@ -4,13 +4,8 @@ import {
   RefreshCw, ShieldAlert, AlertTriangle, Clock,
 } from 'lucide-react';
 import { QRCodeSVG, QRCodeCanvas } from 'qrcode.react';
-import {
-  getOrCreateQRToken,
-  regenerateQRToken,
-  formatTimeRemaining,
-  getExpiryProgress,
-  QRTokenInfo,
-} from '../../utils/qrToken';
+import { formatTimeRemaining, getExpiryProgress, QRTokenInfo } from '../../utils/qrToken';
+import { qrApi, ApiError } from '../../services/api';
 import { useApp } from '../../context/AppContext';
 import { Operativo } from '../../data/mockData';
 
@@ -29,7 +24,8 @@ export function QRModal({ operativo, onClose }: Props) {
   const { usuario } = useApp();
   const canvasRef = useRef<HTMLDivElement>(null);
 
-  const [tokenInfo, setTokenInfo] = useState<QRTokenInfo>(() => getOrCreateQRToken(operativo.id));
+  const [tokenInfo, setTokenInfo] = useState<QRTokenInfo | null>(null);
+  const [errorQR, setErrorQR] = useState('');
   const [now, setNow] = useState(Date.now());
   const [copied, setCopied] = useState(false);
   const [regenerating, setRegenerating] = useState(false);
@@ -37,36 +33,76 @@ export function QRModal({ operativo, onClose }: Props) {
 
   const canRegenerate = usuario?.rol === 'coordinador' || usuario?.rol === 'administrador';
 
-  const qrUrl = `${window.location.origin}/registro/${operativo.id}?qr=${tokenInfo.token}`;
+  const qrUrl = tokenInfo
+    ? `${window.location.origin}/registro/${operativo.id}?qr=${tokenInfo.token}`
+    : '';
 
+  /**
+   * El token viene del backend, no de localStorage. Es la corrección de fondo del
+   * CU-15: el agente escanea con SU celular, así que el código tiene que vivir en
+   * un lugar que ambos dispositivos puedan consultar — la base.
+   */
   useEffect(() => {
+    let vigente = true;
+    qrApi.obtener(operativo.id)
+      .then(({ qr }) => {
+        if (!vigente) return;
+        setTokenInfo({
+          token: qr.token,
+          generatedAt: new Date(qr.creadoEn).getTime(),
+          expiresAt: new Date(qr.expiraEn).getTime(),
+        });
+      })
+      .catch((err) => {
+        if (!vigente) return;
+        setErrorQR(err instanceof ApiError ? err.message : 'No se pudo generar el QR.');
+      });
+    return () => { vigente = false; };
+  }, [operativo.id]);
+
+  // Cuenta regresiva. Al vencer no se genera nada acá: se le vuelve a pedir al
+  // backend, que es el único que decide cuándo emitir un token nuevo (CU-15 2.1).
+  useEffect(() => {
+    if (!tokenInfo) return;
     const iv = setInterval(() => {
       const t = Date.now();
       setNow(t);
       if (t >= tokenInfo.expiresAt) {
-        const fresh = regenerateQRToken(operativo.id);
-        setTokenInfo(fresh);
+        qrApi.obtener(operativo.id).then(({ qr }) => setTokenInfo({
+          token: qr.token,
+          generatedAt: new Date(qr.creadoEn).getTime(),
+          expiresAt: new Date(qr.expiraEn).getTime(),
+        })).catch(() => {});
       }
     }, 1000);
     return () => clearInterval(iv);
-  }, [tokenInfo.expiresAt, operativo.id]);
+  }, [tokenInfo, operativo.id]);
 
   // keep `now` used to force re-renders every second
   void now;
 
-  const progress = getExpiryProgress(tokenInfo.generatedAt, tokenInfo.expiresAt);
-  const timeLeft = formatTimeRemaining(tokenInfo.expiresAt);
+  const progress = tokenInfo ? getExpiryProgress(tokenInfo.generatedAt, tokenInfo.expiresAt) : 0;
+  const timeLeft = tokenInfo ? formatTimeRemaining(tokenInfo.expiresAt) : '—';
   const expiryColor = getExpiryColor(progress);
   const isExpiringSoon = progress >= 0.9;
 
+  /** "Control de Puerta" (CU-15 Observaciones): invalida el QR filtrado. */
   const handleRegenerate = useCallback(async () => {
     setRegenerating(true);
     setShowConfirmRegen(false);
-    await new Promise(r => setTimeout(r, 350));
-    const fresh = regenerateQRToken(operativo.id);
-    setTokenInfo(fresh);
-    setNow(Date.now());
-    setRegenerating(false);
+    try {
+      const { qr } = await qrApi.refrescar(operativo.id);
+      setTokenInfo({
+        token: qr.token,
+        generatedAt: new Date(qr.creadoEn).getTime(),
+        expiresAt: new Date(qr.expiraEn).getTime(),
+      });
+      setNow(Date.now());
+    } catch (err) {
+      setErrorQR(err instanceof ApiError ? err.message : 'No se pudo refrescar el QR.');
+    } finally {
+      setRegenerating(false);
+    }
   }, [operativo.id]);
 
   const handleDownload = useCallback(() => {
@@ -216,10 +252,23 @@ export function QRModal({ operativo, onClose }: Props) {
             </div>
 
             <div
-              className="p-3 rounded-xl relative"
-              style={{ background: '#fff', boxShadow: 'var(--elevation-sm)' }}
+              className="p-3 rounded-xl relative flex items-center justify-center"
+              style={{ background: '#fff', boxShadow: 'var(--elevation-sm)', minWidth: 214, minHeight: 214 }}
             >
-              <QRCodeSVG value={qrUrl} size={190} fgColor="#444140" bgColor="#ffffff" level="M" />
+              {/* Sin token todavía no hay QR que mostrar: dibujar uno con la URL
+                  vacía generaría un código que no lleva a ningún lado. */}
+              {errorQR ? (
+                <div className="flex flex-col items-center gap-2 px-3 text-center">
+                  <ShieldAlert size={26} style={{ color: '#dc2626' }} />
+                  <p style={{ color: '#b91c1c', fontSize: 'var(--text-label)', fontFamily: 'var(--font-family-primary)' }}>
+                    {errorQR}
+                  </p>
+                </div>
+              ) : !tokenInfo ? (
+                <RefreshCw size={28} style={{ color: 'var(--primary)', animation: 'spin 0.8s linear infinite' }} />
+              ) : (
+                <QRCodeSVG value={qrUrl} size={190} fgColor="#444140" bgColor="#ffffff" level="M" />
+              )}
               {regenerating && (
                 <div
                   className="absolute inset-0 rounded-xl flex items-center justify-center"
@@ -231,7 +280,9 @@ export function QRModal({ operativo, onClose }: Props) {
             </div>
 
             <div ref={canvasRef} style={{ display: 'none' }}>
-              <QRCodeCanvas value={qrUrl} size={400} fgColor="#444140" bgColor="#ffffff" level="M" />
+              {tokenInfo && (
+                <QRCodeCanvas value={qrUrl} size={400} fgColor="#444140" bgColor="#ffffff" level="M" />
+              )}
             </div>
           </div>
 

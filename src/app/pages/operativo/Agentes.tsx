@@ -2,7 +2,7 @@ import { useState, useMemo } from 'react';
 import { useParams } from 'react-router';
 import { Plus, X, Trash2, UserPlus, Users, Shuffle, ShieldCheck, AlertTriangle, CheckCircle2, Info, LayoutGrid, List, Search, Check, Pencil, UserRoundPlus } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import { Especialidad, EstadoGrupo, Usuario, AgenteOperativo, catEspecialidades } from '../../data/mockData';
+import { Especialidad, EstadoGrupo, Usuario, AgenteOperativo, catEspecialidades, catInstituciones, dotacionesDe, puedeSerLider, institucionLabel } from '../../data/mockData';
 import GruposDnD from './GruposDnD';
 import EditarAgenteModal, { EstadoOperativoBadge } from '../../components/shared/EditarAgenteModal';
 
@@ -13,7 +13,9 @@ type EspecialidadAgenteFilter = 'all' | Especialidad | 'sin_especialidad';
 const COLORS = ['#E54B4B', '#FFA987', '#444140', '#c0392b', '#d4886a', '#7c3aed', '#0891b2'];
 const NOMBRES_GRUPOS = ['Alfa', 'Beta', 'Delta', 'Gamma', 'Epsilon', 'Zeta', 'Eta'];
 
-const isDUAR = (u: Usuario) => u.dotacion?.toLowerCase().includes('duar') ?? false;
+// La regla del Líder ahora se lee del catálogo (cat_instituciones.es_duar),
+// nunca de un match de texto sobre la dotación.
+const isDUAR = (u: Usuario) => puedeSerLider(u);
 
 interface GrupoPreview {
   nombre: string;
@@ -34,7 +36,7 @@ export default function Agentes() {
   const [editAgenteId, setEditAgenteId] = useState<string | null>(null);
   const [selectedGrupo, setSelectedGrupo] = useState<string | null>(null);
   const [grupoForm, setGrupoForm] = useState({
-    nombre: '', lider: '', color: COLORS[0], estado: 'inactivo' as EstadoGrupo,
+    nombre: '', lider: '', color: COLORS[0], estado: 'en_formacion' as EstadoGrupo,
   });
   const [newAgenteId, setNewAgenteId] = useState('');
   const [selectedAgenteIds, setSelectedAgenteIds] = useState<Set<string>>(new Set());
@@ -50,7 +52,7 @@ export default function Agentes() {
 
   // Crear agente rápido (modal sobre el modal addAgente)
   const [showCrearAgente, setShowCrearAgente] = useState(false);
-  const emptyCrearForm = { nombre: '', apellido: '', dni: '', email: '', especialidad: '' as Especialidad | '', grupo_sanguineo: '', dotacion: '' };
+  const emptyCrearForm = { nombre: '', apellido: '', dni: '', email: '', especialidad: '' as Especialidad | '', grupo_sanguineo: '', institucionId: '', dotacionId: '' };
   const [crearForm, setCrearForm] = useState(emptyCrearForm);
   const [crearErrors, setCrearErrors] = useState<Record<string, string>>({});
 
@@ -70,7 +72,8 @@ export default function Agentes() {
       password: crearForm.dni.trim(),
       rol: 'agente',
       estado: 'activo',
-      dotacion: crearForm.dotacion.trim() || undefined,
+      institucionId: crearForm.institucionId || undefined,
+      dotacionId: crearForm.dotacionId || undefined,
       especialidad: (crearForm.especialidad as Especialidad) || undefined,
       grupo_sanguineo: crearForm.grupo_sanguineo || undefined,
       // `caminante` es TÁCTICO: lo infiere addAgenteToOperativo al dar el alta.
@@ -106,7 +109,9 @@ export default function Agentes() {
   /** Especialidad efectiva: la táctica del operativo sobrescribe a la global. */
   const especialidadDe = (u: Usuario): Especialidad | undefined =>
     tactico(u.id)?.especialidad ?? u.especialidad;
-  const grupos = data.grupos.filter(g => operativo.grupoIds.includes(g.id));
+  // Vista activa: excluye disueltos (CU-25). Siguen en operativo.grupoIds
+  // como registro histórico, pero no se muestran ni se pueden operar.
+  const grupos = data.grupos.filter(g => operativo.grupoIds.includes(g.id) && g.estado !== 'disuelto');
   const disponibles = data.usuarios.filter(u =>
     u.rol === 'agente' &&
     u.estado !== 'eliminado' &&
@@ -138,7 +143,7 @@ export default function Agentes() {
         `${a.nombre} ${a.apellido}`.toLowerCase().includes(q) ||
         a.dni.toLowerCase().includes(q) ||
         (a.email ?? '').toLowerCase().includes(q) ||
-        (a.dotacion ?? '').toLowerCase().includes(q) ||
+        institucionLabel(a).toLowerCase().includes(q) ||
         (a.especialidad ?? '').toLowerCase().includes(q)
       );
     }
@@ -154,7 +159,7 @@ export default function Agentes() {
       `${u.nombre} ${u.apellido}`.toLowerCase().includes(q) ||
       u.dni.toLowerCase().includes(q) ||
       (u.email ?? '').toLowerCase().includes(q) ||
-      (u.dotacion ?? '').toLowerCase().includes(q) ||
+      institucionLabel(u).toLowerCase().includes(q) ||
       (u.especialidad ?? '').toLowerCase().includes(q)
     );
   }, [agenteSearch, disponibles]);
@@ -186,7 +191,16 @@ export default function Agentes() {
 
   const handleApplyAutoAsignar = () => {
     if (preview.length === 0) return;
-    // Remove all existing grupos from this operativo
+
+    // CU-25: verificar ANTES de mutar nada, para no dejar una disolución a
+    // medio camino si un grupo está rastrillando en el terreno.
+    const grupoBloqueado = grupos.find(g => g.estado === 'rastrillando');
+    if (grupoBloqueado) {
+      alert(`No se puede reasignar: el grupo "${grupoBloqueado.nombre}" está Rastrillando en el terreno. Debe cambiar su estado a Replegado primero.`);
+      return;
+    }
+
+    // Disolución lógica de todos los grupos existentes del operativo (CU-25)
     operativo.grupoIds.forEach(gid => deleteGrupo(gid));
     // Create new groups
     const newIds: string[] = [];
@@ -195,7 +209,7 @@ export default function Agentes() {
         nombre: p.nombre,
         lider: p.liderId,
         agenteIds: p.miembrosIds,
-        estado: 'inactivo',
+        estado: 'en_formacion',
         color: p.color,
         kmRecorridos: 0,
       });
@@ -270,8 +284,14 @@ export default function Agentes() {
 
   const handleDeleteGrupo = () => {
     if (!selectedGrupo) return;
-    deleteGrupo(selectedGrupo);
-    updateOperativo(id!, { grupoIds: operativo.grupoIds.filter(gid => gid !== selectedGrupo) });
+    const resultado = deleteGrupo(selectedGrupo);
+    if (resultado === 'bloqueado') {
+      alert('No se puede disolver un grupo activo en el terreno. Debe cambiar su estado a Replegado primero.');
+      return; // deja el modal de confirmación abierto
+    }
+    // El grupo permanece en operativo.grupoIds a propósito: es el registro
+    // histórico que el informe final necesita (CU-25). La vista activa lo
+    // filtra por estado, no por pertenencia al operativo.
     setModal(null);
   };
 
@@ -372,7 +392,7 @@ export default function Agentes() {
                 Asignación Automática
               </button>
               <button
-                onClick={() => { setGrupoForm({ nombre: '', lider: '', color: COLORS[0], estado: 'inactivo' }); setModal('createGrupo'); }}
+                onClick={() => { setGrupoForm({ nombre: '', lider: '', color: COLORS[0], estado: 'en_formacion' }); setModal('createGrupo'); }}
                 className="flex items-center gap-2 px-3 py-2 hover:opacity-90"
                 style={{
                   borderRadius: 'var(--radius-button)',
@@ -750,9 +770,9 @@ export default function Agentes() {
                         </span>
                       )}
                     </div>
-                    {agente.dotacion && (
+                    {agente.institucionId && (
                       <p className="mt-2" style={{ fontSize: '11px', color: 'var(--muted-foreground)' }}>
-                        {agente.dotacion}
+                        {institucionLabel(agente)}
                       </p>
                     )}
                   </div>
@@ -874,7 +894,7 @@ export default function Agentes() {
                           </td>
                           {/* Dotación */}
                           <td className="px-4 py-3" style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-base)', fontFamily: 'var(--font-family-primary)' }}>
-                            {agente.dotacion || '—'}
+                            {institucionLabel(agente)}
                           </td>
                           {/* Grupo Sanguíneo */}
                           <td className="px-4 py-3">
@@ -1034,7 +1054,7 @@ export default function Agentes() {
                   Asignación Automática
                 </button>
                 <button
-                  onClick={() => { setGrupoForm({ nombre: '', lider: '', color: COLORS[0], estado: 'inactivo' }); setModal('createGrupo'); }}
+                  onClick={() => { setGrupoForm({ nombre: '', lider: '', color: COLORS[0], estado: 'en_formacion' }); setModal('createGrupo'); }}
                   className="px-4 py-2"
                   style={{
                     borderRadius: 'var(--radius-button)',
@@ -1328,7 +1348,7 @@ export default function Agentes() {
                                       >
                                         {m.nombre} {m.apellido}
                                         {!isDUAR(m) && (
-                                          <span style={{ color: 'var(--muted-foreground)' }}> · {m.dotacion?.split(' ')[0]}</span>
+                                          <span style={{ color: 'var(--muted-foreground)' }}> · {institucionLabel(m)}</span>
                                         )}
                                       </span>
                                     ))}
@@ -1538,9 +1558,9 @@ export default function Agentes() {
                           }}>
                             {u.nombre} {u.apellido}
                           </p>
-                          {u.dotacion && (
+                          {u.institucionId && (
                             <p style={{ fontSize: '11px', color: 'var(--muted-foreground)', fontFamily: 'var(--font-family-primary)', marginTop: 1 }}>
-                              {u.dotacion}
+                              {institucionLabel(u)}
                             </p>
                           )}
                         </div>
@@ -1948,16 +1968,14 @@ export default function Agentes() {
                 </div>
               </div>
 
-              {/* Dotación */}
+              {/* Institución — define si podrá ser Líder de grupo */}
               <div>
                 <label style={{ display: 'block', marginBottom: 5, fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-medium)', color: 'var(--foreground)', fontFamily: 'var(--font-family-primary)' }}>
-                  Dotación <span style={{ color: 'var(--muted-foreground)', fontWeight: 'normal' }}>(opcional)</span>
+                  Institución
                 </label>
-                <input
-                  type="text"
-                  value={crearForm.dotacion}
-                  onChange={e => setCrearForm(f => ({ ...f, dotacion: e.target.value }))}
-                  placeholder="Ej: DUAR, Bomberos Voluntarios…"
+                <select
+                  value={crearForm.institucionId}
+                  onChange={e => setCrearForm(f => ({ ...f, institucionId: e.target.value, dotacionId: '' }))}
                   className="w-full outline-none"
                   style={{
                     padding: '8px 12px', borderRadius: 'var(--radius-input)',
@@ -1965,9 +1983,39 @@ export default function Agentes() {
                     background: 'var(--input-background)', color: 'var(--foreground)',
                     fontSize: 'var(--text-base)', fontFamily: 'var(--font-family-primary)',
                   }}
-                  onFocus={e => e.currentTarget.style.border = '1.5px solid var(--primary)'}
-                  onBlur={e => e.currentTarget.style.border = '1px solid var(--border)'}
-                />
+                >
+                  <option value="">— Seleccioná la institución —</option>
+                  {catInstituciones.map(i => (
+                    <option key={i.id} value={i.id}>{i.nombre}</option>
+                  ))}
+                </select>
+              </div>
+
+              {/* Dotación — sólo si la institución tiene destacamentos cargados */}
+              {dotacionesDe(crearForm.institucionId).length > 0 && (
+              <div>
+                <label style={{ display: 'block', marginBottom: 5, fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-medium)', color: 'var(--foreground)', fontFamily: 'var(--font-family-primary)' }}>
+                  Dotación
+                </label>
+                <select
+                  value={crearForm.dotacionId}
+                  onChange={e => setCrearForm(f => ({ ...f, dotacionId: e.target.value }))}
+                  className="w-full outline-none"
+                  style={{
+                    padding: '8px 12px', borderRadius: 'var(--radius-input)',
+                    border: '1px solid var(--border)',
+                    background: 'var(--input-background)', color: 'var(--foreground)',
+                    fontSize: 'var(--text-base)', fontFamily: 'var(--font-family-primary)',
+                  }}
+                >
+                  <option value="">— Seleccioná la dotación —</option>
+                  {dotacionesDe(crearForm.institucionId).map(d => (
+                    <option key={d.id} value={d.id}>{d.nombre}</option>
+                  ))}
+                </select>
+              </div>
+              )}
+              <div style={{ display: 'none' }}>
               </div>
 
               {/* Contraseña hint */}
@@ -2086,7 +2134,7 @@ export default function Agentes() {
                   <option value="">— Seleccioná el líder —</option>
                   {(modal === 'createGrupo' ? duarDisponiblesParaNuevoLider : duarDisponiblesParaEditarLider).map(a => (
                     <option key={a.id} value={a.id}>
-                      {a.nombre} {a.apellido} — {a.dotacion}
+                      {a.nombre} {a.apellido} — {institucionLabel(a)}
                     </option>
                   ))}
                 </select>
@@ -2109,9 +2157,14 @@ export default function Agentes() {
                   className="w-full px-3 py-2.5 outline-none"
                   style={fieldStyle}
                 >
-                  <option value="inactivo">Inactivo</option>
+                  {/* Catálogo estado_grupo. 'disuelto' no se ofrece: se llega
+                      por CU-25 (disolución), no eligiéndolo a mano. */}
+                  <option value="en_formacion">En Formación</option>
+                  <option value="en_apresto">En Apresto</option>
+                  <option value="desplegado">Desplegado</option>
                   <option value="rastrillando">Rastrillando</option>
-                  <option value="descansando">Descansando</option>
+                  <option value="en_pausa">En Pausa</option>
+                  <option value="replegado">Replegado</option>
                 </select>
               </div>
               <div>
