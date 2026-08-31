@@ -57,7 +57,8 @@ export type Especialidad =
   | 'bombero voluntario'
   | 'canes'
   | 'defensa civil'
-  | 'dron';
+  | 'dron'
+  | 'otra';
 export type ShapeType = 'poligono' | 'circulo' | 'rectangulo';
 export type TipoObjetivo = 'persona' | 'objeto';
 /**
@@ -808,6 +809,8 @@ export const catEspecialidades: CatEspecialidad[] = [
   { id: '515dcdee-7b3b-4c4e-8161-c070254df8de', nombre: 'Bombero Voluntario', slug: 'bombero voluntario',  esRecursoCritico: false },
   { id: 'eb010f9d-406e-4248-ba27-d88ca045ca4f', nombre: 'Canes',              slug: 'canes',               esRecursoCritico: false },
   { id: 'e0322446-d6eb-4335-85e3-558d484e2334', nombre: 'Defensa Civil',      slug: 'defensa civil',       esRecursoCritico: false },
+  // "Otra" siempre al final: existía en la BD pero faltaba acá.
+  { id: 'b99b79b0-6eac-4fd0-83b3-f2296ef5e89d', nombre: 'Otra',               slug: 'otra',                esRecursoCritico: false },
 ];
 
 /* ────────────────────────────────────────────────────────────────────────────

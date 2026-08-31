@@ -9,6 +9,10 @@ import { useApp } from '../context/AppContext';
 import { RecuperarContrasenaModal } from '../components/auth/RecuperarContrasenaModal';
 import { catInstituciones, catEspecialidades, catAlergias, dotacionesDe } from '../data/mockData';
 import { qrApi, registroApi, authApi, setToken, ApiError, OperativoQRApi } from '../services/api';
+import {
+  validarNombre, validarApellido, validarDni, validarTelefono,
+  soloDigitos, formatearDni, formatearTelefono,
+} from '../utils/validacionUsuario';
 
 /* ── Tipos ────────────────────────────────────────────────── */
 type Modo = 'inicial' | 'login' | 'registro' | 'confirmar' | 'verificarEmail' | 'confirmacion';
@@ -48,6 +52,10 @@ export default function Registro() {
     alergiaIds: [] as string[],
     grupo_sanguineo: '',
   });
+  /** dni y telefono en regForm siempre quedan en dígitos puros — lo que
+   *  viaja al backend. El formateo (45.080.924 / 351-228-3143) es sólo
+   *  visual, se calcula al renderizar el input. */
+  const [erroresCampos, setErroresCampos] = useState<Record<string, string>>({});
 
   /* ── Email confirmation (nuevo usuario) ── */
   const [nuevoUserEmail, setNuevoUserEmail] = useState('');
@@ -357,6 +365,17 @@ export default function Registro() {
       return;
     }
     if (!qrToken) { setError('Falta el código del QR.'); return; }
+
+    const errores: Record<string, string> = {};
+    const errNombre = validarNombre(regForm.nombre); if (errNombre) errores.nombre = errNombre;
+    const errApellido = validarApellido(regForm.apellido); if (errApellido) errores.apellido = errApellido;
+    const errDni = validarDni(regForm.dni); if (errDni) errores.dni = errDni;
+    const errTelefono = validarTelefono(regForm.telefono); if (errTelefono) errores.telefono = errTelefono;
+    setErroresCampos(errores);
+    if (Object.keys(errores).length > 0) {
+      setError('Revisá los campos marcados en rojo.');
+      return;
+    }
 
     setLoading(true);
     try {
@@ -701,33 +720,61 @@ export default function Registro() {
             </p>
             <div className="flex flex-col gap-3">
               {[
-                { label: 'DNI *',              key: 'dni',             type: 'text',     placeholder: 'Ej: 30.123.456' },
-                { label: 'Nombre *',           key: 'nombre',          type: 'text',     placeholder: 'Tu nombre' },
-                { label: 'Apellido *',         key: 'apellido',        type: 'text',     placeholder: 'Tu apellido' },
-                { label: 'Correo electrónico *', key: 'email',         type: 'email',    placeholder: 'tu@email.com' },
-                { label: 'Contraseña *',       key: 'password',        type: 'password', placeholder: 'Mínimo 6 caracteres' },
-                { label: 'Fecha de Nacimiento', key: 'fechaNacimiento', type: 'date',     placeholder: '' },
-                { label: 'Teléfono',           key: 'telefono',        type: 'tel',      placeholder: 'Ej: 351-5551234' },
-              ].map(f => (
-                <div key={f.key}>
-                  <label
-                    className="block mb-1"
-                    style={{ color: 'var(--foreground)', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)' }}
-                  >
-                    {f.label}
-                  </label>
-                  <input
-                    type={f.type}
-                    placeholder={f.placeholder}
-                    value={(regForm as any)[f.key]}
-                    onChange={e => setRegForm({ ...regForm, [f.key]: e.target.value })}
-                    className={inputCls}
-                    style={inputStyle}
-                    onFocus={e => (e.target.style.borderColor = 'var(--primary)')}
-                    onBlur={e => (e.target.style.borderColor = 'var(--border)')}
-                  />
-                </div>
-              ))}
+                {
+                  label: 'DNI *', key: 'dni', type: 'text', placeholder: 'Ej: 45.080.924',
+                  inputMode: 'numeric' as const,
+                  filtro: (v: string) => soloDigitos(v).slice(0, 8),
+                  formato: formatearDni,
+                },
+                {
+                  label: 'Nombre *', key: 'nombre', type: 'text', placeholder: 'Tu nombre',
+                  filtro: (v: string) => v.replace(/[^A-Za-zÀ-ÖØ-öø-ÿ ]/g, '').slice(0, 35),
+                },
+                {
+                  label: 'Apellido *', key: 'apellido', type: 'text', placeholder: 'Tu apellido',
+                  filtro: (v: string) => v.replace(/[^A-Za-zÀ-ÖØ-öø-ÿ'\- ]/g, '').slice(0, 35),
+                },
+                { label: 'Correo electrónico *', key: 'email', type: 'email', placeholder: 'tu@email.com' },
+                { label: 'Contraseña *', key: 'password', type: 'password', placeholder: 'Mínimo 8 caracteres' },
+                { label: 'Fecha de Nacimiento', key: 'fechaNacimiento', type: 'date', placeholder: '' },
+                {
+                  label: 'Teléfono', key: 'telefono', type: 'tel', placeholder: 'Ej: 351-228-3143',
+                  inputMode: 'numeric' as const,
+                  filtro: (v: string) => soloDigitos(v).slice(0, 10),
+                  formato: formatearTelefono,
+                },
+              ].map(f => {
+                const raw = (regForm as any)[f.key] as string;
+                const valorMostrado = f.formato ? f.formato(raw) : raw;
+                return (
+                  <div key={f.key}>
+                    <label
+                      className="block mb-1"
+                      style={{ color: 'var(--foreground)', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)' }}
+                    >
+                      {f.label}
+                    </label>
+                    <input
+                      type={f.type}
+                      inputMode={f.inputMode}
+                      placeholder={f.placeholder}
+                      value={valorMostrado}
+                      onChange={e => {
+                        const v = f.filtro ? f.filtro(e.target.value) : e.target.value;
+                        setRegForm({ ...regForm, [f.key]: v });
+                        if (erroresCampos[f.key]) setErroresCampos({ ...erroresCampos, [f.key]: '' });
+                      }}
+                      className={inputCls}
+                      style={{ ...inputStyle, border: erroresCampos[f.key] ? '1.5px solid #dc2626' : inputStyle.border }}
+                      onFocus={e => (e.target.style.borderColor = erroresCampos[f.key] ? '#dc2626' : 'var(--primary)')}
+                      onBlur={e => (e.target.style.borderColor = erroresCampos[f.key] ? '#dc2626' : 'var(--border)')}
+                    />
+                    {erroresCampos[f.key] && (
+                      <p style={{ color: '#dc2626', fontSize: '11px', marginTop: '4px' }}>{erroresCampos[f.key]}</p>
+                    )}
+                  </div>
+                );
+              })}
 
               {/* ── Institución ── */}
               <div>

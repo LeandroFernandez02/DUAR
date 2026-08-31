@@ -152,6 +152,14 @@ export const authApi = {
    * `motivo: 'cooldown'` y `datos.segundos` restantes.
    */
   reenviarConfirmacion: () => api.post<{ mensaje: string }>('/auth/reenviar-confirmacion'),
+
+  /**
+   * Autoedición: el agente edita sus propios datos. El backend ignora — por
+   * más que se manden — dni, email, estado y rol; eso queda reservado al
+   * panel de Usuarios (admin/coordinador).
+   */
+  actualizarMisDatos: (datos: Partial<CrearUsuarioPayload>) =>
+    api.put<{ usuario: UsuarioApi }>('/auth/me', datos),
 };
 
 export const catalogosApi = {

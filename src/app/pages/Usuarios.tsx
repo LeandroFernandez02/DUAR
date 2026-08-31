@@ -5,6 +5,10 @@ import { useApp } from '../context/AppContext';
 import { Usuario, Rol, EstadoUsuario, catInstituciones, catEspecialidades, catAlergias, dotacionesDe, institucionLabel, especialidadNombrePorId } from '../data/mockData';
 import { usuariosApi, ApiError, UsuarioApi } from '../services/api';
 import StatusBadge from '../components/shared/StatusBadge';
+import {
+  validarNombre, validarApellido, validarDni, validarTelefono,
+  soloDigitos, formatearDni, formatearTelefono,
+} from '../utils/validacionUsuario';
 
 /**
  * Traduce el usuario de la API al modelo del frontend.
@@ -93,9 +97,12 @@ export default function Usuarios() {
     return matchSearch && matchRol;
   });
 
+  const [erroresForm, setErroresForm] = useState<Record<string, string>>({});
+
   const openCreate = () => {
     setForm(emptyForm);
     setSelected(null);
+    setErroresForm({});
     setModal('create');
   };
 
@@ -125,6 +132,7 @@ export default function Usuarios() {
       institucionId: u.institucionId || '', dotacionId: u.dotacionId || '', especialidadId: u.especialidadId || '',
       grupo_sanguineo: u.grupo_sanguineo || '', estado: u.estado,
     });
+    setErroresForm({});
     setModal('edit');
   };
 
@@ -132,6 +140,17 @@ export default function Usuarios() {
   const handleSave = async () => {
     if (!form.nombre || !form.apellido || !form.email || !form.dni) return;
     setErrorApi('');
+
+    const errores: Record<string, string> = {};
+    const errNombre = validarNombre(form.nombre); if (errNombre) errores.nombre = errNombre;
+    const errApellido = validarApellido(form.apellido); if (errApellido) errores.apellido = errApellido;
+    const errDni = validarDni(form.dni); if (errDni) errores.dni = errDni;
+    const errTelefono = validarTelefono(form.telefono); if (errTelefono) errores.telefono = errTelefono;
+    setErroresForm(errores);
+    if (Object.keys(errores).length > 0) {
+      setErrorApi('Revisá los campos marcados en rojo.');
+      return;
+    }
 
     const datos = {
       dni: form.dni,
@@ -345,7 +364,7 @@ export default function Usuarios() {
               <div className="grid grid-cols-2 gap-2 mt-3 pt-3" style={{ borderTop: '1px solid var(--border)' }}>
                 <div>
                   <p style={{ color: 'var(--muted-foreground)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>DNI</p>
-                  <p style={{ color: 'var(--foreground)', fontSize: 'var(--text-label)' }}>{u.dni}</p>
+                  <p style={{ color: 'var(--foreground)', fontSize: 'var(--text-label)' }}>{formatearDni(u.dni)}</p>
                 </div>
                 <div>
                   <p style={{ color: 'var(--muted-foreground)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Especialidad</p>
@@ -409,7 +428,7 @@ export default function Usuarios() {
                         </div>
                       </div>
                     </td>
-                    <td className="px-4 py-3" style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-base)' }}>{u.dni}</td>
+                    <td className="px-4 py-3" style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-base)' }}>{formatearDni(u.dni)}</td>
                     <td className="px-4 py-3">
                       <span
                         className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full"
@@ -509,27 +528,55 @@ export default function Usuarios() {
 
             <div className="grid grid-cols-2 gap-3">
               {[
-                { label: 'DNI *', key: 'dni', type: 'text', span: false },
-                { label: 'Nombre *', key: 'nombre', type: 'text', span: false },
-                { label: 'Apellido *', key: 'apellido', type: 'text', span: false },
+                {
+                  label: 'DNI *', key: 'dni', type: 'text', span: false,
+                  inputMode: 'numeric' as const,
+                  filtro: (v: string) => soloDigitos(v).slice(0, 8),
+                  formato: formatearDni,
+                },
+                {
+                  label: 'Nombre *', key: 'nombre', type: 'text', span: false,
+                  filtro: (v: string) => v.replace(/[^A-Za-zÀ-ÖØ-öø-ÿ ]/g, '').slice(0, 35),
+                },
+                {
+                  label: 'Apellido *', key: 'apellido', type: 'text', span: false,
+                  filtro: (v: string) => v.replace(/[^A-Za-zÀ-ÖØ-öø-ÿ'\- ]/g, '').slice(0, 35),
+                },
                 { label: 'Email *', key: 'email', type: 'email', span: true },
                 { label: 'Contraseña', key: 'password', type: 'password', span: false },
                 { label: 'Fecha de Nacimiento', key: 'fechaNacimiento', type: 'date', span: false },
-                { label: 'Teléfono', key: 'telefono', type: 'tel', span: false },
-              ].map(f => (
-                <div key={f.key} className={f.span ? 'col-span-2' : ''}>
-                  <label className="block mb-1" style={{ color: 'var(--foreground)', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)' }}>
-                    {f.label}
-                  </label>
-                  <input
-                    type={f.type}
-                    value={(form as any)[f.key]}
-                    onChange={e => setForm({ ...form, [f.key]: e.target.value })}
-                    className="w-full px-3 py-2 rounded-lg border outline-none"
-                    style={fieldStyle}
-                  />
-                </div>
-              ))}
+                {
+                  label: 'Teléfono', key: 'telefono', type: 'tel', span: false,
+                  inputMode: 'numeric' as const,
+                  filtro: (v: string) => soloDigitos(v).slice(0, 10),
+                  formato: formatearTelefono,
+                },
+              ].map(f => {
+                const raw = (form as any)[f.key] as string;
+                const valorMostrado = f.formato ? f.formato(raw) : raw;
+                return (
+                  <div key={f.key} className={f.span ? 'col-span-2' : ''}>
+                    <label className="block mb-1" style={{ color: 'var(--foreground)', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)' }}>
+                      {f.label}
+                    </label>
+                    <input
+                      type={f.type}
+                      inputMode={f.inputMode}
+                      value={valorMostrado}
+                      onChange={e => {
+                        const v = f.filtro ? f.filtro(e.target.value) : e.target.value;
+                        setForm({ ...form, [f.key]: v });
+                        if (erroresForm[f.key]) setErroresForm({ ...erroresForm, [f.key]: '' });
+                      }}
+                      className="w-full px-3 py-2 rounded-lg border outline-none"
+                      style={{ ...fieldStyle, border: erroresForm[f.key] ? '1px solid #dc2626' : fieldStyle.border }}
+                    />
+                    {erroresForm[f.key] && (
+                      <p style={{ color: '#dc2626', fontSize: '11px', marginTop: '4px' }}>{erroresForm[f.key]}</p>
+                    )}
+                  </div>
+                );
+              })}
 
               {/* ── Institución (determina si puede ser Líder de grupo) ── */}
               <div>

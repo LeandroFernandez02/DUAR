@@ -13,6 +13,7 @@ const router = Router();
 router.post('/login',  auth.login);
 router.post('/logout', requiereSesion, auth.logout);
 router.get('/me',      requiereSesion, auth.yo);
+router.put('/me',      requiereSesion, auth.actualizarMisDatos);
 
 // CU-02: sin sesión (todavía no tiene cuenta), pero el controlador exige un
 // token de QR válido — no se puede crear una cuenta desde fuera del operativo.

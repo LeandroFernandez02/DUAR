@@ -24,12 +24,15 @@ function mapearUsuarioApi(u: UsuarioApi): Usuario {
     password: '',                       // la clave nunca vuelve del servidor
     rol: u.rol.toLowerCase() as Usuario['rol'],
     telefono: u.telefono ?? undefined,
+    fechaNacimiento: u.fechaNacimiento ?? undefined,
     institucionId: u.institucionId ?? undefined,
     dotacionId: u.dotacionId ?? undefined,
+    especialidadId: u.especialidadId ?? undefined,
+    alergiaIds: u.alergias.map(a => a.id),
     grupo_sanguineo: u.grupoSanguineo ?? undefined,
     estado: u.estado.toLowerCase() as Usuario['estado'],
     createdAt: new Date().toISOString().slice(0, 10),
-    emailConfirmado: true,
+    emailConfirmado: u.emailConfirmado,
   };
 }
 
@@ -179,6 +182,8 @@ interface AppContextType {
   data: AppData;
   login: (email: string, password: string) => Promise<'ok' | 'credentials' | 'inactive' | 'sin_conexion'>;
   logout: () => Promise<void>;
+  /** Autoedición: el propio usuario cambia sus datos (no dni/email/estado/rol). */
+  actualizarPerfilPropio: (datos: Record<string, unknown>) => Promise<'ok' | string>;
   // Operativos CRUD
   addOperativo: (op: Omit<Operativo, 'id'>) => string;
   updateOperativo: (id: string, op: Partial<Operativo>) => void;
@@ -325,6 +330,21 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
     setToken(null);
     setUsuario(null);
+  }, []);
+
+  /**
+   * El propio agente edita sus datos (teléfono, institución, especialidad,
+   * etc.). El backend ya ignora dni/email/estado/rol por más que se manden
+   * — acá no hace falta filtrarlos de nuevo, sólo reflejar la respuesta.
+   */
+  const actualizarPerfilPropio = useCallback(async (datos: Record<string, unknown>): Promise<'ok' | string> => {
+    try {
+      const { usuario: u } = await authApi.actualizarMisDatos(datos);
+      setUsuario(mapearUsuarioApi(u));
+      return 'ok';
+    } catch (err) {
+      return err instanceof ApiError ? err.message : 'No se pudo guardar los cambios.';
+    }
   }, []);
 
   /**
@@ -944,6 +964,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       data,
       login,
       logout,
+      actualizarPerfilPropio,
       addOperativo,
       updateOperativo,
       deleteOperativo,

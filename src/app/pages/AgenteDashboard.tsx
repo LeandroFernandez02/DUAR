@@ -3,12 +3,18 @@ import { Navigate, useNavigate } from 'react-router';
 import {
   Shield, LogOut, MapPin, Calendar, Users, User,
   ChevronDown, ChevronUp, Droplets, Heart, AlertCircle,
-  Target, Clock, Search, History, MailWarning, ExternalLink, RefreshCw
+  Target, Clock, Search, History, MailWarning, RefreshCw, Edit2, X,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { Operativo, EstadoOperativo, institucionLabel } from '../data/mockData';
-import { enviarEmailConfirmacion } from '../services/emailService';
+import {
+  Operativo, EstadoOperativo, institucionLabel, especialidadNombrePorId,
+  catInstituciones, catEspecialidades, catAlergias, dotacionesDe,
+} from '../data/mockData';
 import { authApi, OperativoApi, ApiError } from '../services/api';
+import {
+  validarNombre, validarApellido, validarTelefono,
+  soloDigitos, formatearTelefono, formatearDni,
+} from '../utils/validacionUsuario';
 
 /** Estados que representan que un agente está actualmente activo en un operativo */
 const ESTADOS_ACTIVOS = new Set(['activo', 'en_proceso', 'planificación', 'nuevo']);
@@ -275,10 +281,101 @@ function OperativoCard({
 // ─── Página principal ────────────────────────────────────────────────────────
 
 export default function AgenteDashboard() {
-  const { isAuthenticated, usuario, logout, data } = useApp();
+  const { isAuthenticated, usuario, logout, data, actualizarPerfilPropio } = useApp();
   const navigate = useNavigate();
+
+  /* ── Reenvío de confirmación: mismo endpoint real y cooldown de 2 min que
+   *  usa Registro.tsx — antes esto llamaba a un servicio mock que no mandaba
+   *  nada. ── */
+  const [cooldownReenvio, setCooldownReenvio] = useState(0);
+  const [reenviando, setReenviando] = useState(false);
   const [reenvioExitoso, setReenvioExitoso] = useState(false);
-  const [urlConfirmacionDev, setUrlConfirmacionDev] = useState<string | undefined>();
+  const [errorReenvio, setErrorReenvio] = useState('');
+
+  useEffect(() => {
+    const id = setInterval(() => setCooldownReenvio(c => (c > 0 ? c - 1 : 0)), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  const formatCooldown = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+
+  const handleReenviarCorreo = async () => {
+    setReenviando(true);
+    setErrorReenvio('');
+    try {
+      await authApi.reenviarConfirmacion();
+      setReenvioExitoso(true);
+      setCooldownReenvio(120);
+      setTimeout(() => setReenvioExitoso(false), 4000);
+    } catch (err) {
+      if (err instanceof ApiError && err.motivo === 'cooldown') {
+        const segundos = typeof err.datos.segundos === 'number' ? err.datos.segundos : 0;
+        setCooldownReenvio(segundos);
+      }
+      setErrorReenvio(err instanceof ApiError ? err.message : 'No se pudo reenviar el correo.');
+    } finally {
+      setReenviando(false);
+    }
+  };
+
+  /* ── Autoedición del perfil: teléfono, institución/dotación, especialidad,
+   *  grupo sanguíneo, alergias, fecha de nacimiento. DNI, email, estado y
+   *  rol quedan reservados al panel de Usuarios (admin/coordinador). ── */
+  const [showEditarPerfil, setShowEditarPerfil] = useState(false);
+  const [formPerfil, setFormPerfil] = useState({
+    nombre: '', apellido: '', telefono: '', fechaNacimiento: '',
+    institucionId: '', dotacionId: '', especialidadId: '', grupo_sanguineo: '',
+    alergiaIds: [] as string[],
+  });
+  const [erroresPerfil, setErroresPerfil] = useState<Record<string, string>>({});
+  const [guardandoPerfil, setGuardandoPerfil] = useState(false);
+  const [errorPerfil, setErrorPerfil] = useState('');
+
+  const abrirEditarPerfil = () => {
+    if (!usuario) return;
+    setFormPerfil({
+      nombre: usuario.nombre, apellido: usuario.apellido,
+      telefono: usuario.telefono ?? '', fechaNacimiento: usuario.fechaNacimiento ?? '',
+      institucionId: usuario.institucionId ?? '', dotacionId: usuario.dotacionId ?? '',
+      especialidadId: usuario.especialidadId ?? '', grupo_sanguineo: usuario.grupo_sanguineo ?? '',
+      alergiaIds: usuario.alergiaIds ?? [],
+    });
+    setErroresPerfil({});
+    setErrorPerfil('');
+    setShowEditarPerfil(true);
+  };
+
+  const guardarPerfil = async () => {
+    const errores: Record<string, string> = {};
+    const errNombre = validarNombre(formPerfil.nombre); if (errNombre) errores.nombre = errNombre;
+    const errApellido = validarApellido(formPerfil.apellido); if (errApellido) errores.apellido = errApellido;
+    const errTelefono = validarTelefono(formPerfil.telefono); if (errTelefono) errores.telefono = errTelefono;
+    setErroresPerfil(errores);
+    if (Object.keys(errores).length > 0) {
+      setErrorPerfil('Revisá los campos marcados en rojo.');
+      return;
+    }
+
+    setGuardandoPerfil(true);
+    setErrorPerfil('');
+    const resultado = await actualizarPerfilPropio({
+      nombre: formPerfil.nombre,
+      apellido: formPerfil.apellido,
+      telefono: formPerfil.telefono || undefined,
+      fechaNacimiento: formPerfil.fechaNacimiento || undefined,
+      institucionId: formPerfil.institucionId || undefined,
+      dotacionId: formPerfil.dotacionId || undefined,
+      especialidadId: formPerfil.especialidadId || undefined,
+      grupoSanguineo: formPerfil.grupo_sanguineo || undefined,
+      alergiaIds: formPerfil.alergiaIds,
+    });
+    setGuardandoPerfil(false);
+    if (resultado === 'ok') {
+      setShowEditarPerfil(false);
+    } else {
+      setErrorPerfil(resultado);
+    }
+  };
 
   /* ── Operativo actual: REAL desde la API (Decisión B — a lo sumo uno) ──
    * Antes leía de `data.operativos` (mock), por eso mostraba "Sin operativo
@@ -350,9 +447,19 @@ export default function AgenteDashboard() {
               {usuario.nombre.charAt(0)}{usuario.apellido.charAt(0)}
             </div>
             <div className="flex-1 min-w-0">
-              <h1 style={{ color: 'var(--foreground)', fontSize: 'var(--text-h2)', fontWeight: 'var(--font-weight-bold)' }}>
-                {usuario.nombre} {usuario.apellido}
-              </h1>
+              <div className="flex items-start justify-between gap-2">
+                <h1 style={{ color: 'var(--foreground)', fontSize: 'var(--text-h2)', fontWeight: 'var(--font-weight-bold)' }}>
+                  {usuario.nombre} {usuario.apellido}
+                </h1>
+                <button
+                  onClick={abrirEditarPerfil}
+                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg flex-shrink-0"
+                  style={{ color: 'var(--primary)', background: 'rgba(229,75,75,0.08)', border: 'none', cursor: 'pointer', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)', fontFamily: 'var(--font-family-primary)' }}
+                >
+                  <Edit2 size={12} />
+                  <span className="hidden sm:inline">Editar mis datos</span>
+                </button>
+              </div>
               <p style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-base)' }}>{usuario.email}</p>
               {usuario.institucionId && (
                 <p className="mt-0.5" style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-label)' }}>
@@ -364,16 +471,10 @@ export default function AgenteDashboard() {
 
           <div className="mt-4 grid grid-cols-2 sm:grid-cols-4 gap-3">
             {[
-              { icon: <User size={13} />, label: 'DNI', value: usuario.dni },
+              { icon: <User size={13} />, label: 'DNI', value: formatearDni(usuario.dni) },
               { icon: <Calendar size={13} />, label: 'Edad', value: calcAge(usuario.fechaNacimiento) },
               { icon: <Droplets size={13} />, label: 'Grupo Sanguíneo', value: usuario.grupo_sanguineo || '—' },
-              {
-                icon: <Heart size={13} />,
-                label: 'Especialidad',
-                value: usuario.especialidad
-                  ? usuario.especialidad.charAt(0).toUpperCase() + usuario.especialidad.slice(1)
-                  : '—',
-              },
+              { icon: <Heart size={13} />, label: 'Especialidad', value: especialidadNombrePorId(usuario.especialidadId) },
             ].map(item => (
               <div key={item.label}>
                 <div className="flex items-center gap-1 mb-0.5" style={{ color: 'var(--muted-foreground)' }}>
@@ -387,16 +488,32 @@ export default function AgenteDashboard() {
                 </p>
               </div>
             ))}
+            {usuario.telefono && (
+              <div>
+                <div className="flex items-center gap-1 mb-0.5" style={{ color: 'var(--muted-foreground)' }}>
+                  <User size={13} />
+                  <span style={{ fontSize: '10px', fontWeight: 'var(--font-weight-semibold)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                    Teléfono
+                  </span>
+                </div>
+                <p style={{ color: 'var(--foreground)', fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-medium)' }}>
+                  {formatearTelefono(usuario.telefono)}
+                </p>
+              </div>
+            )}
           </div>
 
-          {usuario.alergias && (
+          {usuario.alergiaIds && usuario.alergiaIds.length > 0 && (
             <div
               className="mt-4 flex items-start gap-2 p-3 rounded-lg"
               style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)' }}
             >
               <AlertCircle size={14} style={{ color: '#d97706', flexShrink: 0, marginTop: '2px' }} />
               <p style={{ color: 'var(--foreground)', fontSize: 'var(--text-label)' }}>
-                <strong>Alergias:</strong> {usuario.alergias}
+                <strong>Alergias:</strong> {usuario.alergiaIds
+                  .map(id => catAlergias.find(a => a.id === id)?.nombre)
+                  .filter(Boolean)
+                  .join(', ')}
               </p>
             </div>
           )}
@@ -418,16 +535,8 @@ export default function AgenteDashboard() {
                   Te enviamos un link de verificación a <strong>{usuario.email}</strong>. Revisá tu bandeja de entrada.
                 </p>
 
-                {/* Link dev visible solo en desarrollo */}
-                {urlConfirmacionDev && (
-                  <a
-                    href={urlConfirmacionDev}
-                    className="mt-2 flex items-center gap-1 break-all"
-                    style={{ color: '#15803d', fontSize: '11px', lineHeight: 1.5 }}
-                  >
-                    <ExternalLink size={10} style={{ flexShrink: 0 }} />
-                    {urlConfirmacionDev}
-                  </a>
+                {errorReenvio && (
+                  <p className="mt-2" style={{ color: '#b91c1c', fontSize: '11px' }}>{errorReenvio}</p>
                 )}
 
                 <div className="flex items-center gap-3 mt-3 flex-wrap">
@@ -437,27 +546,25 @@ export default function AgenteDashboard() {
                     </span>
                   ) : (
                     <button
-                      onClick={async () => {
-                        const r = await enviarEmailConfirmacion({
-                          destinatario: usuario.email,
-                          nombreUsuario: `${usuario.nombre} ${usuario.apellido}`,
-                          tokenConfirmacion: usuario.tokenConfirmacion ?? '',
-                        });
-                        setUrlConfirmacionDev(r.urlConfirmacionDev);
-                        setReenvioExitoso(true);
-                        setTimeout(() => setReenvioExitoso(false), 4000);
-                      }}
+                      onClick={handleReenviarCorreo}
+                      disabled={cooldownReenvio > 0 || reenviando}
                       className="flex items-center gap-1.5"
                       style={{
-                        background: 'none', border: 'none', padding: 0, cursor: 'pointer',
+                        background: 'none', border: 'none', padding: 0,
+                        cursor: cooldownReenvio > 0 || reenviando ? 'not-allowed' : 'pointer',
                         color: '#ca8a04', fontSize: 'var(--text-label)',
                         fontFamily: 'var(--font-family-primary)',
                         fontWeight: 'var(--font-weight-semibold)',
                         textDecoration: 'underline', textUnderlineOffset: '2px',
+                        opacity: cooldownReenvio > 0 || reenviando ? 0.6 : 1,
                       }}
                     >
                       <RefreshCw size={12} />
-                      Reenviar correo
+                      {reenviando
+                        ? 'Reenviando...'
+                        : cooldownReenvio > 0
+                          ? `Reenviar correo (${formatCooldown(cooldownReenvio)})`
+                          : 'Reenviar correo'}
                     </button>
                   )}
                 </div>
@@ -534,6 +641,206 @@ export default function AgenteDashboard() {
           © 2026 DUAR Córdoba · Sistema v2.0
         </p>
       </div>
+
+      {/* ── Modal: Editar mis datos ──
+       * DNI, email, estado y rol NO están acá — el agente no los puede tocar
+       * (quedan reservados al panel de Usuarios, admin/coordinador). */}
+      {showEditarPerfil && (
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto" style={{ background: 'rgba(0,0,0,0.5)' }}>
+          <div
+            className="w-full max-w-[480px] rounded-[var(--radius-card)] p-6 my-4"
+            style={{ background: 'var(--card)', boxShadow: 'var(--elevation-md)' }}
+          >
+            <div className="flex items-center justify-between mb-5">
+              <h2 style={{ color: 'var(--foreground)', fontSize: 'var(--text-h2)', fontWeight: 'var(--font-weight-semibold)' }}>
+                Editar mis datos
+              </h2>
+              <button onClick={() => setShowEditarPerfil(false)} style={{ color: 'var(--muted-foreground)', background: 'none', border: 'none', cursor: 'pointer' }}>
+                <X size={18} />
+              </button>
+            </div>
+
+            <div className="flex flex-col gap-3">
+              {[
+                {
+                  label: 'Nombre *', key: 'nombre',
+                  filtro: (v: string) => v.replace(/[^A-Za-zÀ-ÖØ-öø-ÿ ]/g, '').slice(0, 35),
+                },
+                {
+                  label: 'Apellido *', key: 'apellido',
+                  filtro: (v: string) => v.replace(/[^A-Za-zÀ-ÖØ-öø-ÿ'\- ]/g, '').slice(0, 35),
+                },
+              ].map(f => (
+                <div key={f.key}>
+                  <label className="block mb-1" style={{ color: 'var(--foreground)', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)' }}>
+                    {f.label}
+                  </label>
+                  <input
+                    type="text"
+                    value={(formPerfil as any)[f.key]}
+                    onChange={e => {
+                      setFormPerfil({ ...formPerfil, [f.key]: f.filtro(e.target.value) });
+                      if (erroresPerfil[f.key]) setErroresPerfil({ ...erroresPerfil, [f.key]: '' });
+                    }}
+                    className="w-full px-3 py-2 rounded-lg border outline-none"
+                    style={{
+                      background: 'var(--input-background)', color: 'var(--foreground)',
+                      fontFamily: 'var(--font-family-primary)', fontSize: 'var(--text-base)',
+                      border: erroresPerfil[f.key] ? '1px solid #dc2626' : '1px solid var(--border)',
+                    }}
+                  />
+                  {erroresPerfil[f.key] && <p style={{ color: '#dc2626', fontSize: '11px', marginTop: '4px' }}>{erroresPerfil[f.key]}</p>}
+                </div>
+              ))}
+
+              <div>
+                <label className="block mb-1" style={{ color: 'var(--foreground)', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)' }}>Teléfono</label>
+                <input
+                  type="tel"
+                  inputMode="numeric"
+                  placeholder="Ej: 351-228-3143"
+                  value={formatearTelefono(formPerfil.telefono)}
+                  onChange={e => {
+                    setFormPerfil({ ...formPerfil, telefono: soloDigitos(e.target.value).slice(0, 10) });
+                    if (erroresPerfil.telefono) setErroresPerfil({ ...erroresPerfil, telefono: '' });
+                  }}
+                  className="w-full px-3 py-2 rounded-lg border outline-none"
+                  style={{
+                    background: 'var(--input-background)', color: 'var(--foreground)',
+                    fontFamily: 'var(--font-family-primary)', fontSize: 'var(--text-base)',
+                    border: erroresPerfil.telefono ? '1px solid #dc2626' : '1px solid var(--border)',
+                  }}
+                />
+                {erroresPerfil.telefono && <p style={{ color: '#dc2626', fontSize: '11px', marginTop: '4px' }}>{erroresPerfil.telefono}</p>}
+              </div>
+
+              <div>
+                <label className="block mb-1" style={{ color: 'var(--foreground)', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)' }}>Fecha de Nacimiento</label>
+                <input
+                  type="date"
+                  value={formPerfil.fechaNacimiento}
+                  onChange={e => setFormPerfil({ ...formPerfil, fechaNacimiento: e.target.value })}
+                  className="w-full px-3 py-2 rounded-lg border outline-none"
+                  style={{ background: 'var(--input-background)', color: 'var(--foreground)', fontFamily: 'var(--font-family-primary)', fontSize: 'var(--text-base)', border: '1px solid var(--border)' }}
+                />
+              </div>
+
+              <div>
+                <label className="block mb-1" style={{ color: 'var(--foreground)', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)' }}>Institución</label>
+                <select
+                  value={formPerfil.institucionId}
+                  onChange={e => setFormPerfil({ ...formPerfil, institucionId: e.target.value, dotacionId: '' })}
+                  className="w-full px-3 py-2 rounded-lg border outline-none"
+                  style={{ background: 'var(--input-background)', color: 'var(--foreground)', fontFamily: 'var(--font-family-primary)', fontSize: 'var(--text-base)', border: '1px solid var(--border)' }}
+                >
+                  <option value="">— Seleccioná la institución —</option>
+                  {catInstituciones.map(i => (
+                    <option key={i.id} value={i.id}>{i.nombre}</option>
+                  ))}
+                </select>
+              </div>
+
+              {dotacionesDe(formPerfil.institucionId).length > 0 && (
+                <div>
+                  <label className="block mb-1" style={{ color: 'var(--foreground)', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)' }}>Dotación</label>
+                  <select
+                    value={formPerfil.dotacionId}
+                    onChange={e => setFormPerfil({ ...formPerfil, dotacionId: e.target.value })}
+                    className="w-full px-3 py-2 rounded-lg border outline-none"
+                    style={{ background: 'var(--input-background)', color: 'var(--foreground)', fontFamily: 'var(--font-family-primary)', fontSize: 'var(--text-base)', border: '1px solid var(--border)' }}
+                  >
+                    <option value="">— Seleccioná la dotación —</option>
+                    {dotacionesDe(formPerfil.institucionId).map(d => (
+                      <option key={d.id} value={d.id}>{d.nombre}</option>
+                    ))}
+                  </select>
+                </div>
+              )}
+
+              <div>
+                <label className="block mb-1" style={{ color: 'var(--foreground)', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)' }}>Especialidad</label>
+                <select
+                  value={formPerfil.especialidadId}
+                  onChange={e => setFormPerfil({ ...formPerfil, especialidadId: e.target.value })}
+                  className="w-full px-3 py-2 rounded-lg border outline-none"
+                  style={{ background: 'var(--input-background)', color: 'var(--foreground)', fontFamily: 'var(--font-family-primary)', fontSize: 'var(--text-base)', border: '1px solid var(--border)' }}
+                >
+                  <option value="">— No especificado —</option>
+                  {catEspecialidades.map(e => (
+                    <option key={e.id} value={e.id}>{e.nombre}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block mb-1" style={{ color: 'var(--foreground)', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)' }}>Grupo Sanguíneo</label>
+                <select
+                  value={formPerfil.grupo_sanguineo}
+                  onChange={e => setFormPerfil({ ...formPerfil, grupo_sanguineo: e.target.value })}
+                  className="w-full px-3 py-2 rounded-lg border outline-none"
+                  style={{ background: 'var(--input-background)', color: 'var(--foreground)', fontFamily: 'var(--font-family-primary)', fontSize: 'var(--text-base)', border: '1px solid var(--border)' }}
+                >
+                  <option value="">— No especificado —</option>
+                  {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map(g => (
+                    <option key={g} value={g}>{g}</option>
+                  ))}
+                </select>
+              </div>
+
+              <div>
+                <label className="block mb-1" style={{ color: 'var(--foreground)', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)' }}>
+                  Alergias {formPerfil.alergiaIds.length > 0 && `(${formPerfil.alergiaIds.length} seleccionadas)`}
+                </label>
+                <div
+                  className="grid grid-cols-2 gap-x-3 gap-y-2 p-3 rounded-lg border"
+                  style={{ background: 'var(--input-background)', borderColor: 'var(--border)' }}
+                >
+                  {catAlergias.map(a => (
+                    <label key={a.id} className="flex items-center gap-2 cursor-pointer" style={{ fontSize: 'var(--text-base)', color: 'var(--foreground)' }}>
+                      <input
+                        type="checkbox"
+                        checked={formPerfil.alergiaIds.includes(a.id)}
+                        onChange={e => setFormPerfil({
+                          ...formPerfil,
+                          alergiaIds: e.target.checked
+                            ? [...formPerfil.alergiaIds, a.id]
+                            : formPerfil.alergiaIds.filter(id => id !== a.id),
+                        })}
+                      />
+                      {a.nombre}
+                    </label>
+                  ))}
+                </div>
+              </div>
+
+              {errorPerfil && (
+                <div className="flex items-start gap-2.5 p-3 rounded-lg" style={{ background: '#fee2e2', border: '1px solid #fecaca', color: '#b91c1c', fontSize: 'var(--text-base)' }}>
+                  <AlertCircle size={15} style={{ marginTop: 1, flexShrink: 0 }} />
+                  <span>{errorPerfil}</span>
+                </div>
+              )}
+            </div>
+
+            <div className="flex items-center justify-end gap-2 mt-5">
+              <button
+                onClick={() => setShowEditarPerfil(false)}
+                className="px-4 py-2 rounded-[var(--radius-button)]"
+                style={{ color: 'var(--foreground)', background: 'var(--muted)', border: 'none', cursor: 'pointer', fontSize: 'var(--text-base)', fontFamily: 'var(--font-family-primary)' }}
+              >
+                Cancelar
+              </button>
+              <button
+                onClick={guardarPerfil}
+                disabled={guardandoPerfil}
+                className="px-4 py-2 rounded-[var(--radius-button)] text-white"
+                style={{ background: 'var(--primary)', border: 'none', cursor: guardandoPerfil ? 'not-allowed' : 'pointer', opacity: guardandoPerfil ? 0.7 : 1, fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-semibold)', fontFamily: 'var(--font-family-primary)' }}
+              >
+                {guardandoPerfil ? 'Guardando...' : 'Guardar Cambios'}
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
     </div>
   );
 }

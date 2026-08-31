@@ -10,6 +10,7 @@ import * as Sesion from '../models/sesion.model.js';
 import * as Auditoria from '../models/auditoria.model.js';
 import * as TokenEmail from '../models/tokenEmail.model.js';
 import { enviarConfirmacion } from '../services/email.service.js';
+import { validarDatosPersonales } from '../utils/validaciones.js';
 import { query } from '../config/db.js';
 
 const ENTIDAD = 'usuarios';
@@ -57,6 +58,11 @@ export async function crear(req, res, next) {
       return res.status(400).json({ error: 'DNI, nombre, apellido, email y contraseña son obligatorios.' });
     }
 
+    const errores = validarDatosPersonales(b);
+    if (Object.keys(errores).length) {
+      return res.status(400).json({ error: 'Datos inválidos.', errores });
+    }
+
     const duplicado = await Usuario.existeDniOEmail(b.dni, b.email);
     if (duplicado.dni || duplicado.email) {
       return res.status(409).json({
@@ -101,12 +107,25 @@ export async function actualizar(req, res, next) {
 
     const b = req.body ?? {};
 
+    const errores = validarDatosPersonales(b);
+    if (Object.keys(errores).length) {
+      return res.status(400).json({ error: 'Datos inválidos.', errores });
+    }
+
     if (b.email && b.email.toLowerCase() !== previo.email.toLowerCase()) {
       const { rows } = await query(
         `SELECT id FROM usuarios WHERE lower(email) = lower($1) AND id <> $2`,
         [b.email, id]
       );
       if (rows.length) return res.status(409).json({ error: 'Ese email ya está en uso.', campo: 'email' });
+    }
+
+    if (b.dni && b.dni !== previo.dni) {
+      const { rows } = await query(
+        `SELECT id FROM usuarios WHERE dni = $1 AND id <> $2`,
+        [b.dni, id]
+      );
+      if (rows.length) return res.status(409).json({ error: 'Ese DNI ya está en uso.', campo: 'dni' });
     }
 
     const campos = { ...b };

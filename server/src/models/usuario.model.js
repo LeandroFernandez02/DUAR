@@ -150,7 +150,7 @@ export async function actualizar(id, campos) {
 
   // Mapeo explícito: evita que un campo inesperado del body llegue al SQL.
   const permitidos = {
-    nombre: 'nombre', apellido: 'apellido', email: 'email', telefono: 'telefono',
+    dni: 'dni', nombre: 'nombre', apellido: 'apellido', email: 'email', telefono: 'telefono',
     fechaNacimiento: 'fecha_nacimiento', genero: 'genero', rolId: 'rol_id',
     institucionId: 'institucion_id', dotacionId: 'dotacion_id',
     especialidadId: 'especialidad_id', grupoSanguineo: 'grupo_sanguineo',

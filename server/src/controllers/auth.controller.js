@@ -10,6 +10,7 @@ import * as Sesion from '../models/sesion.model.js';
 import * as TokenEmail from '../models/tokenEmail.model.js';
 import * as Auditoria from '../models/auditoria.model.js';
 import { enviarRecuperacion, enviarConfirmacion } from '../services/email.service.js';
+import { validarDatosPersonales } from '../utils/validaciones.js';
 import { query } from '../config/db.js';
 
 const HORAS_SESION = Number(process.env.SESION_HORAS ?? 12);
@@ -249,5 +250,45 @@ export async function reenviarConfirmacion(req, res, next) {
     });
 
     res.json({ mensaje: 'Correo de confirmación reenviado.' });
+  } catch (err) { next(err); }
+}
+
+/**
+ * PUT /api/auth/me — el propio agente edita sus datos.
+ *
+ * Allowlist estricta acá adentro, no confiada al frontend: sin importar qué
+ * mande el body, DNI, email, estado y rol NUNCA se tocan por esta vía — son
+ * datos de identidad/login (DNI, email) o de gestión (estado, rol) que sólo
+ * un administrador o coordinador puede cambiar (ver CU-06).
+ */
+export async function actualizarMisDatos(req, res, next) {
+  try {
+    const b = req.body ?? {};
+    const campos = {};
+    for (const clave of [
+      'nombre', 'apellido', 'telefono', 'fechaNacimiento', 'genero',
+      'institucionId', 'dotacionId', 'especialidadId', 'grupoSanguineo', 'alergiaIds',
+    ]) {
+      if (b[clave] !== undefined) campos[clave] = b[clave];
+    }
+
+    const errores = validarDatosPersonales(campos);
+    if (Object.keys(errores).length) {
+      return res.status(400).json({ error: 'Datos inválidos.', errores });
+    }
+
+    const actualizado = await Usuario.actualizar(req.usuario.id, campos);
+
+    await Auditoria.registrar({
+      usuarioId: req.usuario.id,
+      accion: Auditoria.ACCION.MODIFICAR,
+      entidad: 'usuarios',
+      registroId: req.usuario.id,
+      valoresPrevios: req.usuario,
+      valoresNuevos: actualizado,
+      ip: req.ip,
+    });
+
+    res.json({ usuario: actualizado });
   } catch (err) { next(err); }
 }

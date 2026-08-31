@@ -18,6 +18,7 @@ import * as Operativo from '../models/operativo.model.js';
 import * as TokenEmail from '../models/tokenEmail.model.js';
 import * as Auditoria from '../models/auditoria.model.js';
 import { enviarConfirmacion } from '../services/email.service.js';
+import { validarDatosPersonales } from '../utils/validaciones.js';
 import { query } from '../config/db.js';
 
 const HORAS_SESION = Number(process.env.SESION_HORAS ?? 12);
@@ -70,6 +71,11 @@ export async function registrar(req, res, next) {
     }
     if (String(b.password).length < 8) {
       return res.status(400).json({ error: 'La contraseña debe tener al menos 8 caracteres.' });
+    }
+
+    const errores = validarDatosPersonales(b);
+    if (Object.keys(errores).length) {
+      return res.status(400).json({ error: 'Datos inválidos.', errores });
     }
 
     // CU-02 paso 4.1 — si ya está registrado, se bloquea la creación.
