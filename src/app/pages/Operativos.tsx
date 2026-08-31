@@ -875,16 +875,18 @@ export default function Operativos() {
                       <Flag size={14} />
                     </button>
                   )}
-                  <button
-                    onClick={e => { e.stopPropagation(); openDelete(op); }}
-                    title="Eliminar"
-                    className="p-1.5 rounded-lg transition-colors"
-                    style={{ color: 'var(--muted-foreground)', background: 'none', border: 'none', cursor: 'pointer' }}
-                    onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = '#fee2e2'}
-                    onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'none'}
-                  >
-                    <Trash2 size={14} />
-                  </button>
+                  {op.estado === 'nuevo' && (
+                    <button
+                      onClick={e => { e.stopPropagation(); openDelete(op); }}
+                      title="Eliminar"
+                      className="p-1.5 rounded-lg transition-colors"
+                      style={{ color: 'var(--muted-foreground)', background: 'none', border: 'none', cursor: 'pointer' }}
+                      onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = '#fee2e2'}
+                      onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'none'}
+                    >
+                      <Trash2 size={14} />
+                    </button>
+                  )}
                 </div>
 
                 {/* Acceder al panel */}
@@ -1024,11 +1026,13 @@ export default function Operativos() {
                     <Flag size={14} />
                   </button>
                 )}
-                <button onClick={() => openDelete(op)} title="Eliminar" className="p-1.5 rounded-lg" style={{ color: 'var(--muted-foreground)', background: 'none', border: 'none', cursor: 'pointer' }}
-                  onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = '#fee2e2'}
-                  onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}>
-                  <Trash2 size={14} />
-                </button>
+                {op.estado === 'nuevo' && (
+                  <button onClick={() => openDelete(op)} title="Eliminar" className="p-1.5 rounded-lg" style={{ color: 'var(--muted-foreground)', background: 'none', border: 'none', cursor: 'pointer' }}
+                    onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = '#fee2e2'}
+                    onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}>
+                    <Trash2 size={14} />
+                  </button>
+                )}
                 <button
                   onClick={() => { void entrarAOperativo(op); }}
                   title="Acceder al panel"
