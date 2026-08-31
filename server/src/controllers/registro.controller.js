@@ -122,17 +122,23 @@ export async function registrar(req, res, next) {
     // a tipear la contraseña que acaba de elegir.
     const token = await abrirSesion(creado.id, req);
 
-    // CU-02 paso 7: correo de confirmación. Deliberadamente SIN await — el
-    // registro y el alta son lo urgente en un rescate real; no tiene sentido
-    // que el agente espere a que salga un correo para poder seguir.
-    TokenEmail.emitir(creado.id, 'CONFIRMACION').then((tokenEmail) => {
-      enviarConfirmacion({
+    // CU-02 paso 7: correo de confirmación. Se espera (await) el envío antes
+    // de responder: en serverless una promesa sin await después de la
+    // respuesta puede quedar colgada a mitad de camino si el contenedor se
+    // congela, sin loggear ni éxito ni error. El try/catch de acá adentro
+    // mantiene la idea original — que el registro y el alta (lo urgente en
+    // un rescate real) nunca fallen porque el correo no salió.
+    try {
+      const tokenEmail = await TokenEmail.emitir(creado.id, 'CONFIRMACION');
+      await enviarConfirmacion({
         para: creado.email,
         nombre: creado.nombre,
         url: `${FRONTEND_URL}/confirmar-email/${tokenEmail}`,
         operativoNombre: acceso.titulo,
       });
-    }).catch((err) => console.error('[registro] no se pudo emitir el token de confirmación:', err.message));
+    } catch (err) {
+      console.error('[registro] no se pudo emitir el token de confirmación:', err.message);
+    }
 
     res.status(201).json({
       token,

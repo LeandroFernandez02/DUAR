@@ -136,11 +136,17 @@ export async function solicitarRecuperacion(req, res, next) {
     const usuario = await Usuario.buscarPorEmailConHash(email);
     if (usuario && usuario.estado === 'ACTIVO') {
       const token = await TokenEmail.emitir(usuario.id, 'RECUPERACION');
-      enviarRecuperacion({
+      // Se espera (await) el envío antes de responder: en serverless, una
+      // promesa sin await después de mandar la respuesta puede quedar
+      // colgada a mitad de camino si el contenedor se congela, sin loggear
+      // ni éxito ni error (así se perdió el mail de recuperación de Leandro).
+      // `enviarRecuperacion` nunca lanza — ya loguea el fallo internamente —
+      // así que esto no puede tumbar la respuesta genérica de más abajo.
+      await enviarRecuperacion({
         para: usuario.email,
         nombre: usuario.nombre,
         url: `${FRONTEND_URL}/recuperar-contrasena/${token}`,
-      }).catch((err) => console.error('[auth] no se pudo enviar la recuperación:', err.message));
+      });
     }
     // Se responde igual en todos los casos: no existe, está INACTIVO, o se
     // mandó bien. La diferencia sólo la ve quien tiene acceso al correo real.
