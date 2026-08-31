@@ -9,7 +9,7 @@ import * as Usuario from '../models/usuario.model.js';
 import * as Sesion from '../models/sesion.model.js';
 import * as TokenEmail from '../models/tokenEmail.model.js';
 import * as Auditoria from '../models/auditoria.model.js';
-import { enviarRecuperacion } from '../services/email.service.js';
+import { enviarRecuperacion, enviarConfirmacion } from '../services/email.service.js';
 import { query } from '../config/db.js';
 
 const HORAS_SESION = Number(process.env.SESION_HORAS ?? 12);
@@ -104,7 +104,16 @@ export async function confirmarEmail(req, res, next) {
       return res.json({ estado: 'ya_confirmado' });
     }
 
-    await query(`UPDATE usuarios SET email_confirmado = true WHERE id = $1`, [acceso.usuarioId]);
+    // PENDIENTE → ACTIVO acá. El CASE protege a alguien que un admin ya haya
+    // puesto en INACTIVO mientras tanto: confirmar el mail no debe reactivar
+    // una cuenta suspendida a propósito.
+    await query(
+      `UPDATE usuarios
+          SET email_confirmado = true,
+              estado = CASE WHEN estado = 'PENDIENTE' THEN 'ACTIVO' ELSE estado END
+        WHERE id = $1`,
+      [acceso.usuarioId]
+    );
     await TokenEmail.marcarUsado(acceso.id);
 
     await Auditoria.registrar({
@@ -206,5 +215,39 @@ export async function restablecerContrasena(req, res, next) {
     });
 
     res.json({ mensaje: 'Contraseña actualizada correctamente.' });
+  } catch (err) { next(err); }
+}
+
+/**
+ * POST /api/auth/reenviar-confirmacion — self-service.
+ * Requiere sesión (el agente ya se registró, sólo le falta confirmar). El
+ * cooldown de 2 minutos evita que se pueda martillar el botón y saturar el
+ * envío de Gmail; es el mismo reloj que usa el reenvío desde el panel del
+ * coordinador (CU-04..07) — a `TokenEmail.segundosParaReenviar` no le importa
+ * quién dispara el pedido.
+ */
+export async function reenviarConfirmacion(req, res, next) {
+  try {
+    if (req.usuario.estado !== 'PENDIENTE') {
+      return res.status(400).json({ error: 'Tu cuenta ya está confirmada.', motivo: 'ya_confirmado' });
+    }
+
+    const restantes = await TokenEmail.segundosParaReenviar(req.usuario.id, 'CONFIRMACION');
+    if (restantes > 0) {
+      return res.status(429).json({
+        error: `Esperá ${restantes}s antes de volver a solicitar el correo.`,
+        motivo: 'cooldown',
+        segundos: restantes,
+      });
+    }
+
+    const tokenEmail = await TokenEmail.emitir(req.usuario.id, 'CONFIRMACION');
+    await enviarConfirmacion({
+      para: req.usuario.email,
+      nombre: req.usuario.nombre,
+      url: `${FRONTEND_URL}/confirmar-email/${tokenEmail}`,
+    });
+
+    res.json({ mensaje: 'Correo de confirmación reenviado.' });
   } catch (err) { next(err); }
 }

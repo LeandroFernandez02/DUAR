@@ -21,5 +21,6 @@ router.get('/:id/auditoria', gestores, usuarios.auditoria);
 router.post('/',             gestores, usuarios.crear);       // CU-05
 router.put('/:id',           gestores, usuarios.actualizar);  // CU-06
 router.delete('/:id',        gestores, usuarios.eliminar);    // CU-07
+router.post('/:id/reenviar-confirmacion', gestores, usuarios.reenviarConfirmacion);
 
 export default router;

@@ -1,5 +1,5 @@
 export type Rol = 'administrador' | 'coordinador' | 'agente';
-export type EstadoUsuario = 'activo' | 'inactivo' | 'eliminado';
+export type EstadoUsuario = 'activo' | 'inactivo' | 'eliminado' | 'pendiente';
 export type EstadoOperativo = 'activo' | 'planificación' | 'inactivo' | 'nuevo' | 'finalizado' | 'eliminado' | 'en_proceso';
 /**
  * Ciclo de vida del grupo — espejo del ENUM `estado_grupo` de PostgreSQL (7 valores).

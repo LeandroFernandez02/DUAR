@@ -145,6 +145,13 @@ export const authApi = {
 
   /** Portal del Agente: su alta activa ahora mismo, o null si no tiene. */
   miOperativoActual: () => api.get<{ operativo: OperativoApi | null }>('/mi-operativo'),
+
+  /**
+   * Reenvío de confirmación a pedido del propio agente (self-service).
+   * Si está en cooldown, el backend responde 409/429 con
+   * `motivo: 'cooldown'` y `datos.segundos` restantes.
+   */
+  reenviarConfirmacion: () => api.post<{ mensaje: string }>('/auth/reenviar-confirmacion'),
 };
 
 export const catalogosApi = {
@@ -337,4 +344,7 @@ export const usuariosApi = {
   eliminar: (id: string) => api.del<void>(`/usuarios/${id}`),
   auditoria: (id: string) =>
     api.get<{ eventos: unknown[] }>(`/usuarios/${id}/auditoria`),
+  /** Reenvío a pedido del coordinador/admin, para un usuario en estado PENDIENTE. */
+  reenviarConfirmacion: (id: string) =>
+    api.post<{ mensaje: string }>(`/usuarios/${id}/reenviar-confirmacion`),
 };

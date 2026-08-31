@@ -11,6 +11,7 @@ import { generarToken, hashToken } from './sesion.model.js';
 
 const HORAS_CONFIRMACION = 24;
 const MINUTOS_RECUPERACION = 60; // CU-03 paso 6.1: "+60 min"
+export const COOLDOWN_REENVIO_SEGUNDOS = 120;
 
 /** Emite un token nuevo del tipo pedido y devuelve el valor EN CLARO (para el email). */
 export async function emitir(usuarioId, tipo) {
@@ -45,4 +46,23 @@ export async function validar(token, tipo) {
 /** Marca el token como usado. Un token de un solo uso, aunque no haya vencido. */
 export async function marcarUsado(id) {
   await query(`UPDATE tokens_recuperacion SET usado = true WHERE id = $1`, [id]);
+}
+
+/**
+ * Cuántos segundos faltan para poder reenviar un correo de este tipo — se
+ * mide desde el ÚLTIMO token emitido (usado o no, vencido o no: lo único que
+ * importa acá es no saturar el envío de Gmail, no la validez del token).
+ * Es el mismo cooldown lo dispare el propio agente o un coordinador desde el
+ * panel de Usuarios — un solo reloj compartido.
+ */
+export async function segundosParaReenviar(usuarioId, tipo) {
+  const { rows } = await query(
+    `SELECT creado_en FROM tokens_recuperacion
+      WHERE usuario_id = $1 AND tipo = $2
+      ORDER BY creado_en DESC LIMIT 1`,
+    [usuarioId, tipo]
+  );
+  if (!rows[0]) return 0;
+  const transcurridos = (Date.now() - new Date(rows[0].creado_en).getTime()) / 1000;
+  return Math.max(0, Math.ceil(COOLDOWN_REENVIO_SEGUNDOS - transcurridos));
 }

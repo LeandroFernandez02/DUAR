@@ -21,8 +21,11 @@ export async function requiereSesion(req, res, next) {
 
     const { sesionId, ...usuario } = fila;
 
-    // El usuario pudo ser dado de baja DESPUÉS de iniciar sesión: se corta acá.
-    if (usuario.estado !== 'ACTIVO') {
+    // El usuario pudo ser dado de baja o suspendido DESPUÉS de iniciar sesión:
+    // se corta acá. PENDIENTE (mail sin confirmar) SÍ puede seguir usando su
+    // sesión — sólo queda restringido en acciones puntuales (como el alta en
+    // un operativo), no en el acceso general al sistema.
+    if (usuario.estado === 'INACTIVO' || usuario.estado === 'ELIMINADO') {
       await Sesion.revocarTodasDe(usuario.id);
       return res.status(403).json({ error: 'La cuenta ya no está activa.' });
     }

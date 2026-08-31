@@ -1,5 +1,6 @@
 import { useState, useEffect } from 'react';
-import { Plus, Search, Edit2, Trash2, X, Shield, User, UserCheck, AlertCircle } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, X, Shield, User, UserCheck, AlertCircle, MailCheck } from 'lucide-react';
+import { toast } from 'sonner';
 import { useApp } from '../context/AppContext';
 import { Usuario, Rol, EstadoUsuario, catInstituciones, catEspecialidades, catAlergias, dotacionesDe, institucionLabel, especialidadNombrePorId } from '../data/mockData';
 import { usuariosApi, ApiError, UsuarioApi } from '../services/api';
@@ -28,7 +29,7 @@ function mapearUsuario(u: UsuarioApi): Usuario {
     grupo_sanguineo: u.grupoSanguineo ?? undefined,
     estado: u.estado.toLowerCase() as EstadoUsuario,
     createdAt: '',
-    emailConfirmado: true,
+    emailConfirmado: u.emailConfirmado,
   };
 }
 
@@ -96,6 +97,22 @@ export default function Usuarios() {
     setForm(emptyForm);
     setSelected(null);
     setModal('create');
+  };
+
+  /** id del usuario cuyo reenvío está en curso — deshabilita ese botón puntual. */
+  const [reenviando, setReenviando] = useState<string | null>(null);
+
+  /** Reenvía el correo de confirmación a un usuario PENDIENTE, a pedido del coordinador. */
+  const handleReenviarConfirmacion = async (u: Usuario) => {
+    setReenviando(u.id);
+    try {
+      await usuariosApi.reenviarConfirmacion(u.id);
+      toast.success(`Correo de confirmación reenviado a ${u.email}.`);
+    } catch (err) {
+      toast.error(err instanceof ApiError ? err.message : 'No se pudo reenviar el correo.');
+    } finally {
+      setReenviando(null);
+    }
   };
 
   const openEdit = (u: Usuario) => {
@@ -278,6 +295,18 @@ export default function Usuarios() {
                   </div>
                 </div>
                 <div className="flex items-center gap-1 flex-shrink-0">
+                  {u.estado === 'pendiente' && (
+                    <button
+                      onClick={() => handleReenviarConfirmacion(u)}
+                      disabled={reenviando === u.id}
+                      className="p-2 rounded-lg"
+                      style={{ color: 'var(--muted-foreground)', background: 'var(--muted)', opacity: reenviando === u.id ? 0.5 : 1 }}
+                      aria-label="Reenviar correo de confirmación"
+                      title="Reenviar correo de confirmación"
+                    >
+                      <MailCheck size={14} />
+                    </button>
+                  )}
                   <button
                     onClick={() => openEdit(u)}
                     className="p-2 rounded-lg"
@@ -401,6 +430,19 @@ export default function Usuarios() {
                     </td>
                     <td className="px-4 py-3">
                       <div className="flex items-center gap-1">
+                        {u.estado === 'pendiente' && (
+                          <button
+                            onClick={() => handleReenviarConfirmacion(u)}
+                            disabled={reenviando === u.id}
+                            className="p-1.5 rounded-lg transition-colors"
+                            style={{ color: 'var(--muted-foreground)', opacity: reenviando === u.id ? 0.5 : 1 }}
+                            title="Reenviar correo de confirmación"
+                            onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--muted)'}
+                            onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}
+                          >
+                            <MailCheck size={14} />
+                          </button>
+                        )}
                         <button
                           onClick={() => openEdit(u)}
                           className="p-1.5 rounded-lg transition-colors"

@@ -8,9 +8,12 @@ import bcrypt from 'bcryptjs';
 import * as Usuario from '../models/usuario.model.js';
 import * as Sesion from '../models/sesion.model.js';
 import * as Auditoria from '../models/auditoria.model.js';
+import * as TokenEmail from '../models/tokenEmail.model.js';
+import { enviarConfirmacion } from '../services/email.service.js';
 import { query } from '../config/db.js';
 
 const ENTIDAD = 'usuarios';
+const FRONTEND_URL = process.env.FRONTEND_URL ?? 'http://localhost:5173';
 
 /** Traduce el nombre del rol a su UUID; el frontend trabaja con nombres. */
 async function resolverRolId({ rolId, rol }) {
@@ -215,5 +218,41 @@ export async function eliminar(req, res, next) {
 export async function auditoria(req, res, next) {
   try {
     res.json({ eventos: await Auditoria.porRegistro(ENTIDAD, req.params.id) });
+  } catch (err) { next(err); }
+}
+
+/**
+ * POST /api/usuarios/:id/reenviar-confirmacion — a pedido de un
+ * administrador o coordinador, para el agente que dice no haber recibido el
+ * correo. Comparte cooldown con el reenvío self-service (mismo reloj, no
+ * importa quién lo dispare).
+ */
+export async function reenviarConfirmacion(req, res, next) {
+  try {
+    const usuario = await Usuario.buscarPorId(req.params.id);
+    if (!usuario || usuario.estado === 'ELIMINADO') {
+      return res.status(404).json({ error: 'Usuario no encontrado.' });
+    }
+    if (usuario.estado !== 'PENDIENTE') {
+      return res.status(400).json({ error: 'Este usuario ya confirmó su correo.', motivo: 'ya_confirmado' });
+    }
+
+    const restantes = await TokenEmail.segundosParaReenviar(usuario.id, 'CONFIRMACION');
+    if (restantes > 0) {
+      return res.status(429).json({
+        error: `Esperá ${restantes}s antes de volver a reenviar.`,
+        motivo: 'cooldown',
+        segundos: restantes,
+      });
+    }
+
+    const tokenEmail = await TokenEmail.emitir(usuario.id, 'CONFIRMACION');
+    await enviarConfirmacion({
+      para: usuario.email,
+      nombre: usuario.nombre,
+      url: `${FRONTEND_URL}/confirmar-email/${tokenEmail}`,
+    });
+
+    res.json({ mensaje: 'Correo de confirmación reenviado.' });
   } catch (err) { next(err); }
 }

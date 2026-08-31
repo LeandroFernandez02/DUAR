@@ -54,6 +54,17 @@ export default function Registro() {
   const [nuevoUserNombre, setNuevoUserNombre] = useState('');
   const [urlConfirmacionDev, setUrlConfirmacionDev] = useState('');
 
+  /* ── Reenvío de confirmación: cooldown de 2 min compartido con el backend ── */
+  const [cooldownReenvio, setCooldownReenvio] = useState(0);
+  const [reenviando, setReenviando] = useState(false);
+
+  useEffect(() => {
+    const id = setInterval(() => setCooldownReenvio(c => (c > 0 ? c - 1 : 0)), 1000);
+    return () => clearInterval(id);
+  }, []);
+
+  const formatCooldown = (s: number) => `${Math.floor(s / 60)}:${String(s % 60).padStart(2, '0')}`;
+
   /* ── Token QR ──
    * El token se valida contra el BACKEND, no contra localStorage. Es la
    * corrección de fondo del flujo: el agente escanea con su propio celular, así
@@ -373,8 +384,10 @@ export default function Registro() {
       setPendingUserId('sesion');
       // CU-02 paso 7: el alta en el operativo (paso 6) queda bloqueada por el
       // backend hasta que confirme el correo — primero pasa por acá, recién
-      // después puede ofrecérsele darse de alta.
+      // después puede ofrecérsele darse de alta. Ya se disparó un envío en
+      // este mismo request, así que el reenvío arranca en cooldown.
       setModo('verificarEmail');
+      setCooldownReenvio(120);
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'No se pudo completar el registro.');
     } finally {
@@ -384,6 +397,24 @@ export default function Registro() {
 
   /** CU-02 paso 7 / CU-15 paso 8 — "Confirmar Ingreso". */
   const handleConfirmar = () => { void intentarAlta(false); };
+
+  /** Reenvía el correo de confirmación (self-service, con cooldown de 2 min). */
+  const handleReenviarCorreo = async () => {
+    setReenviando(true);
+    setError('');
+    try {
+      await authApi.reenviarConfirmacion();
+      setCooldownReenvio(120);
+    } catch (err) {
+      if (err instanceof ApiError && err.motivo === 'cooldown') {
+        const segundos = typeof err.datos.segundos === 'number' ? err.datos.segundos : 0;
+        setCooldownReenvio(segundos);
+      }
+      setError(err instanceof ApiError ? err.message : 'No se pudo reenviar el correo.');
+    } finally {
+      setReenviando(false);
+    }
+  };
 
   /** CU-15 paso 6.2 — el agente acepta abandonar el operativo anterior. */
   const handleDarmeDeAlta = () => { void intentarAlta(true); };
@@ -996,6 +1027,30 @@ export default function Registro() {
             >
               {loading ? 'Verificando...' : 'Ya confirmé mi correo — continuar'}
             </button>
+
+            <button
+              onClick={handleReenviarCorreo}
+              disabled={cooldownReenvio > 0 || reenviando}
+              className="w-full py-3 rounded-[var(--radius-card)] border transition-colors"
+              style={{
+                borderColor: 'var(--border)',
+                color: cooldownReenvio > 0 ? 'var(--muted-foreground)' : 'var(--foreground)',
+                background: 'transparent',
+                fontSize: 'var(--text-base)',
+                cursor: cooldownReenvio > 0 || reenviando ? 'not-allowed' : 'pointer',
+                fontFamily: 'var(--font-family-primary)',
+              }}
+            >
+              {reenviando
+                ? 'Reenviando...'
+                : cooldownReenvio > 0
+                  ? `Reenviar correo (${formatCooldown(cooldownReenvio)})`
+                  : 'Reenviar correo'}
+            </button>
+
+            <p style={{ color: 'var(--muted-foreground)', fontSize: '11px', textAlign: 'center', lineHeight: 1.5 }}>
+              Si después de un par de intentos no te llegó, contactá a un coordinador del DUAR.
+            </p>
           </div>
         )}
 

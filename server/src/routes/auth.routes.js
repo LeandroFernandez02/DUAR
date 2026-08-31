@@ -21,6 +21,10 @@ router.post('/registro', registro.registrar);
 // CU-02 paso 7: confirmación de cuenta. Público — llega por un link de correo.
 router.get('/confirmar-email/:token', auth.confirmarEmail);
 
+// Reenvío de confirmación, a pedido del propio agente. Requiere sesión (ya
+// tiene cuenta, sólo le falta confirmarla) — el cooldown lo valida el controlador.
+router.post('/reenviar-confirmacion', requiereSesion, auth.reenviarConfirmacion);
+
 // CU-03: recuperar contraseña. Todo público — es justamente para quien no
 // puede loguearse.
 router.post('/recuperar-contrasena',        auth.solicitarRecuperacion);
