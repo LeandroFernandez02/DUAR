@@ -19,16 +19,20 @@ const GMAIL_USER = process.env.GMAIL_USER;
 const GMAIL_APP_PASSWORD = process.env.GMAIL_APP_PASSWORD;
 
 /**
- * `pool: true` reusa la conexión SMTP entre envíos en vez de abrir una nueva
- * cada vez — igual razón que el pool de PostgreSQL: el handshake TLS es lo
- * caro, no el envío en sí.
+ * Sin `pool`: cada envío abre y cierra su propia conexión SMTP. En un
+ * servidor tradicional pool:true tendría sentido (reusar el handshake TLS
+ * entre envíos), pero en Vercel serverless cada invocación puede correr en
+ * un contenedor distinto o uno recién "descongelado" — un socket pooleado de
+ * una invocación anterior llega muerto del otro lado, y Gmail lo corta con
+ * "Client network socket disconnected before secure TLS connection was
+ * established" apenas se intenta reusar. Abrir conexión nueva por envío es
+ * un poco más lento pero confiable, y el volumen de correo de esta app no
+ * justifica el pooling igual.
  */
 const transporte = GMAIL_USER && GMAIL_APP_PASSWORD
   ? nodemailer.createTransport({
       service: 'gmail',
       auth: { user: GMAIL_USER, pass: GMAIL_APP_PASSWORD },
-      pool: true,
-      maxConnections: 2,
     })
   : null;
 
