@@ -181,6 +181,17 @@ export async function altaEnOperativo(req, res, next) {
       });
     }
 
+    // El agente debe confirmar su correo (CU-02 paso 7) antes de quedar
+    // registrado en un operativo. Sin este freno, alguien podía escanear el
+    // QR, tipear cualquier email ajeno y quedar visible para el coordinador
+    // sin que ese canal de contacto sea real.
+    if (!req.usuario.emailConfirmado) {
+      return res.status(403).json({
+        error: 'Confirmá tu cuenta desde el correo que te enviamos antes de unirte al operativo.',
+        motivo: 'email_no_confirmado',
+      });
+    }
+
     const altaPrevia = await AgenteOperativo.altaActivaDe(req.usuario.id);
 
     if (altaPrevia && altaPrevia.operativoId === operativoId) {

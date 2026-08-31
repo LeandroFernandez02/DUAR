@@ -8,7 +8,7 @@ import {
 import { useApp } from '../context/AppContext';
 import { RecuperarContrasenaModal } from '../components/auth/RecuperarContrasenaModal';
 import { catInstituciones, catEspecialidades, catAlergias, dotacionesDe } from '../data/mockData';
-import { qrApi, registroApi, setToken, ApiError, OperativoQRApi } from '../services/api';
+import { qrApi, registroApi, authApi, setToken, ApiError, OperativoQRApi } from '../services/api';
 
 /* ── Tipos ────────────────────────────────────────────────── */
 type Modo = 'inicial' | 'login' | 'registro' | 'confirmar' | 'verificarEmail' | 'confirmacion';
@@ -289,7 +289,10 @@ export default function Registro() {
           : null);
         setShowConflictoModal(true);
       } else if (err instanceof ApiError && err.motivo === 'ya_en_este_operativo') {
-        setModo('confirmacion');            // ya estaba dado de alta: no es un error
+        navigate('/agente');                // ya estaba dado de alta: directo al panel, no es un registro nuevo
+      } else if (err instanceof ApiError && err.motivo === 'email_no_confirmado') {
+        setModo('verificarEmail');
+        setError('Todavía no confirmaste tu correo. Revisá tu casilla y volvé a intentar.');
       } else {
         setError(err instanceof ApiError ? err.message : 'No se pudo completar el alta.');
       }
@@ -310,6 +313,21 @@ export default function Registro() {
 
     if (result === 'ok') {
       setPendingUserId('sesion');           // ya hay sesión; el alta usa el token
+
+      // Si ya está dado de alta en ESTE operativo (volvió a escanear el
+      // mismo QR para iniciar sesión, no para unirse de nuevo), directo al
+      // panel — mostrarle la pantalla de "confirmá tu participación" da la
+      // sensación de que se está registrando de vuelta cuando no es así.
+      try {
+        const { operativo: actual } = await authApi.miOperativoActual();
+        if (actual && actual.id === operativoId) {
+          navigate('/agente');
+          return;
+        }
+      } catch {
+        // Si la consulta falla, seguimos al flujo normal de confirmación.
+      }
+
       setModo('confirmar');                 // CU-02 paso 6: confirma antes del alta
       return;
     }
@@ -353,9 +371,10 @@ export default function Registro() {
       setNuevoUserEmail(regForm.email);
       setNuevoUserNombre(regForm.nombre);
       setPendingUserId('sesion');
-      // CU-02 paso 6: creado el usuario, se le ofrece darse de alta — y puede
-      // cancelar sin perder la cuenta (alternativa 6.1).
-      setModo('confirmar');
+      // CU-02 paso 7: el alta en el operativo (paso 6) queda bloqueada por el
+      // backend hasta que confirme el correo — primero pasa por acá, recién
+      // después puede ofrecérsele darse de alta.
+      setModo('verificarEmail');
     } catch (err) {
       setError(err instanceof ApiError ? err.message : 'No se pudo completar el registro.');
     } finally {
@@ -908,11 +927,11 @@ export default function Registro() {
                 className="mb-2"
                 style={{ color: 'var(--foreground)', fontSize: 'var(--text-h2)', fontWeight: 'var(--font-weight-bold)' }}
               >
-                ¡Ya estás en el operativo!
+                Confirmá tu cuenta para continuar
               </h2>
               <p style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-base)', lineHeight: 1.6 }}>
-                Te uniste a <strong style={{ color: 'var(--foreground)' }}>{operativo.nombre}</strong>. 
-                Ahora confirmá tu cuenta haciendo clic en el link que enviamos a:
+                Te enviamos un correo a la casilla de abajo. Hacé clic en el link para confirmar tu cuenta —
+                recién ahí vas a poder unirte a <strong style={{ color: 'var(--foreground)' }}>{operativo.nombre}</strong>.
               </p>
             </div>
 
@@ -932,9 +951,19 @@ export default function Registro() {
             >
               <AlertTriangle size={14} style={{ color: '#d97706', flexShrink: 0, marginTop: '2px' }} />
               <p style={{ color: 'var(--foreground)', fontSize: 'var(--text-label)', lineHeight: 1.5 }}>
-                Podés usar el sistema ahora, pero algunas funciones quedarán limitadas hasta que confirmes tu email.
+                Todavía no quedaste unido al operativo. Confirmá el correo y volvé a esta pantalla.
               </p>
             </div>
+
+            {error && (
+              <div
+                className="flex items-start gap-2.5 p-3 rounded-xl"
+                style={{ background: '#fee2e2', border: '1px solid #fecaca', color: '#b91c1c', fontSize: 'var(--text-base)' }}
+              >
+                <AlertCircle size={15} style={{ marginTop: 1, flexShrink: 0 }} />
+                <span>{error}</span>
+              </div>
+            )}
 
             {/* Link de confirmación en desarrollo */}
             {urlConfirmacionDev && (
@@ -960,17 +989,13 @@ export default function Registro() {
             )}
 
             <button
-              onClick={() => setModo('confirmacion')}
+              onClick={handleConfirmar}
+              disabled={loading}
               className="w-full py-4 rounded-[var(--radius-card)] text-white transition-opacity hover:opacity-90"
-              style={{ background: 'var(--primary)', fontSize: 'var(--text-h3)', fontWeight: 'var(--font-weight-semibold)' }}
+              style={{ background: 'var(--primary)', opacity: loading ? 0.7 : 1, fontSize: 'var(--text-h3)', fontWeight: 'var(--font-weight-semibold)' }}
             >
-              Entendido — ir a mi panel
+              {loading ? 'Verificando...' : 'Ya confirmé mi correo — continuar'}
             </button>
-
-            {/* El reenvío de correo se quita hasta tener SMTP real: el CU-02
-                paso 7 pide confirmación por mail, pero todavía no hay acceso al
-                servidor de correo (nota del docx). Ofrecer un botón que no
-                enviaría nada sería engañar al agente en pleno operativo. */}
           </div>
         )}
 
