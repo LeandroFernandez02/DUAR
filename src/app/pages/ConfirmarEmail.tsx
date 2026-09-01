@@ -1,16 +1,23 @@
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate } from 'react-router';
-import { Shield, CheckCircle, XCircle, Loader, MailCheck } from 'lucide-react';
+import { useParams, useNavigate, Link } from 'react-router';
+import { Shield, CheckCircle, XCircle, Loader, MailCheck, Users, AlertTriangle, RefreshCw } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { authApi } from '../services/api';
+import { authApi, registroApi, ApiError } from '../services/api';
+import { leerAltaPendiente, limpiarAltaPendiente, AltaPendiente } from '../utils/altaPendiente';
 
 type Estado = 'verificando' | 'exitoso' | 'invalido' | 'ya_confirmado';
+/** Estado del alta automática al operativo que quedó pendiente (ver utils/altaPendiente.ts). */
+type EstadoAlta = 'ninguna' | 'uniendo' | 'unido' | 'conflicto' | 'error';
 
 export default function ConfirmarEmail() {
   const { token } = useParams<{ token: string }>();
   const { isAuthenticated, usuario } = useApp();
   const navigate = useNavigate();
   const [estado, setEstado] = useState<Estado>('verificando');
+
+  const [altaPendiente, setAltaPendienteState] = useState<AltaPendiente | null>(null);
+  const [estadoAlta, setEstadoAlta] = useState<EstadoAlta>('ninguna');
+  const [errorAlta, setErrorAlta] = useState('');
 
   useEffect(() => {
     if (!token) {
@@ -25,6 +32,139 @@ export default function ConfirmarEmail() {
       .catch(() => { if (vigente) setEstado('invalido'); });
     return () => { vigente = false; };
   }, [token]);
+
+  /**
+   * CU-02 paso 7 → paso 6: apenas el correo queda confirmado, se completa
+   * automáticamente el alta al operativo que quedó pendiente de la pantalla
+   * de registro (ver utils/altaPendiente.ts) — antes había que acordarse de
+   * volver a esa pestaña y tocar "Ya confirmé mi correo", y si no, el agente
+   * quedaba registrado en el sistema pero nunca sumado al operativo.
+   */
+  const intentarAltaAutomatica = () => {
+    const pendiente = leerAltaPendiente();
+    if (!pendiente) return;
+    setAltaPendienteState(pendiente);
+    setEstadoAlta('uniendo');
+    registroApi.altaEnOperativo(pendiente.operativoId, pendiente.qrToken)
+      .then(() => {
+        limpiarAltaPendiente();
+        setEstadoAlta('unido');
+      })
+      .catch((err) => {
+        if (err instanceof ApiError && err.motivo === 'ya_en_este_operativo') {
+          limpiarAltaPendiente();
+          setEstadoAlta('unido');
+          return;
+        }
+        if (err instanceof ApiError && err.motivo === 'regla_ubicuidad') {
+          // Requiere una decisión del agente (CU-15 paso 6.2) — se lo manda
+          // de vuelta a la pantalla de registro, que ya tiene ese modal armado.
+          limpiarAltaPendiente();
+          setEstadoAlta('conflicto');
+          return;
+        }
+        if (err instanceof ApiError && err.motivo === 'qr_invalido') {
+          // No se limpia el pendiente: si el coordinador refresca el QR y el
+          // agente reintenta, `qrToken` seguiría siendo el viejo de todos
+          // modos (no hay forma de enterarse del nuevo desde acá) — se deja
+          // así a propósito para que "Reintentar" sea consistente y no un
+          // botón que no hace nada.
+          setErrorAlta(`El código QR de "${pendiente.operativoNombre}" venció. Pedile al coordinador que te comparta uno nuevo y volvé a escanearlo.`);
+          setEstadoAlta('error');
+          return;
+        }
+        if (err instanceof ApiError && err.motivo === 'operativo_cerrado') {
+          setErrorAlta(`El operativo "${pendiente.operativoNombre}" ya no admite nuevos ingresos.`);
+          setEstadoAlta('error');
+          return;
+        }
+        if (err instanceof ApiError && err.status === 401) {
+          setErrorAlta(`Iniciá sesión y volvé a escanear el QR de "${pendiente.operativoNombre}" para unirte.`);
+          setEstadoAlta('error');
+          return;
+        }
+        setErrorAlta(err instanceof ApiError ? err.message : 'No se pudo completar el ingreso al operativo.');
+        setEstadoAlta('error');
+      });
+  };
+
+  useEffect(() => {
+    if (estado !== 'exitoso' && estado !== 'ya_confirmado') return;
+    intentarAltaAutomatica();
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [estado]);
+
+  /** Sección chica que se agrega bajo el mensaje de "cuenta confirmada" cuando había un operativo esperando. */
+  const renderEstadoAlta = () => {
+    if (estadoAlta === 'ninguna') return null;
+
+    if (estadoAlta === 'uniendo') {
+      return (
+        <div className="w-full flex items-center gap-3 p-3.5 rounded-xl text-left" style={{ background: 'rgba(37,99,235,0.06)', border: '1px solid rgba(37,99,235,0.2)' }}>
+          <Loader size={18} style={{ color: '#2563eb', flexShrink: 0 }} className="animate-spin" />
+          <p style={{ color: 'var(--foreground)', fontSize: 'var(--text-label)' }}>
+            Sumándote al operativo <strong>{altaPendiente?.operativoNombre}</strong>...
+          </p>
+        </div>
+      );
+    }
+
+    if (estadoAlta === 'unido') {
+      return (
+        <div className="w-full flex items-start gap-3 p-3.5 rounded-xl text-left" style={{ background: '#dcfce7', border: '1px solid #86efac' }}>
+          <Users size={18} style={{ color: '#16a34a', flexShrink: 0, marginTop: 1 }} />
+          <p style={{ color: '#15803d', fontSize: 'var(--text-label)', lineHeight: 1.5 }}>
+            Ya figurás como agente <strong>Disponible</strong> en{' '}
+            <strong>{altaPendiente?.operativoNombre}</strong>.
+          </p>
+        </div>
+      );
+    }
+
+    if (estadoAlta === 'conflicto' && altaPendiente) {
+      return (
+        <div className="w-full flex flex-col gap-2.5 p-3.5 rounded-xl text-left" style={{ background: 'rgba(217,119,6,0.08)', border: '1px solid rgba(217,119,6,0.3)' }}>
+          <div className="flex items-start gap-3">
+            <AlertTriangle size={18} style={{ color: '#d97706', flexShrink: 0, marginTop: 1 }} />
+            <p style={{ color: 'var(--foreground)', fontSize: 'var(--text-label)', lineHeight: 1.5 }}>
+              Ya estás activo en otro operativo. Volvé a entrar por el QR de{' '}
+              <strong>{altaPendiente.operativoNombre}</strong> para decidir si te trasladás.
+            </p>
+          </div>
+          <Link
+            to={`/registro/${altaPendiente.operativoId}?qr=${altaPendiente.qrToken}`}
+            className="text-center py-2.5 rounded-lg"
+            style={{ background: '#d97706', color: '#fff', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)', fontFamily: 'var(--font-family-primary)' }}
+          >
+            Ver operativo y decidir
+          </Link>
+        </div>
+      );
+    }
+
+    if (estadoAlta === 'error') {
+      return (
+        <div className="w-full flex flex-col gap-2.5 p-3.5 rounded-xl text-left" style={{ background: '#fee2e2', border: '1px solid #fecaca' }}>
+          <div className="flex items-start gap-3">
+            <AlertTriangle size={18} style={{ color: '#dc2626', flexShrink: 0, marginTop: 1 }} />
+            <p style={{ color: '#b91c1c', fontSize: 'var(--text-label)', lineHeight: 1.5 }}>{errorAlta}</p>
+          </div>
+          {altaPendiente && (
+            <button
+              onClick={intentarAltaAutomatica}
+              className="flex items-center justify-center gap-1.5 py-2.5 rounded-lg"
+              style={{ background: 'var(--muted)', border: '1px solid var(--border)', color: 'var(--foreground)', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)', fontFamily: 'var(--font-family-primary)', cursor: 'pointer' }}
+            >
+              <RefreshCw size={13} />
+              Reintentar
+            </button>
+          )}
+        </div>
+      );
+    }
+
+    return null;
+  };
 
   const handleIrAlPanel = () => {
     if (isAuthenticated) {
@@ -104,6 +244,7 @@ export default function ConfirmarEmail() {
                 Tu correo electrónico fue verificado exitosamente. Ya tenés acceso completo al sistema DUAR.
               </p>
             </div>
+            {renderEstadoAlta()}
             <button
               onClick={handleIrAlPanel}
               className="w-full py-3.5 rounded-xl text-white"
@@ -139,6 +280,7 @@ export default function ConfirmarEmail() {
                 Tu cuenta ya fue confirmada previamente. Podés ingresar al sistema con normalidad.
               </p>
             </div>
+            {renderEstadoAlta()}
             <button
               onClick={handleIrAlPanel}
               className="w-full py-3.5 rounded-xl text-white"

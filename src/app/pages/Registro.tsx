@@ -1,4 +1,4 @@
-import { useState, useEffect } from 'react';
+import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router';
 import {
   Shield, Eye, EyeOff, CheckCircle, X, Lock, Mail, AlertTriangle,
@@ -13,6 +13,7 @@ import {
   validarNombre, validarApellido, validarDni, validarTelefono,
   soloDigitos, formatearDni, formatearTelefono,
 } from '../utils/validacionUsuario';
+import { guardarAltaPendiente, limpiarAltaPendiente } from '../utils/altaPendiente';
 
 /* ── Tipos ────────────────────────────────────────────────── */
 type Modo = 'inicial' | 'login' | 'registro' | 'confirmar' | 'verificarEmail' | 'confirmacion';
@@ -22,7 +23,7 @@ export default function Registro() {
   const { operativoId } = useParams<{ operativoId: string }>();
   const [searchParams] = useSearchParams();
   const navigate = useNavigate();
-  const { login } = useApp();
+  const { login, isAuthenticated } = useApp();
 
   /* ── Core state ── */
   const [modo, setModo] = useState<Modo>('inicial');
@@ -96,14 +97,56 @@ export default function Registro() {
   /**
    * Se adapta la respuesta de la API a los nombres que ya usa esta pantalla,
    * para no tocar la maqueta entera: `titulo`→`nombre`, `localidad`→`ubicacion`.
+   * Memoizado para no disparar de nuevo los efectos de abajo en cada render.
    */
-  const operativo = accesoQR && {
+  const operativo = useMemo(() => accesoQR && {
     id: accesoQR.id,
     nombre: accesoQR.titulo,
     ubicacion: accesoQR.localidad,
     estado: accesoQR.estado.toLowerCase(),
-  };
+  }, [accesoQR]);
   const isValidQR = Boolean(accesoQR);
+
+  /**
+   * Puente con ConfirmarEmail.tsx (ver utils/altaPendiente.ts): mientras se
+   * espera la confirmación del correo, se deja guardado a qué operativo hay
+   * que sumarse apenas se confirme — si no, el alta (CU-02 paso 6) se pierde
+   * porque el link del mail abre otra pantalla que no sabe nada de esto.
+   */
+  useEffect(() => {
+    if (modo !== 'verificarEmail' || !operativoId || !qrToken || !operativo) return;
+    guardarAltaPendiente({
+      operativoId, qrToken,
+      operativoNombre: operativo.nombre,
+      operativoUbicacion: operativo.ubicacion,
+    });
+  }, [modo, operativoId, qrToken, operativo]);
+
+  /**
+   * Si ya hay sesión activa (agente que ya tiene cuenta confirmada y escanea
+   * un QR estando logueado, o volvió a esta pestaña), no tiene sentido
+   * pedirle que elija "Ya tengo cuenta / Soy nuevo" ni que vuelva a loguearse
+   * — se salta directo a la pantalla de confirmar participación, mismo
+   * camino que sigue `handleLogin` cuando el login es exitoso.
+   */
+  const [autenticacionRevisada, setAutenticacionRevisada] = useState(false);
+  useEffect(() => {
+    if (!operativo || autenticacionRevisada) return;
+    setAutenticacionRevisada(true);
+    if (!isAuthenticated) return;
+    (async () => {
+      try {
+        const { operativo: actual } = await authApi.miOperativoActual();
+        if (actual && actual.id === operativoId) {
+          navigate('/agente');
+          return;
+        }
+      } catch {
+        // Si falla la consulta, se sigue igual al flujo normal de confirmación.
+      }
+      setModo('confirmar');
+    })();
+  }, [operativo, isAuthenticated, autenticacionRevisada, operativoId, navigate]);
 
   /* ────────────────────────────────────────────────────────── */
   /* Pantalla: verificando el QR contra el servidor             */
@@ -296,8 +339,7 @@ export default function Registro() {
     try {
       await registroApi.altaEnOperativo(operativoId, qrToken, abandonarAnterior);
       setShowConflictoModal(false);
-      // Siempre a la confirmación final: el paso intermedio de "revisá tu correo"
-      // queda para cuando haya SMTP (CU-02 paso 7, hoy fuera de alcance).
+      limpiarAltaPendiente();
       setModo('confirmacion');
     } catch (err) {
       if (err instanceof ApiError && err.motivo === 'regla_ubicuidad') {
@@ -308,6 +350,7 @@ export default function Registro() {
           : null);
         setShowConflictoModal(true);
       } else if (err instanceof ApiError && err.motivo === 'ya_en_este_operativo') {
+        limpiarAltaPendiente();
         navigate('/agente');                // ya estaba dado de alta: directo al panel, no es un registro nuevo
       } else if (err instanceof ApiError && err.motivo === 'email_no_confirmado') {
         setModo('verificarEmail');
