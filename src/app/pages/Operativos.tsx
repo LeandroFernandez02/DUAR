@@ -758,12 +758,8 @@ export default function Operativos() {
               {/* Accent bar */}
               <div className="h-1 w-full flex-shrink-0" style={{ background: estadoColors[op.estado] || 'var(--primary)' }} />
 
-              {/* Clickeable body → navega al panel */}
-              <button
-                onClick={() => { void entrarAOperativo(op); }}
-                className="p-5 flex-1 flex flex-col text-left w-full"
-                style={{ background: 'none', border: 'none', cursor: 'pointer' }}
-              >
+              {/* Body informativo (no navega: solo el botón "Panel" accede) */}
+              <div className="p-5 flex-1 flex flex-col text-left w-full">
                 {/* Title + Badge */}
                 <div className="flex items-start justify-between gap-3 mb-3">
                   <h3
@@ -815,26 +811,8 @@ export default function Operativos() {
                     </div>
                   )}
 
-                  {/* UUID abreviado */}
-                  <div className="flex items-center gap-1.5 mt-auto pt-2">
-                    <span
-                      style={{
-                        fontSize: '10px',
-                        fontFamily: 'var(--font-family-primary)',
-                        color: 'var(--muted-foreground)',
-                        background: 'var(--muted)',
-                        border: '1px solid var(--border)',
-                        borderRadius: '4px',
-                        padding: '1px 6px',
-                        fontVariantNumeric: 'tabular-nums',
-                        letterSpacing: '0.02em',
-                      }}
-                    >
-                      ID: {op.id.slice(0, 8)}…
-                    </span>
-                  </div>
                 </div>
-              </button>
+              </div>
 
               {/* Footer: acciones rápidas + link al panel */}
               <div
@@ -968,20 +946,6 @@ export default function Operativos() {
                           : (op.objetivoBusqueda.objeto?.nombre || 'Objeto')}
                       </span>
                     )}
-                    <span
-                      style={{
-                        fontSize: '10px',
-                        fontFamily: 'var(--font-family-primary)',
-                        color: 'var(--muted-foreground)',
-                        background: 'var(--muted)',
-                        border: '1px solid var(--border)',
-                        borderRadius: '4px',
-                        padding: '0px 5px',
-                        fontVariantNumeric: 'tabular-nums',
-                      }}
-                    >
-                      ID: {op.id.slice(0, 8)}…
-                    </span>
                   </div>
                 </div>
               </div>
