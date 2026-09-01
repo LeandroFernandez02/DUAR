@@ -7,6 +7,7 @@ import { usuariosApi, ApiError, UsuarioApi } from '../services/api';
 import StatusBadge from '../components/shared/StatusBadge';
 import {
   validarNombre, validarApellido, validarDni, validarTelefono,
+  validarFechaNacimiento, fechaMaximaNacimiento,
   soloDigitos, formatearDni, formatearTelefono,
 } from '../utils/validacionUsuario';
 
@@ -146,6 +147,7 @@ export default function Usuarios() {
     const errApellido = validarApellido(form.apellido); if (errApellido) errores.apellido = errApellido;
     const errDni = validarDni(form.dni); if (errDni) errores.dni = errDni;
     const errTelefono = validarTelefono(form.telefono); if (errTelefono) errores.telefono = errTelefono;
+    const errFechaNacimiento = validarFechaNacimiento(form.fechaNacimiento); if (errFechaNacimiento) errores.fechaNacimiento = errFechaNacimiento;
     setErroresForm(errores);
     if (Object.keys(errores).length > 0) {
       setErrorApi('Revisá los campos marcados en rojo.');
@@ -544,7 +546,7 @@ export default function Usuarios() {
                 },
                 { label: 'Email *', key: 'email', type: 'email', span: true },
                 { label: 'Contraseña', key: 'password', type: 'password', span: false },
-                { label: 'Fecha de Nacimiento', key: 'fechaNacimiento', type: 'date', span: false },
+                { label: 'Fecha de Nacimiento', key: 'fechaNacimiento', type: 'date', span: false, max: fechaMaximaNacimiento() },
                 {
                   label: 'Teléfono', key: 'telefono', type: 'tel', span: false,
                   inputMode: 'numeric' as const,
@@ -562,6 +564,7 @@ export default function Usuarios() {
                     <input
                       type={f.type}
                       inputMode={f.inputMode}
+                      max={(f as any).max}
                       value={valorMostrado}
                       onChange={e => {
                         const v = f.filtro ? f.filtro(e.target.value) : e.target.value;

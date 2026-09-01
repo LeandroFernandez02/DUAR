@@ -184,6 +184,8 @@ interface AppContextType {
   logout: () => Promise<void>;
   /** Autoedición: el propio usuario cambia sus datos (no dni/email/estado/rol). */
   actualizarPerfilPropio: (datos: Record<string, unknown>) => Promise<'ok' | string>;
+  /** Vuelve a pedir `/auth/me` — usado tras confirmar el mail para que el banner "Confirmá tu correo" se saque sin recargar la página. */
+  refrescarUsuario: () => Promise<void>;
   // Operativos CRUD
   addOperativo: (op: Omit<Operativo, 'id'>) => string;
   updateOperativo: (id: string, op: Partial<Operativo>) => void;
@@ -344,6 +346,24 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       return 'ok';
     } catch (err) {
       return err instanceof ApiError ? err.message : 'No se pudo guardar los cambios.';
+    }
+  }, []);
+
+  /**
+   * Re-consulta `/auth/me`. Necesario porque el `usuario` en memoria se carga
+   * una sola vez al montar la app (ver el efecto de abajo); si el mail se
+   * confirma en otra pestaña/pantalla (ConfirmarEmail.tsx) durante esa misma
+   * sesión, ese `usuario` queda con `emailConfirmado: false` hasta que algo
+   * lo vuelva a pedir — de ahí el banner "Confirmá tu correo" pegado en el
+   * portal de agente pese a que el backend ya confirmó el mail.
+   */
+  const refrescarUsuario = useCallback(async () => {
+    if (!getToken()) return;
+    try {
+      const { usuario: u } = await authApi.me();
+      setUsuario(mapearUsuarioApi(u));
+    } catch {
+      // Si falla, el usuario en memoria queda como estaba — no es peor que antes.
     }
   }, []);
 
@@ -965,6 +985,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       login,
       logout,
       actualizarPerfilPropio,
+      refrescarUsuario,
       addOperativo,
       updateOperativo,
       deleteOperativo,

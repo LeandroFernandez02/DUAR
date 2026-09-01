@@ -13,6 +13,7 @@ export const RE_NOMBRE = /^[A-Za-zÀ-ÖØ-öø-ÿ ]{2,35}$/;
 export const RE_APELLIDO = /^[A-Za-zÀ-ÖØ-öø-ÿ'\- ]{2,35}$/;
 export const RE_DNI = /^\d{7,8}$/;
 export const RE_TELEFONO = /^\d{10}$/;
+export const EDAD_MINIMA = 16;
 
 export function validarNombre(v: string): string | null {
   const t = v.trim();
@@ -36,6 +37,28 @@ export function validarTelefono(v: string): string | null {
   if (!v) return null;
   if (!RE_TELEFONO.test(soloDigitos(v))) return '10 números: código de área sin 0 + número sin 15 (ej: 3512283143).';
   return null;
+}
+
+/** La fecha de nacimiento es opcional: sólo se valida si el usuario cargó algo. */
+export function validarFechaNacimiento(v: string): string | null {
+  if (!v) return null;
+  const nacimiento = new Date(v);
+  if (Number.isNaN(nacimiento.getTime())) return 'Fecha inválida.';
+  const hoy = new Date();
+  let edad = hoy.getFullYear() - nacimiento.getFullYear();
+  if (
+    hoy.getMonth() < nacimiento.getMonth() ||
+    (hoy.getMonth() === nacimiento.getMonth() && hoy.getDate() < nacimiento.getDate())
+  ) edad--;
+  if (edad < EDAD_MINIMA) return `El agente debe tener al menos ${EDAD_MINIMA} años.`;
+  return null;
+}
+
+/** Fecha máxima seleccionable en un input de nacimiento (hoy menos EDAD_MINIMA años), para el atributo `max`. */
+export function fechaMaximaNacimiento(): string {
+  const d = new Date();
+  d.setFullYear(d.getFullYear() - EDAD_MINIMA);
+  return d.toISOString().slice(0, 10);
 }
 
 /** Saca todo lo que no sea dígito — es lo que efectivamente se guarda/envía. */

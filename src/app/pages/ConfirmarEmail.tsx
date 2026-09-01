@@ -11,7 +11,7 @@ type EstadoAlta = 'ninguna' | 'uniendo' | 'unido' | 'conflicto' | 'error';
 
 export default function ConfirmarEmail() {
   const { token } = useParams<{ token: string }>();
-  const { isAuthenticated, usuario } = useApp();
+  const { isAuthenticated, usuario, refrescarUsuario } = useApp();
   const navigate = useNavigate();
   const [estado, setEstado] = useState<Estado>('verificando');
 
@@ -90,6 +90,11 @@ export default function ConfirmarEmail() {
 
   useEffect(() => {
     if (estado !== 'exitoso' && estado !== 'ya_confirmado') return;
+    /* El `usuario` en memoria (AppContext) se cargó al montar la app, antes
+     * de que este mismo efecto confirmara el mail contra el backend — sin
+     * este refresh, "Confirmá tu correo" seguía pegado en el portal de
+     * agente hasta recargar la página a mano. */
+    if (isAuthenticated) refrescarUsuario();
     intentarAltaAutomatica();
     // eslint-disable-next-line react-hooks/exhaustive-deps
   }, [estado]);

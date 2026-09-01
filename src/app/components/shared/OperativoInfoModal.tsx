@@ -61,14 +61,20 @@ export default function OperativoInfoModal({ operativo, onClose }: Props) {
 
   const coordinador = data.usuarios.find(u => u.id === operativo.coordinadorId);
 
+  // `fechaInicio`/`fechaFin` ya vienen como datetime ISO completo
+  // (mapearOperativo lee fechaHoraInicio/fechaHoraFin de la API) — no son
+  // fechas "peladas" para concatenarles hora, por eso NO se les agrega
+  // 'T00:00:00' (eso producía "Invalid Date" / "NaN días").
   const today = new Date();
-  const inicio = new Date(operativo.fechaInicio + 'T00:00:00');
-  const fin = operativo.fechaFin ? new Date(operativo.fechaFin + 'T00:00:00') : today;
+  const inicio = new Date(operativo.fechaInicio);
+  const fin = operativo.fechaFin ? new Date(operativo.fechaFin) : today;
   const diasRastrillando = Math.max(1, differenceInDays(fin, inicio) + 1);
 
-  const totalAgentes = data.usuarios.filter(
-    u => u.estado !== 'eliminado' && operativo.agenteIds.includes(u.id)
-  ).length;
+  // `operativo.agenteIds` puede traer IDs placeholder ("sin-migrar-N") en las
+  // pantallas ya migradas a la API real (ver mapearOperativo.ts) — su
+  // `.length` sí es el conteo real (viene de `cantidadAgentes`), pero nunca
+  // va a matchear contra `data.usuarios` (mock). Se usa el length directo.
+  const totalAgentes = operativo.agenteIds.length;
 
   return (
     <>
@@ -137,7 +143,7 @@ export default function OperativoInfoModal({ operativo, onClose }: Props) {
                 <InfoRow
                   icon={<Calendar size={13} />}
                   label="Fecha inicio"
-                  value={new Date(operativo.fechaInicio + 'T00:00:00').toLocaleDateString('es-AR', {
+                  value={inicio.toLocaleDateString('es-AR', {
                     day: '2-digit', month: 'long', year: 'numeric',
                   })}
                 />
@@ -145,7 +151,7 @@ export default function OperativoInfoModal({ operativo, onClose }: Props) {
                   <InfoRow
                     icon={<Calendar size={13} />}
                     label="Fecha fin"
-                    value={new Date(operativo.fechaFin + 'T00:00:00').toLocaleDateString('es-AR', {
+                    value={new Date(operativo.fechaFin).toLocaleDateString('es-AR', {
                       day: '2-digit', month: 'long', year: 'numeric',
                     })}
                   />

@@ -12,7 +12,7 @@ import {
 } from '../data/mockData';
 import { authApi, OperativoApi, ApiError } from '../services/api';
 import {
-  validarNombre, validarApellido, validarTelefono,
+  validarNombre, validarApellido, validarTelefono, validarFechaNacimiento, fechaMaximaNacimiento,
   soloDigitos, formatearTelefono, formatearDni,
 } from '../utils/validacionUsuario';
 
@@ -350,6 +350,7 @@ export default function AgenteDashboard() {
     const errNombre = validarNombre(formPerfil.nombre); if (errNombre) errores.nombre = errNombre;
     const errApellido = validarApellido(formPerfil.apellido); if (errApellido) errores.apellido = errApellido;
     const errTelefono = validarTelefono(formPerfil.telefono); if (errTelefono) errores.telefono = errTelefono;
+    const errFechaNacimiento = validarFechaNacimiento(formPerfil.fechaNacimiento); if (errFechaNacimiento) errores.fechaNacimiento = errFechaNacimiento;
     setErroresPerfil(errores);
     if (Object.keys(errores).length > 0) {
       setErrorPerfil('Revisá los campos marcados en rojo.');
@@ -718,11 +719,20 @@ export default function AgenteDashboard() {
                 <label className="block mb-1" style={{ color: 'var(--foreground)', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)' }}>Fecha de Nacimiento</label>
                 <input
                   type="date"
+                  max={fechaMaximaNacimiento()}
                   value={formPerfil.fechaNacimiento}
-                  onChange={e => setFormPerfil({ ...formPerfil, fechaNacimiento: e.target.value })}
+                  onChange={e => {
+                    setFormPerfil({ ...formPerfil, fechaNacimiento: e.target.value });
+                    if (erroresPerfil.fechaNacimiento) setErroresPerfil({ ...erroresPerfil, fechaNacimiento: '' });
+                  }}
                   className="w-full px-3 py-2 rounded-lg border outline-none"
-                  style={{ background: 'var(--input-background)', color: 'var(--foreground)', fontFamily: 'var(--font-family-primary)', fontSize: 'var(--text-base)', border: '1px solid var(--border)' }}
+                  style={{
+                    background: 'var(--input-background)', color: 'var(--foreground)',
+                    fontFamily: 'var(--font-family-primary)', fontSize: 'var(--text-base)',
+                    border: erroresPerfil.fechaNacimiento ? '1px solid #dc2626' : '1px solid var(--border)',
+                  }}
                 />
+                {erroresPerfil.fechaNacimiento && <p style={{ color: '#dc2626', fontSize: '11px', marginTop: '4px' }}>{erroresPerfil.fechaNacimiento}</p>}
               </div>
 
               <div>

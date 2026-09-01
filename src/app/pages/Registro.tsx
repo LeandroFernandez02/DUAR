@@ -11,6 +11,7 @@ import { catInstituciones, catEspecialidades, catAlergias, dotacionesDe } from '
 import { qrApi, registroApi, authApi, setToken, ApiError, OperativoQRApi } from '../services/api';
 import {
   validarNombre, validarApellido, validarDni, validarTelefono,
+  validarFechaNacimiento, fechaMaximaNacimiento,
   soloDigitos, formatearDni, formatearTelefono,
 } from '../utils/validacionUsuario';
 import { guardarAltaPendiente, limpiarAltaPendiente } from '../utils/altaPendiente';
@@ -414,6 +415,7 @@ export default function Registro() {
     const errApellido = validarApellido(regForm.apellido); if (errApellido) errores.apellido = errApellido;
     const errDni = validarDni(regForm.dni); if (errDni) errores.dni = errDni;
     const errTelefono = validarTelefono(regForm.telefono); if (errTelefono) errores.telefono = errTelefono;
+    const errFechaNacimiento = validarFechaNacimiento(regForm.fechaNacimiento); if (errFechaNacimiento) errores.fechaNacimiento = errFechaNacimiento;
     setErroresCampos(errores);
     if (Object.keys(errores).length > 0) {
       setError('Revisá los campos marcados en rojo.');
@@ -779,7 +781,7 @@ export default function Registro() {
                 },
                 { label: 'Correo electrónico *', key: 'email', type: 'email', placeholder: 'tu@email.com' },
                 { label: 'Contraseña *', key: 'password', type: 'password', placeholder: 'Mínimo 8 caracteres' },
-                { label: 'Fecha de Nacimiento', key: 'fechaNacimiento', type: 'date', placeholder: '' },
+                { label: 'Fecha de Nacimiento', key: 'fechaNacimiento', type: 'date', placeholder: '', max: fechaMaximaNacimiento() },
                 {
                   label: 'Teléfono', key: 'telefono', type: 'tel', placeholder: 'Ej: 351-228-3143',
                   inputMode: 'numeric' as const,
@@ -801,6 +803,7 @@ export default function Registro() {
                       type={f.type}
                       inputMode={f.inputMode}
                       placeholder={f.placeholder}
+                      max={(f as any).max}
                       value={valorMostrado}
                       onChange={e => {
                         const v = f.filtro ? f.filtro(e.target.value) : e.target.value;
