@@ -290,9 +290,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     }
   }, [usuario]);
 
-  // Persist theme preference
+  // Persist theme preference y aplicar la clase que activa las variables CSS
+  // de modo oscuro (theme.css: `@custom-variant dark (&:is(.dark *))` — sin
+  // esta clase en <html>, las variables --background/--foreground/etc. de
+  // `.dark { ... }` nunca se activan, aunque el estado `isDark` cambie bien.
   useEffect(() => {
     localStorage.setItem('duar-theme', isDark ? 'dark' : 'light');
+    document.documentElement.classList.toggle('dark', isDark);
   }, [isDark]);
 
   const toggleDark = useCallback(() => {
