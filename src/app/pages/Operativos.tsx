@@ -13,7 +13,8 @@ import { useApp } from '../context/AppContext';
 import {
   Operativo, EstadoOperativo, TipoObjetivo,
 } from '../data/mockData';
-import { operativosApi, ApiError, OperativoApi } from '../services/api';
+import { operativosApi, ApiError } from '../services/api';
+import { mapearOperativo } from '../utils/mapearOperativo';
 import {
   ObjetivoFormContent,
   PersonaForm, ObjetoForm,
@@ -28,15 +29,6 @@ import {
  * se envía al backend: `objetivo_buscado` no tiene endpoint todavía. Se pierde
  * al refrescar hasta que se migre ese CU.
  */
-const ESTADO_API_A_MOCK: Record<string, EstadoOperativo> = {
-  NUEVO: 'nuevo',
-  ACTIVO: 'activo',
-  INACTIVO: 'inactivo',
-  EN_PLANIFICACION: 'planificación',
-  EN_PROCESO: 'en_proceso',
-  FINALIZADO: 'finalizado',
-  ELIMINADO: 'eliminado',
-};
 
 /**
  * "Vigente" = todavía no se cerró: incluye NUEVO y EN_PLANIFICACION, no sólo
@@ -48,31 +40,6 @@ const ESTADO_API_A_MOCK: Record<string, EstadoOperativo> = {
  */
 function esVigente(estado: EstadoOperativo): boolean {
   return estado === 'nuevo' || estado === 'planificación' || estado === 'en_proceso' || estado === 'activo';
-}
-
-/** Traduce el operativo de la API al modelo que ya consume esta pantalla. */
-function mapearOperativo(o: OperativoApi): Operativo {
-  return {
-    id: o.id,
-    nombre: o.titulo,
-    estado: ESTADO_API_A_MOCK[o.estado] ?? 'nuevo',
-    ubicacion: o.localidad,
-    fiscal: o.fiscalInstruccion,
-    punto0: { lat: o.puntoCeroLat, lng: o.puntoCeroLng },
-    fechaInicio: o.fechaHoraInicio,
-    fechaFin: o.fechaHoraFin ?? undefined,
-    descripcion: o.descripcion ?? undefined,
-    // El backend hoy sólo da la CANTIDAD (CU-11 paso 6), no los IDs reales —
-    // Módulo 4 (agentes/grupos) todavía no está migrado. Se arma un array del
-    // tamaño correcto sólo para que sigan andando los `.length` que ya usaba
-    // esta pantalla; nunca se lee como IDs de verdad (ver `hasGpxPending`).
-    agenteIds: Array.from({ length: o.cantidadAgentes }, (_, i) => `sin-migrar-${i}`),
-    grupoIds: [],
-    sectores: [],
-    puntos: [],
-    kmRastrillados: 0,
-    coordinadorId: o.coordinadorId,
-  };
 }
 
 type ModalType = 'create' | 'edit' | 'qr' | 'delete' | 'finalize' | null;

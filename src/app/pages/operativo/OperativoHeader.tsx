@@ -21,7 +21,9 @@ interface Props {
 ───────────────────────────────────────────────── */
 export default function OperativoHeader({ operativo }: Props) {
   const today = new Date();
-  const inicio = new Date(operativo.fechaInicio + 'T00:00:00');
+  // `fechaInicio` ya viene como datetime ISO completo (mapearOperativo lee
+  // `fechaHoraInicio` de la API) — no es una fecha "pelada" para concatenarle hora.
+  const inicio = new Date(operativo.fechaInicio);
   const diasOperativo = Math.max(0, differenceInDays(today, inicio));
   const { actual } = climaMock;
 
@@ -80,7 +82,7 @@ export default function OperativoHeader({ operativo }: Props) {
                 style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-label)', fontFamily: 'var(--font-family-primary)' }}
               >
                 <Calendar size={11} />
-                Inicio: {new Date(operativo.fechaInicio + 'T00:00:00').toLocaleDateString('es-AR')}
+                Inicio: {new Date(operativo.fechaInicio).toLocaleDateString('es-AR')}
               </span>
               <span
                 className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"

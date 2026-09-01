@@ -8,6 +8,7 @@ import { Router } from 'express';
 import * as operativos from '../controllers/operativo.controller.js';
 import * as qr from '../controllers/qr.controller.js';
 import * as registro from '../controllers/registro.controller.js';
+import * as agentesOperativo from '../controllers/agenteOperativo.controller.js';
 import { requiereSesion, requiereRol } from '../middleware/auth.middleware.js';
 
 const router = Router();
@@ -34,5 +35,10 @@ router.get('/:id/personal', requiereSesion, gestores, qr.personal);
 
 // El alta la hace el propio agente con su sesión, tras escanear el QR.
 router.post('/:id/alta', requiereSesion, registro.altaEnOperativo);
+
+// CU-17: el Coordinador agrega/edita/quita agentes directamente (sin QR).
+router.post(  '/:id/agentes',            requiereSesion, gestores, agentesOperativo.agregar);
+router.put(   '/:id/agentes/:usuarioId', requiereSesion, gestores, agentesOperativo.actualizar);
+router.delete('/:id/agentes/:usuarioId', requiereSesion, gestores, agentesOperativo.quitar);
 
 export default router;

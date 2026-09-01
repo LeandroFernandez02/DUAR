@@ -356,3 +356,44 @@ export const usuariosApi = {
   reenviarConfirmacion: (id: string) =>
     api.post<{ mensaje: string }>(`/usuarios/${id}/reenviar-confirmacion`),
 };
+
+/**
+ * Encarnación TÁCTICA de un usuario en UN operativo (Decisión A). Es lo que
+ * devuelve `GET /:id/personal` (CU-19), ya con el JOIN a `usuarios` resuelto
+ * — por eso trae nombre/dni/etc. además de los campos propios de la fila.
+ */
+export interface PersonalOperativoApi {
+  id: string;
+  usuarioId: string;
+  operativoId: string;
+  estado: string | null;
+  grupoId: string | null;
+  esCaminante: boolean;
+  esConductor: boolean;
+  especialidadId: string | null;
+  fechaIngreso: string;
+  fechaEgreso: string | null;
+  nombre: string;
+  apellido: string;
+  dni: string;
+  telefono: string | null;
+  grupoSanguineo: string | null;
+  especialidadNombre: string | null;
+  institucionNombre: string | null;
+  esDuar: boolean;
+}
+
+export const agentesOperativoApi = {
+  /** CU-19: personal actualmente en el operativo. */
+  listar: (operativoId: string) =>
+    api.get<{ personal: PersonalOperativoApi[] }>(`/operativos/${operativoId}/personal`),
+  /** CU-17: alta directa por el Coordinador (sin QR). */
+  agregar: (operativoId: string, datos: { usuarioId: string; especialidadId?: string; abandonarAnterior?: boolean }) =>
+    api.post<{ agente: PersonalOperativoApi }>(`/operativos/${operativoId}/agentes`, datos),
+  /** CU-17: edición de los datos tácticos (estado, especialidad-override, caminante/conductor). */
+  actualizar: (operativoId: string, usuarioId: string, datos: { estado?: string | null; especialidadId?: string | null; esCaminante?: boolean; esConductor?: boolean }) =>
+    api.put<{ agente: PersonalOperativoApi }>(`/operativos/${operativoId}/agentes/${usuarioId}`, datos),
+  /** Baja lógica: cierra la participación, no toca al Usuario global. */
+  quitar: (operativoId: string, usuarioId: string) =>
+    api.del<void>(`/operativos/${operativoId}/agentes/${usuarioId}`),
+};

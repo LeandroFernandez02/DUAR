@@ -110,6 +110,64 @@ export async function buscarPorId(id) {
   return rows[0] ?? null;
 }
 
+/** El registro TÁCTICO vigente (sin egreso) de un usuario en un operativo puntual. */
+export async function buscarActivoDeOperativo(operativoId, usuarioId) {
+  const { rows } = await query(
+    `SELECT ${CAMPOS} FROM agentes_operativo ao
+      WHERE ao.operativo_id = $1 AND ao.usuario_id = $2 AND ao.fecha_egreso IS NULL`,
+    [operativoId, usuarioId]
+  );
+  return rows[0] ?? null;
+}
+
+/**
+ * CU-17 · edición de los datos TÁCTICOS (estado, especialidad-override,
+ * caminante/conductor). Mismo patrón `permitidos` que usuario.model.js: sólo
+ * toca columnas presentes en `campos`, y un `null` explícito SÍ se escribe
+ * (ej. `estado: null` vacía el estado — "sin estado" es NULL real, no un
+ * string vacío; ver columna `estado` de `agentes_operativo`, nullable).
+ */
+export async function actualizar(id, campos) {
+  const permitidos = {
+    estado: 'estado',
+    especialidadId: 'especialidad_id',
+    esCaminante: 'es_caminante',
+    esConductor: 'es_conductor',
+  };
+
+  const sets = [];
+  const valores = [];
+  for (const [clave, columna] of Object.entries(permitidos)) {
+    if (campos[clave] !== undefined) {
+      valores.push(campos[clave]);
+      const cast = clave === 'estado' ? '::estado_agente' : '';
+      sets.push(`${columna} = $${valores.length}${cast}`);
+    }
+  }
+
+  if (sets.length === 0) return buscarPorId(id);
+
+  valores.push(id);
+  await query(
+    `UPDATE agentes_operativo SET ${sets.join(', ')} WHERE id = $${valores.length}`,
+    valores
+  );
+  return buscarPorId(id);
+}
+
+/**
+ * Baja lógica de la participación (no del Usuario global — Decisión A). Cierra
+ * también cualquier pertenencia a grupo, igual patrón que CU-10 (finalizar) y
+ * el traslado de la Regla de Ubicuidad.
+ */
+export async function egresar(id) {
+  await query(
+    `UPDATE agentes_operativo SET fecha_egreso = CURRENT_TIMESTAMP, grupo_id = NULL
+      WHERE id = $1`,
+    [id]
+  );
+}
+
 /**
  * Personal actualmente en el operativo (CU-19). Excluye a quienes ya egresaron.
  * Es lo que consume la grilla del Coordinador, que refresca por polling.

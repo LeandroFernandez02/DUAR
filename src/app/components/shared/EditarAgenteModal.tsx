@@ -12,12 +12,13 @@
  * Los datos personales se gestionan desde la pestaña Usuarios.
  */
 import { useState } from 'react';
-import { X, Check, Pencil, User, AlertTriangle } from 'lucide-react';
-import { useApp } from '../../context/AppContext';
+import { X, Check, Pencil, User, AlertTriangle, Loader2 } from 'lucide-react';
 import {
-  EstadoOperativoAgente, Especialidad, Usuario, AgenteOperativo,
-  catEspecialidades, esRecursoCritico, getEspecialidad, puedeSerLider, institucionLabel,
+  EstadoOperativoAgente, Especialidad,
+  catEspecialidades, esRecursoCritico, getEspecialidad,
 } from '../../data/mockData';
+import { agentesOperativoApi, ApiError, PersonalOperativoApi } from '../../services/api';
+import { formatearDni } from '../../utils/validacionUsuario';
 
 /* ── Catálogos de colores / etiquetas ─────────────────────── */
 export const ESTADO_OP_CONFIG: Record<
@@ -88,27 +89,31 @@ export function EstadoOperativoBadge({
 
 /* ── Modal principal ────────────────────────────────────────── */
 interface Props {
-  agente: Usuario;
-  /** Operativo en curso: define QUÉ encarnación táctica se está editando. */
+  /** Registro TÁCTICO real (join agentes_operativo + usuarios) — CU-19. */
+  agente: PersonalOperativoApi;
   operativoId: string;
   onClose: () => void;
+  /** Se llama tras un guardado exitoso, para que la lista se refresque. */
+  onSaved: () => void;
 }
 
-export default function EditarAgenteModal({ agente, operativoId, onClose }: Props) {
-  const { getAgenteOperativo, updateAgenteOperativo } = useApp();
+/** especialidadId (uuid real) ↔ slug que usa la UI — catEspecialidades espeja cat_especialidades. */
+const especialidadIdASlug = (especialidadId: string | null): Especialidad | '' =>
+  catEspecialidades.find(e => e.id === especialidadId)?.slug ?? '';
+const especialidadSlugAId = (slug: Especialidad | ''): string | null =>
+  slug ? catEspecialidades.find(e => e.slug === slug)?.id ?? null : null;
 
-  // La fuente de verdad de lo táctico es el AgenteOperativo, no el Usuario.
-  const agenteOp: AgenteOperativo | undefined = getAgenteOperativo(operativoId, agente.id);
+export default function EditarAgenteModal({ agente, operativoId, onClose, onSaved }: Props) {
+  const estadoInicial = (agente.estado?.toLowerCase() as EstadoOperativoAgente) || '';
+  const especialidadInicial = especialidadIdASlug(agente.especialidadId);
 
-  const [estadoOp, setEstadoOp] = useState<EstadoOperativoAgente | ''>(
-    agenteOp?.estado ?? ''
-  );
+  const [estadoOp, setEstadoOp] = useState<EstadoOperativoAgente | ''>(estadoInicial);
   // La especialidad táctica sobrescribe a la global sólo dentro de este operativo.
-  const [especialidad, setEspecialidad] = useState<Especialidad | ''>(
-    agenteOp?.especialidad ?? agente.especialidad ?? ''
-  );
-  const [caminante, setCaminante] = useState<boolean>(agenteOp?.esCaminante ?? false);
-  const [conductor, setConductor] = useState<boolean>(agenteOp?.esConductor ?? false);
+  const [especialidad, setEspecialidad] = useState<Especialidad | ''>(especialidadInicial);
+  const [caminante, setCaminante] = useState<boolean>(agente.esCaminante);
+  const [conductor, setConductor] = useState<boolean>(agente.esConductor);
+  const [saving, setSaving] = useState(false);
+  const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
 
   /**
@@ -146,28 +151,36 @@ export default function EditarAgenteModal({ agente, operativoId, onClose }: Prop
     setConfirmExcepcion(null);
   };
 
-  const isDUAR = puedeSerLider(agente);
+  const isDUAR = agente.esDuar;
 
-  const handleSave = () => {
-    if (!agenteOp) return;
-    updateAgenteOperativo(agenteOp.id, {
-      estado: (estadoOp || 'disponible') as EstadoOperativoAgente,
-      especialidad: (especialidad as Especialidad) || undefined,
-      esCaminante: caminante,
-      esConductor: conductor,
-    });
-    setSaved(true);
-    setTimeout(() => {
-      setSaved(false);
-      onClose();
-    }, 900);
+  const handleSave = async () => {
+    setSaving(true);
+    setError(null);
+    try {
+      await agentesOperativoApi.actualizar(operativoId, agente.usuarioId, {
+        estado: estadoOp ? estadoOp.toUpperCase() : null,
+        especialidadId: especialidadSlugAId(especialidad),
+        esCaminante: caminante,
+        esConductor: conductor,
+      });
+      setSaved(true);
+      onSaved();
+      setTimeout(() => {
+        setSaved(false);
+        onClose();
+      }, 900);
+    } catch (err) {
+      setError(err instanceof ApiError ? err.message : 'No se pudo guardar. Intentá de nuevo.');
+    } finally {
+      setSaving(false);
+    }
   };
 
-  const hasChanges = !!agenteOp && (
-    (estadoOp || '') !== (agenteOp.estado ?? '') ||
-    (especialidad || '') !== (agenteOp.especialidad ?? agente.especialidad ?? '') ||
-    caminante !== agenteOp.esCaminante ||
-    conductor !== agenteOp.esConductor
+  const hasChanges = (
+    (estadoOp || '') !== estadoInicial ||
+    (especialidad || '') !== especialidadInicial ||
+    caminante !== agente.esCaminante ||
+    conductor !== agente.esConductor
   );
 
   return (
@@ -254,7 +267,7 @@ export default function EditarAgenteModal({ agente, operativoId, onClose }: Prop
                 color: 'var(--muted-foreground)', fontSize: '11px',
                 fontFamily: 'var(--font-family-primary)',
               }}>
-                DNI {agente.dni}{agente.institucionId ? ` · ${institucionLabel(agente)}` : ''}
+                DNI {formatearDni(agente.dni)}{agente.institucionNombre ? ` · ${agente.institucionNombre}` : ''}
               </p>
             </div>
           </div>
@@ -528,44 +541,50 @@ export default function EditarAgenteModal({ agente, operativoId, onClose }: Prop
         </div>
 
         {/* ── Footer ── */}
-        <div
-          className="flex items-center gap-3 px-5 py-4 flex-shrink-0"
-          style={{ borderTop: '1px solid var(--border)' }}
-        >
-          <button
-            onClick={onClose}
-            className="flex-1 py-2.5 rounded-[var(--radius-button)] transition-colors"
-            style={{
-              background: 'var(--muted)', border: '1px solid var(--border)',
-              color: 'var(--foreground)', fontSize: 'var(--text-base)',
-              fontWeight: 'var(--font-weight-semibold)', fontFamily: 'var(--font-family-primary)',
-              cursor: 'pointer',
-            }}
-            onMouseEnter={e => (e.currentTarget.style.background = 'var(--border)')}
-            onMouseLeave={e => (e.currentTarget.style.background = 'var(--muted)')}
-          >
-            Cancelar
-          </button>
-          <button
-            onClick={handleSave}
-            disabled={!hasChanges || saved}
-            className="flex items-center justify-center gap-2 flex-1 py-2.5 rounded-[var(--radius-button)] transition-all"
-            style={{
-              background: saved ? '#16a34a' : hasChanges ? 'var(--primary)' : 'var(--muted)',
-              color: hasChanges || saved ? '#fff' : 'var(--muted-foreground)',
-              fontSize: 'var(--text-base)',
-              fontWeight: 'var(--font-weight-semibold)', fontFamily: 'var(--font-family-primary)',
-              opacity: !hasChanges && !saved ? 0.55 : 1,
-              cursor: hasChanges && !saved ? 'pointer' : 'default',
-              transition: 'all 0.2s',
-            }}
-          >
-            {saved ? (
-              <><Check size={14} /> Guardado</>
-            ) : (
-              'Guardar cambios'
-            )}
-          </button>
+        <div className="flex flex-col gap-2 px-5 py-4 flex-shrink-0" style={{ borderTop: '1px solid var(--border)' }}>
+          {error && (
+            <p style={{ color: '#dc2626', fontSize: 'var(--text-label)', fontFamily: 'var(--font-family-primary)' }}>
+              {error}
+            </p>
+          )}
+          <div className="flex items-center gap-3">
+            <button
+              onClick={onClose}
+              className="flex-1 py-2.5 rounded-[var(--radius-button)] transition-colors"
+              style={{
+                background: 'var(--muted)', border: '1px solid var(--border)',
+                color: 'var(--foreground)', fontSize: 'var(--text-base)',
+                fontWeight: 'var(--font-weight-semibold)', fontFamily: 'var(--font-family-primary)',
+                cursor: 'pointer',
+              }}
+              onMouseEnter={e => (e.currentTarget.style.background = 'var(--border)')}
+              onMouseLeave={e => (e.currentTarget.style.background = 'var(--muted)')}
+            >
+              Cancelar
+            </button>
+            <button
+              onClick={handleSave}
+              disabled={!hasChanges || saved || saving}
+              className="flex items-center justify-center gap-2 flex-1 py-2.5 rounded-[var(--radius-button)] transition-all"
+              style={{
+                background: saved ? '#16a34a' : hasChanges ? 'var(--primary)' : 'var(--muted)',
+                color: hasChanges || saved ? '#fff' : 'var(--muted-foreground)',
+                fontSize: 'var(--text-base)',
+                fontWeight: 'var(--font-weight-semibold)', fontFamily: 'var(--font-family-primary)',
+                opacity: !hasChanges && !saved ? 0.55 : 1,
+                cursor: hasChanges && !saved && !saving ? 'pointer' : 'default',
+                transition: 'all 0.2s',
+              }}
+            >
+              {saved ? (
+                <><Check size={14} /> Guardado</>
+              ) : saving ? (
+                <><Loader2 size={14} className="animate-spin" /> Guardando…</>
+              ) : (
+                'Guardar cambios'
+              )}
+            </button>
+          </div>
         </div>
       </div>
 
