@@ -12,63 +12,14 @@ function isStrongEnough(pwd: string) {
   return pwd.length >= 8;
 }
 
-export default function RecuperarContrasena() {
-  const { token } = useParams<{ token: string }>();
-  const navigate = useNavigate();
-
-  /**
-   * CU-03 paso 6.1: la vigencia se chequea contra el BACKEND antes de mostrar
-   * el formulario — el aviso de "vencido" debe aparecer al hacer clic en el
-   * enlace, no recién al enviar la nueva contraseña.
-   */
-  const [tokenInvalid, setTokenInvalid] = useState<boolean | null>(null);
-  useEffect(() => {
-    if (!token) { setTokenInvalid(true); return; }
-    let vigente = true;
-    authApi.chequearTokenRecuperacion(token)
-      .then(() => { if (vigente) setTokenInvalid(false); })
-      .catch(() => { if (vigente) setTokenInvalid(true); });
-    return () => { vigente = false; };
-  }, [token]);
-
-  // --- New password form state ---
-  const [step, setStep] = useState<FormStep>('form');
-  const [pwd, setPwd] = useState('');
-  const [pwdConfirm, setPwdConfirm] = useState('');
-  const [showPwd, setShowPwd] = useState(false);
-  const [showConfirm, setShowConfirm] = useState(false);
-  const [touched, setTouched] = useState(false);
-  const [loading, setLoading] = useState(false);
-  const [error, setError] = useState('');
-
-  const mismatch = touched && pwdConfirm.length > 0 && pwd !== pwdConfirm;
-  const weakPwd = touched && pwd.length > 0 && !isStrongEnough(pwd);
-  const canSubmit = pwd.length > 0 && pwdConfirm.length > 0 && pwd === pwdConfirm && isStrongEnough(pwd);
-
-  const handleSubmit = async (e: React.FormEvent) => {
-    e.preventDefault();
-    setTouched(true);
-    setError('');
-    if (!canSubmit || !token) return;
-    setLoading(true);
-    try {
-      await authApi.restablecerContrasena(token, pwd);
-      setStep('success');
-    } catch (err) {
-      // El token pudo vencer o usarse justo entre que se chequeó y se envió
-      // el formulario (dos pestañas, doble clic): se trata igual que "vencido".
-      if (err instanceof ApiError && err.motivo === 'token_invalido') {
-        setTokenInvalid(true);
-      } else {
-        setError(err instanceof ApiError ? err.message : 'No se pudo actualizar la contraseña.');
-      }
-    } finally {
-      setLoading(false);
-    }
-  };
-
-  // ─── Shared layout wrapper ─────────────────────────────────────────────────
-  const Wrapper = ({ children }: { children: React.ReactNode }) => (
+// ─── Shared layout wrapper ─────────────────────────────────────────────────
+// Definido FUERA del componente a propósito: si viviera adentro de
+// RecuperarContrasena(), cada tecla tipeada (cambio de estado → re-render)
+// generaba una función Wrapper nueva, y React la trataba como un componente
+// distinto — desmontaba y volvía a montar el <input>, perdiendo el foco en
+// cada letra.
+function Wrapper({ children }: { children: React.ReactNode }) {
+  return (
     <div
       className="min-h-screen flex items-center justify-center p-4"
       style={{ background: 'var(--background)', fontFamily: 'var(--font-family-primary)' }}
@@ -146,6 +97,62 @@ export default function RecuperarContrasena() {
       </div>
     </div>
   );
+}
+
+export default function RecuperarContrasena() {
+  const { token } = useParams<{ token: string }>();
+  const navigate = useNavigate();
+
+  /**
+   * CU-03 paso 6.1: la vigencia se chequea contra el BACKEND antes de mostrar
+   * el formulario — el aviso de "vencido" debe aparecer al hacer clic en el
+   * enlace, no recién al enviar la nueva contraseña.
+   */
+  const [tokenInvalid, setTokenInvalid] = useState<boolean | null>(null);
+  useEffect(() => {
+    if (!token) { setTokenInvalid(true); return; }
+    let vigente = true;
+    authApi.chequearTokenRecuperacion(token)
+      .then(() => { if (vigente) setTokenInvalid(false); })
+      .catch(() => { if (vigente) setTokenInvalid(true); });
+    return () => { vigente = false; };
+  }, [token]);
+
+  // --- New password form state ---
+  const [step, setStep] = useState<FormStep>('form');
+  const [pwd, setPwd] = useState('');
+  const [pwdConfirm, setPwdConfirm] = useState('');
+  const [showPwd, setShowPwd] = useState(false);
+  const [showConfirm, setShowConfirm] = useState(false);
+  const [touched, setTouched] = useState(false);
+  const [loading, setLoading] = useState(false);
+  const [error, setError] = useState('');
+
+  const mismatch = touched && pwdConfirm.length > 0 && pwd !== pwdConfirm;
+  const weakPwd = touched && pwd.length > 0 && !isStrongEnough(pwd);
+  const canSubmit = pwd.length > 0 && pwdConfirm.length > 0 && pwd === pwdConfirm && isStrongEnough(pwd);
+
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    setTouched(true);
+    setError('');
+    if (!canSubmit || !token) return;
+    setLoading(true);
+    try {
+      await authApi.restablecerContrasena(token, pwd);
+      setStep('success');
+    } catch (err) {
+      // El token pudo vencer o usarse justo entre que se chequeó y se envió
+      // el formulario (dos pestañas, doble clic): se trata igual que "vencido".
+      if (err instanceof ApiError && err.motivo === 'token_invalido') {
+        setTokenInvalid(true);
+      } else {
+        setError(err instanceof ApiError ? err.message : 'No se pudo actualizar la contraseña.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  };
 
   // ─── VERIFICANDO EL ENLACE CONTRA EL SERVIDOR ──────────────────────────────
   if (tokenInvalid === null) {
