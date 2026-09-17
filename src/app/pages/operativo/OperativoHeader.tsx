@@ -31,7 +31,7 @@ export default function OperativoHeader({ operativo }: Props) {
   const [showObjetivoModal, setShowObjetivoModal] = useState(false);
   const [showQRModal, setShowQRModal] = useState(false);
 
-  const hasObjetivo = !!operativo.objetivoBusqueda;
+  const hasObjetivo = !!operativo.tieneObjetivoBuscado;
 
   const handleFamiliaView = () => {
     const token = generateFamiliaToken(operativo.id);

@@ -41,16 +41,8 @@ export class ApiError extends Error {
   }
 }
 
-async function request<T>(ruta: string, opciones: RequestInit = {}): Promise<T> {
-  const token = getToken();
-  const headers: Record<string, string> = {
-    'Content-Type': 'application/json',
-    ...(opciones.headers as Record<string, string> | undefined),
-  };
-  if (token) headers.Authorization = `Bearer ${token}`;
-
-  const res = await fetch(`/api${ruta}`, { ...opciones, headers });
-
+/** Común a `request` y `requestFormData`: 204/error/401, nunca duplicado entre las dos. */
+async function manejarRespuesta<T>(res: Response): Promise<T> {
   if (res.status === 204) return undefined as T;
 
   const cuerpo = await res.json().catch(() => ({}));
@@ -68,6 +60,33 @@ async function request<T>(ruta: string, opciones: RequestInit = {}): Promise<T> 
   }
 
   return cuerpo as T;
+}
+
+async function request<T>(ruta: string, opciones: RequestInit = {}): Promise<T> {
+  const token = getToken();
+  const headers: Record<string, string> = {
+    'Content-Type': 'application/json',
+    ...(opciones.headers as Record<string, string> | undefined),
+  };
+  if (token) headers.Authorization = `Bearer ${token}`;
+
+  const res = await fetch(`/api${ruta}`, { ...opciones, headers });
+  return manejarRespuesta<T>(res);
+}
+
+/**
+ * Variante para `multipart/form-data` (subida de fotos — CU-12/13). No puede
+ * reusar `request`: ese fuerza `Content-Type: application/json`, y el
+ * navegador necesita fijar el `Content-Type` de un FormData él solo (lleva el
+ * boundary del multipart, que no se puede armar a mano).
+ */
+async function requestFormData<T>(ruta: string, formData: FormData, method: 'POST' | 'PUT' = 'POST'): Promise<T> {
+  const token = getToken();
+  const headers: Record<string, string> = {};
+  if (token) headers.Authorization = `Bearer ${token}`;
+
+  const res = await fetch(`/api${ruta}`, { method, headers, body: formData });
+  return manejarRespuesta<T>(res);
 }
 
 export const api = {
@@ -308,6 +327,16 @@ export interface OperativoApi {
   puntoCeroLng: number;
   creadoEn: string;
   cantidadAgentes: number;
+  /** CU-12/13/14: si ya tiene una ficha de objetivo cargada. */
+  tieneObjetivo: boolean;
+  /**
+   * Vista previa liviana para las cards del listado (CU-11) — sin fotos ni el
+   * resto de los datos. Sólo viene poblada en `operativosApi.listar()`;
+   * `obtener`/`crear`/`actualizar` no traen este JOIN.
+   */
+  objetivoTipo?: 'PERSONA' | 'OBJETO' | null;
+  objetivoNombre?: string | null;
+  objetivoApellido?: string | null;
 }
 
 export interface CrearOperativoPayload {
@@ -396,4 +425,72 @@ export const agentesOperativoApi = {
   /** Baja lógica: cierra la participación, no toca al Usuario global. */
   quitar: (operativoId: string, usuarioId: string) =>
     api.del<void>(`/operativos/${operativoId}/agentes/${usuarioId}`),
+};
+
+/* ── Objetivo Buscado (Módulo 3 · CU-12..14) ─────────────────────────────── */
+
+export interface FotoObjetivoApi {
+  id: string;
+  /** URL firmada de Supabase Storage — expira; se regenera en cada GET. */
+  url: string | null;
+}
+
+/**
+ * Una ficha por operativo (`objetivo_buscado.operativo_id` es UNIQUE).
+ * Persona y Objeto comparten la misma fila: `tipo` dice cuál bloque de
+ * campos es el vigente — el otro bloque viaja en null.
+ */
+export interface ObjetivoApi {
+  id: string;
+  operativoId: string;
+  tipo: 'PERSONA' | 'OBJETO';
+  // Persona
+  nombre: string | null;
+  apellido: string | null;
+  dni: string | null;
+  nacionalidad: string | null;
+  edad: number | null;
+  estatura: number | null; // centímetros
+  genero: 'MASCULINO' | 'FEMENINO' | 'OTRO' | null;
+  complexionFisica: string | null;
+  colorPiel: string | null;
+  colorOjos: string | null;
+  colorPelo: string | null;
+  vestimenta: string | null;
+  detallesAdicionales: string | null;
+  // Objeto
+  tipoObjeto: string | null;
+  color: string | null;
+  marca: string | null;
+  modelo: string | null;
+  dimensionAlto: number | null;  // centímetros
+  dimensionAncho: number | null; // centímetros
+  dimensionLargo: number | null; // centímetros
+  creadoEn: string;
+  actualizadoEn: string;
+  fotos: FotoObjetivoApi[];
+}
+
+export type CrearObjetivoPayload = Partial<Omit<ObjetivoApi, 'id' | 'operativoId' | 'creadoEn' | 'actualizadoEn' | 'fotos'>> & {
+  tipo: 'PERSONA' | 'OBJETO';
+};
+
+export const objetivoApi = {
+  /** CU-14: 404 con motivo 'sin_objetivo' si todavía no se cargó la ficha. */
+  obtener: (operativoId: string) =>
+    api.get<{ objetivo: ObjetivoApi }>(`/operativos/${operativoId}/objetivo`),
+  /** CU-12. */
+  crear: (operativoId: string, datos: CrearObjetivoPayload) =>
+    api.post<{ objetivo: ObjetivoApi }>(`/operativos/${operativoId}/objetivo`, datos),
+  /** CU-13. */
+  actualizar: (operativoId: string, datos: Partial<CrearObjetivoPayload>) =>
+    api.put<{ objetivo: ObjetivoApi }>(`/operativos/${operativoId}/objetivo`, datos),
+  /** Requiere que la ficha ya exista (CU-12 primero). Hasta 8 fotos por vez. */
+  subirFotos: (operativoId: string, archivos: File[]) => {
+    const formData = new FormData();
+    archivos.forEach(a => formData.append('fotos', a));
+    return requestFormData<{ objetivo: ObjetivoApi }>(`/operativos/${operativoId}/objetivo/fotos`, formData);
+  },
+  eliminarFoto: (operativoId: string, fotoId: string) =>
+    api.del<void>(`/operativos/${operativoId}/objetivo/fotos/${fotoId}`),
 };

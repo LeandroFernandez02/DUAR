@@ -1,4 +1,4 @@
-import React, { useState, useEffect, useMemo, ReactNode } from 'react';
+import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import {
   Plus, MapPin, Calendar, Users, ArrowRight, QrCode, X, Trash2, Edit2,
@@ -10,24 +10,17 @@ import StatusBadge from '../components/shared/StatusBadge';
 import { MapPickerModal } from '../components/shared/MapPickerModal';
 import { QRModal } from '../components/shared/QRModal';
 import { useApp } from '../context/AppContext';
-import {
-  Operativo, EstadoOperativo, TipoObjetivo,
-} from '../data/mockData';
+import { Operativo, EstadoOperativo } from '../data/mockData';
 import { operativosApi, ApiError } from '../services/api';
 import { mapearOperativo } from '../utils/mapearOperativo';
-import {
-  ObjetivoFormContent,
-  PersonaForm, ObjetoForm,
-  emptyPersonaForm, emptyObjetoForm,
-  buildPersonaForm, buildObjetoForm,
-} from '../components/shared/ObjetivoFormContent';
 
 /**
- * CU-08..11 (Módulo 3) ya hablan con la API real; CU-12..14 (Objetivo Buscado)
- * todavía no — por eso el formulario sigue mostrando esa pestaña (no tiene
- * sentido sacarla, el Coordinador puede seguir cargándola) pero al guardar NO
- * se envía al backend: `objetivo_buscado` no tiene endpoint todavía. Se pierde
- * al refrescar hasta que se migre ese CU.
+ * CU-08..11 (Módulo 3) ya hablan con la API real. CU-12..14 (Objetivo Buscado)
+ * se cargan aparte, desde la pestaña "Objetivo Buscado" del panel del
+ * operativo ya creado (ver src/app/pages/operativo/ObjetivoBuscado.tsx) — así
+ * lo describe el CU-12 (paso 1: "accede al panel del operativo específico").
+ * Este modal de Crear/Editar Operativo ya NO tiene una pestaña de objetivo:
+ * mezclar esa carga acá no está en ningún CU y duplicaba el formulario.
  */
 
 /**
@@ -45,7 +38,6 @@ function esVigente(estado: EstadoOperativo): boolean {
 type ModalType = 'create' | 'edit' | 'qr' | 'delete' | 'finalize' | null;
 type ViewMode = 'card' | 'list';
 type FilterEstado = 'vigentes' | 'all' | EstadoOperativo;
-type ModalTab = 'operativo' | 'objetivo';
 
 /* ── form base ── */
 const emptyForm = {
@@ -57,7 +49,6 @@ const emptyForm = {
   punto0lng: '',
   fechaInicio: new Date().toISOString().slice(0, 16),
   descripcion: '',
-  objetivo: '',
 };
 
 function inputStyle(extra?: React.CSSProperties): React.CSSProperties {
@@ -142,37 +133,16 @@ export default function Operativos() {
     (searchParams.get('estado') as FilterEstado) ?? 'vigentes'
   );
 
-  /* modal tab */
-  const [modalTab, setModalTab] = useState<ModalTab>('operativo');
-
-  /* objetivo buscado */
-  const [objTipo, setObjTipo] = useState<TipoObjetivo | ''>('');
-  const [objPersonaForm, setObjPersonaForm] = useState<PersonaForm>(emptyPersonaForm);
-  const [objImagenes, setObjImagenes] = useState<string[]>([]);
-  const [objObjetoForm, setObjObjetoForm] = useState<ObjetoForm>(emptyObjetoForm);
-  const [objObjetoImagenes, setObjObjetoImagenes] = useState<string[]>([]);
-  const [lightboxImg, setLightboxImg] = useState<string | null>(null);
-
   /* ── finalize state ── */
   const [finalizeNota, setFinalizeNota] = useState('');
   const [finalizeStep, setFinalizeStep] = useState<'confirm' | 'gpx_warning'>('confirm');
 
   /* ── open/close helpers ── */
-  const resetObjetivo = () => {
-    setObjTipo('');
-    setObjPersonaForm(emptyPersonaForm);
-    setObjImagenes([]);
-    setObjObjetoForm(emptyObjetoForm);
-    setObjObjetoImagenes([]);
-  };
-
   const openCreate = () => {
     setForm(emptyForm);
     setSelected(null);
-    resetObjetivo();
     setFormErrors(new Set());
     setFormErrorMsg('');
-    setModalTab('operativo');
     setModal('create');
   };
 
@@ -180,7 +150,6 @@ export default function Operativos() {
     setSelected(op);
     setFormErrors(new Set());
     setFormErrorMsg('');
-    setModalTab('operativo');
     setForm({
       nombre: op.nombre,
       estado: op.estado,
@@ -190,25 +159,7 @@ export default function Operativos() {
       punto0lng: op.punto0 ? String(op.punto0.lng) : '',
       fechaInicio: op.fechaInicio.length === 10 ? `${op.fechaInicio}T00:00` : op.fechaInicio.slice(0, 16),
       descripcion: op.descripcion || '',
-      objetivo: op.objetivo || '',
     });
-    if (op.objetivoBusqueda?.tipo === 'persona' && op.objetivoBusqueda.persona) {
-      const { imagenes, ...rest } = op.objetivoBusqueda.persona;
-      setObjTipo('persona');
-      setObjPersonaForm(buildPersonaForm(rest));
-      setObjImagenes(imagenes ?? []);
-      setObjObjetoForm(emptyObjetoForm);
-      setObjObjetoImagenes([]);
-    } else if (op.objetivoBusqueda?.tipo === 'objeto' && op.objetivoBusqueda.objeto) {
-      const { imagenes, ...rest } = op.objetivoBusqueda.objeto;
-      setObjTipo('objeto');
-      setObjObjetoForm(buildObjetoForm(rest));
-      setObjObjetoImagenes(imagenes ?? []);
-      setObjPersonaForm(emptyPersonaForm);
-      setObjImagenes([]);
-    } else {
-      resetObjetivo();
-    }
     setModal('edit');
   };
 
@@ -277,53 +228,6 @@ export default function Operativos() {
     }
   };
 
-  /* ── build objetivoBusqueda payload ── */
-  const buildObjetivo = () => {
-    if (objTipo === 'persona') {
-      const f = objPersonaForm;
-      const hasData = f.nombre || f.apellido || f.edad || f.estatura || f.sexo || objImagenes.length > 0;
-      if (!hasData) return undefined;
-      return {
-        tipo: 'persona' as TipoObjetivo,
-        persona: {
-          nombre: f.nombre,
-          apellido: f.apellido,
-          dni: f.dni || undefined,
-          edad: f.edad ? Number(f.edad) : undefined,
-          sexo: f.sexo || undefined,
-          nacionalidad: f.nacionalidad || undefined,
-          estatura: f.estatura || undefined,
-          complexion: f.complexion || undefined,
-          colorPiel: f.colorPiel || undefined,
-          colorOjos: f.colorOjos || undefined,
-          colorCabello: f.colorCabello || undefined,
-          detallesAdicionales: f.detallesAdicionales || undefined,
-          imagenes: objImagenes,
-        },
-      };
-    }
-    if (objTipo === 'objeto') {
-      const f = objObjetoForm;
-      const hasData = f.nombre || f.descripcion || f.marca || f.modelo || objObjetoImagenes.length > 0;
-      if (!hasData) return undefined;
-      return {
-        tipo: 'objeto' as TipoObjetivo,
-        objeto: {
-          nombre: f.nombre,
-          tipo: f.tipo || undefined,
-          descripcion: f.descripcion || undefined,
-          color: f.color || undefined,
-          marca: f.marca || undefined,
-          modelo: f.modelo || undefined,
-          dimensiones: f.dimensiones || undefined,
-          detallesAdicionales: f.detallesAdicionales || undefined,
-          imagenes: objObjetoImagenes,
-        },
-      };
-    }
-    return undefined;
-  };
-
   const handleCreate = async () => {
     const errors = new Set<string>();
     if (!form.nombre.trim())      errors.add('nombre');
@@ -344,9 +248,6 @@ export default function Operativos() {
     setFormErrors(new Set());
     setFormErrorMsg('');
     try {
-      // El "Objetivo Buscado" cargado en la otra pestaña (buildObjetivo()) NO
-      // se envía todavía: CU-12..14 no tienen endpoint. Se pierde al cerrar el
-      // modal hasta que se migre — ver el comentario junto a mapearOperativo.
       await operativosApi.crear({
         titulo: form.nombre.trim(),
         localidad: form.ubicacion.trim(),
@@ -433,9 +334,8 @@ export default function Operativos() {
         o.nombre.toLowerCase().includes(q) ||
         o.ubicacion.toLowerCase().includes(q) ||
         (o.descripcion ?? '').toLowerCase().includes(q) ||
-        (o.objetivoBusqueda?.persona?.nombre ?? '').toLowerCase().includes(q) ||
-        (o.objetivoBusqueda?.persona?.apellido ?? '').toLowerCase().includes(q) ||
-        (o.objetivoBusqueda?.objeto?.nombre ?? '').toLowerCase().includes(q)
+        (o.objetivoPreview?.nombre ?? '').toLowerCase().includes(q) ||
+        (o.objetivoPreview?.apellido ?? '').toLowerCase().includes(q)
       );
     }
     return list;
@@ -765,15 +665,15 @@ export default function Operativos() {
                   </div>
 
                   {/* Objetivo buscado */}
-                  {op.objetivoBusqueda && (
+                  {op.objetivoPreview && (
                     <div className="flex items-center gap-1.5">
-                      {op.objetivoBusqueda.tipo === 'persona'
+                      {op.objetivoPreview.tipo === 'persona'
                         ? <User size={12} style={{ color: 'var(--muted-foreground)', flexShrink: 0 }} />
                         : <Package size={12} style={{ color: 'var(--muted-foreground)', flexShrink: 0 }} />}
                       <span className="truncate" style={{ fontSize: 'var(--text-label)', color: 'var(--muted-foreground)', fontFamily: 'var(--font-family-primary)' }}>
-                        {op.objetivoBusqueda.tipo === 'persona'
-                          ? `${op.objetivoBusqueda.persona?.nombre ?? ''} ${op.objetivoBusqueda.persona?.apellido ?? ''}`.trim() || 'Persona buscada'
-                          : op.objetivoBusqueda.objeto?.nombre || 'Objeto buscado'}
+                        {op.objetivoPreview.tipo === 'persona'
+                          ? `${op.objetivoPreview.nombre ?? ''} ${op.objetivoPreview.apellido ?? ''}`.trim() || 'Persona buscada'
+                          : op.objetivoPreview.nombre || 'Objeto buscado'}
                       </span>
                     </div>
                   )}
@@ -903,14 +803,14 @@ export default function Operativos() {
                       <Users size={10} style={{ display: 'inline', marginRight: 3, verticalAlign: 'middle' }} />
                       {op.agenteIds.length} agente{op.agenteIds.length !== 1 ? 's' : ''}
                     </span>
-                    {op.objetivoBusqueda && (
+                    {op.objetivoPreview && (
                       <span style={{ color: 'var(--muted-foreground)', fontSize: '11px', fontFamily: 'var(--font-family-primary)' }}>
-                        {op.objetivoBusqueda.tipo === 'persona'
+                        {op.objetivoPreview.tipo === 'persona'
                           ? <User size={10} style={{ display: 'inline', marginRight: 2, verticalAlign: 'middle' }} />
                           : <Package size={10} style={{ display: 'inline', marginRight: 2, verticalAlign: 'middle' }} />}
-                        {op.objetivoBusqueda.tipo === 'persona'
-                          ? (`${op.objetivoBusqueda.persona?.nombre ?? ''} ${op.objetivoBusqueda.persona?.apellido ?? ''}`.trim() || 'Persona')
-                          : (op.objetivoBusqueda.objeto?.nombre || 'Objeto')}
+                        {op.objetivoPreview.tipo === 'persona'
+                          ? (`${op.objetivoPreview.nombre ?? ''} ${op.objetivoPreview.apellido ?? ''}`.trim() || 'Persona')
+                          : (op.objetivoPreview.nombre || 'Objeto')}
                       </span>
                     )}
                   </div>
@@ -1024,58 +924,6 @@ export default function Operativos() {
               </button>
             </div>
 
-            {/* ── Tab Toggle ── */}
-            {(() => {
-              const hasObjetivoData = !!(
-                objTipo === 'persona'
-                  ? (objPersonaForm.nombre || objPersonaForm.apellido || objPersonaForm.edad || objPersonaForm.estatura || objPersonaForm.sexo || objImagenes.length > 0)
-                  : objTipo === 'objeto'
-                    ? (objObjetoForm.nombre || objObjetoForm.descripcion || objObjetoForm.marca || objObjetoForm.modelo || objObjetoImagenes.length > 0)
-                    : false
-              );
-              const tabs: { id: ModalTab; label: string; icon: ReactNode }[] = [
-                { id: 'operativo', label: 'Datos del Operativo', icon: <Crosshair size={13} /> },
-                { id: 'objetivo',  label: 'Objetivo Buscado',   icon: objTipo === 'objeto' ? <Package size={13} /> : <User size={13} /> },
-              ];
-              return (
-                <div
-                  className="flex items-center gap-1 px-5 py-3 flex-shrink-0"
-                  style={{ borderBottom: '1px solid var(--border)', background: 'var(--muted)' }}
-                >
-                  {tabs.map(tab => {
-                    const active = modalTab === tab.id;
-                    const showDot = tab.id === 'objetivo' && hasObjetivoData;
-                    return (
-                      <button
-                        key={tab.id}
-                        onClick={() => setModalTab(tab.id)}
-                        className="flex items-center gap-2 px-4 py-2 rounded-[var(--radius-button)] relative transition-all"
-                        style={{
-                          background: active ? 'var(--card)' : 'transparent',
-                          color: active ? 'var(--primary)' : 'var(--muted-foreground)',
-                          fontFamily: 'var(--font-family-primary)',
-                          fontSize: 'var(--text-label)',
-                          fontWeight: active ? 'var(--font-weight-semibold)' : 'var(--font-weight-medium)',
-                          border: active ? '1px solid var(--border)' : '1px solid transparent',
-                          boxShadow: active ? 'var(--elevation-sm)' : 'none',
-                          cursor: 'pointer',
-                        }}
-                      >
-                        {tab.icon}
-                        {tab.label}
-                        {showDot && (
-                          <span
-                            className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                            style={{ background: active ? 'var(--primary)' : '#FFA987' }}
-                          />
-                        )}
-                      </button>
-                    );
-                  })}
-                </div>
-              );
-            })()}
-
             {/* Scrollable body */}
             <div style={{ overflowY: 'auto', flex: '1 1 0', minHeight: 0, padding: '1.25rem 1.5rem', display: 'flex', flexDirection: 'column', gap: '1.25rem' }}>
 
@@ -1108,11 +956,7 @@ export default function Operativos() {
                 </div>
               )}
 
-              {/* ══════════════════════════════
-                  TAB: DATOS DEL OPERATIVO
-              ══════════════════════════════ */}
-              {modalTab === 'operativo' && (
-                <>
+              <>
                   {/* ── Sección: Datos del Operativo ── */}
                   <div className="flex flex-col gap-4">
                     <p style={{ color: 'var(--muted-foreground)', fontSize: '11px', fontWeight: 'var(--font-weight-semibold)', textTransform: 'uppercase', letterSpacing: '0.06em', fontFamily: 'var(--font-family-primary)' }}>
@@ -1294,55 +1138,7 @@ export default function Operativos() {
                       )}
                     </div>
                   </div>
-                </>
-              )}
-
-              {/* ══════════════════════════════
-                  TAB: OBJETIVO BUSCADO
-              ══════════════════════════════ */}
-              {modalTab === 'objetivo' && (
-                <ObjetivoFormContent
-                  tipo={objTipo}
-                  onTipoChange={t => {
-                    if (t === 'persona') { setObjObjetoForm(emptyObjetoForm); setObjObjetoImagenes([]); }
-                    else { setObjPersonaForm(emptyPersonaForm); setObjImagenes([]); }
-                    setObjTipo(t);
-                  }}
-                  lockTipo={false}
-                  personaForm={objPersonaForm}
-                  onPersonaChange={(k, v) => setObjPersonaForm(f => ({ ...f, [k]: v }))}
-                  objetoForm={objObjetoForm}
-                  onObjetoChange={(k, v) => setObjObjetoForm(f => ({ ...f, [k]: v }))}
-                  imagenes={objTipo === 'persona' ? objImagenes : objObjetoImagenes}
-                  onImagenesChange={imgs => {
-                    if (objTipo === 'persona') setObjImagenes(imgs);
-                    else setObjObjetoImagenes(imgs);
-                  }}
-                  onLightbox={setLightboxImg}
-                  isReadOnly={isEditReadOnly}
-                />
-              )}
-
-              {/* ── Lightbox ── */}
-              {lightboxImg && (
-                <div
-                  onClick={() => setLightboxImg(null)}
-                  style={{ position: 'fixed', inset: 0, zIndex: 200, background: 'rgba(0,0,0,0.85)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: '1.5rem' }}
-                >
-                  <button
-                    onClick={() => setLightboxImg(null)}
-                    style={{ position: 'absolute', top: 16, right: 16, background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)', borderRadius: '50%', width: 36, height: 36, display: 'flex', alignItems: 'center', justifyContent: 'center', cursor: 'pointer', color: '#fff' }}
-                  >
-                    <X size={18} />
-                  </button>
-                  <img
-                    src={lightboxImg}
-                    alt="Vista ampliada"
-                    onClick={e => e.stopPropagation()}
-                    style={{ maxWidth: '90vw', maxHeight: '85vh', borderRadius: 'var(--radius-card)', objectFit: 'contain', boxShadow: 'var(--elevation-md)' }}
-                  />
-                </div>
-              )}
+              </>
 
             </div>
 

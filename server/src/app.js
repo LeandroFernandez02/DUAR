@@ -30,7 +30,7 @@ import agenteRoutes from './routes/agente.routes.js';
 const app = express();
 
 app.use(cors());
-app.use(express.json({ limit: '5mb' })); // las fotos del objetivo viajan en base64
+app.use(express.json({ limit: '5mb' }));
 app.set('trust proxy', true);            // para registrar la IP real en las sesiones
 
 /** Chequeo de salud: confirma que la API responde y que la base está viva. */
@@ -60,6 +60,12 @@ app.use((err, _req, res, _next) => {
   // 23505 = unique_violation, 23503 = foreign_key_violation (PostgreSQL)
   if (err.code === '23505') return res.status(409).json({ error: 'Ya existe un registro con esos datos.' });
   if (err.code === '23503') return res.status(409).json({ error: 'Referencia inválida entre entidades.' });
+  // Errores de multer (subida de fotos del objetivo — CU-12/13/14)
+  if (err.code === 'LIMIT_FILE_SIZE') return res.status(400).json({ error: 'Cada foto puede pesar hasta 8MB.' });
+  if (err.code === 'LIMIT_FILE_COUNT' || err.code === 'LIMIT_UNEXPECTED_FILE') {
+    return res.status(400).json({ error: 'Se cargaron demasiadas fotos de una vez.' });
+  }
+  if (err.status) return res.status(err.status).json({ error: err.message });
   res.status(500).json({ error: 'Error interno del servidor.' });
 });
 

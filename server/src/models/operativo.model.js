@@ -22,7 +22,20 @@ const CAMPOS = `
   extensions.ST_X(o.punto_cero) AS "puntoCeroLng",
   o.creado_en           AS "creadoEn",
   (SELECT count(*)::int FROM agentes_operativo ao
-    WHERE ao.operativo_id = o.id AND ao.fecha_egreso IS NULL) AS "cantidadAgentes"
+    WHERE ao.operativo_id = o.id AND ao.fecha_egreso IS NULL) AS "cantidadAgentes",
+  EXISTS(SELECT 1 FROM objetivo_buscado ob WHERE ob.operativo_id = o.id) AS "tieneObjetivo"
+`;
+
+/**
+ * Vista previa liviana del objetivo para el listado (CU-11): sin fotos ni
+ * URLs firmadas — sólo lo necesario para el badge "Persona/Objeto buscado"
+ * de las cards. El detalle completo vive en objetivo.model.js (CU-12..14).
+ */
+const CAMPOS_CON_OBJETIVO = `
+  ${CAMPOS},
+  ob2.tipo::text AS "objetivoTipo",
+  ob2.nombre     AS "objetivoNombre",
+  ob2.apellido   AS "objetivoApellido"
 `;
 
 /** Estados desde los que YA NO se puede modificar ni finalizar (CU-09 obs). */
@@ -64,7 +77,8 @@ export async function listar({ busqueda = '', estado = '' } = {}) {
   }
 
   const { rows } = await query(
-    `SELECT ${CAMPOS} FROM operativos o
+    `SELECT ${CAMPOS_CON_OBJETIVO} FROM operativos o
+      LEFT JOIN objetivo_buscado ob2 ON ob2.operativo_id = o.id
       WHERE ${condiciones.join(' AND ')}
       ORDER BY o.fecha_hora_inicio DESC`,
     valores

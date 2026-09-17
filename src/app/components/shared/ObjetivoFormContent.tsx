@@ -1,4 +1,4 @@
-import React, { useRef } from 'react';
+import React, { useEffect, useMemo, useRef } from 'react';
 import {
   User, Package, CheckCircle2, ImagePlus, Expand, X as XIcon,
 } from 'lucide-react';
@@ -12,73 +12,79 @@ export type PersonaForm = {
   apellido: string;
   dni: string;
   edad: string;
-  sexo: string;
+  sexo: string; // valor del enum real: MASCULINO/FEMENINO/OTRO
   nacionalidad: string;
-  estatura: string;
+  estatura: string; // centímetros
   complexion: string;
   colorPiel: string;
   colorOjos: string;
   colorCabello: string;
+  vestimenta: string;
   detallesAdicionales: string;
 };
 
 export type ObjetoForm = {
   nombre: string;
   tipo: string;
-  descripcion: string;
   color: string;
   marca: string;
   modelo: string;
-  dimensiones: string;
+  dimensionAlto: string;  // centímetros
+  dimensionAncho: string; // centímetros
+  dimensionLargo: string; // centímetros
   detallesAdicionales: string;
 };
 
 export const emptyPersonaForm: PersonaForm = {
   nombre: '', apellido: '', dni: '', edad: '',
   sexo: '', nacionalidad: '', estatura: '', complexion: '',
-  colorPiel: '', colorOjos: '', colorCabello: '',
+  colorPiel: '', colorOjos: '', colorCabello: '', vestimenta: '',
   detallesAdicionales: '',
 };
 
 export const emptyObjetoForm: ObjetoForm = {
-  nombre: '', tipo: '', descripcion: '', color: '',
-  marca: '', modelo: '', dimensiones: '', detallesAdicionales: '',
+  nombre: '', tipo: '', color: '', marca: '', modelo: '',
+  dimensionAlto: '', dimensionAncho: '', dimensionLargo: '', detallesAdicionales: '',
 };
 
 export function buildPersonaForm(p?: {
-  nombre: string; apellido?: string; dni?: string; edad?: number;
-  sexo?: string; nacionalidad?: string; estatura?: string; complexion?: string;
-  colorPiel?: string; colorOjos?: string; colorCabello?: string;
-  detallesAdicionales?: string;
+  nombre?: string | null; apellido?: string | null; dni?: string | null; edad?: number | null;
+  genero?: string | null; nacionalidad?: string | null; estatura?: number | null;
+  complexionFisica?: string | null; colorPiel?: string | null; colorOjos?: string | null;
+  colorPelo?: string | null; vestimenta?: string | null; detallesAdicionales?: string | null;
 }): PersonaForm {
   return {
     nombre: p?.nombre ?? '',
     apellido: p?.apellido ?? '',
     dni: p?.dni ?? '',
-    edad: p?.edad !== undefined ? String(p.edad) : '',
-    sexo: p?.sexo ?? '',
+    edad: p?.edad != null ? String(p.edad) : '',
+    sexo: p?.genero ?? '',
     nacionalidad: p?.nacionalidad ?? '',
-    estatura: p?.estatura ?? '',
-    complexion: p?.complexion ?? '',
+    estatura: p?.estatura != null ? String(p.estatura) : '',
+    complexion: p?.complexionFisica ?? '',
     colorPiel: p?.colorPiel ?? '',
     colorOjos: p?.colorOjos ?? '',
-    colorCabello: p?.colorCabello ?? '',
+    colorCabello: p?.colorPelo ?? '',
+    vestimenta: p?.vestimenta ?? '',
     detallesAdicionales: p?.detallesAdicionales ?? '',
   };
 }
 
 export function buildObjetoForm(o?: {
-  nombre: string; tipo?: string; descripcion?: string; color?: string;
-  marca?: string; modelo?: string; dimensiones?: string; detallesAdicionales?: string;
+  nombre?: string | null; tipoObjeto?: string | null; color?: string | null;
+  marca?: string | null; modelo?: string | null;
+  dimensionAlto?: number | null; dimensionAncho?: number | null; dimensionLargo?: number | null;
+  detallesAdicionales?: string | null;
 }): ObjetoForm {
   return {
     nombre: o?.nombre ?? '',
-    tipo: o?.tipo ?? '',
-    descripcion: o?.descripcion ?? '',
+    tipo: o?.tipoObjeto ?? '',
     color: o?.color ?? '',
     marca: o?.marca ?? '',
     modelo: o?.modelo ?? '',
-    dimensiones: o?.dimensiones ?? '',
+    dimensionAlto: o?.dimensionAlto != null ? String(o.dimensionAlto) : '',
+    dimensionAncho: o?.dimensionAncho != null ? String(o.dimensionAncho) : '',
+    dimensionLargo: o?.dimensionLargo != null ? String(o.dimensionLargo) : '',
     detallesAdicionales: o?.detallesAdicionales ?? '',
   };
 }
@@ -86,7 +92,14 @@ export function buildObjetoForm(o?: {
 /* ─────────────────────────────────────────────────
    Constants
 ───────────────────────────────────────────────── */
-const SEXO_OPTIONS = ['Masculino', 'Femenino', 'No binario', 'Sin especificar'];
+// Valores reales del enum `genero` (MASCULINO/FEMENINO/OTRO) — se guardan
+// directo, sin capa de conversión (es un campo nuevo, no hay legado que
+// respetar como en EstadoOperativoAgente).
+const SEXO_OPTIONS = [
+  { value: 'MASCULINO', label: 'Masculino' },
+  { value: 'FEMENINO', label: 'Femenino' },
+  { value: 'OTRO', label: 'Otro' },
+];
 const COMPLEXION_OPTIONS = ['Delgada', 'Normal', 'Robusta', 'Obesa'];
 const COLOR_PIEL_OPTIONS = ['Blanca', 'Morena', 'Trigueña', 'Negra', 'Amarilla', 'Otra'];
 const COLOR_OJOS_OPTIONS = ['Negros', 'Marrones', 'Verdes', 'Azules', 'Grises', 'Miel'];
@@ -234,44 +247,41 @@ function Tex({ value, onChange, placeholder, rows = 3, readOnly }: {
 
 /* ─────────────────────────────────────────────────
    Photo Upload Section (self-contained ref)
+   Trabaja con archivos reales — nada de base64: las fotos existentes ya
+   vienen con una URL firmada de Supabase Storage (expira, se regenera en
+   cada carga de la ficha); las nuevas son `File[]` sin subir todavía, con
+   una preview local (`URL.createObjectURL`) que se libera al desmontar o
+   reemplazar la lista, para no acumular blobs en memoria.
 ───────────────────────────────────────────────── */
+export interface FotoExistente { id: string; url: string | null; }
+
 function PhotoSection({
-  tipo, imagenes, onImagenesChange, onLightbox, isReadOnly,
+  tipo, fotosExistentes, fotosNuevas, onAgregarArchivos, onQuitarNueva,
+  onEliminarExistente, onLightbox, isReadOnly,
 }: {
   tipo: TipoObjetivo;
-  imagenes: string[];
-  onImagenesChange: (imgs: string[]) => void;
+  fotosExistentes: FotoExistente[];
+  fotosNuevas: File[];
+  onAgregarArchivos: (files: FileList | null) => void;
+  onQuitarNueva: (idx: number) => void;
+  onEliminarExistente: (fotoId: string) => void;
   onLightbox: (src: string) => void;
   isReadOnly?: boolean;
 }) {
   const inputRef = useRef<HTMLInputElement>(null);
+  const total = fotosExistentes.length + fotosNuevas.length;
+
+  const previewsNuevas = useMemo(
+    () => fotosNuevas.map(f => URL.createObjectURL(f)),
+    [fotosNuevas]
+  );
+  useEffect(() => () => { previewsNuevas.forEach(URL.revokeObjectURL); }, [previewsNuevas]);
 
   const processFiles = (files: FileList | null) => {
-    if (!files) return;
-    const remaining = MAX_IMG - imagenes.length;
-    if (remaining <= 0) return;
-    const toRead = Array.from(files)
-      .slice(0, remaining)
-      .filter(f => f.type.startsWith('image/'));
-    if (!toRead.length) return;
-
-    Promise.all(
-      toRead.map(f =>
-        new Promise<string>(res => {
-          const r = new FileReader();
-          r.onload = e => res(e.target?.result as string);
-          r.readAsDataURL(f);
-        })
-      )
-    ).then(b64 => {
-      onImagenesChange([...imagenes, ...b64].slice(0, MAX_IMG));
-    });
-
+    const remaining = MAX_IMG - total;
+    if (remaining <= 0 || !files) return;
+    onAgregarArchivos(files);
     if (inputRef.current) inputRef.current.value = '';
-  };
-
-  const handleRemove = (idx: number) => {
-    onImagenesChange(imagenes.filter((_, i) => i !== idx));
   };
 
   const label =
@@ -292,7 +302,7 @@ function PhotoSection({
       />
 
       {/* Empty state */}
-      {imagenes.length === 0 && (
+      {total === 0 && (
         !isReadOnly ? (
           <button
             type="button"
@@ -364,12 +374,12 @@ function PhotoSection({
         )
       )}
 
-      {/* Grid of thumbnails */}
-      {imagenes.length > 0 && (
+      {/* Grid of thumbnails: existentes (con URL firmada) + nuevas (preview local) */}
+      {total > 0 && (
         <div className="grid grid-cols-4 gap-2">
-          {imagenes.map((src, idx) => (
+          {fotosExistentes.map((foto, idx) => (
             <div
-              key={idx}
+              key={foto.id}
               className="relative group rounded-[var(--radius-input)] overflow-hidden"
               style={{
                 aspectRatio: '1',
@@ -377,63 +387,89 @@ function PhotoSection({
                 border: '1px solid var(--border)',
               }}
             >
-              <img
-                src={src}
-                alt={`Foto ${idx + 1}`}
-                className="w-full h-full object-cover"
-              />
-              {/* Hover overlay */}
+              {foto.url
+                ? <img src={foto.url} alt={`Foto ${idx + 1}`} className="w-full h-full object-cover" />
+                : <div className="w-full h-full flex items-center justify-center"><ImagePlus size={16} style={{ color: 'var(--muted-foreground)' }} /></div>
+              }
               <div
                 className="absolute inset-0 flex items-center justify-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity"
                 style={{ background: 'rgba(0,0,0,0.48)' }}
               >
-                <button
-                  type="button"
-                  onClick={() => onLightbox(src)}
-                  className="flex items-center justify-center w-7 h-7 rounded-full"
-                  style={{
-                    background: 'rgba(255,255,255,0.15)',
-                    border: '1px solid rgba(255,255,255,0.3)',
-                    cursor: 'pointer',
-                    color: '#fff',
-                  }}
-                >
-                  <Expand size={13} />
-                </button>
+                {foto.url && (
+                  <button
+                    type="button"
+                    onClick={() => onLightbox(foto.url!)}
+                    className="flex items-center justify-center w-7 h-7 rounded-full"
+                    style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)', cursor: 'pointer', color: '#fff' }}
+                  >
+                    <Expand size={13} />
+                  </button>
+                )}
                 {!isReadOnly && (
                   <button
                     type="button"
-                    onClick={() => handleRemove(idx)}
+                    onClick={() => onEliminarExistente(foto.id)}
                     className="flex items-center justify-center w-7 h-7 rounded-full"
-                    style={{
-                      background: 'rgba(229,75,75,0.7)',
-                      border: '1px solid rgba(229,75,75,0.5)',
-                      cursor: 'pointer',
-                      color: '#fff',
-                    }}
+                    style={{ background: 'rgba(229,75,75,0.7)', border: '1px solid rgba(229,75,75,0.5)', cursor: 'pointer', color: '#fff' }}
                   >
                     <XIcon size={13} />
                   </button>
                 )}
               </div>
-              {/* Index badge */}
               <span
                 className="absolute top-1 left-1 rounded px-1"
-                style={{
-                  background: 'rgba(0,0,0,0.5)',
-                  color: '#fff',
-                  fontSize: '9px',
-                  fontFamily: 'var(--font-family-primary)',
-                  lineHeight: '16px',
-                }}
+                style={{ background: 'rgba(0,0,0,0.5)', color: '#fff', fontSize: '9px', fontFamily: 'var(--font-family-primary)', lineHeight: '16px' }}
               >
                 {idx + 1}
               </span>
             </div>
           ))}
 
+          {fotosNuevas.map((_, idx) => (
+            <div
+              key={`nueva-${idx}`}
+              className="relative group rounded-[var(--radius-input)] overflow-hidden"
+              style={{
+                aspectRatio: '1',
+                background: 'var(--muted)',
+                border: '1.5px dashed var(--primary)',
+              }}
+            >
+              <img src={previewsNuevas[idx]} alt={`Foto nueva ${idx + 1}`} className="w-full h-full object-cover" />
+              <div
+                className="absolute inset-0 flex items-center justify-center gap-1.5 opacity-0 group-hover:opacity-100 transition-opacity"
+                style={{ background: 'rgba(0,0,0,0.48)' }}
+              >
+                <button
+                  type="button"
+                  onClick={() => onLightbox(previewsNuevas[idx])}
+                  className="flex items-center justify-center w-7 h-7 rounded-full"
+                  style={{ background: 'rgba(255,255,255,0.15)', border: '1px solid rgba(255,255,255,0.3)', cursor: 'pointer', color: '#fff' }}
+                >
+                  <Expand size={13} />
+                </button>
+                {!isReadOnly && (
+                  <button
+                    type="button"
+                    onClick={() => onQuitarNueva(idx)}
+                    className="flex items-center justify-center w-7 h-7 rounded-full"
+                    style={{ background: 'rgba(229,75,75,0.7)', border: '1px solid rgba(229,75,75,0.5)', cursor: 'pointer', color: '#fff' }}
+                  >
+                    <XIcon size={13} />
+                  </button>
+                )}
+              </div>
+              <span
+                className="absolute top-1 left-1 rounded px-1.5 py-0.5"
+                style={{ background: 'var(--primary)', color: '#fff', fontSize: '8px', fontWeight: 'var(--font-weight-semibold)', fontFamily: 'var(--font-family-primary)', lineHeight: 1 }}
+              >
+                Nueva
+              </span>
+            </div>
+          ))}
+
           {/* Add more button */}
-          {!isReadOnly && imagenes.length < MAX_IMG && (
+          {!isReadOnly && total < MAX_IMG && (
             <button
               type="button"
               onClick={() => inputRef.current?.click()}
@@ -479,10 +515,13 @@ export interface ObjetivoFormContentProps {
   onPersonaChange: (key: keyof PersonaForm, value: string) => void;
   objetoForm: ObjetoForm;
   onObjetoChange: (key: keyof ObjetoForm, value: string) => void;
-  /** Current array of base-64 images */
-  imagenes: string[];
-  /** Replace the full images array (add & remove handled internally) */
-  onImagenesChange: (imgs: string[]) => void;
+  /** Fotos ya subidas a Storage (URL firmada) y fotos nuevas sin subir todavía. */
+  fotosExistentes: FotoExistente[];
+  fotosNuevas: File[];
+  onAgregarArchivos: (files: FileList | null) => void;
+  onQuitarNueva: (idx: number) => void;
+  /** Borra una foto YA subida — el llamador decide si es inmediato (PUT/DELETE) o diferido. */
+  onEliminarExistente: (fotoId: string) => void;
   onLightbox: (src: string) => void;
   errors?: Record<string, string>;
   isReadOnly?: boolean;
@@ -495,7 +534,7 @@ export function ObjetivoFormContent({
   tipo, onTipoChange, lockTipo = false,
   personaForm, onPersonaChange,
   objetoForm, onObjetoChange,
-  imagenes, onImagenesChange, onLightbox,
+  fotosExistentes, fotosNuevas, onAgregarArchivos, onQuitarNueva, onEliminarExistente, onLightbox,
   errors = {}, isReadOnly = false,
 }: ObjetivoFormContentProps) {
   const ro = isReadOnly;
@@ -664,7 +703,7 @@ export function ObjetivoFormContent({
               <Sel
                 value={personaForm.sexo}
                 onChange={v => onPersonaChange('sexo', v)}
-                options={SEXO_OPTIONS.map(s => ({ value: s, label: s }))}
+                options={SEXO_OPTIONS}
                 placeholder="Seleccionar..."
                 readOnly={ro}
               />
@@ -683,11 +722,12 @@ export function ObjetivoFormContent({
           <SecTitle>Características Físicas</SecTitle>
           <div className="grid grid-cols-2 gap-3">
             <div>
-              <Lbl>Estatura</Lbl>
+              <Lbl>Estatura (cm)</Lbl>
               <Inp
                 value={personaForm.estatura}
-                onChange={v => onPersonaChange('estatura', v)}
-                placeholder="Ej: 1.72 m"
+                onChange={v => onPersonaChange('estatura', v.replace(/[^\d]/g, ''))}
+                placeholder="Ej: 172"
+                type="number"
                 readOnly={ro}
               />
             </div>
@@ -736,11 +776,21 @@ export function ObjetivoFormContent({
           <SecTitle>Detalles Adicionales</SecTitle>
           <div className="flex flex-col gap-3">
             <div>
+              <Lbl>Vestimenta</Lbl>
+              <Tex
+                value={personaForm.vestimenta}
+                onChange={v => onPersonaChange('vestimenta', v)}
+                placeholder="Ropa que llevaba puesta al momento de la desaparición"
+                rows={2}
+                readOnly={ro}
+              />
+            </div>
+            <div>
               <Lbl>Detalles adicionales</Lbl>
               <Tex
                 value={personaForm.detallesAdicionales}
                 onChange={v => onPersonaChange('detallesAdicionales', v)}
-                placeholder="Vestimenta, rasgos particulares, tatuajes, cicatrices, objetos que portaba, etc."
+                placeholder="Rasgos particulares, tatuajes, cicatrices, objetos que portaba, etc."
                 rows={4}
                 readOnly={ro}
               />
@@ -810,12 +860,37 @@ export function ObjetivoFormContent({
                 readOnly={ro}
               />
             </div>
-            <div className="col-span-2">
-              <Lbl>Dimensiones / Medidas</Lbl>
+          </div>
+
+          <SecTitle>Dimensiones (cm)</SecTitle>
+          <div className="grid grid-cols-3 gap-3">
+            <div>
+              <Lbl>Alto</Lbl>
               <Inp
-                value={objetoForm.dimensiones}
-                onChange={v => onObjetoChange('dimensiones', v)}
-                placeholder="Ej: 30 x 20 x 15 cm"
+                value={objetoForm.dimensionAlto}
+                onChange={v => onObjetoChange('dimensionAlto', v.replace(/[^\d]/g, ''))}
+                placeholder="Ej: 40"
+                type="number"
+                readOnly={ro}
+              />
+            </div>
+            <div>
+              <Lbl>Ancho</Lbl>
+              <Inp
+                value={objetoForm.dimensionAncho}
+                onChange={v => onObjetoChange('dimensionAncho', v.replace(/[^\d]/g, ''))}
+                placeholder="Ej: 30"
+                type="number"
+                readOnly={ro}
+              />
+            </div>
+            <div>
+              <Lbl>Largo</Lbl>
+              <Inp
+                value={objetoForm.dimensionLargo}
+                onChange={v => onObjetoChange('dimensionLargo', v.replace(/[^\d]/g, ''))}
+                placeholder="Ej: 20"
+                type="number"
                 readOnly={ro}
               />
             </div>
@@ -841,8 +916,11 @@ export function ObjetivoFormContent({
       {(tipo === 'persona' || tipo === 'objeto') && (
         <PhotoSection
           tipo={tipo}
-          imagenes={imagenes}
-          onImagenesChange={onImagenesChange}
+          fotosExistentes={fotosExistentes}
+          fotosNuevas={fotosNuevas}
+          onAgregarArchivos={onAgregarArchivos}
+          onQuitarNueva={onQuitarNueva}
+          onEliminarExistente={onEliminarExistente}
           onLightbox={onLightbox}
           isReadOnly={isReadOnly}
         />

@@ -283,7 +283,17 @@ export interface Operativo {
   fechaFin?: string;
   descripcion?: string;
   objetivo?: string;
+  /**
+   * Sólo la usan pantallas todavía sin migrar (historial mock de
+   * AgenteDashboard.tsx). Las pantallas reales (panel del operativo, listado)
+   * usan `tieneObjetivoBuscado`/`objetivoPreview` + `objetivoApi` — la ficha
+   * completa vive en la tabla real `objetivo_buscado`, nunca acá.
+   */
   objetivoBusqueda?: ObjetivoBusqueda;
+  /** CU-12/13/14: si el operativo (real) ya tiene una ficha de objetivo cargada. */
+  tieneObjetivoBuscado?: boolean;
+  /** Vista previa liviana para las cards del listado (CU-11) — sin fotos. */
+  objetivoPreview?: { tipo: TipoObjetivo; nombre?: string; apellido?: string };
   agenteIds: string[];
   grupoIds: string[];
   sectores: Sector[];

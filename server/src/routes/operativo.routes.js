@@ -1,6 +1,7 @@
 /**
  * RUTAS · Operativos
  *   · CU-08 Crear · CU-09 Modificar · CU-10 Finalizar · CU-11 Consultar
+ *   · CU-12 Registrar Objetivo · CU-13 Actualizar Objetivo · CU-14 Consultar Objetivo
  *   · CU-15 Generar QR de Operativo · CU-19 Listar Personal del Incidente
  *   · Alta del agente en el operativo (CU-15 pasos 6-8)
  */
@@ -9,7 +10,9 @@ import * as operativos from '../controllers/operativo.controller.js';
 import * as qr from '../controllers/qr.controller.js';
 import * as registro from '../controllers/registro.controller.js';
 import * as agentesOperativo from '../controllers/agenteOperativo.controller.js';
+import * as objetivo from '../controllers/objetivo.controller.js';
 import { requiereSesion, requiereRol } from '../middleware/auth.middleware.js';
+import { subirFotosMiddleware } from '../middleware/upload.middleware.js';
 
 const router = Router();
 
@@ -40,5 +43,12 @@ router.post('/:id/alta', requiereSesion, registro.altaEnOperativo);
 router.post(  '/:id/agentes',            requiereSesion, gestores, agentesOperativo.agregar);
 router.put(   '/:id/agentes/:usuarioId', requiereSesion, gestores, agentesOperativo.actualizar);
 router.delete('/:id/agentes/:usuarioId', requiereSesion, gestores, agentesOperativo.quitar);
+
+// CU-12/13/14: ficha del Objetivo Buscado (una por operativo — Aislamiento de Información).
+router.get(   '/:id/objetivo',               requiereSesion, gestores, objetivo.obtener);
+router.post(  '/:id/objetivo',               requiereSesion, gestores, objetivo.crear);
+router.put(   '/:id/objetivo',               requiereSesion, gestores, objetivo.actualizar);
+router.post(  '/:id/objetivo/fotos',         requiereSesion, gestores, subirFotosMiddleware, objetivo.subirFotos);
+router.delete('/:id/objetivo/fotos/:fotoId', requiereSesion, gestores, objetivo.eliminarFoto);
 
 export default router;

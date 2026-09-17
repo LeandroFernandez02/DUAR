@@ -39,5 +39,13 @@ export function mapearOperativo(o: OperativoApi): Operativo {
     puntos: [],
     kmRastrillados: 0,
     coordinadorId: o.coordinadorId,
+    tieneObjetivoBuscado: o.tieneObjetivo,
+    objetivoPreview: o.objetivoTipo
+      ? {
+          tipo: o.objetivoTipo === 'OBJETO' ? 'objeto' : 'persona',
+          nombre: o.objetivoNombre ?? undefined,
+          apellido: o.objetivoApellido ?? undefined,
+        }
+      : undefined,
   };
 }

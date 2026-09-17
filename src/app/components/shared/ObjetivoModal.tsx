@@ -1,27 +1,25 @@
-import { useState, useRef, useCallback } from 'react';
+import { useState, useRef, useCallback, useEffect } from 'react';
 import {
   X, User, Package, Pencil, Plus, CheckCircle2,
   ChevronLeft, ChevronRight, Eye, Tag, Info,
-  Ruler, Palette, Star, Truck, Scissors, Shirt,
-  Hash, AlertCircle, Upload, Trash2, ImageOff,
-  Lock, AlertTriangle,
+  Ruler, Palette, Star, Scissors, Shirt,
+  Hash, AlertCircle, ImageOff, Lock, Loader2,
 } from 'lucide-react';
-import {
-  ObjetivoBusqueda, TipoObjetivo,
-  DatosPersonaBuscada, DatosObjetoBuscado,
-} from '../../data/mockData';
+import { TipoObjetivo } from '../../data/mockData';
+import { objetivoApi, ObjetivoApi, CrearObjetivoPayload, ApiError } from '../../services/api';
 import {
   ObjetivoFormContent,
-  PersonaForm, ObjetoForm,
+  PersonaForm, ObjetoForm, FotoExistente,
   buildPersonaForm, buildObjetoForm,
 } from './ObjetivoFormContent';
-import { useApp } from '../../context/AppContext';
 
 /* ─── Types ─── */
 interface Props {
   operativoId: string;
   onClose: () => void;
 }
+
+type FotoLista = { id: string; url: string };
 
 /* ─── Constants ─── */
 const OBJECT_TYPES: Record<string, string> = {
@@ -34,6 +32,10 @@ const OBJECT_TYPES: Record<string, string> = {
   animal: 'Animal',
   documento: 'Documento',
   otro: 'Otro',
+};
+
+const GENERO_LABEL: Record<string, string> = {
+  MASCULINO: 'Masculino', FEMENINO: 'Femenino', OTRO: 'Otro',
 };
 
 /* ─────────────────────────────────────────────────
@@ -98,8 +100,8 @@ function TextBlock({ icon, children, accent }: { icon: React.ReactNode; children
 }
 
 /* ─── Simple image grid (view-only) ─── */
-function ImageGrid({ images, onOpen }: { images: string[]; onOpen: (i: number) => void }) {
-  if (images.length === 0) {
+function ImageGrid({ fotos, onOpen }: { fotos: FotoLista[]; onOpen: (i: number) => void }) {
+  if (fotos.length === 0) {
     return (
       <div
         className="flex flex-col items-center justify-center py-8 rounded-[var(--radius-input)]"
@@ -117,14 +119,14 @@ function ImageGrid({ images, onOpen }: { images: string[]; onOpen: (i: number) =
   }
   return (
     <div className="grid grid-cols-4 sm:grid-cols-5 gap-2">
-      {images.map((src, idx) => (
+      {fotos.map((foto, idx) => (
         <button
-          key={idx}
+          key={foto.id}
           onClick={() => onOpen(idx)}
           className="relative overflow-hidden rounded-[var(--radius-input)] group"
           style={{ aspectRatio: '1', background: 'var(--muted)' }}
         >
-          <img src={src} alt={`Foto ${idx + 1}`} className="w-full h-full object-cover" />
+          <img src={foto.url} alt={`Foto ${idx + 1}`} className="w-full h-full object-cover" />
           <div
             className="absolute inset-0 flex items-center justify-center opacity-0 group-hover:opacity-100 transition-opacity"
             style={{ background: 'rgba(0,0,0,0.42)' }}
@@ -146,9 +148,9 @@ function ImageGrid({ images, onOpen }: { images: string[]; onOpen: (i: number) =
   );
 }
 
-/* ─── Lightbox ─── */
-function Lightbox({ images, index, onClose, onPrev, onNext }: {
-  images: string[]; index: number;
+/* ─── Lightbox (sólo para modo lectura — el modo edición usa el propio de ObjetivoFormContent) ─── */
+function Lightbox({ fotos, index, onClose, onPrev, onNext }: {
+  fotos: FotoLista[]; index: number;
   onClose: () => void; onPrev: () => void; onNext: () => void;
 }) {
   return (
@@ -163,7 +165,7 @@ function Lightbox({ images, index, onClose, onPrev, onNext }: {
         onClick={e => e.stopPropagation()}
       >
         <span style={{ color: 'rgba(255,255,255,0.65)', fontSize: 'var(--text-label)', fontFamily: 'var(--font-family-primary)' }}>
-          {index + 1} / {images.length}
+          {index + 1} / {fotos.length}
         </span>
         <button
           onClick={onClose}
@@ -176,7 +178,7 @@ function Lightbox({ images, index, onClose, onPrev, onNext }: {
         </button>
       </div>
       <div className="flex-1 flex items-center justify-center relative" onClick={e => e.stopPropagation()}>
-        {images.length > 1 && (
+        {fotos.length > 1 && (
           <button
             onClick={onPrev}
             className="absolute left-4 p-2 rounded-full"
@@ -188,12 +190,12 @@ function Lightbox({ images, index, onClose, onPrev, onNext }: {
           </button>
         )}
         <img
-          src={images[index]}
+          src={fotos[index].url}
           alt={`Foto ${index + 1}`}
           className="max-w-full max-h-full object-contain"
           style={{ maxHeight: 'calc(100vh - 120px)', borderRadius: 'var(--radius-input)' }}
         />
-        {images.length > 1 && (
+        {fotos.length > 1 && (
           <button
             onClick={onNext}
             className="absolute right-4 p-2 rounded-full"
@@ -205,15 +207,15 @@ function Lightbox({ images, index, onClose, onPrev, onNext }: {
           </button>
         )}
       </div>
-      {images.length > 1 && (
+      {fotos.length > 1 && (
         <div
           className="flex items-center gap-2 px-5 py-3 overflow-x-auto flex-shrink-0"
           style={{ borderTop: '1px solid rgba(255,255,255,0.08)' }}
           onClick={e => e.stopPropagation()}
         >
-          {images.map((src, i) => (
+          {fotos.map((f, i) => (
             <div
-              key={i}
+              key={f.id}
               className="flex-shrink-0 rounded-md overflow-hidden"
               style={{
                 width: 44, height: 44,
@@ -222,7 +224,7 @@ function Lightbox({ images, index, onClose, onPrev, onNext }: {
                 outlineOffset: 2,
               }}
             >
-              <img src={src} alt={`Min ${i + 1}`} className="w-full h-full object-cover" />
+              <img src={f.url} alt={`Min ${i + 1}`} className="w-full h-full object-cover" />
             </div>
           ))}
         </div>
@@ -234,12 +236,12 @@ function Lightbox({ images, index, onClose, onPrev, onNext }: {
 /* ─────────────────────────────────────────────────
    Persona view (read-only)
 ───────────────────────────────────────────────── */
-function PersonaView({ persona, images, onOpenLightbox }: {
-  persona: DatosPersonaBuscada;
-  images: string[];
+function PersonaView({ objetivo, fotos, onOpenLightbox }: {
+  objetivo: ObjetivoApi;
+  fotos: FotoLista[];
   onOpenLightbox: (i: number) => void;
 }) {
-  const nombreCompleto = `${persona.nombre}${persona.apellido ? ' ' + persona.apellido : ''}`.trim();
+  const nombreCompleto = `${objetivo.nombre ?? ''}${objetivo.apellido ? ' ' + objetivo.apellido : ''}`.trim();
   return (
     <div className="flex flex-col gap-6">
       {/* Avatar header */}
@@ -275,12 +277,12 @@ function PersonaView({ persona, images, onOpenLightbox }: {
       <div>
         <SectionTitle>Identificación</SectionTitle>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-          <DataCard label="DNI" value={persona.dni} icon={<Hash size={11} />} />
-          <DataCard label="Edad" value={persona.edad !== undefined ? `${persona.edad} años` : undefined} icon={<Info size={11} />} />
-          <DataCard label="Sexo" value={persona.sexo} icon={<User size={11} />} />
-          <DataCard label="Nacionalidad" value={persona.nacionalidad} icon={<Info size={11} />} />
-          <DataCard label="Estatura" value={persona.estatura} icon={<Ruler size={11} />} />
-          <DataCard label="Complexión" value={persona.complexion} icon={<Info size={11} />} />
+          <DataCard label="DNI" value={objetivo.dni ?? undefined} icon={<Hash size={11} />} />
+          <DataCard label="Edad" value={objetivo.edad != null ? `${objetivo.edad} años` : undefined} icon={<Info size={11} />} />
+          <DataCard label="Sexo" value={objetivo.genero ? GENERO_LABEL[objetivo.genero] : undefined} icon={<User size={11} />} />
+          <DataCard label="Nacionalidad" value={objetivo.nacionalidad ?? undefined} icon={<Info size={11} />} />
+          <DataCard label="Estatura" value={objetivo.estatura != null ? `${objetivo.estatura} cm` : undefined} icon={<Ruler size={11} />} />
+          <DataCard label="Complexión" value={objetivo.complexionFisica ?? undefined} icon={<Info size={11} />} />
         </div>
       </div>
 
@@ -288,23 +290,30 @@ function PersonaView({ persona, images, onOpenLightbox }: {
       <div>
         <SectionTitle>Características físicas</SectionTitle>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-          <DataCard label="Color de piel" value={persona.colorPiel} icon={<Palette size={11} />} />
-          <DataCard label="Color de ojos" value={persona.colorOjos} icon={<Eye size={11} />} />
-          <DataCard label="Color de cabello" value={persona.colorCabello} icon={<Scissors size={11} />} />
+          <DataCard label="Color de piel" value={objetivo.colorPiel ?? undefined} icon={<Palette size={11} />} />
+          <DataCard label="Color de ojos" value={objetivo.colorOjos ?? undefined} icon={<Eye size={11} />} />
+          <DataCard label="Color de cabello" value={objetivo.colorPelo ?? undefined} icon={<Scissors size={11} />} />
         </div>
       </div>
 
-      {persona.detallesAdicionales && (
+      {objetivo.vestimenta && (
+        <div>
+          <SectionTitle>Vestimenta</SectionTitle>
+          <TextBlock icon={<Shirt size={15} />}>{objetivo.vestimenta}</TextBlock>
+        </div>
+      )}
+
+      {objetivo.detallesAdicionales && (
         <div>
           <SectionTitle>Detalles Adicionales</SectionTitle>
-          <TextBlock icon={<Star size={15} />} accent>{persona.detallesAdicionales}</TextBlock>
+          <TextBlock icon={<Star size={15} />} accent>{objetivo.detallesAdicionales}</TextBlock>
         </div>
       )}
 
       {/* Imágenes */}
       <div>
-        <SectionTitle>Imágenes ({images.length})</SectionTitle>
-        <ImageGrid images={images} onOpen={onOpenLightbox} />
+        <SectionTitle>Imágenes ({fotos.length})</SectionTitle>
+        <ImageGrid fotos={fotos} onOpen={onOpenLightbox} />
       </div>
     </div>
   );
@@ -313,12 +322,12 @@ function PersonaView({ persona, images, onOpenLightbox }: {
 /* ─────────────────────────────────────────────────
    Objeto view (read-only)
 ───────────────────────────────────────────────── */
-function ObjetoView({ objeto, images, onOpenLightbox }: {
-  objeto: DatosObjetoBuscado;
-  images: string[];
+function ObjetoView({ objetivo, fotos, onOpenLightbox }: {
+  objetivo: ObjetivoApi;
+  fotos: FotoLista[];
   onOpenLightbox: (i: number) => void;
 }) {
-  const tipoLabel = objeto.tipo ? (OBJECT_TYPES[objeto.tipo] ?? objeto.tipo) : undefined;
+  const tipoLabel = objetivo.tipoObjeto ? (OBJECT_TYPES[objetivo.tipoObjeto] ?? objetivo.tipoObjeto) : undefined;
   return (
     <div className="flex flex-col gap-6">
       <div className="flex items-center gap-4">
@@ -333,7 +342,7 @@ function ObjetoView({ objeto, images, onOpenLightbox }: {
             color: 'var(--foreground)', fontSize: 'var(--text-h2)',
             fontWeight: 'var(--font-weight-bold)', fontFamily: 'var(--font-family-primary)', lineHeight: 1.2,
           }}>
-            {objeto.nombre || 'Sin nombre registrado'}
+            {objetivo.nombre || 'Sin nombre registrado'}
           </p>
           <div className="flex items-center gap-2 mt-1 flex-wrap">
             <span
@@ -359,43 +368,40 @@ function ObjetoView({ objeto, images, onOpenLightbox }: {
       <div>
         <SectionTitle>Identificación</SectionTitle>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-          <DataCard label="Nombre / Descripción" value={objeto.nombre} icon={<Tag size={11} />} />
+          <DataCard label="Nombre / Descripción" value={objetivo.nombre ?? undefined} icon={<Tag size={11} />} />
           <DataCard label="Tipo" value={tipoLabel} icon={<Package size={11} />} />
-          <DataCard label="Marca" value={objeto.marca} icon={<Info size={11} />} />
-          <DataCard label="Modelo" value={objeto.modelo} icon={<Info size={11} />} />
-          <DataCard label="Color" value={objeto.color} icon={<Palette size={11} />} />
-          <DataCard label="Dimensiones" value={objeto.dimensiones} icon={<Ruler size={11} />} />
+          <DataCard label="Marca" value={objetivo.marca ?? undefined} icon={<Info size={11} />} />
+          <DataCard label="Modelo" value={objetivo.modelo ?? undefined} icon={<Info size={11} />} />
+          <DataCard label="Color" value={objetivo.color ?? undefined} icon={<Palette size={11} />} />
+          <DataCard label="Alto" value={objetivo.dimensionAlto != null ? `${objetivo.dimensionAlto} cm` : undefined} icon={<Ruler size={11} />} />
+          <DataCard label="Ancho" value={objetivo.dimensionAncho != null ? `${objetivo.dimensionAncho} cm` : undefined} icon={<Ruler size={11} />} />
+          <DataCard label="Largo" value={objetivo.dimensionLargo != null ? `${objetivo.dimensionLargo} cm` : undefined} icon={<Ruler size={11} />} />
         </div>
       </div>
 
-      {objeto.descripcion && (
-        <div>
-          <SectionTitle>Descripción</SectionTitle>
-          <TextBlock icon={<Truck size={15} />}>{objeto.descripcion}</TextBlock>
-        </div>
-      )}
-      {objeto.detallesAdicionales && (
+      {objetivo.detallesAdicionales && (
         <div>
           <SectionTitle>Detalles Adicionales</SectionTitle>
-          <TextBlock icon={<Star size={15} />} accent>{objeto.detallesAdicionales}</TextBlock>
+          <TextBlock icon={<Star size={15} />} accent>{objetivo.detallesAdicionales}</TextBlock>
         </div>
       )}
 
       <div>
-        <SectionTitle>Imágenes ({images.length})</SectionTitle>
-        <ImageGrid images={images} onOpen={onOpenLightbox} />
+        <SectionTitle>Imágenes ({fotos.length})</SectionTitle>
+        <ImageGrid fotos={fotos} onOpen={onOpenLightbox} />
       </div>
     </div>
   );
 }
 
 /* ─────────────────────────────────────────────────
-   Main ObjetivoModal
+   Main ObjetivoModal — CU-14 (vista rápida) + CU-12/13 (edición)
 ───────────────────────────────────────────────── */
 export default function ObjetivoModal({ operativoId, onClose }: Props) {
-  const { getOperativo, updateOperativo } = useApp();
-  const operativo = getOperativo(operativoId);
-  const objetivo = operativo?.objetivoBusqueda ?? null;
+  const [objetivo, setObjetivo] = useState<ObjetivoApi | null>(null);
+  const [loading, setLoading] = useState(true);
+  const [errorGeneral, setErrorGeneral] = useState('');
+  const [guardando, setGuardando] = useState(false);
 
   /* ── UI state ── */
   type Mode = 'view' | 'edit';
@@ -403,45 +409,69 @@ export default function ObjetivoModal({ operativoId, onClose }: Props) {
   const [lightboxIdx, setLightboxIdx] = useState<number | null>(null);
 
   /* ── Edit form state ── */
-  const [tipo, setTipo] = useState<TipoObjetivo | ''>(objetivo?.tipo ?? '');
-  const [personaForm, setPersonaForm] = useState<PersonaForm>(buildPersonaForm(objetivo?.persona));
-  const [objetoForm, setObjetoForm] = useState<ObjetoForm>(buildObjetoForm(objetivo?.objeto));
-  const [imagenes, setImagenes] = useState<string[]>(
-    objetivo?.tipo === 'persona'
-      ? (objetivo?.persona?.imagenes ?? [])
-      : (objetivo?.objeto?.imagenes ?? [])
-  );
+  const [tipo, setTipo] = useState<TipoObjetivo>('persona');
+  const [personaForm, setPersonaForm] = useState<PersonaForm>(buildPersonaForm());
+  const [objetoForm, setObjetoForm] = useState<ObjetoForm>(buildObjetoForm());
+  const [fotosExistentes, setFotosExistentes] = useState<FotoExistente[]>([]);
+  const [fotosNuevas, setFotosNuevas] = useState<File[]>([]);
   const [errors, setErrors] = useState<Record<string, string>>({});
+  const [lbImgEdit, setLbImgEdit] = useState<string | null>(null);
   const scrollRef = useRef<HTMLDivElement>(null);
 
-  const currentImages: string[] =
-    objetivo?.tipo === 'persona'
-      ? (objetivo?.persona?.imagenes ?? [])
-      : (objetivo?.objeto?.imagenes ?? []);
+  const cargarObjetivo = useCallback(async () => {
+    setLoading(true);
+    try {
+      const { objetivo: o } = await objetivoApi.obtener(operativoId);
+      setObjetivo(o);
+    } catch (err) {
+      if (err instanceof ApiError && err.motivo === 'sin_objetivo') {
+        setObjetivo(null);
+      } else {
+        setErrorGeneral(err instanceof ApiError ? err.message : 'No se pudo cargar el objetivo.');
+      }
+    } finally {
+      setLoading(false);
+    }
+  }, [operativoId]);
 
-  /* ── Lightbox navigation ── */
-  const lbImages = mode === 'view' ? currentImages : imagenes;
-  const lightboxPrev = () => setLightboxIdx(i => i !== null ? (i - 1 + lbImages.length) % lbImages.length : null);
-  const lightboxNext = () => setLightboxIdx(i => i !== null ? (i + 1) % lbImages.length : null);
+  useEffect(() => { cargarObjetivo(); }, [cargarObjetivo]);
+
+  // Fotos de sólo-lectura (modo view): URLs firmadas frescas de la última carga.
+  const fotosVista: FotoLista[] = (objetivo?.fotos ?? []).filter((f): f is FotoLista => !!f.url);
 
   /* ── Enter edit mode ── */
   const enterEdit = () => {
-    setTipo(objetivo?.tipo ?? '');
-    setPersonaForm(buildPersonaForm(objetivo?.persona));
-    setObjetoForm(buildObjetoForm(objetivo?.objeto));
-    setImagenes(
-      objetivo?.tipo === 'persona'
-        ? (objetivo?.persona?.imagenes ?? [])
-        : (objetivo?.objeto?.imagenes ?? [])
-    );
+    setTipo(objetivo?.tipo === 'OBJETO' ? 'objeto' : 'persona');
+    setPersonaForm(buildPersonaForm(objetivo ?? undefined));
+    setObjetoForm(buildObjetoForm(objetivo ?? undefined));
+    setFotosExistentes(objetivo?.fotos ?? []);
+    setFotosNuevas([]);
     setErrors({});
+    setErrorGeneral('');
     setMode('edit');
   };
 
-  /* ── Cancel edit ── */
   const cancelEdit = () => {
     setErrors({});
+    setErrorGeneral('');
     setMode('view');
+  };
+
+  const onAgregarArchivos = (files: FileList | null) => {
+    if (!files) return;
+    const remaining = 8 - (fotosExistentes.length + fotosNuevas.length);
+    if (remaining <= 0) return;
+    const nuevas = Array.from(files).filter(f => f.type.startsWith('image/')).slice(0, remaining);
+    if (nuevas.length) setFotosNuevas(prev => [...prev, ...nuevas]);
+  };
+  const onQuitarNueva = (idx: number) => setFotosNuevas(prev => prev.filter((_, i) => i !== idx));
+  const onEliminarExistente = async (fotoId: string) => {
+    try {
+      await objetivoApi.eliminarFoto(operativoId, fotoId);
+      setFotosExistentes(prev => prev.filter(f => f.id !== fotoId));
+    } catch (err) {
+      setErrorGeneral(err instanceof ApiError ? err.message : 'No se pudo eliminar la foto.');
+    }
   };
 
   /* ── Validate & save ── */
@@ -449,63 +479,76 @@ export default function ObjetivoModal({ operativoId, onClose }: Props) {
     const e: Record<string, string> = {};
     if (tipo === 'persona') {
       if (!personaForm.nombre.trim()) e.nombre = 'El nombre es obligatorio.';
-    } else if (tipo === 'objeto') {
-      if (!objetoForm.nombre.trim()) e.nombre = 'El nombre / descripción es obligatorio.';
     } else {
-      e.tipo = 'Seleccioná un tipo de objetivo.';
+      if (!objetoForm.nombre.trim()) e.nombre = 'El nombre / descripción es obligatorio.';
     }
     setErrors(e);
     return Object.keys(e).length === 0;
   };
 
-  const handleSave = () => {
+  const buildPayload = (): CrearObjetivoPayload => {
+    if (tipo === 'persona') {
+      return {
+        tipo: 'PERSONA',
+        nombre: personaForm.nombre.trim(),
+        apellido: personaForm.apellido.trim() || null,
+        dni: personaForm.dni.trim() || null,
+        edad: personaForm.edad ? Number(personaForm.edad) : null,
+        genero: (personaForm.sexo || null) as CrearObjetivoPayload['genero'],
+        nacionalidad: personaForm.nacionalidad.trim() || null,
+        estatura: personaForm.estatura ? Number(personaForm.estatura) : null,
+        complexionFisica: personaForm.complexion || null,
+        colorPiel: personaForm.colorPiel || null,
+        colorOjos: personaForm.colorOjos || null,
+        colorPelo: personaForm.colorCabello || null,
+        vestimenta: personaForm.vestimenta.trim() || null,
+        detallesAdicionales: personaForm.detallesAdicionales.trim() || null,
+      };
+    }
+    return {
+      tipo: 'OBJETO',
+      nombre: objetoForm.nombre.trim(),
+      tipoObjeto: objetoForm.tipo || null,
+      color: objetoForm.color.trim() || null,
+      marca: objetoForm.marca.trim() || null,
+      modelo: objetoForm.modelo.trim() || null,
+      dimensionAlto: objetoForm.dimensionAlto ? Number(objetoForm.dimensionAlto) : null,
+      dimensionAncho: objetoForm.dimensionAncho ? Number(objetoForm.dimensionAncho) : null,
+      dimensionLargo: objetoForm.dimensionLargo ? Number(objetoForm.dimensionLargo) : null,
+      detallesAdicionales: objetoForm.detallesAdicionales.trim() || null,
+    };
+  };
+
+  const isNew = !objetivo;
+
+  const handleSave = async () => {
     if (!validate()) {
       scrollRef.current?.scrollTo({ top: 0, behavior: 'smooth' });
       return;
     }
-
-    let result: ObjetivoBusqueda;
-    if (tipo === 'persona') {
-      result = {
-        tipo: 'persona',
-        persona: {
-          nombre: personaForm.nombre.trim(),
-          apellido: personaForm.apellido.trim(),
-          dni: personaForm.dni.trim() || undefined,
-          edad: personaForm.edad ? Number(personaForm.edad) : undefined,
-          sexo: personaForm.sexo || undefined,
-          nacionalidad: personaForm.nacionalidad.trim() || undefined,
-          estatura: personaForm.estatura.trim() || undefined,
-          complexion: personaForm.complexion || undefined,
-          colorPiel: personaForm.colorPiel || undefined,
-          colorOjos: personaForm.colorOjos || undefined,
-          colorCabello: personaForm.colorCabello || undefined,
-          detallesAdicionales: personaForm.detallesAdicionales.trim() || undefined,
-          imagenes,
-        },
-      };
-    } else {
-      result = {
-        tipo: 'objeto',
-        objeto: {
-          nombre: objetoForm.nombre.trim(),
-          tipo: objetoForm.tipo || undefined,
-          descripcion: objetoForm.descripcion.trim() || undefined,
-          color: objetoForm.color.trim() || undefined,
-          marca: objetoForm.marca.trim() || undefined,
-          modelo: objetoForm.modelo.trim() || undefined,
-          dimensiones: objetoForm.dimensiones.trim() || undefined,
-          detallesAdicionales: objetoForm.detallesAdicionales.trim() || undefined,
-          imagenes,
-        },
-      };
+    setGuardando(true);
+    setErrorGeneral('');
+    try {
+      const payload = buildPayload();
+      if (isNew) {
+        await objetivoApi.crear(operativoId, payload);
+      } else {
+        await objetivoApi.actualizar(operativoId, payload);
+      }
+      if (fotosNuevas.length > 0) {
+        await objetivoApi.subirFotos(operativoId, fotosNuevas);
+      }
+      await cargarObjetivo();
+      setMode('view');
+    } catch (err) {
+      setErrorGeneral(err instanceof ApiError ? err.message : 'No se pudo guardar el objetivo.');
+    } finally {
+      setGuardando(false);
     }
-
-    updateOperativo(operativoId, { objetivoBusqueda: result });
-    setMode('view');
   };
 
-  const isNew = !objetivo;
+  const lightboxPrev = () => setLightboxIdx(i => i !== null ? (i - 1 + fotosVista.length) % fotosVista.length : null);
+  const lightboxNext = () => setLightboxIdx(i => i !== null ? (i + 1) % fotosVista.length : null);
 
   return (
     <>
@@ -535,12 +578,12 @@ export default function ObjetivoModal({ operativoId, onClose }: Props) {
               <div
                 className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
                 style={{
-                  background: objetivo?.tipo === 'objeto'
+                  background: objetivo?.tipo === 'OBJETO'
                     ? 'rgba(255,169,135,0.15)'
                     : 'rgba(229,75,75,0.1)',
                 }}
               >
-                {objetivo?.tipo === 'objeto'
+                {objetivo?.tipo === 'OBJETO'
                   ? <Package size={17} style={{ color: 'var(--accent)' }} />
                   : <User size={17} style={{ color: 'var(--primary)' }} />
                 }
@@ -572,7 +615,7 @@ export default function ObjetivoModal({ operativoId, onClose }: Props) {
 
             {/* Header actions */}
             <div className="flex items-center gap-2">
-              {mode === 'view' && (
+              {mode === 'view' && !loading && (
                 <button
                   onClick={enterEdit}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-[var(--radius-button)] transition-opacity hover:opacity-88"
@@ -593,6 +636,7 @@ export default function ObjetivoModal({ operativoId, onClose }: Props) {
                 <>
                   <button
                     onClick={cancelEdit}
+                    disabled={guardando}
                     className="px-3 py-1.5 rounded-[var(--radius-button)] transition-colors"
                     style={{
                       background: 'var(--muted)',
@@ -609,6 +653,7 @@ export default function ObjetivoModal({ operativoId, onClose }: Props) {
                   </button>
                   <button
                     onClick={handleSave}
+                    disabled={guardando}
                     className="flex items-center gap-1.5 px-3 py-1.5 rounded-[var(--radius-button)] transition-opacity hover:opacity-88"
                     style={{
                       background: 'var(--primary)',
@@ -616,9 +661,10 @@ export default function ObjetivoModal({ operativoId, onClose }: Props) {
                       fontSize: 'var(--text-label)',
                       fontWeight: 'var(--font-weight-semibold)',
                       fontFamily: 'var(--font-family-primary)',
+                      opacity: guardando ? 0.7 : 1,
                     }}
                   >
-                    <CheckCircle2 size={14} />
+                    {guardando ? <Loader2 size={14} className="animate-spin" /> : <CheckCircle2 size={14} />}
                     {isNew ? 'Cargar objetivo' : 'Guardar cambios'}
                   </button>
                 </>
@@ -638,10 +684,26 @@ export default function ObjetivoModal({ operativoId, onClose }: Props) {
           {/* ══ Scrollable body ══ */}
           <div ref={scrollRef} className="flex-1 overflow-y-auto px-6 py-5">
 
+            {errorGeneral && mode === 'view' && (
+              <div
+                className="flex items-center gap-2 p-3 rounded-[var(--radius-input)] mb-4"
+                style={{ background: 'rgba(229,75,75,0.08)', border: '1px solid rgba(229,75,75,0.25)' }}
+              >
+                <AlertCircle size={14} style={{ color: 'var(--primary)', flexShrink: 0 }} />
+                <p style={{ color: 'var(--primary)', fontSize: 'var(--text-label)', fontFamily: 'var(--font-family-primary)' }}>
+                  {errorGeneral}
+                </p>
+              </div>
+            )}
+
             {/* ─── VIEW MODE ─── */}
             {mode === 'view' && (
               <>
-                {!objetivo ? (
+                {loading ? (
+                  <div className="flex items-center justify-center py-20" style={{ color: 'var(--muted-foreground)' }}>
+                    <Loader2 size={18} className="animate-spin" style={{ marginRight: 8 }} /> Cargando…
+                  </div>
+                ) : !objetivo ? (
                   /* Empty state */
                   <div
                     className="flex flex-col items-center justify-center py-20 rounded-[var(--radius-card)]"
@@ -678,22 +740,10 @@ export default function ObjetivoModal({ operativoId, onClose }: Props) {
                       <Plus size={16} /> Cargar objetivo buscado
                     </button>
                   </div>
-                ) : objetivo.tipo === 'persona' && objetivo.persona ? (
-                  <PersonaView
-                    persona={objetivo.persona}
-                    images={currentImages}
-                    onOpenLightbox={setLightboxIdx}
-                  />
-                ) : objetivo.tipo === 'objeto' && objetivo.objeto ? (
-                  <ObjetoView
-                    objeto={objetivo.objeto}
-                    images={currentImages}
-                    onOpenLightbox={setLightboxIdx}
-                  />
+                ) : objetivo.tipo === 'PERSONA' ? (
+                  <PersonaView objetivo={objetivo} fotos={fotosVista} onOpenLightbox={setLightboxIdx} />
                 ) : (
-                  <p style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-base)', fontFamily: 'var(--font-family-primary)' }}>
-                    Datos del objetivo incompletos.
-                  </p>
+                  <ObjetoView objetivo={objetivo} fotos={fotosVista} onOpenLightbox={setLightboxIdx} />
                 )}
               </>
             )}
@@ -702,14 +752,14 @@ export default function ObjetivoModal({ operativoId, onClose }: Props) {
             {mode === 'edit' && (
               <>
                 {/* Error banner */}
-                {Object.keys(errors).length > 0 && (
+                {(Object.keys(errors).length > 0 || errorGeneral) && (
                   <div
                     className="flex items-center gap-2 p-3 rounded-[var(--radius-input)] mb-4"
                     style={{ background: 'rgba(229,75,75,0.08)', border: '1px solid rgba(229,75,75,0.25)' }}
                   >
                     <AlertCircle size={14} style={{ color: 'var(--primary)', flexShrink: 0 }} />
                     <p style={{ color: 'var(--primary)', fontSize: 'var(--text-label)', fontFamily: 'var(--font-family-primary)' }}>
-                      {Object.values(errors)[0]}
+                      {errorGeneral || Object.values(errors)[0]}
                     </p>
                   </div>
                 )}
@@ -722,9 +772,12 @@ export default function ObjetivoModal({ operativoId, onClose }: Props) {
                   onPersonaChange={(k, v) => setPersonaForm(f => ({ ...f, [k]: v }))}
                   objetoForm={objetoForm}
                   onObjetoChange={(k, v) => setObjetoForm(f => ({ ...f, [k]: v }))}
-                  imagenes={imagenes}
-                  onImagenesChange={setImagenes}
-                  onLightbox={idx => setLightboxIdx(idx)}
+                  fotosExistentes={fotosExistentes}
+                  fotosNuevas={fotosNuevas}
+                  onAgregarArchivos={onAgregarArchivos}
+                  onQuitarNueva={onQuitarNueva}
+                  onEliminarExistente={onEliminarExistente}
+                  onLightbox={setLbImgEdit}
                   errors={errors}
                 />
                 <div style={{ height: 8 }} />
@@ -734,15 +787,43 @@ export default function ObjetivoModal({ operativoId, onClose }: Props) {
         </div>
       </div>
 
-      {/* ── Lightbox ── */}
-      {lightboxIdx !== null && lbImages.length > 0 && (
+      {/* ── Lightbox (modo lectura, con prev/next sobre las fotos reales) ── */}
+      {mode === 'view' && lightboxIdx !== null && fotosVista.length > 0 && (
         <Lightbox
-          images={lbImages}
+          fotos={fotosVista}
           index={lightboxIdx}
           onClose={() => setLightboxIdx(null)}
           onPrev={lightboxPrev}
           onNext={lightboxNext}
         />
+      )}
+
+      {/* ── Lightbox de una sola foto (modo edición — existentes o previews locales) ── */}
+      {mode === 'edit' && lbImgEdit && (
+        <div
+          className="fixed inset-0 z-[70] flex items-center justify-center p-4"
+          style={{ background: 'rgba(0,0,0,0.92)' }}
+          onClick={() => setLbImgEdit(null)}
+        >
+          <button
+            onClick={() => setLbImgEdit(null)}
+            style={{
+              position: 'absolute', top: 16, right: 16,
+              background: 'rgba(255,255,255,0.1)', border: '1px solid rgba(255,255,255,0.2)',
+              borderRadius: '50%', width: 36, height: 36,
+              display: 'flex', alignItems: 'center', justifyContent: 'center',
+              cursor: 'pointer', color: '#fff',
+            }}
+          >
+            <X size={18} />
+          </button>
+          <img
+            src={lbImgEdit}
+            alt="Vista ampliada"
+            onClick={e => e.stopPropagation()}
+            style={{ maxWidth: '90vw', maxHeight: '85vh', borderRadius: 'var(--radius-input)', objectFit: 'contain' }}
+          />
+        </div>
       )}
     </>
   );
