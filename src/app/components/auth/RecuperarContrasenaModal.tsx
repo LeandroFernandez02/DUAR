@@ -1,4 +1,5 @@
 import { useState, useRef, useEffect } from 'react';
+import { validarEmail, filtrarEmail, EMAIL_MAX } from '../../utils/validacionUsuario';
 import { Mail, X, ArrowRight, AlertCircle, CheckCircle, Shield } from 'lucide-react';
 import { authApi } from '../../services/api';
 
@@ -9,7 +10,7 @@ interface Props {
 type Step = 'form' | 'sent';
 
 function isValidEmail(val: string) {
-  return /^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(val);
+  return validarEmail(val) === null;
 }
 
 export function RecuperarContrasenaModal({ onClose }: Props) {
@@ -156,7 +157,8 @@ export function RecuperarContrasenaModal({ onClose }: Props) {
                       ref={inputRef}
                       type="email"
                       value={email}
-                      onChange={e => { setEmail(e.target.value); setTouched(false); }}
+                      maxLength={EMAIL_MAX}
+                      onChange={e => { setEmail(filtrarEmail(e.target.value)); setTouched(false); }}
                       onBlur={() => setTouched(true)}
                       placeholder="usuario@duar.cba.gob.ar"
                       autoComplete="email"

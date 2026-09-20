@@ -14,6 +14,10 @@ export const RE_APELLIDO = /^[A-Za-zÀ-ÖØ-öø-ÿ'\- ]{2,35}$/;
 export const RE_DNI = /^\d{7,8}$/;
 export const RE_TELEFONO = /^\d{10}$/;
 export const EDAD_MINIMA = 16;
+export const RE_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+export const EMAIL_MAX = 150;      // usuarios.email es varchar(150)
+export const PASSWORD_MIN = 8;
+export const PASSWORD_MAX = 64;    // bcrypt sólo usa los primeros 72 bytes: más largo no suma seguridad
 
 export function validarNombre(v: string): string | null {
   const t = v.trim();
@@ -37,6 +41,24 @@ export function validarTelefono(v: string): string | null {
   if (!v) return null;
   if (!RE_TELEFONO.test(soloDigitos(v))) return '10 números: código de área sin 0 + número sin 15 (ej: 3512283143).';
   return null;
+}
+
+export function validarEmail(v: string): string | null {
+  const t = v.trim();
+  if (t.length > EMAIL_MAX) return `El correo puede tener hasta ${EMAIL_MAX} caracteres.`;
+  if (!RE_EMAIL.test(t)) return 'Ingresá un correo válido (ej: nombre@dominio.com).';
+  return null;
+}
+
+export function validarPassword(v: string): string | null {
+  if (v.length < PASSWORD_MIN) return `La contraseña debe tener al menos ${PASSWORD_MIN} caracteres.`;
+  if (v.length > PASSWORD_MAX) return `La contraseña puede tener hasta ${PASSWORD_MAX} caracteres.`;
+  return null;
+}
+
+/** Sin espacios (ni pegados) y con el tope de la columna — para el `onChange` de campos de correo. */
+export function filtrarEmail(v: string): string {
+  return v.replace(/\s/g, '').slice(0, EMAIL_MAX);
 }
 
 /** La fecha de nacimiento es opcional: sólo se valida si el usuario cargó algo. */

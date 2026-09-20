@@ -5,11 +5,12 @@ import {
   CheckCircle, ArrowLeft, XCircle, RefreshCw,
 } from 'lucide-react';
 import { authApi, ApiError } from '../services/api';
+import { PASSWORD_MIN, PASSWORD_MAX } from '../utils/validacionUsuario';
 
 type FormStep = 'form' | 'success';
 
 function isStrongEnough(pwd: string) {
-  return pwd.length >= 8;
+  return pwd.length >= PASSWORD_MIN && pwd.length <= PASSWORD_MAX;
 }
 
 // ─── Shared layout wrapper ─────────────────────────────────────────────────
@@ -410,6 +411,7 @@ export default function RecuperarContrasena() {
               id="new-pwd"
               type={showPwd ? 'text' : 'password'}
               value={pwd}
+              maxLength={PASSWORD_MAX}
               onChange={e => { setPwd(e.target.value); }}
               onBlur={() => setTouched(true)}
               placeholder="Mínimo 8 caracteres"
@@ -473,6 +475,7 @@ export default function RecuperarContrasena() {
               id="confirm-pwd"
               type={showConfirm ? 'text' : 'password'}
               value={pwdConfirm}
+              maxLength={PASSWORD_MAX}
               onChange={e => { setPwdConfirm(e.target.value); setTouched(true); }}
               placeholder="Repetí tu nueva contraseña"
               className="w-full pl-9 pr-10 py-2.5 rounded-lg border outline-none transition-all"

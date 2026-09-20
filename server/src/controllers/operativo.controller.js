@@ -4,6 +4,7 @@
  */
 import * as Operativo from '../models/operativo.model.js';
 import * as Auditoria from '../models/auditoria.model.js';
+import { validarDatosOperativo } from '../utils/validaciones.js';
 
 const ENTIDAD = 'operativos';
 
@@ -36,6 +37,11 @@ export async function crear(req, res, next) {
       .filter(campo => !String(b[campo] ?? '').trim());
     if (faltantes.length || b.puntoCeroLat === undefined || b.puntoCeroLng === undefined) {
       return res.status(400).json({ error: 'Faltan campos obligatorios.', campos: faltantes });
+    }
+
+    const errores = validarDatosOperativo(b);
+    if (Object.keys(errores).length) {
+      return res.status(400).json({ error: Object.values(errores)[0], errores });
     }
 
     const lat = Number(b.puntoCeroLat);
@@ -99,6 +105,10 @@ export async function actualizar(req, res, next) {
     }
 
     const b = req.body ?? {};
+    const errores = validarDatosOperativo(b);
+    if (Object.keys(errores).length) {
+      return res.status(400).json({ error: Object.values(errores)[0], errores });
+    }
     if (b.puntoCeroLat !== undefined || b.puntoCeroLng !== undefined) {
       const lat = Number(b.puntoCeroLat);
       const lng = Number(b.puntoCeroLng);
@@ -156,6 +166,9 @@ export async function finalizar(req, res, next) {
         motivo: 'estado_invalido',
       });
     }
+
+    const erroresNota = validarDatosOperativo({ notaFinal: req.body?.notaFinal });
+    if (erroresNota.notaFinal) return res.status(400).json({ error: erroresNota.notaFinal });
 
     const finalizado = await Operativo.finalizar(id, { notaFinal: req.body?.notaFinal ?? null });
 

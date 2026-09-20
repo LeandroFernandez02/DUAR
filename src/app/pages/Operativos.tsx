@@ -13,6 +13,11 @@ import { useApp } from '../context/AppContext';
 import { Operativo, EstadoOperativo } from '../data/mockData';
 import { operativosApi, ApiError } from '../services/api';
 import { mapearOperativo } from '../utils/mapearOperativo';
+import SelectorLocalidad from '../components/shared/SelectorLocalidad';
+import {
+  validarTitulo, validarFiscal, filtrarFiscal,
+  TITULO_MAX, FISCAL_MAX, DESCRIPCION_MAX, NOTA_FINAL_MAX,
+} from '../utils/validacionOperativo';
 
 /**
  * CU-08..11 (Módulo 3) ya hablan con la API real. CU-12..14 (Objetivo Buscado)
@@ -228,6 +233,15 @@ export default function Operativos() {
     }
   };
 
+  /** Formato/longitud de los campos ya completos (la obligatoriedad se chequea aparte). */
+  const validarFormatos = (): { campos: Set<string>; mensaje: string } | null => {
+    const eTitulo = validarTitulo(form.nombre);
+    if (eTitulo) return { campos: new Set(['nombre']), mensaje: eTitulo };
+    const eFiscal = validarFiscal(form.fiscal);
+    if (eFiscal) return { campos: new Set(['fiscal']), mensaje: `Fiscal de Instrucción: ${eFiscal}` };
+    return null;
+  };
+
   const handleCreate = async () => {
     const errors = new Set<string>();
     if (!form.nombre.trim())      errors.add('nombre');
@@ -241,6 +255,8 @@ export default function Operativos() {
       setFormErrorMsg('Completá los campos obligatorios para continuar.');
       return;
     }
+    const errFormato = validarFormatos();
+    if (errFormato) { setFormErrors(errFormato.campos); setFormErrorMsg(errFormato.mensaje); return; }
     const lat = parseFloat(form.punto0lat);
     const lng = parseFloat(form.punto0lng);
     if (isNaN(lat) || lat < -90 || lat > 90)   { setFormErrors(new Set(['punto0lat'])); setFormErrorMsg('Latitud inválida (–90 a 90).'); return; }
@@ -278,6 +294,8 @@ export default function Operativos() {
       setFormErrorMsg('Faltan completar campos obligatorios.');
       return;
     }
+    const errFormato = validarFormatos();
+    if (errFormato) { setFormErrors(errFormato.campos); setFormErrorMsg(errFormato.mensaje); return; }
     const latVal = parseFloat(form.punto0lat);
     const lngVal = parseFloat(form.punto0lng);
     if (isNaN(latVal) || latVal < -90 || latVal > 90)   { setFormErrors(new Set(['punto0lat'])); setFormErrorMsg('Latitud inválida (–90 a 90).'); return; }
@@ -970,30 +988,33 @@ export default function Operativos() {
                         type="text"
                         value={form.nombre}
                         readOnly={isEditReadOnly}
-                        onChange={isEditReadOnly ? undefined : e => { setForm({ ...form, nombre: e.target.value }); setFormErrors(p => { const n = new Set(p); n.delete('nombre'); return n; }); }}
+                        maxLength={TITULO_MAX}
+                        onChange={isEditReadOnly ? undefined : e => { setForm({ ...form, nombre: e.target.value.slice(0, TITULO_MAX) }); setFormErrors(p => { const n = new Set(p); n.delete('nombre'); return n; }); }}
                         placeholder="Ej: Búsqueda Cerro Champaquí — García Juan"
                         className="w-full px-3 py-2.5 rounded-lg border outline-none"
                         style={isEditReadOnly ? readOnlyInputStyle() : errStyle(inputStyle(), formErrors.has('nombre'))}
                       />
-                      {!isEditReadOnly && formErrors.has('nombre') && <span style={{ color: 'var(--primary)', fontSize: '11px', fontFamily: 'var(--font-family-primary)' }}>Campo obligatorio</span>}
+                      {!isEditReadOnly && formErrors.has('nombre') && <span style={{ color: 'var(--primary)', fontSize: '11px', fontFamily: 'var(--font-family-primary)' }}>Revisá este campo</span>}
                     </div>
 
-                    {/* Localidad + Fecha y Hora */}
-                    <div className="grid grid-cols-2 gap-3">
-                      <div>
-                        <label style={labelStyle()}>Localidad *</label>
-                        <input
-                          type="text"
-                          value={form.ubicacion}
-                          readOnly={isEditReadOnly}
-                          onChange={isEditReadOnly ? undefined : e => { setForm({ ...form, ubicacion: e.target.value }); setFormErrors(p => { const n = new Set(p); n.delete('ubicacion'); return n; }); }}
-                          placeholder="Ej: La Cumbrecita, Córdoba"
-                          className="w-full px-3 py-2.5 rounded-lg border outline-none"
-                          style={isEditReadOnly ? readOnlyInputStyle() : errStyle(inputStyle(), formErrors.has('ubicacion'))}
-                        />
-                        {!isEditReadOnly && formErrors.has('ubicacion') && <span style={{ color: 'var(--primary)', fontSize: '11px', fontFamily: 'var(--font-family-primary)' }}>Obligatorio</span>}
-                      </div>
-                      <div>
+                    {/* Provincia + Localidad (lista Georef; se guarda como "Localidad, Provincia") */}
+                    <div>
+                      <SelectorLocalidad
+                        value={form.ubicacion}
+                        onChange={valor => { setForm(f => ({ ...f, ubicacion: valor })); setFormErrors(p => { const n = new Set(p); n.delete('ubicacion'); return n; }); }}
+                        readOnly={isEditReadOnly}
+                        errorProvincia={formErrors.has('ubicacion')}
+                        errorLocalidad={formErrors.has('ubicacion')}
+                        labelStyle={labelStyle()}
+                        inputStyle={inputStyle()}
+                        errStyle={errStyle}
+                        readOnlyStyle={readOnlyInputStyle()}
+                      />
+                      {!isEditReadOnly && formErrors.has('ubicacion') && <span style={{ color: 'var(--primary)', fontSize: '11px', fontFamily: 'var(--font-family-primary)' }}>Elegí provincia y localidad</span>}
+                    </div>
+
+                    {/* Fecha y Hora */}
+                    <div>
                         <label style={labelStyle()}>Fecha y Hora *</label>
                         <input
                           type="datetime-local"
@@ -1004,7 +1025,6 @@ export default function Operativos() {
                           style={isEditReadOnly ? readOnlyInputStyle() : errStyle(inputStyle(), formErrors.has('fechaInicio'))}
                         />
                         {!isEditReadOnly && formErrors.has('fechaInicio') && <span style={{ color: 'var(--primary)', fontSize: '11px', fontFamily: 'var(--font-family-primary)' }}>Obligatorio</span>}
-                      </div>
                     </div>
 
                     {/* Fiscal de Instrucción */}
@@ -1014,12 +1034,13 @@ export default function Operativos() {
                         type="text"
                         value={form.fiscal}
                         readOnly={isEditReadOnly}
-                        onChange={isEditReadOnly ? undefined : e => { setForm({ ...form, fiscal: e.target.value }); setFormErrors(p => { const n = new Set(p); n.delete('fiscal'); return n; }); }}
+                        maxLength={FISCAL_MAX}
+                        onChange={isEditReadOnly ? undefined : e => { setForm({ ...form, fiscal: filtrarFiscal(e.target.value) }); setFormErrors(p => { const n = new Set(p); n.delete('fiscal'); return n; }); }}
                         placeholder="Nombre y apellido del fiscal a cargo"
                         className="w-full px-3 py-2.5 rounded-lg border outline-none"
                         style={isEditReadOnly ? readOnlyInputStyle() : errStyle(inputStyle(), formErrors.has('fiscal'))}
                       />
-                      {!isEditReadOnly && formErrors.has('fiscal') && <span style={{ color: 'var(--primary)', fontSize: '11px', fontFamily: 'var(--font-family-primary)' }}>Campo obligatorio</span>}
+                      {!isEditReadOnly && formErrors.has('fiscal') && <span style={{ color: 'var(--primary)', fontSize: '11px', fontFamily: 'var(--font-family-primary)' }}>Revisá este campo</span>}
                     </div>
 
                     {/* Estado — solo en edición */}
@@ -1050,7 +1071,8 @@ export default function Operativos() {
                       <textarea
                         value={form.descripcion}
                         readOnly={isEditReadOnly}
-                        onChange={isEditReadOnly ? undefined : e => setForm({ ...form, descripcion: e.target.value })}
+                        maxLength={DESCRIPCION_MAX}
+                        onChange={isEditReadOnly ? undefined : e => setForm({ ...form, descripcion: e.target.value.slice(0, DESCRIPCION_MAX) })}
                         rows={3}
                         placeholder="Contexto general del operativo, objetivos, particularidades..."
                         className="w-full px-3 py-2.5 rounded-lg border outline-none resize-none"
@@ -1265,7 +1287,8 @@ export default function Operativos() {
                     <textarea
                       rows={4}
                       value={finalizeNota}
-                      onChange={e => setFinalizeNota(e.target.value)}
+                      maxLength={NOTA_FINAL_MAX}
+                      onChange={e => setFinalizeNota(e.target.value.slice(0, NOTA_FINAL_MAX))}
                       placeholder="Ej: Persona hallada con vida en sector norte. Se desactiva el operativo tras 48 hs de búsqueda…"
                       className="w-full px-3 py-2.5 rounded-[var(--radius-input)] border outline-none resize-none"
                       style={{

@@ -8,6 +8,7 @@ import StatusBadge from '../components/shared/StatusBadge';
 import {
   validarNombre, validarApellido, validarDni, validarTelefono,
   validarFechaNacimiento, fechaMaximaNacimiento,
+  validarEmail, validarPassword, filtrarEmail, PASSWORD_MAX,
   soloDigitos, formatearDni, formatearTelefono,
 } from '../utils/validacionUsuario';
 
@@ -147,6 +148,12 @@ export default function Usuarios() {
     const errApellido = validarApellido(form.apellido); if (errApellido) errores.apellido = errApellido;
     const errDni = validarDni(form.dni); if (errDni) errores.dni = errDni;
     const errTelefono = validarTelefono(form.telefono); if (errTelefono) errores.telefono = errTelefono;
+    const errEmail = validarEmail(form.email); if (errEmail) errores.email = errEmail;
+    // Alta: la contraseña es obligatoria (antes se usaba '1234' por defecto,
+    // que ni cumple el mínimo de 8). Edición: vacía = "no cambiarla" (CU-06 paso 5).
+    if (modal === 'create' || form.password) {
+      const errPassword = validarPassword(form.password); if (errPassword) errores.password = errPassword;
+    }
     const errFechaNacimiento = validarFechaNacimiento(form.fechaNacimiento); if (errFechaNacimiento) errores.fechaNacimiento = errFechaNacimiento;
     setErroresForm(errores);
     if (Object.keys(errores).length > 0) {
@@ -178,7 +185,7 @@ export default function Usuarios() {
     try {
       if (modal === 'create') {
         // El backend hashea con bcrypt (CU-05 paso 4); acá nunca se guarda en claro.
-        await usuariosApi.crear({ ...datos, password: form.password || '1234' });
+        await usuariosApi.crear({ ...datos, password: form.password });
       } else if (selected) {
         await usuariosApi.actualizar(selected.id, {
           ...datos,
@@ -544,8 +551,8 @@ export default function Usuarios() {
                   label: 'Apellido *', key: 'apellido', type: 'text', span: false,
                   filtro: (v: string) => v.replace(/[^A-Za-zÀ-ÖØ-öø-ÿ'\- ]/g, '').slice(0, 35),
                 },
-                { label: 'Email *', key: 'email', type: 'email', span: true },
-                { label: 'Contraseña', key: 'password', type: 'password', span: false },
+                { label: 'Email *', key: 'email', type: 'email', span: true, filtro: filtrarEmail },
+                { label: modal === 'create' ? 'Contraseña *' : 'Contraseña (vacía = no cambiarla)', key: 'password', type: 'password', span: false, filtro: (v: string) => v.slice(0, PASSWORD_MAX) },
                 { label: 'Fecha de Nacimiento', key: 'fechaNacimiento', type: 'date', span: false, max: fechaMaximaNacimiento() },
                 {
                   label: 'Teléfono', key: 'telefono', type: 'tel', span: false,

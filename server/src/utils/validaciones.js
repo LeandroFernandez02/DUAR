@@ -12,6 +12,10 @@ export const RE_APELLIDO = /^[A-Za-zÀ-ÖØ-öø-ÿ'\- ]{2,35}$/;
 export const RE_DNI = /^\d{7,8}$/;
 export const RE_TELEFONO = /^\d{10}$/;
 export const EDAD_MINIMA = 16;
+export const RE_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+export const EMAIL_MAX = 150;
+export const PASSWORD_MIN = 8;
+export const PASSWORD_MAX = 64;
 
 /** Años cumplidos a día de hoy, dada una fecha de nacimiento ISO (YYYY-MM-DD). */
 function edadDesde(fechaIso) {
@@ -61,6 +65,19 @@ export function validarDatosPersonales(datos) {
     }
   }
 
+  if (datos.email !== undefined) {
+    const v = String(datos.email).trim();
+    if (v.length > EMAIL_MAX) errores.email = `El correo puede tener hasta ${EMAIL_MAX} caracteres.`;
+    else if (!RE_EMAIL.test(v)) errores.email = 'Ingresá un correo válido (ej: nombre@dominio.com).';
+  }
+
+  // Vacía = "no cambiar" en la edición de usuarios (CU-06): sólo se valida si viene algo.
+  if (datos.password !== undefined && datos.password !== null && datos.password !== '') {
+    const v = String(datos.password);
+    if (v.length < PASSWORD_MIN) errores.password = `La contraseña debe tener al menos ${PASSWORD_MIN} caracteres.`;
+    else if (v.length > PASSWORD_MAX) errores.password = `La contraseña puede tener hasta ${PASSWORD_MAX} caracteres.`;
+  }
+
   if (datos.fechaNacimiento !== undefined && datos.fechaNacimiento !== null && datos.fechaNacimiento !== '') {
     const fecha = new Date(datos.fechaNacimiento);
     if (Number.isNaN(fecha.getTime())) {
@@ -68,6 +85,50 @@ export function validarDatosPersonales(datos) {
     } else if (edadDesde(datos.fechaNacimiento) < EDAD_MINIMA) {
       errores.fechaNacimiento = `El agente debe tener al menos ${EDAD_MINIMA} años.`;
     }
+  }
+
+  return errores;
+}
+
+/* ── Operativos (CU-08 / CU-09 / CU-10) ─────────────────────────────────── */
+
+export const RE_FISCAL = /^[A-Za-zÀ-ÖØ-öø-ÿ.'\- ]{2,100}$/;
+export const TITULO_MAX = 150;      // operativos.titulo es varchar(255); 150 alcanza para una carátula
+export const LOCALIDAD_MAX = 200;   // operativos.localidad es varchar(200)
+export const DESCRIPCION_MAX = 2000;
+export const NOTA_FINAL_MAX = 1000;
+
+/**
+ * Igual criterio que validarDatosPersonales: sólo valida los campos presentes
+ * (undefined = "no se está tocando"). Devuelve `{ campo: mensaje }`.
+ */
+export function validarDatosOperativo(datos) {
+  const errores = {};
+
+  if (datos.titulo !== undefined) {
+    const v = String(datos.titulo).trim();
+    if (v.length < 3) errores.titulo = 'El título debe tener al menos 3 caracteres.';
+    else if (v.length > TITULO_MAX) errores.titulo = `El título puede tener hasta ${TITULO_MAX} caracteres.`;
+  }
+
+  if (datos.localidad !== undefined) {
+    const v = String(datos.localidad).trim();
+    if (v.length < 2) errores.localidad = 'Indicá la localidad.';
+    else if (v.length > LOCALIDAD_MAX) errores.localidad = `La localidad puede tener hasta ${LOCALIDAD_MAX} caracteres.`;
+  }
+
+  if (datos.fiscalInstruccion !== undefined) {
+    if (!RE_FISCAL.test(String(datos.fiscalInstruccion).trim())) {
+      errores.fiscalInstruccion = 'El fiscal debe tener entre 2 y 100 letras (se permiten puntos, guiones y apóstrofes).';
+    }
+  }
+
+  if (typeof datos.descripcion === 'string' && datos.descripcion.length > DESCRIPCION_MAX) {
+    errores.descripcion = `La descripción puede tener hasta ${DESCRIPCION_MAX} caracteres.`;
+  }
+
+  if (typeof datos.notaFinal === 'string' && datos.notaFinal.length > NOTA_FINAL_MAX) {
+    errores.notaFinal = `La reseña puede tener hasta ${NOTA_FINAL_MAX} caracteres.`;
   }
 
   return errores;

@@ -38,3 +38,90 @@ export function listarPaises(): string[] {
   cache = ['Argentina', ...lista];
   return cache;
 }
+
+/* ── Provincias y localidades de Argentina ──────────────────────────────────
+ * Las 24 jurisdicciones son fijas (no cambian), así que van en el código: el
+ * selector de provincia funciona siempre, con o sin conexión. Las localidades
+ * (cientos por provincia — Córdoba tiene 514) sí vienen de la API Georef del
+ * Estado (apis.datos.gob.ar/georef): gratuita, sin clave y con CORS abierto.
+ * Se cachean en el navegador para no pedirlas en cada apertura del formulario.
+ * Si la API no responde, el formulario cae a texto libre (ver SelectorLocalidad).
+ */
+
+export interface Provincia { id: string; nombre: string; }
+
+// `id` = código INDEC, el que usa Georef.
+export const PROVINCIAS: Provincia[] = [
+  { id: '06', nombre: 'Buenos Aires' },
+  { id: '10', nombre: 'Catamarca' },
+  { id: '22', nombre: 'Chaco' },
+  { id: '26', nombre: 'Chubut' },
+  { id: '02', nombre: 'Ciudad Autónoma de Buenos Aires' },
+  { id: '14', nombre: 'Córdoba' },
+  { id: '18', nombre: 'Corrientes' },
+  { id: '30', nombre: 'Entre Ríos' },
+  { id: '34', nombre: 'Formosa' },
+  { id: '38', nombre: 'Jujuy' },
+  { id: '42', nombre: 'La Pampa' },
+  { id: '46', nombre: 'La Rioja' },
+  { id: '50', nombre: 'Mendoza' },
+  { id: '54', nombre: 'Misiones' },
+  { id: '58', nombre: 'Neuquén' },
+  { id: '62', nombre: 'Río Negro' },
+  { id: '66', nombre: 'Salta' },
+  { id: '70', nombre: 'San Juan' },
+  { id: '74', nombre: 'San Luis' },
+  { id: '78', nombre: 'Santa Cruz' },
+  { id: '82', nombre: 'Santa Fe' },
+  { id: '86', nombre: 'Santiago del Estero' },
+  { id: '94', nombre: 'Tierra del Fuego' },
+  { id: '90', nombre: 'Tucumán' },
+];
+
+const GEOREF = 'https://apis.datos.gob.ar/georef/api';
+const CACHE_DIAS = 30;
+const memoria = new Map<string, string[]>();
+
+/** Localidades de una provincia, en orden alfabético. Lanza si no hay conexión y no hay copia guardada. */
+export async function listarLocalidades(provinciaId: string): Promise<string[]> {
+  const enMemoria = memoria.get(provinciaId);
+  if (enMemoria) return enMemoria;
+
+  const clave = `duar-localidades-${provinciaId}`;
+  try {
+    const guardado = JSON.parse(localStorage.getItem(clave) ?? 'null');
+    if (guardado && Date.now() - guardado.guardadoEn < CACHE_DIAS * 86_400_000) {
+      memoria.set(provinciaId, guardado.datos);
+      return guardado.datos;
+    }
+  } catch { /* localStorage bloqueado o dato corrupto: se pide de nuevo */ }
+
+  const res = await fetch(
+    `${GEOREF}/localidades?provincia=${provinciaId}&campos=nombre&max=5000&orden=nombre`
+  );
+  if (!res.ok) throw new Error(`Georef respondió ${res.status}`);
+  const json = await res.json();
+  const nombres = Array.from(new Set<string>((json.localidades ?? []).map((l: { nombre: string }) => l.nombre)));
+
+  memoria.set(provinciaId, nombres);
+  try { localStorage.setItem(clave, JSON.stringify({ guardadoEn: Date.now(), datos: nombres })); } catch { /* sin caché */ }
+  return nombres;
+}
+
+const sinTildes = (t: string) => t.normalize('NFD').replace(/[\u0300-\u036f]/g, '').toLowerCase().trim();
+
+/**
+ * La localidad se guarda en una sola columna como "Localidad, Provincia" (el
+ * formato que ya se usaba: "La Cumbrecita, Córdoba"). Esto lo desarma para
+ * precargar la edición; devuelve null si el valor es texto libre anterior
+ * ("Barrio Maipu") y no se puede saber la provincia.
+ */
+export function separarLocalidad(valor: string): { localidad: string; provincia: Provincia } | null {
+  const i = valor.lastIndexOf(',');
+  if (i < 0) return null;
+  const prov = PROVINCIAS.find(p => sinTildes(p.nombre) === sinTildes(valor.slice(i + 1)));
+  if (!prov) return null;
+  return { localidad: valor.slice(0, i).trim(), provincia: prov };
+}
+
+export const unirLocalidad = (localidad: string, provincia: string) => `${localidad}, ${provincia}`;

@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { filtrarEmail, EMAIL_MAX } from '../utils/validacionUsuario';
 import { useNavigate, Navigate } from 'react-router';
 import { Shield, Eye, EyeOff, AlertCircle, Lock, Mail, UserX } from 'lucide-react';
 import { useApp } from '../context/AppContext';
@@ -128,7 +129,8 @@ export default function Login() {
                 <input
                   type="email"
                   value={email}
-                  onChange={e => setEmail(e.target.value)}
+                  maxLength={EMAIL_MAX}
+                  onChange={e => setEmail(filtrarEmail(e.target.value))}
                   placeholder="usuario@duar.cba.gob.ar"
                   className="w-full pl-9 pr-4 py-2.5 rounded-lg border outline-none transition-all"
                   style={{

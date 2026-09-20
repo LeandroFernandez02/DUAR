@@ -190,8 +190,9 @@ export async function restablecerContrasena(req, res, next) {
     if (!token || !password) {
       return res.status(400).json({ error: 'Faltan datos.' });
     }
-    if (String(password).length < 8) {
-      return res.status(400).json({ error: 'La contraseña debe tener al menos 8 caracteres.' });
+    const largo = String(password).length;
+    if (largo < 8 || largo > 64) {
+      return res.status(400).json({ error: 'La contraseña debe tener entre 8 y 64 caracteres.' });
     }
 
     const acceso = await TokenEmail.validar(token, 'RECUPERACION');

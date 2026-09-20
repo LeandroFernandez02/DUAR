@@ -12,6 +12,7 @@ import { qrApi, registroApi, authApi, setToken, ApiError, OperativoQRApi } from 
 import {
   validarNombre, validarApellido, validarDni, validarTelefono,
   validarFechaNacimiento, fechaMaximaNacimiento,
+  validarEmail, validarPassword, filtrarEmail, PASSWORD_MAX,
   soloDigitos, formatearDni, formatearTelefono,
 } from '../utils/validacionUsuario';
 import { guardarAltaPendiente, limpiarAltaPendiente } from '../utils/altaPendiente';
@@ -404,10 +405,6 @@ export default function Registro() {
       setError('Completá todos los campos obligatorios (*).');
       return;
     }
-    if (regForm.password.length < 8) {
-      setError('La contraseña debe tener al menos 8 caracteres.');
-      return;
-    }
     if (!qrToken) { setError('Falta el código del QR.'); return; }
 
     const errores: Record<string, string> = {};
@@ -415,6 +412,8 @@ export default function Registro() {
     const errApellido = validarApellido(regForm.apellido); if (errApellido) errores.apellido = errApellido;
     const errDni = validarDni(regForm.dni); if (errDni) errores.dni = errDni;
     const errTelefono = validarTelefono(regForm.telefono); if (errTelefono) errores.telefono = errTelefono;
+    const errEmail = validarEmail(regForm.email); if (errEmail) errores.email = errEmail;
+    const errPassword = validarPassword(regForm.password); if (errPassword) errores.password = errPassword;
     const errFechaNacimiento = validarFechaNacimiento(regForm.fechaNacimiento); if (errFechaNacimiento) errores.fechaNacimiento = errFechaNacimiento;
     setErroresCampos(errores);
     if (Object.keys(errores).length > 0) {
@@ -779,8 +778,8 @@ export default function Registro() {
                   label: 'Apellido *', key: 'apellido', type: 'text', placeholder: 'Tu apellido',
                   filtro: (v: string) => v.replace(/[^A-Za-zÀ-ÖØ-öø-ÿ'\- ]/g, '').slice(0, 35),
                 },
-                { label: 'Correo electrónico *', key: 'email', type: 'email', placeholder: 'tu@email.com' },
-                { label: 'Contraseña *', key: 'password', type: 'password', placeholder: 'Mínimo 8 caracteres' },
+                { label: 'Correo electrónico *', key: 'email', type: 'email', placeholder: 'tu@email.com', filtro: filtrarEmail },
+                { label: 'Contraseña *', key: 'password', type: 'password', placeholder: 'Entre 8 y 64 caracteres', filtro: (v: string) => v.slice(0, PASSWORD_MAX) },
                 { label: 'Fecha de Nacimiento', key: 'fechaNacimiento', type: 'date', placeholder: '', max: fechaMaximaNacimiento() },
                 {
                   label: 'Teléfono', key: 'telefono', type: 'tel', placeholder: 'Ej: 351-228-3143',
