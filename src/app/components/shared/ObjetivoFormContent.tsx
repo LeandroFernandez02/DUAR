@@ -3,6 +3,34 @@ import {
   User, Package, CheckCircle2, ImagePlus, Expand, X as XIcon,
 } from 'lucide-react';
 import { TipoObjetivo } from '../../data/mockData';
+import { listarPaises } from '../../services/geoService';
+import { soloDigitos, formatearDni, validarNombre, validarApellido, validarDni } from '../../utils/validacionUsuario';
+
+/* ─────────────────────────────────────────────────
+   Validación compartida (modal de alta/edición y modal de acceso rápido).
+   Mismas reglas que el resto de los formularios de personas; el DNI, la edad
+   y la estatura son opcionales (a veces no se conocen) — sólo se validan si
+   se cargaron. Espejo de server/src/controllers/objetivo.controller.js.
+───────────────────────────────────────────────── */
+export function validarObjetivoForm(
+  tipo: TipoObjetivo | '',
+  p: PersonaForm,
+  o: ObjetoForm,
+): Record<string, string> {
+  const e: Record<string, string> = {};
+  if (tipo === 'persona') {
+    const eNombre = validarNombre(p.nombre); if (eNombre) e.nombre = eNombre;
+    if (p.apellido.trim()) { const eAp = validarApellido(p.apellido); if (eAp) e.apellido = eAp; }
+    if (p.dni) { const eDni = validarDni(p.dni); if (eDni) e.dni = eDni; }
+    if (p.edad && (Number(p.edad) < 0 || Number(p.edad) > 120)) e.edad = 'La edad debe estar entre 0 y 120 años.';
+    if (p.estatura && (Number(p.estatura) < 30 || Number(p.estatura) > 250)) e.estatura = 'La estatura debe estar entre 30 y 250 cm.';
+  } else if (tipo === 'objeto') {
+    if (!o.nombre.trim()) e.nombre = 'El nombre / descripción es obligatorio.';
+  } else {
+    e.tipo = 'Seleccioná un tipo de objetivo.';
+  }
+  return e;
+}
 
 /* ─────────────────────────────────────────────────
    Exported types & helpers
@@ -56,7 +84,7 @@ export function buildPersonaForm(p?: {
   return {
     nombre: p?.nombre ?? '',
     apellido: p?.apellido ?? '',
-    dni: p?.dni ?? '',
+    dni: soloDigitos(p?.dni ?? ''),
     edad: p?.edad != null ? String(p.edad) : '',
     sexo: p?.genero ?? '',
     nacionalidad: p?.nacionalidad ?? '',
@@ -189,20 +217,35 @@ function SecTitle({ children }: { children: React.ReactNode }) {
   );
 }
 
-function Inp({ value, onChange, placeholder, type = 'text', readOnly }: {
+function ErrMsg({ msg }: { msg?: string }) {
+  if (!msg) return null;
+  return (
+    <p style={{
+      color: 'var(--primary)', fontSize: '11px',
+      fontFamily: 'var(--font-family-primary)', marginTop: 3,
+    }}>
+      {msg}
+    </p>
+  );
+}
+
+function Inp({ value, onChange, placeholder, type = 'text', readOnly, maxLength, inputMode, hasError }: {
   value: string; onChange?: (v: string) => void;
   placeholder?: string; type?: string; readOnly?: boolean;
+  maxLength?: number; inputMode?: 'numeric' | 'text'; hasError?: boolean;
 }) {
   return (
     <input
       type={type}
+      inputMode={inputMode}
+      maxLength={maxLength}
       value={value}
       readOnly={readOnly}
       placeholder={readOnly ? undefined : placeholder}
       onChange={!readOnly ? e => onChange?.(e.target.value) : undefined}
-      style={readOnly ? inputRO() : inputSt()}
+      style={readOnly ? inputRO() : { ...inputSt(), ...(hasError ? { borderColor: 'var(--primary)' } : {}) }}
       onFocus={!readOnly ? e => { e.currentTarget.style.borderColor = 'var(--primary)'; } : undefined}
-      onBlur={!readOnly ? e => { e.currentTarget.style.borderColor = 'var(--border)'; } : undefined}
+      onBlur={!readOnly ? e => { e.currentTarget.style.borderColor = hasError ? 'var(--primary)' : 'var(--border)'; } : undefined}
     />
   );
 }
@@ -539,6 +582,15 @@ export function ObjetivoFormContent({
 }: ObjetivoFormContentProps) {
   const ro = isReadOnly;
 
+  // Un valor guardado antes de que la nacionalidad fuera una lista (texto
+  // libre) se conserva como opción, para no perderlo al abrir la ficha.
+  const paisOptions = useMemo(() => {
+    const paises = listarPaises();
+    const actual = personaForm.nacionalidad;
+    const lista = actual && !paises.includes(actual) ? [actual, ...paises] : paises;
+    return lista.map(p => ({ value: p, label: p }));
+  }, [personaForm.nacionalidad]);
+
   return (
     <div className="flex flex-col" style={{ gap: 4 }}>
 
@@ -657,46 +709,49 @@ export function ObjetivoFormContent({
               <Lbl required>Nombre</Lbl>
               <Inp
                 value={personaForm.nombre}
-                onChange={v => onPersonaChange('nombre', v)}
+                onChange={v => onPersonaChange('nombre', v.replace(/[^A-Za-zÀ-ÖØ-öø-ÿ ]/g, '').slice(0, 35))}
                 placeholder="Ej: Juan"
+                maxLength={35}
+                hasError={!!errors.nombre}
                 readOnly={ro}
               />
-              {errors.nombre && (
-                <p style={{
-                  color: 'var(--primary)', fontSize: '11px',
-                  fontFamily: 'var(--font-family-primary)', marginTop: 3,
-                }}>
-                  {errors.nombre}
-                </p>
-              )}
+              <ErrMsg msg={errors.nombre} />
             </div>
             <div className="col-span-2 sm:col-span-1">
               <Lbl>Apellido</Lbl>
               <Inp
                 value={personaForm.apellido}
-                onChange={v => onPersonaChange('apellido', v)}
+                onChange={v => onPersonaChange('apellido', v.replace(/[^A-Za-zÀ-ÖØ-öø-ÿ'\- ]/g, '').slice(0, 35))}
                 placeholder="Ej: García"
+                maxLength={35}
+                hasError={!!errors.apellido}
                 readOnly={ro}
               />
+              <ErrMsg msg={errors.apellido} />
             </div>
             <div>
               <Lbl>DNI / Documento</Lbl>
               <Inp
-                value={personaForm.dni}
-                onChange={v => onPersonaChange('dni', v)}
-                placeholder="Ej: 35123456"
+                value={formatearDni(personaForm.dni)}
+                onChange={v => onPersonaChange('dni', soloDigitos(v).slice(0, 8))}
+                placeholder="Ej: 35.123.456"
+                inputMode="numeric"
+                hasError={!!errors.dni}
                 readOnly={ro}
               />
+              <ErrMsg msg={errors.dni} />
             </div>
             <div>
               <Lbl>Edad</Lbl>
               <Inp
                 value={personaForm.edad}
-                onChange={v => onPersonaChange('edad', v)}
+                onChange={v => onPersonaChange('edad', soloDigitos(v).slice(0, 3))}
                 placeholder="Ej: 34"
-                type="number"
+                inputMode="numeric"
+                hasError={!!errors.edad}
                 readOnly={ro}
               />
+              <ErrMsg msg={errors.edad} />
             </div>
             <div>
               <Lbl>Sexo</Lbl>
@@ -710,10 +765,11 @@ export function ObjetivoFormContent({
             </div>
             <div>
               <Lbl>Nacionalidad</Lbl>
-              <Inp
+              <Sel
                 value={personaForm.nacionalidad}
                 onChange={v => onPersonaChange('nacionalidad', v)}
-                placeholder="Ej: Argentina"
+                options={paisOptions}
+                placeholder="Seleccionar..."
                 readOnly={ro}
               />
             </div>
@@ -725,11 +781,13 @@ export function ObjetivoFormContent({
               <Lbl>Estatura (cm)</Lbl>
               <Inp
                 value={personaForm.estatura}
-                onChange={v => onPersonaChange('estatura', v.replace(/[^\d]/g, ''))}
+                onChange={v => onPersonaChange('estatura', soloDigitos(v).slice(0, 3))}
                 placeholder="Ej: 172"
-                type="number"
+                inputMode="numeric"
+                hasError={!!errors.estatura}
                 readOnly={ro}
               />
+              <ErrMsg msg={errors.estatura} />
             </div>
             <div>
               <Lbl>Complexión</Lbl>
@@ -779,7 +837,7 @@ export function ObjetivoFormContent({
               <Lbl>Vestimenta</Lbl>
               <Tex
                 value={personaForm.vestimenta}
-                onChange={v => onPersonaChange('vestimenta', v)}
+                onChange={v => onPersonaChange('vestimenta', v.slice(0, 500))}
                 placeholder="Ropa que llevaba puesta al momento de la desaparición"
                 rows={2}
                 readOnly={ro}
@@ -789,7 +847,7 @@ export function ObjetivoFormContent({
               <Lbl>Detalles adicionales</Lbl>
               <Tex
                 value={personaForm.detallesAdicionales}
-                onChange={v => onPersonaChange('detallesAdicionales', v)}
+                onChange={v => onPersonaChange('detallesAdicionales', v.slice(0, 1000))}
                 placeholder="Rasgos particulares, tatuajes, cicatrices, objetos que portaba, etc."
                 rows={4}
                 readOnly={ro}
@@ -810,7 +868,7 @@ export function ObjetivoFormContent({
               <Lbl required>Nombre / Descripción</Lbl>
               <Inp
                 value={objetoForm.nombre}
-                onChange={v => onObjetoChange('nombre', v)}
+                onChange={v => onObjetoChange('nombre', v.slice(0, 100))}
                 placeholder="Ej: Mochila negra North Face"
                 readOnly={ro}
               />
@@ -837,7 +895,7 @@ export function ObjetivoFormContent({
               <Lbl>Color</Lbl>
               <Inp
                 value={objetoForm.color}
-                onChange={v => onObjetoChange('color', v)}
+                onChange={v => onObjetoChange('color', v.slice(0, 100))}
                 placeholder="Ej: Rojo oscuro"
                 readOnly={ro}
               />
@@ -846,7 +904,7 @@ export function ObjetivoFormContent({
               <Lbl>Marca</Lbl>
               <Inp
                 value={objetoForm.marca}
-                onChange={v => onObjetoChange('marca', v)}
+                onChange={v => onObjetoChange('marca', v.slice(0, 100))}
                 placeholder="Ej: Toyota"
                 readOnly={ro}
               />
@@ -855,7 +913,7 @@ export function ObjetivoFormContent({
               <Lbl>Modelo</Lbl>
               <Inp
                 value={objetoForm.modelo}
-                onChange={v => onObjetoChange('modelo', v)}
+                onChange={v => onObjetoChange('modelo', v.slice(0, 100))}
                 placeholder="Ej: Hilux 2019"
                 readOnly={ro}
               />
@@ -868,9 +926,9 @@ export function ObjetivoFormContent({
               <Lbl>Alto</Lbl>
               <Inp
                 value={objetoForm.dimensionAlto}
-                onChange={v => onObjetoChange('dimensionAlto', v.replace(/[^\d]/g, ''))}
+                onChange={v => onObjetoChange('dimensionAlto', soloDigitos(v).slice(0, 4))}
                 placeholder="Ej: 40"
-                type="number"
+                inputMode="numeric"
                 readOnly={ro}
               />
             </div>
@@ -878,9 +936,9 @@ export function ObjetivoFormContent({
               <Lbl>Ancho</Lbl>
               <Inp
                 value={objetoForm.dimensionAncho}
-                onChange={v => onObjetoChange('dimensionAncho', v.replace(/[^\d]/g, ''))}
+                onChange={v => onObjetoChange('dimensionAncho', soloDigitos(v).slice(0, 4))}
                 placeholder="Ej: 30"
-                type="number"
+                inputMode="numeric"
                 readOnly={ro}
               />
             </div>
@@ -888,9 +946,9 @@ export function ObjetivoFormContent({
               <Lbl>Largo</Lbl>
               <Inp
                 value={objetoForm.dimensionLargo}
-                onChange={v => onObjetoChange('dimensionLargo', v.replace(/[^\d]/g, ''))}
+                onChange={v => onObjetoChange('dimensionLargo', soloDigitos(v).slice(0, 4))}
                 placeholder="Ej: 20"
-                type="number"
+                inputMode="numeric"
                 readOnly={ro}
               />
             </div>
@@ -902,7 +960,7 @@ export function ObjetivoFormContent({
               <Lbl>Detalles adicionales</Lbl>
               <Tex
                 value={objetoForm.detallesAdicionales}
-                onChange={v => onObjetoChange('detallesAdicionales', v)}
+                onChange={v => onObjetoChange('detallesAdicionales', v.slice(0, 1000))}
                 placeholder="Describí el objeto: daños, inscripciones, modificaciones, elementos identificatorios, etc."
                 rows={4}
                 readOnly={ro}

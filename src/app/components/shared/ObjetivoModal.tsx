@@ -6,11 +6,12 @@ import {
   Hash, AlertCircle, ImageOff, Lock, Loader2,
 } from 'lucide-react';
 import { TipoObjetivo } from '../../data/mockData';
+import { formatearDni } from '../../utils/validacionUsuario';
 import { objetivoApi, ObjetivoApi, CrearObjetivoPayload, ApiError } from '../../services/api';
 import {
   ObjetivoFormContent,
   PersonaForm, ObjetoForm, FotoExistente,
-  buildPersonaForm, buildObjetoForm,
+  buildPersonaForm, buildObjetoForm, validarObjetivoForm,
 } from './ObjetivoFormContent';
 
 /* ─── Types ─── */
@@ -277,12 +278,10 @@ function PersonaView({ objetivo, fotos, onOpenLightbox }: {
       <div>
         <SectionTitle>Identificación</SectionTitle>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
-          <DataCard label="DNI" value={objetivo.dni ?? undefined} icon={<Hash size={11} />} />
+          <DataCard label="DNI" value={objetivo.dni ? formatearDni(objetivo.dni) : undefined} icon={<Hash size={11} />} />
           <DataCard label="Edad" value={objetivo.edad != null ? `${objetivo.edad} años` : undefined} icon={<Info size={11} />} />
           <DataCard label="Sexo" value={objetivo.genero ? GENERO_LABEL[objetivo.genero] : undefined} icon={<User size={11} />} />
           <DataCard label="Nacionalidad" value={objetivo.nacionalidad ?? undefined} icon={<Info size={11} />} />
-          <DataCard label="Estatura" value={objetivo.estatura != null ? `${objetivo.estatura} cm` : undefined} icon={<Ruler size={11} />} />
-          <DataCard label="Complexión" value={objetivo.complexionFisica ?? undefined} icon={<Info size={11} />} />
         </div>
       </div>
 
@@ -290,6 +289,8 @@ function PersonaView({ objetivo, fotos, onOpenLightbox }: {
       <div>
         <SectionTitle>Características físicas</SectionTitle>
         <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
+          <DataCard label="Estatura" value={objetivo.estatura != null ? `${objetivo.estatura} cm` : undefined} icon={<Ruler size={11} />} />
+          <DataCard label="Complexión" value={objetivo.complexionFisica ?? undefined} icon={<Info size={11} />} />
           <DataCard label="Color de piel" value={objetivo.colorPiel ?? undefined} icon={<Palette size={11} />} />
           <DataCard label="Color de ojos" value={objetivo.colorOjos ?? undefined} icon={<Eye size={11} />} />
           <DataCard label="Color de cabello" value={objetivo.colorPelo ?? undefined} icon={<Scissors size={11} />} />
@@ -373,6 +374,12 @@ function ObjetoView({ objetivo, fotos, onOpenLightbox }: {
           <DataCard label="Marca" value={objetivo.marca ?? undefined} icon={<Info size={11} />} />
           <DataCard label="Modelo" value={objetivo.modelo ?? undefined} icon={<Info size={11} />} />
           <DataCard label="Color" value={objetivo.color ?? undefined} icon={<Palette size={11} />} />
+        </div>
+      </div>
+
+      <div>
+        <SectionTitle>Dimensiones</SectionTitle>
+        <div className="grid grid-cols-2 sm:grid-cols-3 gap-2.5">
           <DataCard label="Alto" value={objetivo.dimensionAlto != null ? `${objetivo.dimensionAlto} cm` : undefined} icon={<Ruler size={11} />} />
           <DataCard label="Ancho" value={objetivo.dimensionAncho != null ? `${objetivo.dimensionAncho} cm` : undefined} icon={<Ruler size={11} />} />
           <DataCard label="Largo" value={objetivo.dimensionLargo != null ? `${objetivo.dimensionLargo} cm` : undefined} icon={<Ruler size={11} />} />
@@ -476,12 +483,7 @@ export default function ObjetivoModal({ operativoId, onClose }: Props) {
 
   /* ── Validate & save ── */
   const validate = (): boolean => {
-    const e: Record<string, string> = {};
-    if (tipo === 'persona') {
-      if (!personaForm.nombre.trim()) e.nombre = 'El nombre es obligatorio.';
-    } else {
-      if (!objetoForm.nombre.trim()) e.nombre = 'El nombre / descripción es obligatorio.';
-    }
+    const e = validarObjetivoForm(tipo, personaForm, objetoForm);
     setErrors(e);
     return Object.keys(e).length === 0;
   };

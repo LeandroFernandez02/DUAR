@@ -8,10 +8,11 @@ import {
 } from 'lucide-react';
 import { OperativoOutletContext } from './OperativoLayout';
 import { TipoObjetivo } from '../../data/mockData';
+import { formatearDni } from '../../utils/validacionUsuario';
 import { objetivoApi, ObjetivoApi, CrearObjetivoPayload, ApiError } from '../../services/api';
 import {
   ObjetivoFormContent, PersonaForm, ObjetoForm, FotoExistente,
-  buildPersonaForm, buildObjetoForm,
+  buildPersonaForm, buildObjetoForm, validarObjetivoForm,
 } from '../../components/shared/ObjetivoFormContent';
 
 /* ─── Constants (display only) ─── */
@@ -58,12 +59,7 @@ function EditModal({
   const scrollRef = useRef<HTMLDivElement>(null);
 
   const validate = (): boolean => {
-    const e: Record<string, string> = {};
-    if (tipo === 'persona') {
-      if (!personaForm.nombre.trim()) e.nombre = 'El nombre es obligatorio.';
-    } else {
-      if (!objetoForm.nombre.trim()) e.nombre = 'El nombre/descripción es obligatorio.';
-    }
+    const e = validarObjetivoForm(tipo, personaForm, objetoForm);
     setErrors(e);
     return Object.keys(e).length === 0;
   };
@@ -781,7 +777,7 @@ function PersonaContent({
                 color: 'var(--muted-foreground)', fontSize: 'var(--text-label)',
                 fontFamily: 'var(--font-family-primary)',
               }}>
-                DNI {objetivo.dni}
+                DNI {formatearDni(objetivo.dni)}
               </span>
             )}
           </div>
@@ -792,7 +788,7 @@ function PersonaContent({
         <SectionTitle>Datos Personales</SectionTitle>
         <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
           <DataCard label="Nombre completo" value={nombreCompleto} icon={<User size={11} />} />
-          <DataCard label="DNI / Documento" value={objetivo.dni ?? undefined} icon={<Hash size={11} />} />
+          <DataCard label="DNI / Documento" value={objetivo.dni ? formatearDni(objetivo.dni) : undefined} icon={<Hash size={11} />} />
           <DataCard label="Edad" value={objetivo.edad != null ? `${objetivo.edad} años` : undefined} icon={<Info size={11} />} />
           <DataCard label="Sexo" value={objetivo.genero ? GENERO_LABEL[objetivo.genero] : undefined} icon={<Info size={11} />} />
           <DataCard label="Nacionalidad" value={objetivo.nacionalidad ?? undefined} icon={<Tag size={11} />} />
@@ -897,6 +893,12 @@ function ObjetoContent({
           <DataCard label="Marca" value={objetivo.marca ?? undefined} icon={<Info size={11} />} />
           <DataCard label="Modelo" value={objetivo.modelo ?? undefined} icon={<Info size={11} />} />
           <DataCard label="Color" value={objetivo.color ?? undefined} icon={<Palette size={11} />} />
+        </div>
+      </div>
+
+      <div>
+        <SectionTitle>Dimensiones</SectionTitle>
+        <div className="grid grid-cols-2 sm:grid-cols-3 lg:grid-cols-4 gap-3">
           <DataCard label="Alto" value={objetivo.dimensionAlto != null ? `${objetivo.dimensionAlto} cm` : undefined} icon={<Ruler size={11} />} />
           <DataCard label="Ancho" value={objetivo.dimensionAncho != null ? `${objetivo.dimensionAncho} cm` : undefined} icon={<Ruler size={11} />} />
           <DataCard label="Largo" value={objetivo.dimensionLargo != null ? `${objetivo.dimensionLargo} cm` : undefined} icon={<Ruler size={11} />} />

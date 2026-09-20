@@ -14,9 +14,49 @@ import * as Objetivo from '../models/objetivo.model.js';
 import * as Operativo from '../models/operativo.model.js';
 import * as Auditoria from '../models/auditoria.model.js';
 import * as Storage from '../services/storage.service.js';
+import { validarDatosPersonales } from '../utils/validaciones.js';
 
 const ENTIDAD = 'objetivo_buscado';
 const ENTIDAD_FOTOS = 'fotos_objetivo';
+
+const enRango = (v, min, max) => Number.isInteger(v) && v >= min && v <= max;
+
+/**
+ * Mismas reglas que el formulario (validarObjetivoForm en el frontend); el
+ * backend es la última palabra. DNI, edad, estatura y dimensiones son
+ * opcionales — a veces no se conocen — y sólo se validan si vienen cargados.
+ * En un PUT parcial `tipo` puede no venir: se usa el de la ficha existente.
+ */
+function validarObjetivo(b, tipo, esAlta) {
+  const err = {};
+  if (tipo === 'PERSONA') {
+    const datos = {};
+    if (esAlta || b.nombre !== undefined) datos.nombre = b.nombre ?? '';
+    if (b.apellido) datos.apellido = b.apellido;
+    if (b.dni) datos.dni = b.dni;
+    Object.assign(err, validarDatosPersonales(datos));
+    if (b.edad != null && !enRango(b.edad, 0, 120)) err.edad = 'La edad debe estar entre 0 y 120 años.';
+    if (b.estatura != null && !enRango(b.estatura, 30, 250)) err.estatura = 'La estatura debe estar entre 30 y 250 cm.';
+  } else {
+    if ((esAlta || b.nombre !== undefined) && !String(b.nombre ?? '').trim()) err.nombre = 'El nombre / descripción es obligatorio.';
+    for (const k of ['dimensionAlto', 'dimensionAncho', 'dimensionLargo']) {
+      if (b[k] != null && !enRango(b[k], 1, 9999)) err[k] = 'Las dimensiones deben estar entre 1 y 9999 cm.';
+    }
+  }
+  for (const k of ['nombre', 'apellido', 'nacionalidad', 'color', 'marca', 'modelo', 'complexionFisica', 'colorPiel', 'colorOjos', 'colorPelo']) {
+    if (typeof b[k] === 'string' && b[k].length > 100) err[k] = 'Máximo 100 caracteres.';
+  }
+  if (typeof b.vestimenta === 'string' && b.vestimenta.length > 500) err.vestimenta = 'Máximo 500 caracteres.';
+  if (typeof b.detallesAdicionales === 'string' && b.detallesAdicionales.length > 1000) err.detallesAdicionales = 'Máximo 1000 caracteres.';
+  return err;
+}
+
+function rechazarSiInvalido(res, errores) {
+  const primero = Object.values(errores)[0];
+  if (!primero) return false;
+  res.status(400).json({ error: primero, errores });
+  return true;
+}
 
 /** Adjunta la URL firmada de cada foto (nunca se persiste, se genera en caliente). */
 async function conUrlsFirmadas(objetivo) {
@@ -69,6 +109,8 @@ export async function crear(req, res, next) {
       });
     }
 
+    if (rechazarSiInvalido(res, validarObjetivo(b, b.tipo, true))) return;
+
     const existente = await Objetivo.buscarPorOperativo(operativoId);
     if (existente) {
       return res.status(409).json({
@@ -109,7 +151,10 @@ export async function actualizar(req, res, next) {
     const previo = await Objetivo.buscarPorOperativo(operativoId);
     if (!previo) return res.status(404).json({ error: 'Todavía no se cargó el objetivo buscado de este operativo.' });
 
-    const objetivo = await Objetivo.actualizar(previo.id, req.body ?? {});
+    const b = req.body ?? {};
+    if (rechazarSiInvalido(res, validarObjetivo(b, b.tipo ?? previo.tipo, false))) return;
+
+    const objetivo = await Objetivo.actualizar(previo.id, b);
 
     // CU-13 paso 9: "el sistema registra la modificación en el historial de
     // cambios del incidente" — Decisión D, sin tabla nueva.
