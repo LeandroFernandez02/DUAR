@@ -61,6 +61,7 @@ aplica al proyecto Supabase con el mismo nombre:
 | `012_grupos_rastrillaje_y_especiales.sql` | Clase del grupo (`clase_grupo`), Canes pasa a recurso especial y se agregan Caballería y Buzos |
 | `013_sin_caminante.sql` | ⚠️ **Pendiente: aplicar al subir a producción.** Borra `agentes_operativo.es_caminante` (la versión publicada todavía la usa) |
 | `014_especialidad_policia.sql` | Especialidad **Policía** en el catálogo, de rastrillaje |
+| `015_indices_tablero.sql` | Índices en `agentes_operativo.grupo_id` y `grupos.lider_id` (se leen en cada refresco del tablero) |
 
 ### PostGIS: diferencia con la instalación local
 

@@ -56,6 +56,12 @@ app.use((req, res) => {
 
 /** Manejador de errores centralizado: ningún stack trace llega al cliente. */
 app.use((err, _req, res, _next) => {
+  // 22P02 = invalid_text_representation: un id mal formado (ej. /grupos/undefined)
+  // o un valor que no existe en un catálogo. Es un pedido inválido, no una falla.
+  if (err.code === '22P02') {
+    console.warn('[API] pedido con un valor inválido:', err.message);
+    return res.status(400).json({ error: 'Algún identificador o valor del pedido no es válido.', motivo: 'valor_invalido' });
+  }
   // Una regla de negocio rechazada (err.status 4xx, ej. grupo.model.js#ReglaError)
   // es una respuesta esperada, no una falla: no se loguea como error.
   if (!(err.status && err.status < 500)) console.error('[API]', err);

@@ -63,6 +63,9 @@ const emptyForm = {
 
 export default function Usuarios() {
   const { usuario: usuarioActual } = useApp();
+  // Para el coordinador los administradores no existen (30/09): el backend ya no
+  // se los lista, y acá tampoco se le ofrece el rol ni el filtro.
+  const soyAdmin = usuarioActual?.rol === 'administrador';
   const [modal, setModal] = useState<ModalType>(null);
   const [selected, setSelected] = useState<Usuario | null>(null);
   const [form, setForm] = useState<typeof emptyForm>(emptyForm);
@@ -123,6 +126,9 @@ export default function Usuarios() {
       setReenviando(null);
     }
   };
+
+  /** Editando la propia cuenta: ni el rol ni el estado se tocan (autobloqueo, 30/09). */
+  const editandomePropio = modal === 'edit' && !!selected && selected.id === usuarioActual?.id;
 
   const openEdit = (u: Usuario) => {
     setSelected(u);
@@ -288,7 +294,7 @@ export default function Usuarios() {
           style={fieldStyle}
         >
           <option value="">Todos los roles</option>
-          <option value="administrador">Administrador</option>
+          {soyAdmin && <option value="administrador">Administrador</option>}
           <option value="coordinador">Coordinador</option>
           <option value="agente">Agente</option>
         </select>
@@ -629,13 +635,18 @@ export default function Usuarios() {
                 <select
                   value={form.rol}
                   onChange={e => setForm({ ...form, rol: e.target.value as Rol })}
+                  disabled={editandomePropio}
+                  title={editandomePropio ? 'No podés cambiar tu propio rol' : undefined}
                   className="w-full px-3 py-2 rounded-lg border outline-none"
-                  style={fieldStyle}
+                  style={{ ...fieldStyle, ...(editandomePropio ? { opacity: 0.6, cursor: 'not-allowed' } : {}) }}
                 >
                   <option value="agente">Agente</option>
                   <option value="coordinador">Coordinador</option>
-                  <option value="administrador">Administrador</option>
+                  {(soyAdmin || form.rol === 'administrador') && <option value="administrador">Administrador</option>}
                 </select>
+                {editandomePropio && (
+                  <p className="mt-1" style={{ fontSize: 11, color: 'var(--muted-foreground)' }}>No podés cambiar tu propio rol.</p>
+                )}
               </div>
 
               <div>
@@ -707,8 +718,10 @@ export default function Usuarios() {
                   <select
                     value={form.estado}
                     onChange={e => setForm({ ...form, estado: e.target.value as EstadoUsuario })}
+                    disabled={editandomePropio}
+                    title={editandomePropio ? 'No podés desactivar tu propia cuenta' : undefined}
                     className="w-full px-3 py-2 rounded-lg border outline-none"
-                    style={fieldStyle}
+                    style={{ ...fieldStyle, ...(editandomePropio ? { opacity: 0.6, cursor: 'not-allowed' } : {}) }}
                   >
                     <option value="activo">Activo</option>
                     <option value="inactivo">Inactivo</option>

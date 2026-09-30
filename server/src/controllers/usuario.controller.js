@@ -3,6 +3,13 @@
  *
  * Acá viven las reglas del Módulo 2. El Modelo sólo hace SQL; las validaciones
  * de negocio (unicidad, autobloqueo, invalidación de sesiones) son de esta capa.
+ *
+ * Permisos por rol (auditoría del 30/09): el coordinador crea y edita
+ * coordinadores y agentes, pero para él los ADMINISTRADORES NO EXISTEN: no se
+ * listan, no se pueden abrir, editar ni eliminar (responden 404, como un id
+ * que no existe) y no puede crear ni ascender a nadie a administrador. Además,
+ * nadie cambia su propio rol ni se desactiva a sí mismo, y el último
+ * administrador activo no se puede desactivar, degradar ni eliminar.
  */
 import bcrypt from 'bcryptjs';
 import * as Usuario from '../models/usuario.model.js';
@@ -16,19 +23,45 @@ import { query } from '../config/db.js';
 const ENTIDAD = 'usuarios';
 const FRONTEND_URL = process.env.FRONTEND_URL ?? 'http://localhost:5173';
 
-/** Traduce el nombre del rol a su UUID; el frontend trabaja con nombres. */
-async function resolverRolId({ rolId, rol }) {
-  if (rolId) return rolId;
-  if (!rol) return null;
-  const { rows } = await query(`SELECT id FROM cat_roles WHERE lower(nombre) = lower($1)`, [rol]);
-  return rows[0]?.id ?? null;
+const ADMIN = 'administrador';
+
+/** Rol del catálogo (id y nombre en minúsculas) a partir del nombre o del id; null si no existe. */
+async function resolverRol({ rolId, rol }) {
+  if (!rolId && !rol) return null;
+  const { rows } = await query(
+    rolId
+      ? `SELECT id, lower(nombre) AS nombre FROM cat_roles WHERE id = $1`
+      : `SELECT id, lower(nombre) AS nombre FROM cat_roles WHERE lower(nombre) = lower($1)`,
+    [rolId ?? rol]
+  );
+  return rows[0] ?? null;
+}
+
+const esAdmin = req => (req.usuario?.rol ?? '').toLowerCase() === ADMIN;
+
+/** Para quien no es administrador, un administrador no existe. */
+const visiblePara = (req, usuario) => esAdmin(req) || (usuario?.rol ?? '').toLowerCase() !== ADMIN;
+
+const noEncontrado = res => res.status(404).json({ error: 'Usuario no encontrado.' });
+
+/** ¿Queda algún otro administrador activo además de `id`? */
+async function hayOtroAdminActivo(id) {
+  const { rows } = await query(
+    `SELECT count(*)::int AS n
+       FROM usuarios u JOIN cat_roles r ON r.id = u.rol_id
+      WHERE lower(r.nombre) = 'administrador' AND u.estado = 'ACTIVO' AND u.id <> $1`,
+    [id]
+  );
+  return rows[0].n > 0;
 }
 
 /** GET /api/usuarios — CU-04 Consultar Usuarios */
 export async function listar(req, res, next) {
   try {
     // Los ELIMINADOS quedan fuera: son tombstones para auditoría, no recursos.
-    res.json({ usuarios: await Usuario.listar() });
+    // Y al coordinador no se le muestran los administradores.
+    const usuarios = await Usuario.listar();
+    res.json({ usuarios: usuarios.filter(u => visiblePara(req, u)) });
   } catch (err) { next(err); }
 }
 
@@ -36,9 +69,7 @@ export async function listar(req, res, next) {
 export async function obtener(req, res, next) {
   try {
     const usuario = await Usuario.buscarPorId(req.params.id);
-    if (!usuario || usuario.estado === 'ELIMINADO') {
-      return res.status(404).json({ error: 'Usuario no encontrado.' });
-    }
+    if (!usuario || usuario.estado === 'ELIMINADO' || !visiblePara(req, usuario)) return noEncontrado(res);
     res.json({ usuario });
   } catch (err) { next(err); }
 }
@@ -71,12 +102,15 @@ export async function crear(req, res, next) {
       });
     }
 
-    const rolId = await resolverRolId(b);
-    if (!rolId) return res.status(400).json({ error: 'Rol inválido.' });
+    const rol = await resolverRol(b);
+    if (!rol) return res.status(400).json({ error: 'Rol inválido.' });
+    if (rol.nombre === ADMIN && !esAdmin(req)) {
+      return res.status(403).json({ error: 'Sólo un administrador puede crear administradores.', motivo: 'rol_no_permitido' });
+    }
 
     const creado = await Usuario.crear({
       ...b,
-      rolId,
+      rolId: rol.id,
       passwordHash: await bcrypt.hash(b.password, 10),
     });
 
@@ -103,9 +137,10 @@ export async function actualizar(req, res, next) {
   try {
     const { id } = req.params;
     const previo = await Usuario.buscarPorId(id);
-    if (!previo) return res.status(404).json({ error: 'Usuario no encontrado.' });
+    if (!previo || !visiblePara(req, previo)) return noEncontrado(res);
 
     const b = req.body ?? {};
+    const propio = id === req.usuario.id;
 
     const errores = validarDatosPersonales(b);
     if (Object.keys(errores).length) {
@@ -145,8 +180,32 @@ export async function actualizar(req, res, next) {
       }
       campos.estado = estado;
     }
+    const desactiva = campos.estado === 'INACTIVO' && previo.estado !== 'INACTIVO';
+    if (desactiva && propio) {
+      return res.status(409).json({ error: 'No podés desactivar tu propia cuenta.', motivo: 'autobloqueo' });
+    }
 
-    if (b.rol || b.rolId) campos.rolId = await resolverRolId(b);
+    let rolNuevo = null;
+    if (b.rol || b.rolId) {
+      rolNuevo = await resolverRol(b);
+      if (!rolNuevo) return res.status(400).json({ error: 'Rol inválido.' });
+    }
+    const cambiaRol = !!rolNuevo && rolNuevo.nombre !== (previo.rol ?? '').toLowerCase();
+    if (cambiaRol && propio) {
+      return res.status(409).json({ error: 'No podés cambiar tu propio rol.', motivo: 'propio_rol' });
+    }
+    if (cambiaRol && rolNuevo.nombre === ADMIN && !esAdmin(req)) {
+      return res.status(403).json({ error: 'Sólo un administrador puede asignar el rol de administrador.', motivo: 'rol_no_permitido' });
+    }
+    // El sistema nunca se queda sin un administrador activo.
+    if ((previo.rol ?? '').toLowerCase() === ADMIN && previo.estado === 'ACTIVO' && (cambiaRol || desactiva)
+        && !(await hayOtroAdminActivo(id))) {
+      return res.status(409).json({
+        error: 'Es el único administrador activo del sistema: no se lo puede desactivar ni quitarle el rol.',
+        motivo: 'ultimo_admin',
+      });
+    }
+    if (rolNuevo) campos.rolId = rolNuevo.id;
 
     let actualizado = await Usuario.actualizar(id, campos);
 
@@ -198,17 +257,10 @@ export async function eliminar(req, res, next) {
     }
 
     const previo = await Usuario.buscarPorId(id);
-    if (!previo || previo.estado === 'ELIMINADO') {
-      return res.status(404).json({ error: 'Usuario no encontrado.' });
-    }
+    if (!previo || previo.estado === 'ELIMINADO' || !visiblePara(req, previo)) return noEncontrado(res);
 
-    if (previo.rol === 'administrador') {
-      const { rows } = await query(
-        `SELECT count(*)::int AS n
-           FROM usuarios u JOIN cat_roles r ON r.id = u.rol_id
-          WHERE lower(r.nombre) = 'administrador' AND u.estado = 'ACTIVO'`
-      );
-      if (rows[0].n <= 1) {
+    if ((previo.rol ?? '').toLowerCase() === ADMIN) {
+      if (!(await hayOtroAdminActivo(id))) {
         return res.status(409).json({
           error: 'No se puede eliminar al único administrador activo del sistema.',
           motivo: 'ultimo_admin',
@@ -236,6 +288,8 @@ export async function eliminar(req, res, next) {
 /** GET /api/usuarios/:id/auditoria — historial forense del registro */
 export async function auditoria(req, res, next) {
   try {
+    const usuario = await Usuario.buscarPorId(req.params.id);
+    if (!usuario || !visiblePara(req, usuario)) return noEncontrado(res);
     res.json({ eventos: await Auditoria.porRegistro(ENTIDAD, req.params.id) });
   } catch (err) { next(err); }
 }
@@ -249,9 +303,7 @@ export async function auditoria(req, res, next) {
 export async function reenviarConfirmacion(req, res, next) {
   try {
     const usuario = await Usuario.buscarPorId(req.params.id);
-    if (!usuario || usuario.estado === 'ELIMINADO') {
-      return res.status(404).json({ error: 'Usuario no encontrado.' });
-    }
+    if (!usuario || usuario.estado === 'ELIMINADO' || !visiblePara(req, usuario)) return noEncontrado(res);
     if (usuario.estado !== 'PENDIENTE') {
       return res.status(400).json({ error: 'Este usuario ya confirmó su correo.', motivo: 'ya_confirmado' });
     }
