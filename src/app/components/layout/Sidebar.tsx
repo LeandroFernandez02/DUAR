@@ -1,8 +1,8 @@
 import { useEffect, useState } from 'react';
 import { Link, useLocation, useNavigate } from 'react-router';
 import {
-  LayoutDashboard, ClipboardList, Users, Cloud,
-  FileText, ChevronLeft, LogOut, Moon, Sun, Shield, Map,
+  LayoutDashboard, ClipboardList, Users,
+  ChevronLeft, LogOut, Moon, Sun, Shield, Map,
   UserCheck, X, PanelLeftClose, PanelLeftOpen,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
@@ -38,17 +38,18 @@ export default function Sidebar({ mobileOpen, onMobileClose }: Props) {
   const operativoId = isOperativoContext ? location.pathname.split('/')[2] : null;
 
   const globalNav: NavItem[] = [
-    { icon: <LayoutDashboard size={18} />, label: 'Dashboard', path: '/dashboard' },
+    { icon: <LayoutDashboard size={18} />, label: 'Panel', path: '/dashboard' },
     { icon: <ClipboardList size={18} />, label: 'Operativos', path: '/operativos' },
     { icon: <Users size={18} />, label: 'Usuarios', path: '/usuarios' },
   ];
 
   const operativoNav: NavItem[] = operativoId ? [
-    { icon: <LayoutDashboard size={18} />, label: 'Dashboard', path: `/operativo/${operativoId}/dashboard` },
+    { icon: <LayoutDashboard size={18} />, label: 'Panel', path: `/operativo/${operativoId}/dashboard` },
     { icon: <UserCheck size={18} />, label: 'Agentes', path: `/operativo/${operativoId}/agentes` },
     { icon: <Map size={18} />, label: 'Mapa', path: `/operativo/${operativoId}/mapa` },
-    { icon: <Cloud size={18} />, label: 'Clima', path: `/operativo/${operativoId}/clima` },
-    { icon: <FileText size={18} />, label: 'Informe Final', path: `/operativo/${operativoId}/informe` },
+    // El Informe salió del sidebar (Lista de Casos de Uso, 21/09): se entra con
+    // el botón "Informe" del encabezado del operativo (OperativoHeader.tsx).
+    // Clima no tiene pantalla: sólo el chip del encabezado.
   ] : [];
 
   const navItems = isOperativoContext ? operativoNav : globalNav;

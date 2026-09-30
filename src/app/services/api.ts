@@ -242,7 +242,6 @@ export interface AgenteOperativoApi {
   operativoId: string;
   estado: string;
   grupoId: string | null;
-  esCaminante: boolean;
   esConductor: boolean;
   especialidadId: string | null;
   fechaIngreso: string;
@@ -264,8 +263,8 @@ export interface RegistroQRPayload {
   especialidadId?: string;
   grupoSanguineo?: string;
   alergiaIds?: string[];
-  // `esCaminante` y `esConductor` NO van acá a propósito: son tácticos y los
-  // decide el sistema o el Coordinador, no el agente (Decisión C).
+  // `esConductor` NO va acá a propósito: es táctico y lo decide el
+  // Coordinador (CU-17), no el agente.
 }
 
 export const qrApi = {
@@ -395,9 +394,12 @@ export interface PersonalOperativoApi {
   id: string;
   usuarioId: string;
   operativoId: string;
-  estado: string | null;
+  /** Uno de los 7 de `estado_agente` (migración 010). Con grupo, lo define el grupo. */
+  estado: EstadoAgenteApi;
+  /** ISO. Último cambio de `estado` — alimenta el "disponible hace 30 min". */
+  estadoActualizadoEn: string;
   grupoId: string | null;
-  esCaminante: boolean;
+  /** Maneja la camioneta: no rastrilla y entra a cualquier grupo (29/09). */
   esConductor: boolean;
   especialidadId: string | null;
   fechaIngreso: string;
@@ -410,6 +412,8 @@ export interface PersonalOperativoApi {
   especialidadNombre: string | null;
   institucionNombre: string | null;
   esDuar: boolean;
+  /** Su especialidad táctica es de recurso especial (dron, canes, paramédico, caballería, buzos). */
+  esRecursoCritico: boolean;
 }
 
 export const agentesOperativoApi = {
@@ -419,12 +423,184 @@ export const agentesOperativoApi = {
   /** CU-17: alta directa por el Coordinador (sin QR). */
   agregar: (operativoId: string, datos: { usuarioId: string; especialidadId?: string; abandonarAnterior?: boolean }) =>
     api.post<{ agente: PersonalOperativoApi }>(`/operativos/${operativoId}/agentes`, datos),
-  /** CU-17: edición de los datos tácticos (estado, especialidad-override, caminante/conductor). */
-  actualizar: (operativoId: string, usuarioId: string, datos: { estado?: string | null; especialidadId?: string | null; esCaminante?: boolean; esConductor?: boolean }) =>
+  /**
+   * CU-17: datos tácticos. `estado` sólo para quien NO está en un grupo
+   * (Disponible / No disponible); con grupo el backend responde 409 `agente_en_grupo`.
+   */
+  actualizar: (operativoId: string, usuarioId: string, datos: { estado?: EstadoAgenteApi; especialidadId?: string | null; esConductor?: boolean }) =>
     api.put<{ agente: PersonalOperativoApi }>(`/operativos/${operativoId}/agentes/${usuarioId}`, datos),
   /** Baja lógica: cierra la participación, no toca al Usuario global. */
   quitar: (operativoId: string, usuarioId: string) =>
     api.del<void>(`/operativos/${operativoId}/agentes/${usuarioId}`),
+};
+
+/* ── Grupos de Trabajo (Módulo 4 · CU-21..26) ────────────────────────────── */
+/* Modelo de estados del 24/09 (migración 010).                              */
+
+/** Los 7 de `estado_agente`. */
+export type EstadoAgenteApi =
+  | 'DISPONIBLE' | 'AGRUPADO' | 'DESPLEGADO' | 'RASTRILLANDO' | 'REPLEGADO' | 'EN_ESPERA' | 'NO_DISPONIBLE';
+
+/**
+ * Clase del grupo (migración 012, 26/09). Se elige al crear y no cambia:
+ *  · RASTRILLAJE → sólo agentes que caminan; Líder del DUAR, mínimo 2 y binomio.
+ *  · ESPECIAL    → recursos especiales, con agentes de apoyo; Líder libre, sin binomio.
+ */
+export type ClaseGrupoApi = 'RASTRILLAJE' | 'ESPECIAL';
+
+/** Los 8 de `estado_grupo`. DISUELTO sólo se alcanza disolviendo (CU-25). */
+export type EstadoGrupoApi =
+  | 'EN_FORMACION' | 'CONFIRMADO' | 'ASIGNADO' | 'DESPLEGADO' | 'RASTRILLANDO' | 'REPLEGADO' | 'EN_ESPERA' | 'DISUELTO';
+
+/** Lo que pasa en el terreno: lo informa el Líder o lo registra el coordinador por radio. */
+export type AccionTerreno = 'salir' | 'llegar_poligono' | 'volver' | 'llegar_base';
+
+/** Acciones del coordinador sobre un grupo (disolver va aparte). */
+export type AccionGrupo = 'confirmar' | 'asignar' | 'reabrir' | AccionTerreno | 'corregir';
+
+export interface IntegranteGrupoApi {
+  /** id de `agentes_operativo` (el alta táctica), no del usuario. */
+  id: string;
+  usuarioId: string;
+  nombre: string;
+  apellido: string;
+  dni: string;
+  estado: EstadoAgenteApi;
+  estadoActualizadoEn: string;
+  esConductor: boolean;
+  esDuar: boolean;
+  especialidadNombre: string | null;
+  esRecursoCritico: boolean;
+}
+
+export interface GrupoApi {
+  id: string;
+  operativoId: string;
+  nombre: string;
+  estado: EstadoGrupoApi;
+  clase: ClaseGrupoApi;
+  /** `agentes_operativo.id` del Líder. null si el Líder se trasladó a otro operativo. */
+  liderId: string | null;
+  color: string | null;
+  creadoEn: string;
+  estadoActualizadoEn: string;
+  /** Cuántos integrantes rastrillan: todos menos el conductor (el binomio cuenta éstos). */
+  rastrillan: number;
+  /** De rastrillaje, en el terreno y con uno solo rastrillando. Calculado, no guardado. */
+  alertaBinomio: boolean;
+  /** Hasta el CU-28 (Módulo 5), la zona es la descripción que cargó el coordinador al asignar. */
+  zonaAsignada: string | null;
+  /** El Líder primero, después por apellido. */
+  integrantes: IntegranteGrupoApi[];
+}
+
+/** Un evento de la línea de tiempo (tabla `eventos_estado`). */
+export interface EventoEstadoApi {
+  id: string;
+  entidad: 'GRUPO' | 'AGENTE';
+  accion: string;
+  estadoAnterior: string | null;
+  estadoNuevo: string | null;
+  /** Cuándo pasó (celular del Líder, o la hora que cargó el coordinador). */
+  ocurridoEn: string;
+  /** Cuándo llegó al servidor. */
+  registradoEn: string;
+  fuente: 'PORTAL_LIDER' | 'PORTAL_AGENTE' | 'COORDINADOR' | 'RADIO' | 'CASCADA' | 'SISTEMA' | 'QR';
+  resultado: 'APLICADO' | 'CONFIRMACION' | 'SUPERADO' | 'RECHAZADO';
+  motivo: string | null;
+  nota: string | null;
+  horaConfiable: boolean;
+  grupoId: string | null;
+  grupoNombre: string | null;
+  agenteOperativoId: string | null;
+  agenteNombre: string | null;
+  registradoPorNombre: string | null;
+  eventoOrigenId: string | null;
+  origenAccion: string | null;
+  origenFuente: string | null;
+  /** Otras vías por las que llegó el mismo hecho (radio + celular). */
+  confirmaciones: { fuente: string; ocurridoEn: string; registradoEn: string; horaConfiable: boolean; registradoPorNombre: string | null }[];
+}
+
+export interface ArmadoAutomaticoApi {
+  creados: { id: string; nombre: string; integrantes: number }[];
+  asignados: number;
+  sinAsignar: { id: string; nombre: string; apellido: string }[];
+  /** true si se armaron menos grupos de los pedidos por falta de líderes DUAR (CU-22 5.1). */
+  limitadoPorLideres: boolean;
+}
+
+export const gruposApi = {
+  /** CU-23 */
+  listar: (operativoId: string) =>
+    api.get<{ grupos: GrupoApi[] }>(`/operativos/${operativoId}/grupos`),
+  /** CU-21. En un grupo especial el Líder puede ser cualquiera; en uno de rastrillaje, del DUAR. */
+  crear: (operativoId: string, datos: { nombre: string; liderId: string; clase: ClaseGrupoApi }) =>
+    api.post<{ grupo: GrupoApi }>(`/operativos/${operativoId}/grupos`, datos),
+  /** CU-22 */
+  armadoAutomatico: (operativoId: string, tamano: number) =>
+    api.post<ArmadoAutomaticoApi>(`/operativos/${operativoId}/grupos/automatico`, { tamano }),
+  /** CU-24: nombre y Líder (el Líder sólo con el grupo En formación). El estado va por `accion`. */
+  actualizar: (operativoId: string, grupoId: string, datos: { nombre?: string; liderId?: string }) =>
+    api.put<{ grupo: GrupoApi }>(`/operativos/${operativoId}/grupos/${grupoId}`, datos),
+  /**
+   * Cambiar el estado de un grupo. Las acciones del terreno quedan registradas
+   * como aviso de radio; `ocurridoEn` es la hora en que pasó, si el aviso llegó tarde.
+   * Si el mismo hecho ya estaba registrado, `resultado` es CONFIRMACION.
+   */
+  accion: (operativoId: string, grupoId: string, datos: {
+    accion: AccionGrupo; ocurridoEn?: string; zona?: string; motivo?: string; estadoDestino?: EstadoGrupoApi;
+  }) => api.post<{ grupo: GrupoApi; resultado: EventoEstadoApi['resultado'] }>(`/operativos/${operativoId}/grupos/${grupoId}/acciones`, datos),
+  /** CU-21 paso 6 / CU-24: arrastrar, sólo con grupos En formación. `destinoGrupoId: null` = "Sin grupo". */
+  mover: (operativoId: string, agenteOperativoId: string, destinoGrupoId: string | null) =>
+    api.post<{ agente: unknown }>(`/operativos/${operativoId}/grupos/mover`, { agenteOperativoId, destinoGrupoId }),
+  /** CU-26: el retirado queda Replegado y sin grupo. */
+  extraer: (operativoId: string, grupoId: string, datos: {
+    agenteOperativoId: string; motivo: string; nuevoLiderId?: string; riesgoAceptado?: boolean;
+  }) => api.post<{ grupo: GrupoApi; alertaBinomio: boolean }>(`/operativos/${operativoId}/grupos/${grupoId}/extraer`, datos),
+  /** CU-25 (baja lógica, sólo desde la base) */
+  disolver: (operativoId: string, grupoId: string) =>
+    api.del<void>(`/operativos/${operativoId}/grupos/${grupoId}`),
+  /** La historia de un grupo. */
+  lineaTiempo: (operativoId: string, grupoId: string) =>
+    api.get<{ eventos: EventoEstadoApi[] }>(`/operativos/${operativoId}/grupos/${grupoId}/linea-tiempo`),
+  /** El día de una persona en el operativo (por su alta, `agentes_operativo.id`). */
+  lineaTiempoAgente: (operativoId: string, agenteOperativoId: string) =>
+    api.get<{ eventos: EventoEstadoApi[] }>(`/operativos/${operativoId}/agentes/${agenteOperativoId}/linea-tiempo`),
+};
+
+/* ── Portal del agente (Módulo 4) ───────────────────────────────────────── */
+
+export interface MiEstadoApi {
+  id: string;
+  operativoId: string;
+  estado: EstadoAgenteApi;
+  estadoActualizadoEn: string;
+  grupoId: string | null;
+}
+
+/** Un aviso que el Líder toca en su celular (se envía en el momento; sin señal, va por radio). */
+export interface EventoPortalApi {
+  id: string;
+  grupoId: string;
+  accion: AccionTerreno;
+  /** La hora en que se tocó el botón. */
+  ocurridoEn: string;
+}
+
+export const portalApi = {
+  /** Mi estado y mi grupo (con `soyLider`), o nulls si no estoy en ningún operativo. */
+  miGrupo: () =>
+    api.get<{ agente: MiEstadoApi | null; grupo: (GrupoApi & { soyLider: boolean }) | null }>('/mi-grupo'),
+  /** El Líder informa lo que pasó. Van en lote y en orden; cada uno vuelve con su resultado. */
+  enviarEventos: (eventos: EventoPortalApi[]) =>
+    api.post<{
+      resultados: { id: string; resultado: EventoEstadoApi['resultado']; mensaje?: string }[];
+      grupo: (GrupoApi & { soyLider: boolean }) | null;
+    }>('/mi-grupo/eventos', { eventos }),
+  /** El agente SIN grupo se marca Disponible o No disponible. */
+  cambiarMiEstado: (estado: 'DISPONIBLE' | 'NO_DISPONIBLE') =>
+    api.put<{ agente: MiEstadoApi }>('/mi-estado', { estado }),
 };
 
 /* ── Objetivo Buscado (Módulo 3 · CU-12..14) ─────────────────────────────── */

@@ -254,6 +254,18 @@ html {
   }
 }
 
+/* ── Tarjeta de grupo (Módulo 4) ────────────────────────────────────────────
+   Su fondo es gris (--muted), igual que el panel "Grupos del operativo" que
+   la contiene: sin una sombra más marcada que --elevation-sm, en modo claro
+   las dos superficies se confunden. En oscuro la sombra por defecto ya
+   se distingue bien (fondo casi negro), así que ahí se deja la de siempre. */
+.tarjeta-grupo {
+  box-shadow: 0px 6px 20px 0px rgba(68, 65, 64, 0.20), 0px 1px 3px 0px rgba(68, 65, 64, 0.14);
+}
+.dark .tarjeta-grupo {
+  box-shadow: var(--elevation-sm);
+}
+
 /* ── Spin animation (used by refresh icons) ────────────────────────────────── */
 @keyframes spin {
   from { transform: rotate(0deg); }

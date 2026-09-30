@@ -170,7 +170,7 @@ export async function finalizar(req, res, next) {
     const erroresNota = validarDatosOperativo({ notaFinal: req.body?.notaFinal });
     if (erroresNota.notaFinal) return res.status(400).json({ error: erroresNota.notaFinal });
 
-    const finalizado = await Operativo.finalizar(id, { notaFinal: req.body?.notaFinal ?? null });
+    const finalizado = await Operativo.finalizar(id, { notaFinal: req.body?.notaFinal ?? null, usuarioId: req.usuario.id });
 
     await Auditoria.registrar({
       usuarioId: req.usuario.id,

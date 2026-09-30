@@ -10,7 +10,7 @@ import Usuarios from './pages/Usuarios';
  * Módulo 2; que aparezcan al instante es lo que más se nota.
  *
  * El resto se carga bajo demanda con `lazy`. El motivo es concreto: las páginas
- * de Mapa y Clima arrastran Leaflet, y los dashboards arrastran Recharts. Sin
+ * de Mapa arrastran Leaflet, y los dashboards arrastran Recharts. Sin
  * dividir, un coordinador que sólo entra a loguearse igual se descargaba todo
  * ese código. Cada `lazy` genera un archivo aparte que sólo viaja si se visita
  * esa pantalla.
@@ -99,10 +99,6 @@ export const router = createBrowserRouter([
               {
                 path: 'mapa',
                 lazy: cargar(() => import('./pages/operativo/Mapa')),
-              },
-              {
-                path: 'clima',
-                lazy: cargar(() => import('./pages/operativo/Clima')),
               },
               {
                 path: 'informe',

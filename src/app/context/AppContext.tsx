@@ -574,17 +574,17 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         );
       }
 
-      // ── Regla del Conductor (nota de negocio · CU-18) ──────────────────────
-      // El conductor entra al grupo junto con los demás, pero cuando el grupo
-      // arranca el rastrillaje él se queda con el vehículo: pasa a EN_ESPERA.
-      // Es automático y silencioso, igual que DESPLEGADO/RASTRILLANDO en CU-18.
+      // ── Regla del conductor (mock; la real está en server/src/models/estados.js)
+      // Cuando el grupo rastrilla, el conductor puro (maneja y no camina) se
+      // queda con el vehículo: DESPLEGADO. Desde el 24/09 la excepción es sólo
+      // él — un piloto de dron busca sin caminar y está rastrillando.
       const arrancaRastrillaje =
         grupo.estado === 'rastrillando' && anterior.estado !== 'rastrillando';
 
       const agentesOperativo = arrancaRastrillaje
         ? d.agentesOperativo.map(ao =>
             ao.grupoId === id && !ao.fechaEgreso && ao.esConductor && !ao.esCaminante
-              ? { ...ao, estado: 'en_espera' as const }
+              ? { ...ao, estado: 'desplegado' as const }
               : ao
           )
         : d.agentesOperativo;
@@ -854,10 +854,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       if (!ao?.grupoId) return d;
       const grupoId = ao.grupoId;
 
-      const restantes = d.agentesOperativo.filter(
-        a => a.grupoId === grupoId && !a.fechaEgreso && a.id !== ao.id
-      );
-
       return {
         ...d,
         // Paso 7: liberar al agente y aplicar su nuevo estado individual
@@ -873,8 +869,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             agenteIds: g.agenteIds.filter(uid => uid !== ao.usuarioId),
             // Paso 4.1: sucesión de mando si el que sale era el líder
             lider: opciones.nuevoLiderUsuarioId ?? (g.lider === ao.usuarioId ? '' : g.lider),
-            // Paso 8: aislamiento táctico ⇒ EN PAUSA; si no, no se toca
-            estado: restantes.length === 1 ? ('en_pausa' as const) : g.estado,
+            // Paso 8 (24/09): el grupo NO cambia de estado; el binomio roto se
+            // muestra como alerta. (Mock: la extracción real va por la API.)
+            estado: g.estado,
           };
         }),
         // Observación 1: cerrar el período, nunca borrarlo

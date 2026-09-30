@@ -178,7 +178,7 @@ export async function activarSiEsNuevo(id) {
  * participaciones activas en `agentes_operativo`, igual patrón que el
  * traslado de la Regla de Ubicuidad en `agenteOperativo.model.js`.
  */
-export async function finalizar(id, { notaFinal = null } = {}) {
+export async function finalizar(id, { notaFinal = null, usuarioId = null } = {}) {
   return withTransaction(async (client) => {
     await client.query(
       `UPDATE operativos
@@ -186,6 +186,23 @@ export async function finalizar(id, { notaFinal = null } = {}) {
               descripcion = COALESCE($2, descripcion), actualizado_en = CURRENT_TIMESTAMP
         WHERE id = $1`,
       [id, notaFinal]
+    );
+    // Línea de tiempo (eventos_estado, migración 010): cada grupo que se
+    // disuelve y cada persona que queda liberada, con su último estado. Va
+    // antes de los UPDATE para registrar el estado que tenían.
+    await client.query(
+      `INSERT INTO eventos_estado
+         (operativo_id, entidad, grupo_id, accion, estado_anterior, estado_nuevo, ocurrido_en, registrado_por, fuente, motivo)
+       SELECT operativo_id, 'GRUPO', id, 'disolver', estado::text, 'DISUELTO', CURRENT_TIMESTAMP, $2, 'SISTEMA', 'Operativo finalizado'
+         FROM grupos WHERE operativo_id = $1 AND eliminado_en IS NULL`,
+      [id, usuarioId]
+    );
+    await client.query(
+      `INSERT INTO eventos_estado
+         (operativo_id, entidad, grupo_id, agente_operativo_id, accion, estado_anterior, ocurrido_en, registrado_por, fuente, motivo)
+       SELECT operativo_id, 'AGENTE', grupo_id, id, 'baja', estado::text, CURRENT_TIMESTAMP, $2, 'SISTEMA', 'Operativo finalizado'
+         FROM agentes_operativo WHERE operativo_id = $1 AND fecha_egreso IS NULL`,
+      [id, usuarioId]
     );
     // Libera al personal: vuelven a estar "Disponibles" globalmente, sin
     // operativo activo, para que otro incidente los pueda absorber ya mismo.
@@ -199,6 +216,17 @@ export async function finalizar(id, { notaFinal = null } = {}) {
           SET fecha_fin = CURRENT_TIMESTAMP, motivo_salida = 'Operativo finalizado'
          FROM agentes_operativo ao
         WHERE h.agente_operativo_id = ao.id AND ao.operativo_id = $1 AND h.fecha_fin IS NULL`,
+      [id]
+    );
+    // Los grupos vigentes se disuelven con la misma baja lógica del CU-25
+    // (estado DISUELTO + eliminado_en). Sin esto quedaban grupos "rastrillando"
+    // en un operativo cerrado, sin integrantes. lider_id no se toca: es parte
+    // del registro histórico del grupo.
+    await client.query(
+      `UPDATE grupos
+          SET estado = 'DISUELTO', eliminado_en = CURRENT_TIMESTAMP,
+              estado_actualizado_en = CURRENT_TIMESTAMP, actualizado_en = CURRENT_TIMESTAMP
+        WHERE operativo_id = $1 AND eliminado_en IS NULL`,
       [id]
     );
   }).then(() => buscarPorId(id));

@@ -2,42 +2,40 @@ export type Rol = 'administrador' | 'coordinador' | 'agente';
 export type EstadoUsuario = 'activo' | 'inactivo' | 'eliminado' | 'pendiente';
 export type EstadoOperativo = 'activo' | 'planificación' | 'inactivo' | 'nuevo' | 'finalizado' | 'eliminado' | 'en_proceso';
 /**
- * Ciclo de vida del grupo — espejo del ENUM `estado_grupo` de PostgreSQL (7 valores).
- *  · en_formacion → recién creado, armando la cuadrilla
- *  · en_apresto   → completo, preparándose para salir
- *  · desplegado   → en camino / en posición, aún sin rastrillar
+ * Ciclo de vida del grupo — espejo del ENUM `estado_grupo` (8 valores,
+ * rediseño del 24/09, migración 010). Las reglas reales viven en el backend
+ * (server/src/models/estados.js); esto lo usan las pantallas que siguen en
+ * mock (Mapa, Informe) y los catálogos visuales.
+ *  · en_formacion → armándose; la composición se edita sólo acá
+ *  · confirmado   → composición cerrada
+ *  · asignado     → tiene zona / polígono (CU-28)
+ *  · desplegado   → yendo al polígono
  *  · rastrillando → trabajando el polígono
- *  · en_pausa     → detenido en el terreno (CU-26 lo setea por Binomio Mínimo)
- *  · replegado    → volvió al Punto Cero
+ *  · replegado    → volviendo
+ *  · en_espera    → de vuelta en el puesto de comando, sin decisión
  *  · disuelto     → terminal, baja lógica (CU-25). Nunca se hace DELETE.
  */
 export type EstadoGrupo =
   | 'en_formacion'
-  | 'en_apresto'
+  | 'confirmado'
+  | 'asignado'
   | 'desplegado'
   | 'rastrillando'
-  | 'en_pausa'
   | 'replegado'
+  | 'en_espera'
   | 'disuelto';
 
-/** Grupo "en zona caliente": no se puede disolver (CU-25 paso 2.1). */
-export const ESTADOS_GRUPO_EN_TERRENO: EstadoGrupo[] = ['desplegado', 'rastrillando'];
+/** Grupo en el terreno: no se puede disolver (CU-25 paso 2.1). */
+export const ESTADOS_GRUPO_EN_TERRENO: EstadoGrupo[] = ['desplegado', 'rastrillando', 'replegado'];
 
 /**
- * Grupo EN OPERACIÓN: ya salió, la conformación quedó firme. Marca la frontera
- * entre las dos fases de vida de un grupo:
- *
- *  · ARMADO (en_formacion, en_apresto) → el Coordinador prueba combinaciones y
- *    puede mover gente libremente. NO se registra historial: un agente podría
- *    pasar por cinco grupos en dos minutos y eso no prueba nada.
- *  · OPERACIÓN (estos estados)         → recién acá es cierto que el agente
- *    trabajó en ese grupo. Se abren los períodos de `agentesGrupoHistorial`
- *    (valor judicial) y sacar a alguien exige la ceremonia de CU-26.
- *
- * Se usa para tres cosas: precondición de CU-26, apertura/cierre de períodos,
- * y bloqueo del drag & drop.
+ * Grupo EN OPERACIÓN: salió al terreno. Frontera entre las dos fases:
+ *  · ARMADO (en la base) → no se registra historial: un agente podría pasar por
+ *    cinco grupos en dos minutos y eso no prueba nada.
+ *  · OPERACIÓN (estos estados) → se abren los períodos del historial (valor
+ *    judicial) y sacar a alguien exige la ceremonia de CU-26.
  */
-export const ESTADOS_GRUPO_EN_OPERACION: EstadoGrupo[] = ['desplegado', 'rastrillando', 'en_pausa'];
+export const ESTADOS_GRUPO_EN_OPERACION: EstadoGrupo[] = ['desplegado', 'rastrillando', 'replegado'];
 
 /** ¿El grupo ya salió a terreno? (ver ESTADOS_GRUPO_EN_OPERACION) */
 export function grupoEnOperacion(estado: EstadoGrupo): boolean {
@@ -58,20 +56,34 @@ export type Especialidad =
   | 'canes'
   | 'defensa civil'
   | 'dron'
+  | 'caballería'
+  | 'buzos'
+  | 'policía'
   | 'otra';
 export type ShapeType = 'poligono' | 'circulo' | 'rectangulo';
 export type TipoObjetivo = 'persona' | 'objeto';
 /**
- * Estado TÁCTICO del agente dentro de un operativo (enum `estado_agente` en BD).
- * Los 7 valores del catálogo oficial.
+ * Estado TÁCTICO del agente dentro de un operativo (enum `estado_agente`, 7
+ * valores, rediseño del 24/09 — migración 010).
+ *
+ *  · disponible    → sin grupo, en la base, listo para que lo asignen.
+ *  · agrupado      → en un grupo que todavía no salió.
+ *  · desplegado    → en el terreno sin rastrillar: yendo, o en apoyo (el
+ *                    conductor con el vehículo mientras el grupo rastrilla).
+ *  · rastrillando  → trabajando el polígono.
+ *  · replegado     → volviendo del polígono.
+ *  · en_espera     → de vuelta en el puesto de comando, todavía en su grupo.
+ *  · no_disponible → sin grupo, no asignable (lesión, ausencia, descanso).
+ *
+ * Con grupo, el estado lo define el grupo (Regla 1): nadie lo elige.
  */
 export type EstadoOperativoAgente =
   | 'disponible'
+  | 'agrupado'
   | 'desplegado'
   | 'rastrillando'
-  | 'descansando'
-  | 'en_espera'
   | 'replegado'
+  | 'en_espera'
   | 'no_disponible';
 
 export interface DatosPersonaBuscada {
@@ -752,7 +764,7 @@ export const initialData: AppData = {
    *    (u3..u6 participaron del op3, ya finalizado, y por eso tienen egreso.)
    *  · Caminante inferido por especialidad: bombero/bombero voluntario = true,
    *    paramédico = false. Los conductores arrancan en false.
-   *  · Conductor en grupo RASTRILLANDO queda en 'en_espera' (se queda con el vehículo).
+   *  · Conductor en grupo RASTRILLANDO queda en 'desplegado' (se queda con el vehículo).
    */
   agentesOperativo: [
     // ── op1 · Cerro Champaquí (activo) · grupo g1 rastrillando ──
@@ -766,8 +778,8 @@ export const initialData: AppData = {
     { id: 'ao6', usuarioId: 'u6', operativoId: 'op3', estado: 'replegado', esCaminante: true,  esConductor: false, fechaIngreso: '2026-01-10T06:00:00.000Z', fechaEgreso: '2026-01-18T19:00:00.000Z' },
 
     // ── op5 · Río Cuarto Sur (en proceso) · grupo g2 rastrillando ──
-    // u5 es conductor: el grupo está rastrillando, así que quedó 'en_espera' en el vehículo.
-    { id: 'ao7', usuarioId: 'u5', operativoId: 'op5', estado: 'en_espera',    esCaminante: false, esConductor: true,  grupoId: 'g2', fechaIngreso: '2026-03-10T08:00:00.000Z' },
+    // u5 es conductor: el grupo está rastrillando, así que quedó 'desplegado' en el vehículo.
+    { id: 'ao7', usuarioId: 'u5', operativoId: 'op5', estado: 'desplegado',   esCaminante: false, esConductor: true,  grupoId: 'g2', fechaIngreso: '2026-03-10T08:00:00.000Z' },
     { id: 'ao8', usuarioId: 'u6', operativoId: 'op5', estado: 'rastrillando', esCaminante: true,  esConductor: false, grupoId: 'g2', fechaIngreso: '2026-03-10T08:00:00.000Z' },
 
     // ── op6 · Quebrada del Condorito (en proceso) · g3 rastrillando, g4 en formación ──
@@ -817,8 +829,13 @@ export const catEspecialidades: CatEspecialidad[] = [
   { id: '328cf95c-6ee2-446a-bba7-197e0f00b322', nombre: 'Dron',               slug: 'dron',                esRecursoCritico: true  },
   { id: '788ad70e-d044-48e3-b6b2-5b7f265ee106', nombre: 'Bombero',            slug: 'bombero',             esRecursoCritico: false },
   { id: '515dcdee-7b3b-4c4e-8161-c070254df8de', nombre: 'Bombero Voluntario', slug: 'bombero voluntario',  esRecursoCritico: false },
-  { id: 'eb010f9d-406e-4248-ba27-d88ca045ca4f', nombre: 'Canes',              slug: 'canes',               esRecursoCritico: false },
+  // Canes es recurso especial desde el 26/09 (migración 012): trabaja a su ritmo, en su propio grupo.
+  { id: 'eb010f9d-406e-4248-ba27-d88ca045ca4f', nombre: 'Canes',              slug: 'canes',               esRecursoCritico: true  },
+  { id: 'eb016aa1-0c17-4fd3-add0-b31becf1d1b2', nombre: 'Caballería',         slug: 'caballería',          esRecursoCritico: true  },
+  { id: '3b25c85b-483c-43c0-b8a9-596d09468855', nombre: 'Buzos',              slug: 'buzos',               esRecursoCritico: true  },
   { id: 'e0322446-d6eb-4335-85e3-558d484e2334', nombre: 'Defensa Civil',      slug: 'defensa civil',       esRecursoCritico: false },
+  // Policía rastrilla (29/09, migración 014). Antes sólo existía como institución.
+  { id: '0c55b9bf-f8fe-4651-a813-c612718b1ba9', nombre: 'Policía',            slug: 'policía',             esRecursoCritico: false },
   // "Otra" siempre al final: existía en la BD pero faltaba acá.
   { id: 'b99b79b0-6eac-4fd0-83b3-f2296ef5e89d', nombre: 'Otra',               slug: 'otra',                esRecursoCritico: false },
 ];
@@ -975,7 +992,7 @@ export function esRecursoCritico(especialidad?: Especialidad): boolean {
  *      esCaminante = NO es recurso crítico
  *
  * Se lee del catálogo en vez de una lista blanca hardcodeada: así una
- * especialidad nueva (Canes, Defensa Civil, Dron...) queda clasificada de forma
+ * especialidad nueva (Defensa Civil, Dron, Caballería...) queda clasificada de forma
  * explícita y no cae por omisión en "no camina", que es el error peligroso —
  * dejaría al agente fuera del rastrillaje y del Binomio Mínimo (CU-26).
  *

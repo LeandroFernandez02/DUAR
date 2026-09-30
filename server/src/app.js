@@ -56,7 +56,9 @@ app.use((req, res) => {
 
 /** Manejador de errores centralizado: ningún stack trace llega al cliente. */
 app.use((err, _req, res, _next) => {
-  console.error('[API]', err);
+  // Una regla de negocio rechazada (err.status 4xx, ej. grupo.model.js#ReglaError)
+  // es una respuesta esperada, no una falla: no se loguea como error.
+  if (!(err.status && err.status < 500)) console.error('[API]', err);
   // 23505 = unique_violation, 23503 = foreign_key_violation (PostgreSQL)
   if (err.code === '23505') return res.status(409).json({ error: 'Ya existe un registro con esos datos.' });
   if (err.code === '23503') return res.status(409).json({ error: 'Referencia inválida entre entidades.' });
@@ -65,7 +67,15 @@ app.use((err, _req, res, _next) => {
   if (err.code === 'LIMIT_FILE_COUNT' || err.code === 'LIMIT_UNEXPECTED_FILE') {
     return res.status(400).json({ error: 'Se cargaron demasiadas fotos de una vez.' });
   }
-  if (err.status) return res.status(err.status).json({ error: err.message });
+  // `motivo` y `datos` viajan para que el frontend decida qué mostrar sin
+  // parsear el texto del mensaje (mismo contrato que los 409 de los controladores).
+  if (err.status) {
+    return res.status(err.status).json({
+      error: err.message,
+      ...(err.motivo ? { motivo: err.motivo } : {}),
+      ...(err.datos ?? {}),
+    });
+  }
   res.status(500).json({ error: 'Error interno del servidor.' });
 });
 

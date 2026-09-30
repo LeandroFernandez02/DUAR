@@ -11,6 +11,7 @@ import {
   catInstituciones, catEspecialidades, catAlergias, dotacionesDe,
 } from '../data/mockData';
 import { authApi, OperativoApi, ApiError } from '../services/api';
+import PanelTactico from '../components/portal/PanelTactico';
 import {
   validarNombre, validarApellido, validarTelefono, validarFechaNacimiento, fechaMaximaNacimiento,
   soloDigitos, formatearTelefono, formatearDni,
@@ -82,19 +83,11 @@ function OperativoCard({
   op: Operativo;
   variant?: 'current' | 'normal';
 }) {
-  const { data, usuario } = useApp();
   const [expanded, setExpanded] = useState(variant === 'current');
 
   const cfg = ESTADO_CONFIG[op.estado] ?? ESTADO_CONFIG.inactivo;
-
-  const miGrupo = data.grupos.find(g =>
-    op.grupoIds.includes(g.id) &&
-    (g.agenteIds.includes(usuario!.id) || g.lider === usuario!.id)
-  );
-  const sectorAsignado = miGrupo?.sectorAsignado
-    ? op.sectores.find(s => s.id === miGrupo.sectorAsignado)
-    : null;
-  const esLider = miGrupo?.lider === usuario!.id;
+  // "Mi grupo" y el rol de Líder ya no salen de acá: los muestra PanelTactico
+  // con datos reales de la API (Módulo 4). Antes se leían del mock.
 
   const obj = op.objetivoBusqueda;
   const objNombre = obj?.tipo === 'persona'
@@ -123,14 +116,6 @@ function OperativoCard({
                 <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: cfg.dot }} />
                 {cfg.label}
               </span>
-              {miGrupo && esLider && (
-                <span
-                  className="px-2 py-0.5 rounded-full"
-                  style={{ background: '#dbeafe', color: '#1d4ed8', fontSize: '11px', fontWeight: 'var(--font-weight-semibold)' }}
-                >
-                  Líder de grupo
-                </span>
-              )}
             </div>
 
             <h3 style={{ color: 'var(--foreground)', fontSize: 'var(--text-h3)', fontWeight: 'var(--font-weight-bold)', lineHeight: 1.3 }}>
@@ -163,12 +148,6 @@ function OperativoCard({
             <Users size={12} />
             <span style={{ fontSize: 'var(--text-label)' }}>{op.agenteIds.length} agentes</span>
           </div>
-          {miGrupo && (
-            <div className="flex items-center gap-1.5" style={{ color: 'var(--muted-foreground)' }}>
-              <div className="w-2.5 h-2.5 rounded-full flex-shrink-0" style={{ background: miGrupo.color }} />
-              <span style={{ fontSize: 'var(--text-label)' }}>{miGrupo.nombre}</span>
-            </div>
-          )}
         </div>
       </div>
 
@@ -223,33 +202,6 @@ function OperativoCard({
                     </p>
                   )}
                 </div>
-              </div>
-            </div>
-          )}
-
-          {/* Mi grupo */}
-          {miGrupo && (
-            <div>
-              <p className="mb-2 uppercase tracking-wider" style={{ color: 'var(--muted-foreground)', fontSize: '10px', fontWeight: 'var(--font-weight-semibold)' }}>
-                Mi grupo
-              </p>
-              <div className="p-3 rounded-xl" style={{ background: 'var(--muted)' }}>
-                <div className="flex items-center gap-2 mb-1 flex-wrap">
-                  <div className="w-3 h-3 rounded-full flex-shrink-0" style={{ background: miGrupo.color }} />
-                  <p style={{ color: 'var(--foreground)', fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-semibold)' }}>
-                    {miGrupo.nombre}
-                  </p>
-                  {esLider && (
-                    <span className="px-1.5 py-0.5 rounded" style={{ background: '#dbeafe', color: '#1d4ed8', fontSize: '10px', fontWeight: 'var(--font-weight-semibold)' }}>
-                      Líder
-                    </span>
-                  )}
-                </div>
-                <p style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-label)' }}>
-                  {miGrupo.agenteIds.length} integrante{miGrupo.agenteIds.length !== 1 ? 's' : ''}
-                  {sectorAsignado ? ` · ${sectorAsignado.nombre}` : ''}
-                  {miGrupo.kmRecorridos > 0 ? ` · ${miGrupo.kmRecorridos} km recorridos` : ''}
-                </p>
               </div>
             </div>
           )}
@@ -591,7 +543,11 @@ export default function AgenteDashboard() {
               Cargando…
             </div>
           ) : operativoActual ? (
-            <OperativoCard op={operativoActual} variant="current" />
+            <div className="flex flex-col gap-4">
+              <OperativoCard op={operativoActual} variant="current" />
+              {/* Módulo 4: mi estado, mi grupo y, si soy el Líder, el estado del grupo */}
+              <PanelTactico />
+            </div>
           ) : (
             <div
               className="rounded-[var(--radius-card)] p-8 flex flex-col items-center text-center gap-3"

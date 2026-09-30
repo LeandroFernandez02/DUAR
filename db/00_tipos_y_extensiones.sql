@@ -47,6 +47,11 @@ END $$;
 
 -- Estado TÁCTICO del agente dentro de un operativo (CU-18 · Decisión A)
 --   DESPLEGADO y RASTRILLANDO son automáticos; DESCANSANDO y REPLEGADO manuales.
+--
+--   OJO: este archivo es el BASELINE histórico. EN_ESPERA se eliminó del
+--   catálogo el 2026-09-20 — ver migrations/008_estados_agente_sin_en_espera.sql,
+--   que recrea el tipo con 6 valores. El estado vigente del enum es el de esa
+--   migración, no el de acá.
 DO $$ BEGIN
   IF NOT EXISTS (SELECT 1 FROM pg_type WHERE typname = 'estado_agente') THEN
     CREATE TYPE estado_agente AS ENUM (

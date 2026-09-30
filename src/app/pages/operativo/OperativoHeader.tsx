@@ -1,8 +1,9 @@
 import { useState } from 'react';
+import { useNavigate } from 'react-router';
 import { differenceInDays } from 'date-fns';
 import {
   MapPin, Calendar, Clock, Cloud, Target,
-  QrCode, Heart,
+  QrCode, FileText,
 } from 'lucide-react';
 import StatusBadge from '../../components/shared/StatusBadge';
 import OperativoInfoModal from '../../components/shared/OperativoInfoModal';
@@ -10,7 +11,6 @@ import ObjetivoModal from '../../components/shared/ObjetivoModal';
 import { QRModal } from '../../components/shared/QRModal';
 import { Operativo } from '../../data/mockData';
 import { climaMock } from '../../data/mockData';
-import { generateFamiliaToken } from '../../utils/familiaToken';
 
 interface Props {
   operativo: Operativo;
@@ -32,11 +32,7 @@ export default function OperativoHeader({ operativo }: Props) {
   const [showQRModal, setShowQRModal] = useState(false);
 
   const hasObjetivo = !!operativo.tieneObjetivoBuscado;
-
-  const handleFamiliaView = () => {
-    const token = generateFamiliaToken(operativo.id);
-    window.open(`/familia/${operativo.id}?token=${token}`, '_blank', 'noopener,noreferrer');
-  };
+  const navigate = useNavigate();
 
   return (
     <>
@@ -95,7 +91,7 @@ export default function OperativoHeader({ operativo }: Props) {
         </div>
 
         {/* ── Right: quick-action buttons + weather ── */}
-        <div className="flex items-center gap-2 flex-wrap flex-shrink-0">
+        <div className="flex items-center gap-2 flex-wrap min-w-0">
 
           {/* Objetivo Buscado */}
           <button
@@ -159,24 +155,32 @@ export default function OperativoHeader({ operativo }: Props) {
             <span>QR Agentes</span>
           </button>
 
-          {/* Vista Familia */}
+          {/* Informe (CU-39). Pasó del sidebar a botón según la Lista de Casos
+              de Uso del 21/09, que además sacó el Portal de Familia (ex CU-44)
+              del alcance de la tesis: este lugar era el del botón "Familia". */}
           <button
-            onClick={handleFamiliaView}
-            title="Abrir portal de seguimiento familiar"
+            onClick={() => navigate(`/operativo/${operativo.id}/informe`)}
+            title="Generar el informe del operativo"
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-[var(--radius-button)] transition-all"
             style={{
-              background: 'rgba(255,169,135,0.12)',
-              border: '1.5px solid rgba(255,169,135,0.45)',
-              color: 'var(--accent)',
+              background: 'var(--muted)',
+              border: '1.5px solid var(--border)',
+              color: 'var(--foreground)',
               fontSize: 'var(--text-label)',
               fontWeight: 'var(--font-weight-semibold)',
               fontFamily: 'var(--font-family-primary)',
             }}
-            onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'rgba(255,169,135,0.22)'}
-            onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'rgba(255,169,135,0.12)'}
+            onMouseEnter={e => {
+              (e.currentTarget as HTMLElement).style.background = 'var(--border)';
+              (e.currentTarget as HTMLElement).style.borderColor = 'var(--muted-foreground)';
+            }}
+            onMouseLeave={e => {
+              (e.currentTarget as HTMLElement).style.background = 'var(--muted)';
+              (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)';
+            }}
           >
-            <Heart size={13} />
-            <span>Familia</span>
+            <FileText size={13} />
+            <span>Informe</span>
           </button>
 
           {/* Separador */}
@@ -196,7 +200,9 @@ export default function OperativoHeader({ operativo }: Props) {
             </span>
           </div>
 
-          {/* Clima */}
+          {/* Widget de clima: es sólo el chip. La pantalla de Clima no se presenta
+              en la tesis y se quitó. OJO: los datos todavía son fijos (climaMock),
+              no vienen de ningún servicio. */}
           <div
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg"
             style={{ background: 'var(--muted)' }}

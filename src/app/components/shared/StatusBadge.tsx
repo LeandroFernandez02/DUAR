@@ -12,17 +12,22 @@ const statusConfig: Record<string, { label: string; bg: string; text: string; do
   finalizado: { label: 'Finalizado', bg: '#e5e7eb', text: '#374151', dot: '#6b7280' },
   eliminado: { label: 'Eliminado', bg: '#fce7f3', text: '#9d174d', dot: '#be185d' },
   rastrillando: { label: 'Rastrillando', bg: '#dcfce7', text: '#15803d', dot: '#16a34a' },
-  descansando: { label: 'Descansando', bg: '#fef9c3', text: '#a16207', dot: '#ca8a04' },
-  // Catálogo estado_grupo (7 valores, espejo del ENUM de PostgreSQL)
+  // Catálogo estado_grupo (8 valores, migración 010 — rediseño del 24/09)
   en_formacion: { label: 'En Formación', bg: '#f3f4f6', text: '#4b5563', dot: '#9ca3af' },
-  en_apresto: { label: 'En Apresto', bg: 'rgba(255,169,135,0.2)', text: '#7c3d0f', dot: '#FFA987' },
+  confirmado: { label: 'Confirmado', bg: 'rgba(79,70,229,0.12)', text: '#4338ca', dot: '#4f46e5' },
+  asignado: { label: 'Asignado', bg: 'rgba(255,169,135,0.2)', text: '#7c3d0f', dot: '#FFA987' },
   desplegado: { label: 'Desplegado', bg: '#fef3c7', text: '#92400e', dot: '#d97706' },
-  en_pausa: { label: 'En Pausa', bg: '#fef9c3', text: '#a16207', dot: '#ca8a04' },
   replegado: { label: 'Replegado', bg: '#e5e7eb', text: '#374151', dot: '#6b7280' },
+  en_espera: { label: 'En Espera', bg: 'rgba(8,145,178,0.12)', text: '#0e7490', dot: '#0891b2' },
   disuelto: { label: 'Disuelto', bg: '#fce7f3', text: '#9d174d', dot: '#be185d' },
   pendiente: { label: 'Pendiente', bg: 'rgba(255,169,135,0.2)', text: '#7c3d0f', dot: '#FFA987' },
   completado: { label: 'Completado', bg: '#dcfce7', text: '#15803d', dot: '#16a34a' },
 };
+
+/** Color principal de un estado (el del punto del badge). */
+export function colorDeEstado(estado: string): string {
+  return statusConfig[estado]?.dot ?? '#9ca3af';
+}
 
 export default function StatusBadge({ estado, size = 'md' }: StatusBadgeProps) {
   const config = statusConfig[estado] || { label: estado, bg: '#f3f4f6', text: '#374151', dot: '#9ca3af' };

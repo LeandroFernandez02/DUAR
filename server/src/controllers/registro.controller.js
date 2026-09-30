@@ -111,8 +111,8 @@ export async function registrar(req, res, next) {
       especialidadId: b.especialidadId || null,
       grupoSanguineo: b.grupoSanguineo || null,
       alergiaIds: b.alergiaIds ?? [],
-      // `esCaminante` y `esConductor` NO se aceptan del cliente: son tácticos y
-      // los decide el sistema/Coordinador (nota del docx + Decisión C).
+      // `esConductor` NO se acepta del cliente: es táctico y
+      // lo decide el Coordinador en CU-17 (nota del docx).
     });
 
     await Auditoria.registrar({

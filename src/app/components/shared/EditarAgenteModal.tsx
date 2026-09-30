@@ -3,21 +3,24 @@
  *
  * Modifica los datos TÁCTICOS del agente dentro de ESTE operativo, escribiendo
  * sobre su AgenteOperativo y nunca sobre el Usuario global (Decisión A):
- *  – Estado táctico (los 7 del catálogo `estado_agente`)
+ *  – Estado táctico: sólo si NO está en un grupo (Disponible / No disponible).
+ *    Con grupo, el estado lo define el grupo (Regla 1, 24/09) y se muestra.
  *  – Especialidad técnica: lo que el agente SABE HACER (override local)
- *  – Estados logísticos físicos: qué FUNCIÓN cumple en el terreno
- *      · Caminante  → sale a caminar el polígono
- *      · Conductor  → se queda con el vehículo
+ *  – Especialidad: además define si es agente de rastrillaje o recurso especial
+ *    (dato del catálogo, `es_recurso_critico`)
+ *  – Conductor: maneja la camioneta y espera al grupo; no rastrilla y entra a
+ *    cualquier grupo. Desde el 29/09 no hay "caminante": rastrilla todo el que
+ *    no es conductor.
  *
  * Los datos personales se gestionan desde la pestaña Usuarios.
  */
 import { useState } from 'react';
-import { X, Check, Pencil, User, AlertTriangle, Loader2 } from 'lucide-react';
+import { X, Check, Pencil, User, Loader2 } from 'lucide-react';
 import {
   EstadoOperativoAgente, Especialidad,
-  catEspecialidades, esRecursoCritico, getEspecialidad,
+  catEspecialidades,
 } from '../../data/mockData';
-import { agentesOperativoApi, ApiError, PersonalOperativoApi } from '../../services/api';
+import { agentesOperativoApi, ApiError, PersonalOperativoApi, type EstadoAgenteApi } from '../../services/api';
 import { formatearDni } from '../../utils/validacionUsuario';
 
 /* ── Catálogos de colores / etiquetas ─────────────────────── */
@@ -26,13 +29,16 @@ export const ESTADO_OP_CONFIG: Record<
   { label: string; color: string; bg: string; border: string; dot: string }
 > = {
   disponible:   { label: 'Disponible',   color: '#0d9488', bg: 'rgba(13,148,136,0.10)',  border: 'rgba(13,148,136,0.30)',  dot: '#0d9488' },
+  agrupado:     { label: 'Agrupado',     color: '#4f46e5', bg: 'rgba(79,70,229,0.10)',   border: 'rgba(79,70,229,0.30)',   dot: '#4f46e5' },
   desplegado:   { label: 'Desplegado',   color: '#ca8a04', bg: 'rgba(202,138,4,0.10)',   border: 'rgba(202,138,4,0.30)',   dot: '#ca8a04' },
   rastrillando: { label: 'Rastrillando', color: '#15803d', bg: 'rgba(21,128,61,0.10)',   border: 'rgba(21,128,61,0.30)',   dot: '#15803d' },
-  descansando:  { label: 'Descansando',  color: '#0891b2', bg: 'rgba(8,145,178,0.10)',   border: 'rgba(8,145,178,0.30)',   dot: '#0891b2' },
-  en_espera:    { label: 'En espera',    color: '#7c3aed', bg: 'rgba(124,58,237,0.10)',  border: 'rgba(124,58,237,0.30)',  dot: '#7c3aed' },
   replegado:    { label: 'Replegado',    color: '#6b7280', bg: 'rgba(107,114,128,0.10)', border: 'rgba(107,114,128,0.28)', dot: '#6b7280' },
+  en_espera:    { label: 'En espera',    color: '#0891b2', bg: 'rgba(8,145,178,0.10)',   border: 'rgba(8,145,178,0.30)',   dot: '#0891b2' },
   no_disponible:{ label: 'No disponible',color: '#b91c1c', bg: 'rgba(185,28,28,0.10)',   border: 'rgba(185,28,28,0.28)',   dot: '#b91c1c' },
 };
+
+/** Lo único que se elige para alguien SIN grupo; con grupo, el estado lo define el grupo (24/09). */
+const ESTADOS_ELEGIBLES: EstadoOperativoAgente[] = ['disponible', 'no_disponible'];
 
 /**
  * Especialidades TÉCNICAS, derivadas del catálogo (espejo de cat_especialidades).
@@ -46,6 +52,10 @@ const COLOR_ESPECIALIDAD: Record<Especialidad, string> = {
   'canes':              '#65a30d',
   'defensa civil':      '#0284c7',
   'dron':               '#7c3aed',
+  'caballería':         '#92400e',
+  'buzos':              '#0369a1',
+  'policía':            '#1e3a8a',
+  'otra':               '#6b7280',
 };
 
 const ESPECIALIDADES: { value: Especialidad; label: string; color: string }[] =
@@ -104,52 +114,17 @@ const especialidadSlugAId = (slug: Especialidad | ''): string | null =>
   slug ? catEspecialidades.find(e => e.slug === slug)?.id ?? null : null;
 
 export default function EditarAgenteModal({ agente, operativoId, onClose, onSaved }: Props) {
-  const estadoInicial = (agente.estado?.toLowerCase() as EstadoOperativoAgente) || '';
+  const estadoInicial = (agente.estado?.toLowerCase() as EstadoOperativoAgente) || 'disponible';
+  const enGrupo = Boolean(agente.grupoId);
   const especialidadInicial = especialidadIdASlug(agente.especialidadId);
 
-  const [estadoOp, setEstadoOp] = useState<EstadoOperativoAgente | ''>(estadoInicial);
+  const [estadoOp, setEstadoOp] = useState<EstadoOperativoAgente>(estadoInicial);
   // La especialidad táctica sobrescribe a la global sólo dentro de este operativo.
   const [especialidad, setEspecialidad] = useState<Especialidad | ''>(especialidadInicial);
-  const [caminante, setCaminante] = useState<boolean>(agente.esCaminante);
   const [conductor, setConductor] = useState<boolean>(agente.esConductor);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
-
-  /**
-   * Candado Flexible (soft constraint) sobre los RECURSOS CRÍTICOS.
-   *
-   * Un recurso crítico es aquel cuya función se pierde si sale a caminar el
-   * polígono. Hay dos maneras de serlo:
-   *   · por ESPECIALIDAD  → Paramédico, Dron (dato de cat_especialidades)
-   *   · por FUNCIÓN       → es conductor del vehículo
-   *
-   * Mandarlo a caminar igual se permite, pero exige que el Coordinador confirme
-   * la excepción táctica de forma explícita (CU-17).
-   */
-  const [confirmExcepcion, setConfirmExcepcion] = useState<'caminante' | 'conductor' | null>(null);
-
-  /** Motivo por el que este agente es recurso crítico (null = no lo es). */
-  const motivoCritico = (): string | null => {
-    if (conductor) return 'es el Conductor del vehículo';
-    const cat = getEspecialidad(especialidad as Especialidad);
-    if (cat?.esRecursoCritico) return `su especialidad (${cat.nombre}) es un recurso crítico`;
-    return null;
-  };
-
-  const pedirCaminante = (valor: boolean) => {
-    if (valor && motivoCritico()) { setConfirmExcepcion('caminante'); return; }
-    setCaminante(valor);
-  };
-  const pedirConductor = (valor: boolean) => {
-    if (valor && caminante) { setConfirmExcepcion('conductor'); return; }
-    setConductor(valor);
-  };
-  const confirmarExcepcion = () => {
-    if (confirmExcepcion === 'caminante') setCaminante(true);
-    else if (confirmExcepcion === 'conductor') setConductor(true);
-    setConfirmExcepcion(null);
-  };
 
   const isDUAR = agente.esDuar;
 
@@ -158,9 +133,9 @@ export default function EditarAgenteModal({ agente, operativoId, onClose, onSave
     setError(null);
     try {
       await agentesOperativoApi.actualizar(operativoId, agente.usuarioId, {
-        estado: estadoOp ? estadoOp.toUpperCase() : null,
+        // Con grupo, el estado lo define el grupo: no se manda.
+        ...(enGrupo ? {} : { estado: estadoOp.toUpperCase() as EstadoAgenteApi }),
         especialidadId: especialidadSlugAId(especialidad),
-        esCaminante: caminante,
         esConductor: conductor,
       });
       setSaved(true);
@@ -179,7 +154,6 @@ export default function EditarAgenteModal({ agente, operativoId, onClose, onSave
   const hasChanges = (
     (estadoOp || '') !== estadoInicial ||
     (especialidad || '') !== especialidadInicial ||
-    caminante !== agente.esCaminante ||
     conductor !== agente.esConductor
   );
 
@@ -281,42 +255,19 @@ export default function EditarAgenteModal({ agente, operativoId, onClose, onSave
             }}>
               Estado Operativo
             </p>
+            {/* Regla 1 (24/09): con grupo, el estado lo define el grupo. Se muestra, no se elige. */}
+            {enGrupo ? (
+              <div className="flex items-start gap-3 p-3 rounded-[var(--radius-input)]"
+                style={{ background: 'var(--muted)', border: '1px solid var(--border)' }}>
+                <EstadoOperativoBadge estado={estadoInicial} />
+                <p style={{ color: 'var(--muted-foreground)', fontSize: '11px', lineHeight: 1.5, fontFamily: 'var(--font-family-primary)' }}>
+                  Integra un grupo y su estado lo define el grupo. Para cambiarlo, cambiá el estado
+                  del grupo en la pestaña Grupos, o sacalo del grupo.
+                </p>
+              </div>
+            ) : (
             <div className="grid grid-cols-2 gap-2">
-              {/* Opción "sin estado" */}
-              <button
-                onClick={() => setEstadoOp('')}
-                className="flex items-center gap-2.5 px-3 py-2.5 rounded-[var(--radius-input)] transition-all text-left"
-                style={{
-                  border: estadoOp === ''
-                    ? '2px solid var(--primary)'
-                    : '1.5px solid var(--border)',
-                  background: estadoOp === ''
-                    ? 'rgba(229,75,75,0.06)'
-                    : 'var(--card)',
-                  cursor: 'pointer',
-                }}
-              >
-                <span
-                  style={{
-                    width: 8, height: 8, borderRadius: '50%',
-                    background: estadoOp === '' ? 'var(--primary)' : '#d1d5db',
-                    flexShrink: 0,
-                  }}
-                />
-                <span style={{
-                  color: estadoOp === '' ? 'var(--primary)' : 'var(--muted-foreground)',
-                  fontSize: 'var(--text-label)',
-                  fontWeight: estadoOp === '' ? 'var(--font-weight-semibold)' : 'var(--font-weight-medium)',
-                  fontFamily: 'var(--font-family-primary)',
-                }}>
-                  Sin estado
-                </span>
-                {estadoOp === '' && (
-                  <Check size={12} style={{ color: 'var(--primary)', marginLeft: 'auto' }} />
-                )}
-              </button>
-
-              {(Object.keys(ESTADO_OP_CONFIG) as EstadoOperativoAgente[]).map(key => {
+              {[...ESTADOS_ELEGIBLES, ...(ESTADOS_ELEGIBLES.includes(estadoInicial) ? [] : [estadoInicial])].map(key => {
                 const cfg = ESTADO_OP_CONFIG[key];
                 const isSelected = estadoOp === key;
                 return (
@@ -352,6 +303,7 @@ export default function EditarAgenteModal({ agente, operativoId, onClose, onSave
                 );
               })}
             </div>
+            )}
           </div>
 
           {/* Divider */}
@@ -434,56 +386,6 @@ export default function EditarAgenteModal({ agente, operativoId, onClose, onSave
           {/* Divider */}
           <div style={{ height: 1, background: 'var(--border)' }} />
 
-          {/* ── Caminante (estado logístico físico) ── */}
-          <div>
-            <p style={{
-              color: 'var(--foreground)', fontSize: 'var(--text-label)',
-              fontWeight: 'var(--font-weight-semibold)', fontFamily: 'var(--font-family-primary)',
-              marginBottom: 10,
-            }}>
-              Caminante
-            </p>
-            <div className="grid grid-cols-2 gap-2">
-              {[
-                { value: false, label: 'No caminante' },
-                { value: true,  label: 'Caminante' },
-              ].map(opt => {
-                const isSelected = caminante === opt.value;
-                return (
-                  <button
-                    key={String(opt.value)}
-                    onClick={() => pedirCaminante(opt.value)}
-                    className="flex items-center gap-2.5 px-3 py-2.5 rounded-[var(--radius-input)] transition-all text-left"
-                    style={{
-                      border: isSelected ? '2px solid var(--primary)' : '1.5px solid var(--border)',
-                      background: isSelected ? 'rgba(229,75,75,0.06)' : 'var(--card)',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    <span style={{
-                      width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
-                      background: isSelected ? 'var(--primary)' : '#d1d5db',
-                    }} />
-                    <span style={{
-                      color: isSelected ? 'var(--primary)' : 'var(--foreground)',
-                      fontSize: 'var(--text-label)',
-                      fontWeight: isSelected ? 'var(--font-weight-semibold)' : 'var(--font-weight-medium)',
-                      fontFamily: 'var(--font-family-primary)',
-                    }}>
-                      {opt.label}
-                    </span>
-                    {isSelected && (
-                      <Check size={12} style={{ color: 'var(--primary)', marginLeft: 'auto' }} />
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-          </div>
-
-          {/* Divider */}
-          <div style={{ height: 1, background: 'var(--border)' }} />
-
           {/* ── Conductor (estado logístico físico) ── */}
           <div>
             <p style={{
@@ -502,7 +404,7 @@ export default function EditarAgenteModal({ agente, operativoId, onClose, onSave
                 return (
                   <button
                     key={String(opt.value)}
-                    onClick={() => pedirConductor(opt.value)}
+                    onClick={() => setConductor(opt.value)}
                     className="flex items-center gap-2.5 px-3 py-2.5 rounded-[var(--radius-input)] transition-all text-left"
                     style={{
                       border: isSelected ? '2px solid var(--primary)' : '1.5px solid var(--border)',
@@ -529,12 +431,12 @@ export default function EditarAgenteModal({ agente, operativoId, onClose, onSave
                 );
               })}
             </div>
-            {conductor && !caminante && (
+            {conductor && (
               <p className="mt-2" style={{
                 color: 'var(--muted-foreground)', fontSize: '11px',
                 fontFamily: 'var(--font-family-primary)',
               }}>
-                Al pasar el grupo a Rastrillando, quedará automáticamente En espera con el vehículo.
+                No rastrilla: espera al grupo con la camioneta (queda Desplegado mientras el grupo rastrilla). Puede ir en cualquier grupo.
               </p>
             )}
           </div>
@@ -588,81 +490,6 @@ export default function EditarAgenteModal({ agente, operativoId, onClose, onSave
         </div>
       </div>
 
-      {/* ── Candado Flexible: confirmación de excepción táctica ── */}
-      {confirmExcepcion && (
-        <div
-          className="fixed inset-0 z-[60] flex items-center justify-center p-4"
-          style={{ background: 'rgba(0,0,0,0.55)' }}
-          onClick={e => { e.stopPropagation(); setConfirmExcepcion(null); }}
-        >
-          <div
-            className="w-full rounded-[var(--radius-card)] overflow-hidden"
-            style={{ maxWidth: 420, background: 'var(--card)', boxShadow: 'var(--elevation-md)' }}
-            onClick={e => e.stopPropagation()}
-          >
-            <div className="px-5 py-4 flex items-start gap-3" style={{ borderBottom: '1px solid var(--border)' }}>
-              <div
-                className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-                style={{ background: 'rgba(202,138,4,0.12)' }}
-              >
-                <AlertTriangle size={17} style={{ color: '#ca8a04' }} />
-              </div>
-              <div>
-                <p style={{
-                  color: 'var(--foreground)', fontSize: 'var(--text-base)',
-                  fontWeight: 'var(--font-weight-semibold)', fontFamily: 'var(--font-family-primary)',
-                }}>
-                  Excepción táctica
-                </p>
-                <p className="mt-1" style={{
-                  color: 'var(--muted-foreground)', fontSize: 'var(--text-label)',
-                  fontFamily: 'var(--font-family-primary)', lineHeight: 1.5,
-                }}>
-                  {confirmExcepcion === 'conductor' ? (
-                    <>
-                      Está por asignar como <strong>Conductor</strong> a un agente que ya figura
-                      como <strong>Caminante</strong>. El conductor es un recurso crítico que
-                      debería permanecer con el vehículo. ¿Confirma la excepción?
-                    </>
-                  ) : (
-                    <>
-                      Está por enviar a <strong>rastrillar</strong> a un recurso crítico:
-                      {' '}<strong>{motivoCritico()}</strong>. Si sale a caminar el polígono,
-                      su función especializada deja de estar disponible. ¿Confirma la excepción?
-                    </>
-                  )}
-                </p>
-              </div>
-            </div>
-            <div className="flex items-center gap-3 px-5 py-4">
-              <button
-                onClick={() => setConfirmExcepcion(null)}
-                className="flex-1 py-2.5 rounded-[var(--radius-button)]"
-                style={{
-                  background: 'var(--muted)', border: '1px solid var(--border)',
-                  color: 'var(--foreground)', fontSize: 'var(--text-base)',
-                  fontWeight: 'var(--font-weight-semibold)', fontFamily: 'var(--font-family-primary)',
-                  cursor: 'pointer',
-                }}
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={confirmarExcepcion}
-                className="flex-1 py-2.5 rounded-[var(--radius-button)]"
-                style={{
-                  background: '#ca8a04', color: '#fff',
-                  fontSize: 'var(--text-base)', border: 'none',
-                  fontWeight: 'var(--font-weight-semibold)', fontFamily: 'var(--font-family-primary)',
-                  cursor: 'pointer',
-                }}
-              >
-                Confirmar excepción
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
     </div>
   );
 }

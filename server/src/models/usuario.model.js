@@ -5,7 +5,7 @@
  * mapeadas a camelCase, que es lo que consume el frontend.
  *
  * Decisión A (Dualidad): esta tabla es el registro ADMINISTRATIVO global. Lo
- * táctico (estado en el operativo, caminante, conductor) vive en agentes_operativo.
+ * táctico (estado en el operativo, especialidad, conductor) vive en agentes_operativo.
  */
 import { query, withTransaction } from '../config/db.js';
 
