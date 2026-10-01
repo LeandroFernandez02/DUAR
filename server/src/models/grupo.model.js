@@ -34,7 +34,7 @@ import { query, withTransaction } from '../config/db.js';
 import * as Est from './estados.js';
 import * as Evento from './evento.model.js';
 
-export { EN_BASE, EN_OPERACION, ACCIONES, ACCIONES_TERRENO, ESTADOS_CORREGIBLES } from './estados.js';
+export { EN_BASE, EN_OPERACION, ACCIONES, ACCIONES_TERRENO, ESTADOS_CORREGIBLES, entraARastrillaje } from './estados.js';
 
 const PALETA = [
   '#E54B4B', '#2563EB', '#16A34A', '#D97706', '#7C3AED',
@@ -216,42 +216,24 @@ function comoNombreDuplicado(err) {
   return err;
 }
 
-/**
- * El recurso especial no entra a un grupo de rastrillaje (26/09), salvo que
- * vaya de conductor (29/09): ahí su papel es manejar, no su especialidad.
- */
-export function entraARastrillaje(agente) {
-  return !agente.esRecursoCritico || agente.esConductor;
-}
-
+/** Reglas en estados.js#entraARastrillaje (26/09 y 29/09). */
 function exigirQueEntreARastrillaje(agente) {
-  if (!entraARastrillaje(agente)) {
+  if (!Est.entraARastrillaje(agente)) {
     throw new ReglaError(409, 'recurso_especial_en_rastrillaje',
       `${agente.nombre} ${agente.apellido} es un recurso especial (${agente.especialidadNombre}): va en un grupo especial, no en uno de rastrillaje (salvo que vaya de conductor).`);
   }
 }
 
-/**
- * Quién puede liderar, según la clase del grupo (26/09, ajustado el 28/09 y 29/09):
- *  · de rastrillaje → personal del DUAR que rastrilla: ni recurso especial ni
- *                     conductor (el Líder camina con su grupo; el conductor
- *                     se queda en la camioneta);
- *  · especial       → cualquiera, sin confirmación.
- */
+/** Quién puede liderar según la clase del grupo: la regla está en estados.js#motivoLiderNoApto. */
+const MENSAJE_LIDER_NO_APTO = {
+  recurso_especial_en_rastrillaje: a => `${a.nombre} ${a.apellido} es un recurso especial (${a.especialidadNombre}): no puede liderar un grupo de rastrillaje.`,
+  lider_conductor: a => `${a.nombre} ${a.apellido} es conductor: el Líder de un grupo de rastrillaje camina con su grupo y el conductor se queda en la camioneta.`,
+  lider_no_duar: a => `${a.nombre} ${a.apellido} no pertenece al DUAR: el Líder de un grupo de rastrillaje tiene que ser personal del DUAR.`,
+};
+
 function exigirLiderApto(agente, clase) {
-  if (clase === 'ESPECIAL') return;
-  if (agente.esRecursoCritico) {
-    throw new ReglaError(409, 'recurso_especial_en_rastrillaje',
-      `${agente.nombre} ${agente.apellido} es un recurso especial (${agente.especialidadNombre}): no puede liderar un grupo de rastrillaje.`);
-  }
-  if (agente.esConductor) {
-    throw new ReglaError(409, 'lider_conductor',
-      `${agente.nombre} ${agente.apellido} es conductor: el Líder de un grupo de rastrillaje camina con su grupo y el conductor se queda en la camioneta.`);
-  }
-  if (!agente.esDuar) {
-    throw new ReglaError(409, 'lider_no_duar',
-      `${agente.nombre} ${agente.apellido} no pertenece al DUAR: el Líder de un grupo de rastrillaje tiene que ser personal del DUAR.`);
-  }
+  const motivo = Est.motivoLiderNoApto(agente, clase);
+  if (motivo) throw new ReglaError(409, motivo, MENSAJE_LIDER_NO_APTO[motivo](agente));
 }
 
 async function colorLibre(client, operativoId) {
@@ -382,14 +364,14 @@ async function precondiciones(client, grupo, accion, { nota }) {
       throw new ReglaError(409, 'sin_lider', 'El grupo no tiene Líder. Designá uno del DUAR antes de confirmarlo.');
     }
     exigirLiderApto(lider, grupo.clase);
-    const especiales = lista.filter(m => !entraARastrillaje(m));
+    const especiales = lista.filter(m => !Est.entraARastrillaje(m));
     if (especiales.length > 0) {
       throw new ReglaError(409, 'recurso_especial_en_rastrillaje',
         `${especiales.map(m => `${m.nombre} ${m.apellido}`).join(', ')} ${especiales.length === 1 ? 'es un recurso especial' : 'son recursos especiales'}: `
         + 'no van en un grupo de rastrillaje. Sacalos y armales un grupo especial.');
     }
     // Binomio (29/09): al menos dos que rastrillen. El conductor no cuenta: espera en la camioneta.
-    if (lista.filter(m => !m.esConductor).length < 2) {
+    if (Est.cuantosRastrillan(lista) < 2) {
       throw new ReglaError(409, 'binomio_minimo',
         'Un grupo de rastrillaje necesita al menos dos agentes que rastrillen (el conductor no cuenta): nadie rastrilla solo.');
     }

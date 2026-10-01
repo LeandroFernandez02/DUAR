@@ -87,6 +87,35 @@ export function estadoAgenteSegunGrupo(estadoGrupo, { esConductor = false } = {}
   }
 }
 
+/* ── Reglas de composición (puras: sin base, para poder probarlas solas) ── */
+
+/**
+ * ¿Puede estar en un grupo de RASTRILLAJE? El recurso especial no (26/09),
+ * salvo que vaya de conductor (29/09): ahí su papel es manejar, no su especialidad.
+ */
+export function entraARastrillaje({ esRecursoCritico, esConductor }) {
+  return !esRecursoCritico || esConductor;
+}
+
+/**
+ * ¿Por qué NO puede liderar un grupo de esta clase? null si puede.
+ *  · especial       → cualquiera;
+ *  · de rastrillaje → personal del DUAR que rastrilla: ni recurso especial ni
+ *    conductor (el Líder camina con su grupo; el conductor espera en la camioneta).
+ */
+export function motivoLiderNoApto({ esDuar, esRecursoCritico, esConductor }, clase) {
+  if (clase === 'ESPECIAL') return null;
+  if (esRecursoCritico) return 'recurso_especial_en_rastrillaje';
+  if (esConductor) return 'lider_conductor';
+  if (!esDuar) return 'lider_no_duar';
+  return null;
+}
+
+/** Binomio de un grupo de rastrillaje: los que rastrillan son todos menos el conductor. */
+export function cuantosRastrillan(integrantes) {
+  return integrantes.filter(i => !i.esConductor).length;
+}
+
 /** Etiquetas para motivos y mensajes. */
 export const ETIQUETA_GRUPO = {
   EN_FORMACION: 'En formación', CONFIRMADO: 'Confirmado', ASIGNADO: 'Asignado',
