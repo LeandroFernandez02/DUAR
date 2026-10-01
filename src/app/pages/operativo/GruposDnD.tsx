@@ -11,8 +11,12 @@
  *  · un recurso especial no entra a un grupo de rastrillaje (26/09), salvo
  *    que vaya de conductor (29/09).
  * El estado del grupo se cambia con los botones de acción de cada tarjeta.
+ *
+ * En celular y tablet (30/09) se arrastra manteniendo apretada la ficha: el
+ * arrastre HTML5 no existe con el dedo, así que hay un arrastre táctil propio
+ * que encuentra la zona por coordenadas y usa la MISMA regla `acepta`.
  */
-import { useState } from 'react';
+import { useEffect, useId, useRef, useState } from 'react';
 import {
   ShieldCheck, AlertTriangle, Edit2, Trash2, GripVertical, Users, UserX, UserMinus, Wand2, History, MapPin,
   FolderOpen, Plus,
@@ -50,6 +54,112 @@ const entraARastrillaje = (a: { esRecursoCritico: boolean; esConductor: boolean 
 // componentes y no hace falta re-renderizar nada para recordar qué se levantó.
 let arrastrando: { agenteId: string; desdeGrupoId: string | null; bloqueado: boolean; esRecursoCritico: boolean; esConductor: boolean } | null = null;
 export const hayArrastreEnCurso = () => arrastrando !== null;
+
+/* ── Arrastre táctil (30/09) ──────────────────────────────────────────── */
+
+interface ZonaRegistrada {
+  acepta: () => boolean;
+  alSoltar: (agenteId: string) => void;
+  entrar: (valido: boolean) => void;
+  salir: () => void;
+}
+/** Las zonas de soltado, por id, para encontrarlas bajo el dedo (data-zona). */
+const zonas = new Map<string, ZonaRegistrada>();
+const PRESION_MS = 350;       // mantener apretado este tiempo levanta la ficha
+const TOLERANCIA_PX = 10;     // si el dedo se mueve más antes, es un desplazamiento de la página
+let tactilActivo = false;
+
+/** Pantalla táctil sin mouse: ahí no se ofrece el arrastre HTML5, para que no compita con el táctil. */
+const SOLO_TACTIL = typeof window !== 'undefined' && !!window.matchMedia?.('(hover: none) and (pointer: coarse)').matches;
+
+/** Único listener no pasivo: sólo mientras se arrastra con el dedo, la página no se desplaza bajo la ficha. */
+function bloquearDesplazamiento(e: TouchEvent) {
+  if (tactilActivo && e.cancelable) e.preventDefault();
+}
+
+function contenedorConScroll(el: HTMLElement): HTMLElement | null {
+  for (let n = el.parentElement; n; n = n.parentElement) {
+    const oy = getComputedStyle(n).overflowY;
+    if ((oy === 'auto' || oy === 'scroll') && n.scrollHeight > n.clientHeight) return n;
+  }
+  return null; // la ventana
+}
+
+function iniciarArrastreTactil(origen: HTMLElement, x0: number, y0: number,
+  datos: NonNullable<typeof arrastrando>, alTerminar: () => void) {
+  arrastrando = datos;
+  tactilActivo = true;
+  navigator.vibrate?.(25);
+
+  // Una copia de la ficha sigue al dedo; la original queda tenue en su lugar.
+  const r = origen.getBoundingClientRect();
+  const dx = x0 - r.left;
+  const dy = y0 - r.top;
+  const fantasma = origen.cloneNode(true) as HTMLElement;
+  Object.assign(fantasma.style, {
+    position: 'fixed', left: '0', top: '0', margin: '0', width: `${r.width}px`, zIndex: '9999',
+    pointerEvents: 'none', opacity: '0.95', boxShadow: '0 12px 28px rgba(0,0,0,0.25)',
+  });
+  document.body.appendChild(fantasma);
+
+  const scroller = contenedorConScroll(origen);
+  let x = x0;
+  let y = y0;
+  let actual: string | null = null;
+  let raf = 0;
+
+  const ubicar = () => {
+    fantasma.style.transform = `translate(${x - dx}px, ${y - dy}px) scale(1.03)`;
+    const zona = document.elementFromPoint(x, y)?.closest<HTMLElement>('[data-zona]');
+    const id = zona?.dataset.zona ?? null;
+    if (id === actual) return;
+    if (actual) zonas.get(actual)?.salir();
+    actual = id;
+    const z = id ? zonas.get(id) : undefined;
+    z?.entrar(z.acepta());
+  };
+  // Cerca del borde de arriba o de abajo, la pantalla se desplaza sola:
+  // en celular "Sin grupo" y las tarjetas están apiladas.
+  const desplazar = () => {
+    const borde = scroller ? scroller.getBoundingClientRect() : { top: 0, bottom: window.innerHeight };
+    const paso = y < borde.top + 70 ? -14 : y > borde.bottom - 70 ? 14 : 0;
+    if (paso) {
+      if (scroller) scroller.scrollBy(0, paso); else window.scrollBy(0, paso);
+      ubicar();
+    }
+    raf = requestAnimationFrame(desplazar);
+  };
+  const mover = (e: TouchEvent) => {
+    const t = e.touches[0];
+    if (!t) return;
+    x = t.clientX;
+    y = t.clientY;
+    ubicar();
+  };
+  const terminar = (soltar: boolean) => () => {
+    cancelAnimationFrame(raf);
+    document.removeEventListener('touchmove', mover);
+    document.removeEventListener('touchend', alSoltarDedo);
+    document.removeEventListener('touchcancel', alCancelar);
+    fantasma.remove();
+    const z = actual ? zonas.get(actual) : undefined;
+    z?.salir();
+    // `acepta` lee el arrastre en curso: se evalúa ANTES de soltarlo (igual que con el mouse).
+    const p = arrastrando;
+    const ok = soltar && !!p && !!z && z.acepta();
+    arrastrando = null;
+    tactilActivo = false;
+    alTerminar();
+    if (p && z && ok) z.alSoltar(p.agenteId);
+  };
+  const alSoltarDedo = terminar(true);
+  const alCancelar = terminar(false);
+  document.addEventListener('touchmove', mover, { passive: true });
+  document.addEventListener('touchend', alSoltarDedo);
+  document.addEventListener('touchcancel', alCancelar);
+  ubicar();
+  raf = requestAnimationFrame(desplazar);
+}
 
 /** Texto legible sobre un fondo de color: blanco u oscuro, el que contraste más (WCAG). */
 function textoSobre(hex: string): string {
@@ -89,6 +199,7 @@ function Chip({ agente, desdeGrupoId, esLider = false, colorGrupo, fijo = false,
   detallado?: boolean;
 }) {
   const [levantado, setLevantado] = useState(false);
+  const presion = useRef<number | null>(null);
   const cfg = ESTADO_OP_CONFIG[agente.estado.toLowerCase() as EstadoOperativoAgente];
   const detalle = [
     esLider ? 'Líder' : agente.esDuar ? 'DUAR' : null,
@@ -96,18 +207,52 @@ function Chip({ agente, desdeGrupoId, esLider = false, colorGrupo, fijo = false,
   ].filter(Boolean).join(' · ');
 
 
+  const datosArrastre = () => ({
+    agenteId: agente.id, desdeGrupoId, bloqueado: false,
+    esRecursoCritico: agente.esRecursoCritico, esConductor: agente.esConductor,
+  });
+
+  /** Celular y tablet: mantener apretada la ficha la levanta; moverse antes es desplazar la página. */
+  const alTocar = (e: React.TouchEvent<HTMLDivElement>) => {
+    if (fijo || e.touches.length !== 1 || tactilActivo) return;
+    const el = e.currentTarget;
+    const { clientX: x0, clientY: y0 } = e.touches[0];
+    const soltarVigilancia = () => {
+      if (presion.current !== null) window.clearTimeout(presion.current);
+      presion.current = null;
+      document.removeEventListener('touchmove', vigilar);
+      document.removeEventListener('touchend', soltarVigilancia);
+      document.removeEventListener('touchcancel', soltarVigilancia);
+    };
+    const vigilar = (ev: TouchEvent) => {
+      const t = ev.touches[0];
+      if (t && Math.hypot(t.clientX - x0, t.clientY - y0) > TOLERANCIA_PX) soltarVigilancia();
+    };
+    presion.current = window.setTimeout(() => {
+      soltarVigilancia();
+      setLevantado(true);
+      iniciarArrastreTactil(el, x0, y0, datosArrastre(), () => setLevantado(false));
+    }, PRESION_MS);
+    document.addEventListener('touchmove', vigilar, { passive: true });
+    document.addEventListener('touchend', soltarVigilancia);
+    document.addEventListener('touchcancel', soltarVigilancia);
+  };
+
   return (
     <div
-      draggable={!fijo}
+      draggable={!fijo && !SOLO_TACTIL}
+      onTouchStart={alTocar}
+      // Mantener apretado no abre el menú del navegador ni selecciona texto.
+      onContextMenu={e => { if (!fijo && (presion.current !== null || tactilActivo)) e.preventDefault(); }}
       onDragStart={e => {
-        if (fijo) { e.preventDefault(); return; }
-        arrastrando = { agenteId: agente.id, desdeGrupoId, bloqueado: false, esRecursoCritico: agente.esRecursoCritico, esConductor: agente.esConductor };
+        if (fijo || tactilActivo) { e.preventDefault(); return; }
+        arrastrando = datosArrastre();
         e.dataTransfer.effectAllowed = 'move';
         e.dataTransfer.setData('text/plain', agente.id);
         setLevantado(true);
       }}
       onDragEnd={() => { setLevantado(false); arrastrando = null; }}
-      title={fijo ? motivoFijo : 'Arrastrar a un grupo'}
+      title={fijo ? motivoFijo : SOLO_TACTIL ? 'Mantené apretado para arrastrar' : 'Arrastrar a un grupo'}
       style={{
         opacity: levantado ? 0.25 : 1,
         cursor: fijo ? 'default' : 'grab',
@@ -116,7 +261,7 @@ function Chip({ agente, desdeGrupoId, esLider = false, colorGrupo, fijo = false,
         borderRadius: 'var(--radius-input)',
         padding: '6px 10px',
         display: 'flex', alignItems: 'center', gap: 7,
-        userSelect: 'none',
+        userSelect: 'none', WebkitUserSelect: 'none', WebkitTouchCallout: 'none',
       }}
     >
       {esLider
@@ -175,10 +320,24 @@ function Chip({ agente, desdeGrupoId, esLider = false, colorGrupo, fijo = false,
 function useZona(acepta: () => boolean, alSoltar: (agenteId: string) => void) {
   const [encima, setEncima] = useState(false);
   const [valido, setValido] = useState(false);
+  const id = useId();
+  // El arrastre táctil llama a la versión más nueva de las reglas (los props cambian con cada refresco).
+  const reglas = useRef({ acepta, alSoltar });
+  reglas.current = { acepta, alSoltar };
+  useEffect(() => {
+    zonas.set(id, {
+      acepta: () => reglas.current.acepta(),
+      alSoltar: agenteId => reglas.current.alSoltar(agenteId),
+      entrar: v => { setEncima(true); setValido(v); },
+      salir: () => { setEncima(false); setValido(false); },
+    });
+    return () => { zonas.delete(id); };
+  }, [id]);
   return {
     activa: encima && valido,
     rechaza: encima && !valido,
     handlers: {
+      'data-zona': id,
       onDragOver: (e: React.DragEvent) => { e.preventDefault(); e.dataTransfer.dropEffect = 'move'; },
       onDragEnter: (e: React.DragEvent) => { e.preventDefault(); setEncima(true); setValido(acepta()); },
       onDragLeave: (e: React.DragEvent) => {
@@ -601,6 +760,10 @@ export default function GruposDnD({
   onAccion, onLineaTiempo, onNuevoGrupo,
 }: Props) {
   const [filtro, setFiltro] = useState<FiltroGrupos>('TODOS');
+  useEffect(() => {
+    document.addEventListener('touchmove', bloquearDesplazamiento, { passive: false });
+    return () => document.removeEventListener('touchmove', bloquearDesplazamiento);
+  }, []);
   const deRastrillaje = grupos.filter(g => g.clase === 'RASTRILLAJE').length;
   const especiales = grupos.length - deRastrillaje;
   const visibles = filtro === 'TODOS' ? grupos : grupos.filter(g => g.clase === filtro);
