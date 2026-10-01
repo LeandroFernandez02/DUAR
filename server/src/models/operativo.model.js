@@ -77,9 +77,19 @@ export async function listar({ busqueda = '', estado = '' } = {}) {
     condiciones.push(`o.estado = $${valores.length}::estado_operativo`);
   }
 
+  // Quién está a cargo (presencia de mando, 01/10): el último período de mando.
+  // Con `hasta` vacío está a cargo ahora; si no, es el último que estuvo.
   const { rows } = await query(
-    `SELECT ${CAMPOS_CON_OBJETIVO} FROM operativos o
-      LEFT JOIN objetivo_buscado ob2 ON ob2.operativo_id = o.id
+    `SELECT ${CAMPOS_CON_OBJETIVO},
+            mc.nombre AS "mandoNombre", mc.apellido AS "mandoApellido", mc.hasta AS "mandoHasta"
+       FROM operativos o
+       LEFT JOIN objetivo_buscado ob2 ON ob2.operativo_id = o.id
+       LEFT JOIN LATERAL (
+         SELECT u.nombre, u.apellido, m.hasta
+           FROM mando_operativo m JOIN usuarios u ON u.id = m.usuario_id
+          WHERE m.operativo_id = o.id
+          ORDER BY m.desde DESC LIMIT 1
+       ) mc ON true
       WHERE ${condiciones.join(' AND ')}
       ORDER BY o.fecha_hora_inicio DESC`,
     valores

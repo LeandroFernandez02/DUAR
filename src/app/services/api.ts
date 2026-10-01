@@ -336,6 +336,13 @@ export interface OperativoApi {
   objetivoTipo?: 'PERSONA' | 'OBJETO' | null;
   objetivoNombre?: string | null;
   objetivoApellido?: string | null;
+  /**
+   * Presencia de mando (01/10), sólo en `listar()`: el último período a cargo.
+   * Con `mandoHasta` vacío, está a cargo ahora; si no, es el último que estuvo.
+   */
+  mandoNombre?: string | null;
+  mandoApellido?: string | null;
+  mandoHasta?: string | null;
 }
 
 export interface CrearOperativoPayload {

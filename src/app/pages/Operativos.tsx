@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import {
   Plus, MapPin, Calendar, Users, ArrowRight, QrCode, X, Trash2, Edit2,
-  User, Package, LayoutGrid, List, Search, AlertCircle,
+  RadioTower, LayoutGrid, List, Search, AlertCircle,
   Crosshair, Lock, Flag, CheckCircle2, Clock,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -38,6 +38,21 @@ import {
  */
 function esVigente(estado: EstadoOperativo): boolean {
   return estado === 'nuevo' || estado === 'planificación' || estado === 'en_proceso' || estado === 'activo';
+}
+
+/**
+ * Coordinador a cargo del puesto de comando (presencia de mando, 01/10), para
+ * la tarjeta y la fila del listado. Si el operativo ya cerró, el último que
+ * estuvo a cargo. En ámbar sólo cuando está activo y nadie está a cargo.
+ */
+function mandoDe(op: Operativo): { texto: string; alerta: boolean } {
+  const m = op.mandoPreview;
+  const nombre = m ? `${m.nombre} ${m.apellido}`.trim() : '';
+  if (m?.vigente) return { texto: `A cargo: ${nombre}`, alerta: false };
+  if (op.estado === 'finalizado' || op.estado === 'eliminado') {
+    return { texto: m ? `Estuvo a cargo: ${nombre}` : 'Sin coordinador registrado', alerta: false };
+  }
+  return { texto: 'Sin coordinador a cargo', alerta: op.estado === 'activo' };
 }
 
 type ModalType = 'create' | 'edit' | 'qr' | 'delete' | 'finalize' | null;
@@ -353,7 +368,8 @@ export default function Operativos() {
         o.ubicacion.toLowerCase().includes(q) ||
         (o.descripcion ?? '').toLowerCase().includes(q) ||
         (o.objetivoPreview?.nombre ?? '').toLowerCase().includes(q) ||
-        (o.objetivoPreview?.apellido ?? '').toLowerCase().includes(q)
+        (o.objetivoPreview?.apellido ?? '').toLowerCase().includes(q) ||
+        `${o.mandoPreview?.nombre ?? ''} ${o.mandoPreview?.apellido ?? ''}`.toLowerCase().includes(q)
       );
     }
     return list;
@@ -682,19 +698,18 @@ export default function Operativos() {
                     </span>
                   </div>
 
-                  {/* Objetivo buscado */}
-                  {op.objetivoPreview && (
-                    <div className="flex items-center gap-1.5">
-                      {op.objetivoPreview.tipo === 'persona'
-                        ? <User size={12} style={{ color: 'var(--muted-foreground)', flexShrink: 0 }} />
-                        : <Package size={12} style={{ color: 'var(--muted-foreground)', flexShrink: 0 }} />}
-                      <span className="truncate" style={{ fontSize: 'var(--text-label)', color: 'var(--muted-foreground)', fontFamily: 'var(--font-family-primary)' }}>
-                        {op.objetivoPreview.tipo === 'persona'
-                          ? `${op.objetivoPreview.nombre ?? ''} ${op.objetivoPreview.apellido ?? ''}`.trim() || 'Persona buscada'
-                          : op.objetivoPreview.nombre || 'Objeto buscado'}
-                      </span>
-                    </div>
-                  )}
+                  {/* Coordinador a cargo del puesto de comando (01/10): reemplaza al objetivo buscado. */}
+                  {(() => {
+                    const m = mandoDe(op);
+                    return (
+                      <div className="flex items-center gap-2" title="Coordinador a cargo del puesto de comando">
+                        <RadioTower size={13} style={{ color: m.alerta ? '#b45309' : 'var(--primary)', flexShrink: 0 }} />
+                        <span className="truncate" style={{ fontSize: 'var(--text-label)', color: m.alerta ? '#b45309' : 'var(--muted-foreground)', fontFamily: 'var(--font-family-primary)' }}>
+                          {m.texto}
+                        </span>
+                      </div>
+                    );
+                  })()}
 
                 </div>
               </div>
@@ -821,16 +836,16 @@ export default function Operativos() {
                       <Users size={10} style={{ display: 'inline', marginRight: 3, verticalAlign: 'middle' }} />
                       {op.agenteIds.length} agente{op.agenteIds.length !== 1 ? 's' : ''}
                     </span>
-                    {op.objetivoPreview && (
-                      <span style={{ color: 'var(--muted-foreground)', fontSize: '11px', fontFamily: 'var(--font-family-primary)' }}>
-                        {op.objetivoPreview.tipo === 'persona'
-                          ? <User size={10} style={{ display: 'inline', marginRight: 2, verticalAlign: 'middle' }} />
-                          : <Package size={10} style={{ display: 'inline', marginRight: 2, verticalAlign: 'middle' }} />}
-                        {op.objetivoPreview.tipo === 'persona'
-                          ? (`${op.objetivoPreview.nombre ?? ''} ${op.objetivoPreview.apellido ?? ''}`.trim() || 'Persona')
-                          : (op.objetivoPreview.nombre || 'Objeto')}
-                      </span>
-                    )}
+                    {(() => {
+                      const m = mandoDe(op);
+                      return (
+                        <span title="Coordinador a cargo del puesto de comando"
+                          style={{ color: m.alerta ? '#b45309' : 'var(--muted-foreground)', fontSize: '11px', fontFamily: 'var(--font-family-primary)' }}>
+                          <RadioTower size={10} style={{ display: 'inline', marginRight: 3, verticalAlign: 'middle' }} />
+                          {m.texto}
+                        </span>
+                      );
+                    })()}
                   </div>
                 </div>
               </div>

@@ -306,6 +306,8 @@ export interface Operativo {
   tieneObjetivoBuscado?: boolean;
   /** Vista previa liviana para las cards del listado (CU-11) — sin fotos. */
   objetivoPreview?: { tipo: TipoObjetivo; nombre?: string; apellido?: string };
+  /** Coordinador a cargo del puesto de comando (01/10); `vigente` = está a cargo ahora. */
+  mandoPreview?: { nombre: string; apellido: string; vigente: boolean };
   agenteIds: string[];
   grupoIds: string[];
   sectores: Sector[];

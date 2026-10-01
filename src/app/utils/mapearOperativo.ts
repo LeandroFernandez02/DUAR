@@ -47,5 +47,8 @@ export function mapearOperativo(o: OperativoApi): Operativo {
           apellido: o.objetivoApellido ?? undefined,
         }
       : undefined,
+    mandoPreview: o.mandoNombre
+      ? { nombre: o.mandoNombre, apellido: o.mandoApellido ?? '', vigente: !o.mandoHasta }
+      : undefined,
   };
 }

@@ -126,6 +126,12 @@ describe('Puesto de comando: presencia de mando (CU nuevo del Módulo 3)', () =>
     assert.deepEqual(m.presentes.map(p => p.usuarioId), [hotel]);
   });
 
+  test('CU-11 · el listado de operativos muestra quién está a cargo', async () => {
+    const op = (await comoAdmin('GET', '/operativos')).json.operativos.find(o => o.id === ctx.op);
+    assert.equal(op.mandoNombre, 'Hotel');
+    assert.equal(op.mandoHasta, null);
+  });
+
   test('Mando · ingresar dos veces → 409 ya_presente', async () => {
     motivo(await ingreso('hotel'), 409, 'ya_presente');
   });
@@ -219,6 +225,12 @@ describe('Puesto de comando: presencia de mando (CU nuevo del Módulo 3)', () =>
     const m = await ctx.mando();
     assert.equal(m.aCargo, null);
     assert.equal(m.presentes.length, 0);
+  });
+
+  test('CU-11 · sin nadie a cargo, el listado conserva quién estuvo a cargo por última vez', async () => {
+    const op = (await comoAdmin('GET', '/operativos')).json.operativos.find(o => o.id === ctx.op);
+    assert.equal(op.mandoNombre, 'Hotel');
+    assert.ok(op.mandoHasta, 'el último período de mando está cerrado');
   });
 
   test('Mando · cada movimiento del puesto de comando queda en la auditoría', async () => {
