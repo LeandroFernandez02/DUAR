@@ -12,6 +12,7 @@ import * as registro from '../controllers/registro.controller.js';
 import * as agentesOperativo from '../controllers/agenteOperativo.controller.js';
 import * as objetivo from '../controllers/objetivo.controller.js';
 import * as grupos from '../controllers/grupo.controller.js';
+import * as mando from '../controllers/mando.controller.js';
 import { requiereSesion, requiereRol } from '../middleware/auth.middleware.js';
 import { subirFotosMiddleware } from '../middleware/upload.middleware.js';
 
@@ -62,6 +63,13 @@ router.put(   '/:id/grupos/:grupoId',         requiereSesion, gestores, grupos.a
 router.post(  '/:id/grupos/:grupoId/acciones', requiereSesion, gestores, grupos.accion);          // estados (24/09)
 router.post(  '/:id/grupos/:grupoId/extraer', requiereSesion, gestores, grupos.extraer);          // CU-26
 router.delete('/:id/grupos/:grupoId',         requiereSesion, gestores, grupos.disolver);         // CU-25
+
+// Puesto de comando: qué coordinadores están presentes y quién está a cargo
+// (presencia de mando, migración 016). Lo ven y lo operan los gestores.
+router.get( '/:id/mando',         requiereSesion, gestores, mando.estado);
+router.post('/:id/mando/ingreso', requiereSesion, gestores, mando.ingreso);
+router.post('/:id/mando/retiro',  requiereSesion, gestores, mando.retiro);
+router.post('/:id/mando/a-cargo', requiereSesion, gestores, mando.aCargo);
 
 // Línea de tiempo del terreno (eventos_estado, migración 010).
 router.get('/:id/grupos/:grupoId/linea-tiempo',            requiereSesion, gestores, grupos.lineaTiempoGrupo);

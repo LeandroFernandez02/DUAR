@@ -10,6 +10,7 @@ import { query, withTransaction } from '../config/db.js';
 import { ESTADOS_AGENTE, ESTADOS_AGENTE_ELEGIBLES, ETIQUETA_AGENTE } from './estados.js';
 import * as Evento from './evento.model.js';
 import * as Grupo from './grupo.model.js';
+import * as Mando from './mando.model.js';
 
 /**
  * Los 7 valores del enum `estado_agente` (migración 010). El catálogo y sus
@@ -117,6 +118,11 @@ export async function darDeAlta({
         });
       }
     }
+
+    // Un coordinador que pasa a rastrillar como agente deja el puesto de comando
+    // (decisión del 01/10): nunca figura en los dos lados a la vez.
+    const { rows: destino } = await client.query(`SELECT titulo FROM operativos WHERE id = $1`, [operativoId]);
+    await Mando.cerrarPorAltaComoAgenteCon(client, usuarioId, autor, destino[0]?.titulo ?? '');
 
     const { rows } = await client.query(
       `INSERT INTO agentes_operativo

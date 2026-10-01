@@ -62,6 +62,7 @@ aplica al proyecto Supabase con el mismo nombre:
 | `013_sin_caminante.sql` | ⚠️ **Pendiente: aplicar al subir a producción.** Borra `agentes_operativo.es_caminante` (la versión publicada todavía la usa) |
 | `014_especialidad_policia.sql` | Especialidad **Policía** en el catálogo, de rastrillaje |
 | `015_indices_tablero.sql` | Índices en `agentes_operativo.grupo_id` y `grupos.lider_id` (se leen en cada refresco del tablero) |
+| `016_presencia_mando.sql` | Puesto de comando: `presencias_mando` (coordinadores presentes) y `mando_operativo` (quién está a cargo) |
 
 ### PostGIS: diferencia con la instalación local
 
@@ -210,3 +211,23 @@ No son optimizaciones: si se caen, se cae la regla.
   DNI/email de un usuario dado de baja, pero las constraints `usuarios_dni_key` y
   `usuarios_email_key` son UNIQUE plenas y lo impiden. Se resolvería con índices
   UNIQUE parciales `WHERE eliminado_en IS NULL`.
+
+### Presencia de mando: el puesto de comando (migración `016`)
+
+Qué coordinadores están presentes en el puesto de comando de cada operativo y
+quién está a cargo. El coordinador **no es un agente**: no va en
+`agentes_operativo`, no tiene estados tácticos ni aparece en el tablero.
+
+| Tabla | Qué guarda | Garantía en la base |
+|---|---|---|
+| `presencias_mando` | Cada período en que un coordinador estuvo presente: ingreso, retiro, quién registró cada uno y el motivo del retiro | Un coordinador presente en un solo operativo a la vez (índice único parcial) |
+| `mando_operativo` | Quién estuvo a cargo, de cuándo a cuándo (traspasos incluidos) | Uno solo a cargo por operativo (índice único parcial) |
+
+Reglas (las valida `server/src/models/mando.model.js` con el operativo bloqueado):
+el primero que llega queda a cargo; el mando lo pasa quien está a cargo o un
+administrador; si se retira el que está a cargo y quedan otros, elige sucesor;
+cualquier gestor registra el ingreso o el retiro de otro (con motivo); un
+coordinador que se registra como agente deja el puesto; finalizar el operativo
+cierra todo. La presencia **no limita permisos**: sirve para la trazabilidad
+(la línea de tiempo marca "a distancia" lo que registró un coordinador ausente)
+y para el Informe.

@@ -9,6 +9,7 @@ import StatusBadge from '../../components/shared/StatusBadge';
 import OperativoInfoModal from '../../components/shared/OperativoInfoModal';
 import ObjetivoModal from '../../components/shared/ObjetivoModal';
 import { QRModal } from '../../components/shared/QRModal';
+import PuestoComando from '../../components/shared/PuestoComando';
 import { Operativo } from '../../data/mockData';
 import { climaMock } from '../../data/mockData';
 
@@ -92,6 +93,10 @@ export default function OperativoHeader({ operativo }: Props) {
 
         {/* ── Right: quick-action buttons + weather ── */}
         <div className="flex items-center gap-2 flex-wrap min-w-0">
+
+          {/* Puesto de comando: coordinadores presentes y quién está a cargo (01/10). */}
+          <PuestoComando operativoId={operativo.id}
+            soloLectura={operativo.estado === 'finalizado' || operativo.estado === 'eliminado'} />
 
           {/* Objetivo Buscado */}
           <button

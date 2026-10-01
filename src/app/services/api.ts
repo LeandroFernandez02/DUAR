@@ -520,6 +520,11 @@ export interface EventoEstadoApi {
   origenFuente: string | null;
   /** Otras vías por las que llegó el mismo hecho (radio + celular). */
   confirmaciones: { fuente: string; ocurridoEn: string; registradoEn: string; horaConfiable: boolean; registradoPorNombre: string | null }[];
+  /**
+   * ¿Quien lo registró estaba en el puesto de comando? (presencia de mando, 01/10)
+   * true = presente · false = a distancia · null = no aplica o sin registro del puesto a esa hora.
+   */
+  enPuesto: boolean | null;
 }
 
 export interface ArmadoAutomaticoApi {
@@ -529,6 +534,57 @@ export interface ArmadoAutomaticoApi {
   /** true si se armaron menos grupos de los pedidos por falta de líderes DUAR (CU-22 5.1). */
   limitadoPorLideres: boolean;
 }
+
+/* ── Puesto de comando: presencia de mando (01/10, migración 016) ─────────── */
+
+/** Un coordinador presente (o un período ya cerrado, en el historial). */
+export interface PresenciaMandoApi {
+  id: string;
+  usuarioId: string;
+  nombre: string;
+  apellido: string;
+  desde: string;
+  hasta: string | null;
+  motivo: string | null;
+  /** Quién registró el ingreso (puede ser otro coordinador o un administrador). */
+  ingresoPor: string;
+  ingresoPorNombre: string;
+  egresoPorNombre: string | null;
+  /** Sólo en `presentes`. */
+  aCargo?: boolean;
+}
+
+/** Un período a cargo del operativo. */
+export interface PeriodoMandoApi {
+  id: string;
+  usuarioId: string;
+  nombre: string;
+  apellido: string;
+  desde: string;
+  hasta: string | null;
+  motivo: string | null;
+  asignadoPorNombre: string;
+}
+
+export interface MandoOperativoApi {
+  aCargo: PeriodoMandoApi | null;
+  presentes: PresenciaMandoApi[];
+  historialPresencias: PresenciaMandoApi[];
+  historialMando: PeriodoMandoApi[];
+}
+
+export const mandoApi = {
+  estado: (operativoId: string) => api.get<MandoOperativoApi>(`/operativos/${operativoId}/mando`),
+  /** Sin `usuarioId`, el coordinador se registra a sí mismo. `trasladar` lo saca de otro operativo. */
+  ingresar: (operativoId: string, datos: { usuarioId?: string; trasladar?: boolean } = {}) =>
+    api.post<{ quedoACargo: boolean; mando: MandoOperativoApi }>(`/operativos/${operativoId}/mando/ingreso`, datos),
+  /** El retiro de OTRO exige motivo; si se retira el que está a cargo y quedan otros, `sucesorId`. */
+  retirar: (operativoId: string, datos: { usuarioId?: string; motivo?: string; sucesorId?: string } = {}) =>
+    api.post<{ quedaSinMando: boolean; mando: MandoOperativoApi }>(`/operativos/${operativoId}/mando/retiro`, datos),
+  /** Traspaso (lo hace quien está a cargo o un administrador) o designación si nadie está a cargo. */
+  asignar: (operativoId: string, usuarioId: string) =>
+    api.post<{ mando: MandoOperativoApi }>(`/operativos/${operativoId}/mando/a-cargo`, { usuarioId }),
+};
 
 export const gruposApi = {
   /** CU-23 */

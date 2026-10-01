@@ -100,6 +100,19 @@ const CAMPOS = `
   o.accion            AS "origenAccion",
   o.fuente            AS "origenFuente",
   e.confirma_evento_id AS "confirmaEventoId",
+  -- ¿Quien lo registró estaba en el puesto de comando a esa hora? (migración 016)
+  -- true = presente · false = a distancia · null = no aplica (lo informó el Líder,
+  -- fue una cascada o el sistema) o el operativo todavía no llevaba registro del
+  -- puesto de comando (sin eso, todo lo anterior al 01/10 saldría "a distancia").
+  CASE WHEN e.fuente IN ('COORDINADOR', 'RADIO') AND EXISTS (
+         SELECT 1 FROM presencias_mando p0
+          WHERE p0.operativo_id = e.operativo_id AND p0.ingreso_en <= e.registrado_en)
+       THEN EXISTS (
+         SELECT 1 FROM presencias_mando p
+          WHERE p.operativo_id = e.operativo_id AND p.usuario_id = e.registrado_por
+            AND p.ingreso_en <= e.registrado_en
+            AND (p.egreso_en IS NULL OR e.registrado_en <= p.egreso_en))
+  END AS "enPuesto",
   -- Otras vías por las que llegó el MISMO hecho (radio + celular del Líder).
   -- En un evento de cascada se miran las del evento del grupo que lo causó.
   COALESCE((

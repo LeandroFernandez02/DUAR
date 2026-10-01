@@ -3,17 +3,18 @@
  *
  * No hay una base aparte (decisión del usuario): las pruebas corren sobre la
  * base compartida, pero SÓLO sobre lo suyo:
- *   · 8 usuarios propios, auto.<nombre>@prueba.duar (7 agentes y 1 coordinador);
+ *   · 9 usuarios propios, auto.<nombre>@prueba.duar (7 agentes y 2 coordinadores);
  *   · un operativo propio, "PRUEBAS AUTOMÁTICAS - no tocar".
  *
  * Cada archivo de pruebas arranca con preparar(), que deja ese operativo en un
  * punto de partida conocido usando la propia API (no SQL): disuelve los grupos
- * que hayan quedado de una corrida anterior y devuelve a cada agente a
- * Disponible, con su especialidad y su rol de conductor de base.
+ * que hayan quedado de una corrida anterior, vacía el puesto de comando y
+ * devuelve a cada agente a Disponible, con su especialidad y su rol de
+ * conductor de base.
  *
  * Antes de escribir nada verifica el aislamiento: si en el operativo de pruebas
- * hay alguien que no es de las pruebas, o un usuario de prueba está en otro
- * operativo, se detiene sin tocar nada.
+ * hay alguien que no es de las pruebas (como agente o en el puesto de comando),
+ * o un usuario de prueba está en otro operativo, se detiene sin tocar nada.
  *
  * Credenciales: server/.env (TEST_*), que no se sube al repositorio.
  */
@@ -31,7 +32,7 @@ const MOTIVO_REINICIO = 'Reinicio de las pruebas automáticas';
  *   · delta, eco           → agentes de rastrillaje que no son del DUAR.
  *   · foxtrot              → del DUAR, recurso especial (Dron).
  *   · golf                 → conductor (no rastrilla, entra a cualquier grupo).
- *   · hotel                → coordinador: no entra al operativo.
+ *   · hotel, india         → coordinadores: van al puesto de comando, no al tablero.
  */
 export const USUARIOS = [
   { clave: 'alfa',    institucion: 'DUAR',                 especialidad: 'Bombero' },
@@ -42,6 +43,7 @@ export const USUARIOS = [
   { clave: 'foxtrot', institucion: 'DUAR',                 especialidad: 'Dron' },
   { clave: 'golf',    institucion: 'Bomberos Voluntarios', especialidad: 'Bombero', conductor: true },
   { clave: 'hotel',   institucion: 'DUAR',                 rol: 'coordinador' },
+  { clave: 'india',   institucion: 'DUAR',                 rol: 'coordinador' },
 ];
 export const AGENTES = USUARIOS.filter(u => !u.rol).map(u => u.clave);
 
@@ -176,6 +178,38 @@ async function verificarAislamiento(op) {
   if (fuera.length) {
     throw new Error(`Usuarios de prueba activos en otro operativo (${fuera.map(f => f.email).join(', ')}). No se toca nada.`);
   }
+  const { rows: mando } = await query(
+    `SELECT u.email, p.operativo_id AS op
+       FROM presencias_mando p JOIN usuarios u ON u.id = p.usuario_id
+      WHERE p.egreso_en IS NULL AND (p.operativo_id = $1 OR u.email ILIKE $2)`,
+    [op, PATRON_EMAIL]
+  );
+  const raros = mando.filter(f => (f.op === op) !== /^auto\.[a-z]+@prueba\.duar$/i.test(f.email));
+  if (raros.length) {
+    throw new Error(`El puesto de comando de las pruebas está mezclado con datos reales (${raros.map(f => f.email).join(', ')}). No se toca nada.`);
+  }
+}
+
+/** Vacía el puesto de comando: primero los presentes que no están a cargo, al final el que está a cargo (ya solo). */
+async function limpiarMando(admin, op) {
+  const { presentes } = (await api('GET', `/operativos/${op}/mando`, undefined, admin)).json;
+  const orden = [...presentes.filter(p => !p.aCargo), ...presentes.filter(p => p.aCargo)];
+  for (const p of orden) {
+    const r = await api('POST', `/operativos/${op}/mando/retiro`, { usuarioId: p.usuarioId, motivo: MOTIVO_REINICIO }, admin);
+    if (r.status !== 200) throw new Error(`No se pudo vaciar el puesto de comando: ${JSON.stringify(r.json)}`);
+  }
+}
+
+/** Saca de la lista de agentes a quien no es agente de las pruebas (un coordinador que una prueba registró como agente). */
+async function quitarSobrantes(admin, op, usuarios) {
+  const { rows } = await query(
+    `SELECT usuario_id FROM agentes_operativo WHERE operativo_id = $1 AND fecha_egreso IS NULL`, [op]);
+  const agentes = new Set(AGENTES.map(k => usuarios[k].uid));
+  for (const { usuario_id } of rows) {
+    if (agentes.has(usuario_id)) continue;
+    const r = await api('DELETE', `/operativos/${op}/agentes/${usuario_id}`, undefined, admin);
+    if (r.status >= 300) throw new Error(`No se pudo sacar a un agente sobrante: ${JSON.stringify(r.json)}`);
+  }
 }
 
 /** Disuelve lo que haya quedado de una corrida anterior (los del terreno se corrigen a En espera primero). */
@@ -221,11 +255,16 @@ export async function preparar() {
   const op = await asegurarOperativo(admin);
   await verificarAislamiento(op);
   await limpiarGrupos(admin, op);
+  await limpiarMando(admin, op);
+  await quitarSobrantes(admin, op, usuarios);
   await asegurarAgentes(admin, op, usuarios, cat);
 
   const ctx = {
     admin, op, usuarios, cat,
     coordinador: usuarios.hotel.token,
+    coordinador2: usuarios.india.token,
+    /** Estado del puesto de comando del operativo de pruebas. */
+    mando: async () => (await api('GET', `/operativos/${op}/mando`, undefined, admin)).json,
     api: (m, ruta, body, token = admin) => api(m, ruta, body, token),
     /** Acción de estado sobre un grupo (como coordinador). */
     accion: (grupoId, body) => api('POST', `/operativos/${op}/grupos/${grupoId}/acciones`, body, admin),

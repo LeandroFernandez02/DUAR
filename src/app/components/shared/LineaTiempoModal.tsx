@@ -187,6 +187,12 @@ export default function LineaTiempoModal({ vista, titulo, subtitulo, cargar, onC
                     <p className="flex items-center gap-1 flex-wrap mt-0.5" style={{ fontSize: 10.5, color: 'var(--muted-foreground)' }}>
                       <F.icono size={11} />
                       {F.texto}{e.registradoPorNombre && e.fuente !== 'CASCADA' ? ` · ${e.registradoPorNombre}` : ''}
+                      {/* Presencia de mando (01/10): ¿lo registró desde el puesto de comando? */}
+                      {e.enPuesto === true && <span title="Quien lo registró estaba en el puesto de comando"> · en el puesto</span>}
+                      {e.enPuesto === false && (
+                        <span title="Quien lo registró no estaba presente en el puesto de comando a esa hora"
+                          style={{ color: '#b45309', fontWeight: 'var(--font-weight-semibold)' }}> · a distancia</span>
+                      )}
                       {demora > 2 * 60000 && ` · se registró ${diferenciaTexto(demora)} después`}
                     </p>
                     {e.confirmaciones.map((c, i) => {

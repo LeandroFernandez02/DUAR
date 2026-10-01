@@ -7,6 +7,7 @@
  * directo, y entra igual con ST_SetSRID(ST_MakePoint(lng, lat), 4326).
  */
 import { query, withTransaction } from '../config/db.js';
+import * as Mando from './mando.model.js';
 
 const CAMPOS = `
   o.id,
@@ -218,6 +219,8 @@ export async function finalizar(id, { notaFinal = null, usuarioId = null } = {})
         WHERE h.agente_operativo_id = ao.id AND ao.operativo_id = $1 AND h.fecha_fin IS NULL`,
       [id]
     );
+    // El puesto de comando también se cierra (presencia de mando, migración 016).
+    await Mando.cerrarTodoCon(client, id, usuarioId, 'Operativo finalizado');
     // Los grupos vigentes se disuelven con la misma baja lógica del CU-25
     // (estado DISUELTO + eliminado_en). Sin esto quedaban grupos "rastrillando"
     // en un operativo cerrado, sin integrantes. lider_id no se toca: es parte
