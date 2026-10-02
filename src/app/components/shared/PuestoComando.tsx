@@ -27,6 +27,9 @@ const INTERVALO_MS = 30_000;
 
 const nombreDe = (p: { nombre: string; apellido: string }) => `${p.nombre} ${p.apellido}`;
 
+/** Motivos del retiro del puesto de comando. "Otros" pide el detalle. Lo que se guarda es el texto. */
+const MOTIVOS_RETIRO = ['Finalización de turno', 'Decisión administrativa', 'Lesión', 'Otros'] as const;
+
 interface Props {
   operativoId: string;
   /** Operativo finalizado o eliminado: sólo se mira el historial. */
@@ -97,10 +100,13 @@ function PuestoComandoModal({ operativoId, mando, soloLectura, onCambio, onClose
   const [error, setError] = useState<string | null>(null);
   /** Ubicuidad: el coordinador está en otro operativo; se pide confirmar el traslado. */
   const [traslado, setTraslado] = useState<{ usuarioId?: string; mensaje: string } | null>(null);
-  /** Formulario de retiro abierto (el propio o el de otro). */
+  /** Retiro desplegado justo debajo de la fila de ese coordinador. */
   const [retirando, setRetirando] = useState<PresenciaMandoApi | null>(null);
-  const [motivo, setMotivo] = useState('');
+  const [motivoOpcion, setMotivoOpcion] = useState('');
+  const [motivoOtro, setMotivoOtro] = useState('');
   const [sucesorId, setSucesorId] = useState('');
+  /** Selector "Registrar ingreso de un coordinador" desplegado. */
+  const [ingresando, setIngresando] = useState(false);
   const [coordinadores, setCoordinadores] = useState<UsuarioApi[] | null>(null);
   const [elegido, setElegido] = useState('');
   const [verHistorial, setVerHistorial] = useState(false);
@@ -123,8 +129,10 @@ function PuestoComandoModal({ operativoId, mando, soloLectura, onCambio, onClose
       const r = await fn();
       onCambio(r.mando);
       setRetirando(null);
+      setIngresando(false);
       setTraslado(null);
-      setMotivo('');
+      setMotivoOpcion('');
+      setMotivoOtro('');
       setSucesorId('');
       setElegido('');
     } catch (err) {
@@ -146,15 +154,78 @@ function PuestoComandoModal({ operativoId, mando, soloLectura, onCambio, onClose
   const propio = retirando?.usuarioId === yoId;
   const otrosPresentes = retirando ? mando.presentes.filter(p => p.usuarioId !== retirando.usuarioId) : [];
   const pideSucesor = !!retirando?.aCargo && otrosPresentes.length > 0;
-  const retiroOk = !!retirando && (propio || motivo.trim().length >= 3) && (!pideSucesor || !!sucesorId);
+  const motivoOk = !!motivoOpcion && (motivoOpcion !== 'Otros' || motivoOtro.trim().length >= 3);
+  const retiroOk = !!retirando && motivoOk && (!pideSucesor || !!sucesorId);
   const confirmarRetiro = () => {
     if (!retirando || !retiroOk) return;
     ejecutar(() => mandoApi.retirar(operativoId, {
       usuarioId: propio ? undefined : retirando.usuarioId,
-      motivo: motivo.trim() || undefined,
+      motivo: motivoOpcion === 'Otros' ? `Otros: ${motivoOtro.trim()}` : motivoOpcion,
       sucesorId: pideSucesor ? sucesorId : undefined,
     }));
   };
+  const abrirRetiro = (p: PresenciaMandoApi) => {
+    // Un solo desplegable a la vez; tocar de nuevo el mismo Retiro lo cierra.
+    if (retirando?.id === p.id) { setRetirando(null); return; }
+    setRetirando(p); setIngresando(false); setMotivoOpcion(''); setMotivoOtro(''); setSucesorId(''); setError(null);
+  };
+  const abrirIngreso = () => {
+    if (ingresando) { setIngresando(false); return; }
+    setIngresando(true); setRetirando(null); setElegido(''); setTraslado(null); setError(null);
+  };
+
+  /** El retiro, justo debajo de la fila del coordinador que se retira. */
+  const formularioRetiro = (p: PresenciaMandoApi) => (
+    <div className="flex flex-col gap-2 px-3 py-3 rounded-[var(--radius-input)] mt-1" style={{ border: '1px solid var(--border)', background: 'var(--card)' }}>
+      <div>
+        <Etiqueta htmlFor="retiro-motivo">Motivo del retiro</Etiqueta>
+        <select id="retiro-motivo" value={motivoOpcion} onChange={e => setMotivoOpcion(e.target.value)}
+          className="w-full px-3 py-2 outline-none" style={estiloCampo}>
+          <option value="">Elegí un motivo</option>
+          {MOTIVOS_RETIRO.map(m => <option key={m} value={m}>{m}</option>)}
+        </select>
+      </div>
+      {motivoOpcion === 'Otros' && (
+        <div>
+          <Etiqueta htmlFor="retiro-otro">Contá el motivo</Etiqueta>
+          <input id="retiro-otro" value={motivoOtro} maxLength={150} onChange={e => setMotivoOtro(e.target.value)}
+            className="w-full px-3 py-2 outline-none" style={estiloCampo} autoFocus />
+        </div>
+      )}
+      {pideSucesor && (
+        <div>
+          <Etiqueta htmlFor="retiro-sucesor">{propio ? 'Estás a cargo' : 'Está a cargo'}: ¿a quién le deja el mando?</Etiqueta>
+          <select id="retiro-sucesor" value={sucesorId} onChange={e => setSucesorId(e.target.value)}
+            className="w-full px-3 py-2 outline-none" style={estiloCampo}>
+            <option value="">Elegí un coordinador presente</option>
+            {otrosPresentes.map(o => <option key={o.usuarioId} value={o.usuarioId}>{nombreDe(o)}</option>)}
+          </select>
+        </div>
+      )}
+      {p.aCargo && !pideSucesor && (
+        <p style={{ fontSize: 11, color: '#92400e' }}>No queda otro coordinador presente: el operativo va a quedar sin coordinador a cargo.</p>
+      )}
+      {error && <ErrorCaja>{error}</ErrorCaja>}
+      <div className="flex justify-end gap-2">
+        <BotonSecundario onClick={() => setRetirando(null)}>Cancelar</BotonSecundario>
+        <BotonPrimario onClick={confirmarRetiro} habilitado={retiroOk && !ocupado}>
+          {ocupado ? 'Registrando…' : 'Registrar retiro'}
+        </BotonPrimario>
+      </div>
+    </div>
+  );
+
+  const avisoTraslado = (
+    traslado && (
+      <div className="flex flex-col gap-2 p-3 rounded-[var(--radius-input)]" style={{ background: '#fef3c7', border: '1px solid #fcd34d' }}>
+        <p style={{ fontSize: 'var(--text-label)', color: '#92400e', lineHeight: 1.5 }}>{traslado.mensaje}</p>
+        <div className="flex justify-end gap-2">
+          <BotonSecundario onClick={() => setTraslado(null)}>Cancelar</BotonSecundario>
+          <BotonPrimario onClick={() => ingresar(traslado.usuarioId, true)} habilitado={!ocupado}>Sí, trasladar</BotonPrimario>
+        </div>
+      </div>
+    )
+  );
 
   // Quién puede dejar a cargo a quién (el backend lo vuelve a validar).
   const puedeDesignar = (p: PresenciaMandoApi) =>
@@ -204,119 +275,23 @@ function PuestoComandoModal({ operativoId, mando, soloLectura, onCambio, onClose
 
         {/* ── Presentes ── */}
         <div>
-          <p className="uppercase tracking-wider mb-1.5" style={{ fontSize: 10, color: 'var(--muted-foreground)', fontWeight: 'var(--font-weight-semibold)' }}>
-            Presentes · {mando.presentes.length}
-          </p>
-          {mando.presentes.length === 0 ? (
-            <p style={{ fontSize: 'var(--text-label)', color: 'var(--muted-foreground)' }}>Nadie registrado ahora.</p>
-          ) : (
-            <div className="flex flex-col gap-1.5">
-              {mando.presentes.map(p => (
-                <div key={p.id} className="flex items-center gap-2 px-3 py-2 rounded-[var(--radius-input)]" style={{ background: 'var(--muted)' }}>
-                  <div className="min-w-0 flex-1">
-                    <p className="flex items-center gap-1.5" style={{ fontSize: 'var(--text-label)', color: 'var(--foreground)', fontWeight: 'var(--font-weight-semibold)' }}>
-                      <span className="truncate">{nombreDe(p)}{p.usuarioId === yoId ? ' (vos)' : ''}</span>
-                      {p.aCargo && (
-                        <span className="px-1.5 rounded-full shrink-0" style={{ fontSize: 9.5, background: 'rgba(229,75,75,0.12)', color: 'var(--primary)' }}>A cargo</span>
-                      )}
-                    </p>
-                    <p style={{ fontSize: 10.5, color: 'var(--muted-foreground)' }}>
-                      Desde las {horaCorta(p.desde)}{p.ingresoPor !== p.usuarioId ? ` · registró el ingreso ${p.ingresoPorNombre}` : ''}
-                    </p>
-                  </div>
-                  {puedeDesignar(p) && (
-                    <button type="button" disabled={ocupado} onClick={() => pasarMando(p.usuarioId)}
-                      title={mando.aCargo ? 'Pasarle el mando' : 'Dejarlo a cargo'}
-                      className="flex items-center gap-1 px-2 py-1 rounded-md shrink-0"
-                      style={{ fontSize: 11, border: '1px solid var(--border)', background: 'var(--card)', color: 'var(--foreground)', cursor: 'pointer' }}>
-                      <ArrowRightLeft size={11} />
-                      {p.usuarioId === yoId ? 'Tomar el mando' : mando.aCargo ? 'Pasarle el mando' : 'Dejar a cargo'}
-                    </button>
-                  )}
-                  {!soloLectura && p.usuarioId !== yoId && (
-                    <button type="button" disabled={ocupado}
-                      onClick={() => { setRetirando(p); setMotivo(''); setSucesorId(''); setError(null); }}
-                      title="Registrar el retiro de este coordinador"
-                      className="flex items-center gap-1 px-2 py-1 rounded-md shrink-0"
-                      style={{ fontSize: 11, border: '1px solid var(--border)', background: 'var(--card)', color: 'var(--muted-foreground)', cursor: 'pointer' }}>
-                      <LogOut size={11} /> Retiro
-                    </button>
-                  )}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* ── Retiro (propio o de otro) ── */}
-        {retirando && (
-          <div className="flex flex-col gap-2 p-3 rounded-[var(--radius-input)]" style={{ border: '1px solid var(--border)' }}>
-            <p style={{ fontSize: 'var(--text-label)', color: 'var(--foreground)', fontWeight: 'var(--font-weight-semibold)' }}>
-              {propio ? 'Te retirás del puesto de comando' : `Retiro de ${nombreDe(retirando)}`}
+          <div className="flex items-center justify-between gap-2 mb-1.5">
+            <p className="uppercase tracking-wider" style={{ fontSize: 10, color: 'var(--muted-foreground)', fontWeight: 'var(--font-weight-semibold)' }}>
+              Presentes · {mando.presentes.length}
             </p>
-            {!propio && (
-              <div>
-                <Etiqueta htmlFor="retiro-motivo">Motivo (queda en el registro)</Etiqueta>
-                <input id="retiro-motivo" value={motivo} maxLength={200} onChange={e => setMotivo(e.target.value)}
-                  placeholder="Ej.: se fue al terminar su turno sin registrarlo"
-                  className="w-full px-3 py-2 outline-none" style={estiloCampo} />
-              </div>
+            {!soloLectura && (
+              <button type="button" onClick={abrirIngreso} disabled={ocupado}
+                className="flex items-center gap-1 px-2 py-1 rounded-md shrink-0"
+                style={{ fontSize: 11, border: '1px solid var(--border)', background: ingresando ? 'var(--muted)' : 'var(--card)', color: 'var(--foreground)', cursor: 'pointer', fontWeight: 'var(--font-weight-semibold)' }}>
+                <UserPlus size={11} /> Registrar ingreso
+              </button>
             )}
-            {pideSucesor && (
-              <div>
-                <Etiqueta htmlFor="retiro-sucesor">{propio ? 'Estás a cargo' : 'Está a cargo'}: ¿a quién le deja el mando?</Etiqueta>
-                <select id="retiro-sucesor" value={sucesorId} onChange={e => setSucesorId(e.target.value)}
-                  className="w-full px-3 py-2 outline-none" style={estiloCampo}>
-                  <option value="">Elegí un coordinador presente</option>
-                  {otrosPresentes.map(o => <option key={o.usuarioId} value={o.usuarioId}>{nombreDe(o)}</option>)}
-                </select>
-              </div>
-            )}
-            {retirando.aCargo && !pideSucesor && (
-              <p style={{ fontSize: 11, color: '#92400e' }}>No queda otro coordinador presente: el operativo va a quedar sin coordinador a cargo.</p>
-            )}
-            <div className="flex justify-end gap-2">
-              <BotonSecundario onClick={() => setRetirando(null)}>Cancelar</BotonSecundario>
-              <BotonPrimario onClick={confirmarRetiro} habilitado={retiroOk && !ocupado}>
-                {ocupado ? 'Registrando…' : 'Registrar retiro'}
-              </BotonPrimario>
-            </div>
           </div>
-        )}
 
-        {/* ── Ubicuidad: está en otro operativo ── */}
-        {traslado && (
-          <div className="flex flex-col gap-2 p-3 rounded-[var(--radius-input)]" style={{ background: '#fef3c7', border: '1px solid #fcd34d' }}>
-            <p style={{ fontSize: 'var(--text-label)', color: '#92400e', lineHeight: 1.5 }}>{traslado.mensaje}</p>
-            <div className="flex justify-end gap-2">
-              <BotonSecundario onClick={() => setTraslado(null)}>Cancelar</BotonSecundario>
-              <BotonPrimario onClick={() => ingresar(traslado.usuarioId, true)} habilitado={!ocupado}>Sí, trasladar</BotonPrimario>
-            </div>
-          </div>
-        )}
-
-        {error && <ErrorCaja>{error}</ErrorCaja>}
-
-        {!soloLectura && (
-          <div className="flex flex-col gap-3 pt-3" style={{ borderTop: '1px solid var(--border)' }}>
-            {/* Lo mío (sólo coordinadores: un administrador no figura como presente). */}
-            {!soyAdmin && !retirando && (
-              yoPresente ? (
-                <BotonSecundario onClick={() => { setRetirando(yoPresente); setMotivo(''); setSucesorId(''); setError(null); }}>
-                  <span className="inline-flex items-center gap-1.5"><LogOut size={13} /> Me retiro del puesto de comando</span>
-                </BotonSecundario>
-              ) : (
-                <BotonPrimario onClick={() => ingresar()} habilitado={!ocupado}>
-                  <span className="inline-flex items-center gap-1.5">
-                    {ocupado ? <Loader2 size={13} className="animate-spin" /> : <LogIn size={13} />} Estoy en el puesto de comando
-                  </span>
-                </BotonPrimario>
-              )
-            )}
-
-            {/* Registrar a otro coordinador (cualquier gestor). */}
-            <div>
-              <Etiqueta htmlFor="ingreso-otro">Registrar el ingreso de otro coordinador</Etiqueta>
+          {/* Selector del coordinador: se despliega al tocar el botón y se va al registrar. */}
+          {ingresando && (
+            <div className="flex flex-col gap-2 px-3 py-3 rounded-[var(--radius-input)] mb-1.5" style={{ border: '1px solid var(--border)', background: 'var(--card)' }}>
+              <Etiqueta htmlFor="ingreso-otro">¿Qué coordinador ingresa al puesto de comando?</Etiqueta>
               <div className="flex gap-2">
                 <select id="ingreso-otro" value={elegido} onChange={e => setElegido(e.target.value)}
                   className="flex-1 min-w-0 px-3 py-2 outline-none" style={estiloCampo} disabled={coordinadores === null}>
@@ -327,11 +302,68 @@ function PuestoComandoModal({ operativoId, mando, soloLectura, onCambio, onClose
                   className="flex items-center gap-1 px-3 rounded-[var(--radius-button)] shrink-0"
                   style={{ fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)', border: '1.5px solid var(--border)',
                     background: 'var(--card)', color: elegido ? 'var(--foreground)' : 'var(--muted-foreground)', cursor: elegido ? 'pointer' : 'default' }}>
-                  <UserPlus size={13} /> Registrar
+                  {ocupado ? <Loader2 size={13} className="animate-spin" /> : <UserPlus size={13} />} Registrar
                 </button>
               </div>
+              {traslado?.usuarioId && avisoTraslado}
+              {error && <ErrorCaja>{error}</ErrorCaja>}
             </div>
-          </div>
+          )}
+
+          {mando.presentes.length === 0 ? (
+            <p style={{ fontSize: 'var(--text-label)', color: 'var(--muted-foreground)' }}>Nadie registrado ahora.</p>
+          ) : (
+            <div className="flex flex-col gap-1.5">
+              {mando.presentes.map(p => (
+                <div key={p.id}>
+                  <div className="flex items-center gap-2 px-3 py-2 rounded-[var(--radius-input)]" style={{ background: 'var(--muted)' }}>
+                    <div className="min-w-0 flex-1">
+                      <p className="flex items-center gap-1.5" style={{ fontSize: 'var(--text-label)', color: 'var(--foreground)', fontWeight: 'var(--font-weight-semibold)' }}>
+                        <span className="truncate">{nombreDe(p)}{p.usuarioId === yoId ? ' (vos)' : ''}</span>
+                        {p.aCargo && (
+                          <span className="px-1.5 rounded-full shrink-0" style={{ fontSize: 9.5, background: 'rgba(229,75,75,0.12)', color: 'var(--primary)' }}>A cargo</span>
+                        )}
+                      </p>
+                      <p style={{ fontSize: 10.5, color: 'var(--muted-foreground)' }}>
+                        Desde las {horaCorta(p.desde)}{p.ingresoPor !== p.usuarioId ? ` · registró el ingreso ${p.ingresoPorNombre}` : ''}
+                      </p>
+                    </div>
+                    {puedeDesignar(p) && (
+                      <button type="button" disabled={ocupado} onClick={() => pasarMando(p.usuarioId)}
+                        title={mando.aCargo ? 'Pasarle el mando' : 'Dejarlo a cargo'}
+                        className="flex items-center gap-1 px-2 py-1 rounded-md shrink-0"
+                        style={{ fontSize: 11, border: '1px solid var(--border)', background: 'var(--card)', color: 'var(--foreground)', cursor: 'pointer' }}>
+                        <ArrowRightLeft size={11} />
+                        {p.usuarioId === yoId ? 'Tomar el mando' : mando.aCargo ? 'Pasarle el mando' : 'Dejar a cargo'}
+                      </button>
+                    )}
+                    {!soloLectura && (
+                      <button type="button" disabled={ocupado} onClick={() => abrirRetiro(p)}
+                        title={p.usuarioId === yoId ? 'Me retiro del puesto de comando' : 'Registrar el retiro de este coordinador'}
+                        className="flex items-center gap-1 px-2 py-1 rounded-md shrink-0"
+                        style={{ fontSize: 11, border: '1px solid var(--border)', background: retirando?.id === p.id ? 'var(--muted)' : 'var(--card)', color: 'var(--muted-foreground)', cursor: 'pointer' }}>
+                        <LogOut size={11} /> Retiro
+                      </button>
+                    )}
+                  </div>
+                  {retirando?.id === p.id && formularioRetiro(p)}
+                </div>
+              ))}
+            </div>
+          )}
+        </div>
+
+        {/* Sin ningún desplegable abierto, el traslado o el error se muestran acá. */}
+        {!retirando && !ingresando && avisoTraslado}
+        {!retirando && !ingresando && error && <ErrorCaja>{error}</ErrorCaja>}
+
+        {/* Un coordinador que todavía no está presente puede registrarse él mismo (el administrador no figura como presente). */}
+        {!soloLectura && !soyAdmin && !yoPresente && (
+          <BotonPrimario onClick={() => ingresar()} habilitado={!ocupado}>
+            <span className="inline-flex items-center gap-1.5">
+              {ocupado ? <Loader2 size={13} className="animate-spin" /> : <LogIn size={13} />} Estoy en el puesto de comando
+            </span>
+          </BotonPrimario>
         )}
 
         {/* ── Historial ── */}
