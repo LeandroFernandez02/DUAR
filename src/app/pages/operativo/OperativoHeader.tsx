@@ -44,7 +44,7 @@ export default function OperativoHeader({ operativo }: Props) {
   });
   const relleno = compacto ? 'px-2.5' : 'px-3';
   // Achicado, los íconos se agrandan: son lo único que queda para reconocer cada botón.
-  const icono = compacto ? 17 : 13;
+  const icono = compacto ? 15 : 13;
 
   const hasObjetivo = !!operativo.tieneObjetivoBuscado;
   const navigate = useNavigate();
@@ -228,7 +228,7 @@ export default function OperativoHeader({ operativo }: Props) {
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg"
             style={{ background: 'rgba(229,75,75,0.08)' }}
           >
-            <Clock size={compacto ? 15 : 12} style={{ color: 'var(--primary)' }} />
+            <Clock size={compacto ? 14 : 12} style={{ color: 'var(--primary)' }} />
             <span style={{ color: 'var(--primary)', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)', fontFamily: 'var(--font-family-primary)' }}
               title={compacto ? `Día ${diasOperativo + 1} del operativo` : undefined}>
               {compacto ? diasOperativo + 1 : `Día ${diasOperativo + 1}`}
@@ -247,7 +247,7 @@ export default function OperativoHeader({ operativo }: Props) {
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg"
             style={{ background: 'var(--muted)' }}
           >
-            <Cloud size={compacto ? 15 : 12} style={{ color: 'var(--muted-foreground)' }} />
+            <Cloud size={compacto ? 14 : 12} style={{ color: 'var(--muted-foreground)' }} />
             <span style={{ fontSize: 'var(--text-base)', fontFamily: 'var(--font-family-primary)' }}>{actual.icono}</span>
             <span style={{ color: 'var(--foreground)', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)', fontFamily: 'var(--font-family-primary)' }}>
               {actual.temperatura}°C

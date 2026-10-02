@@ -76,7 +76,7 @@ export default function PuestoComando({ operativoId, soloLectura, compacto = fal
           cursor: 'pointer', maxWidth: '100%',
         }}
       >
-        <RadioTower size={compacto ? 17 : 13} style={{ flexShrink: 0 }} />
+        <RadioTower size={compacto ? 15 : 13} style={{ flexShrink: 0 }} />
         {/* Sólo el nombre de quien está a cargo; el resto de los presentes, al abrirlo. */}
         {!compacto && <span className="truncate">{mando.aCargo ? nombreDe(mando.aCargo) : 'Sin coordinador a cargo'}</span>}
       </button>
