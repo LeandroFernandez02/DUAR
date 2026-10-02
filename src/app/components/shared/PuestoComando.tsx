@@ -13,14 +13,14 @@
  * todo, pero no figura él mismo como presente.
  */
 import { useCallback, useEffect, useState } from 'react';
-import { RadioTower, X, Crown, LogIn, LogOut, UserPlus, History, AlertTriangle, ArrowRightLeft, Loader2 } from 'lucide-react';
+import { RadioTower, X, Crown, LogIn, LogOut, UserPlus, History, AlertTriangle, ArrowRightLeft, Loader2, User } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import {
   mandoApi, usuariosApi, ApiError,
   type MandoOperativoApi, type PresenciaMandoApi, type UsuarioApi,
 } from '../../services/api';
 import { Overlay, IconBox, Titulo, Texto, Etiqueta, ErrorCaja, estiloCampo, BotonPrimario, BotonSecundario } from './grupos/piezas';
-import { haceCuanto, horaCorta, horaExacta } from '../../utils/tiempo';
+import { haceCuanto, horaCorta } from '../../utils/tiempo';
 
 /** El puesto de comando cambia poco: alcanza con mirar cada 30 s (y al volver a la pestaña). */
 const INTERVALO_MS = 30_000;
@@ -28,7 +28,10 @@ const INTERVALO_MS = 30_000;
 const nombreDe = (p: { nombre: string; apellido: string }) => `${p.nombre} ${p.apellido}`;
 
 /** Motivos del retiro del puesto de comando. "Otros" pide el detalle. Lo que se guarda es el texto. */
-const MOTIVOS_RETIRO = ['Finalización de turno', 'Decisión administrativa', 'Lesión', 'Otros'] as const;
+const MOTIVOS_RETIRO = [
+  'Finalización de turno', 'Decisión administrativa', 'Lesión o problema de salud',
+  'Emergencia personal', 'No registró su retiro', 'Otros',
+] as const;
 
 interface Props {
   operativoId: string;
@@ -368,39 +371,128 @@ function PuestoComandoModal({ operativoId, mando, soloLectura, onCambio, onClose
 
         {/* ── Historial ── */}
         <div className="pt-3" style={{ borderTop: '1px solid var(--border)' }}>
-          <button type="button" onClick={() => setVerHistorial(v => !v)} className="flex items-center gap-1.5"
+          <button type="button" onClick={() => setVerHistorial(true)} className="flex items-center gap-1.5"
             style={{ fontSize: 'var(--text-label)', color: 'var(--primary)', fontWeight: 'var(--font-weight-semibold)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
-            <History size={13} /> {verHistorial ? 'Ocultar historial' : `Ver historial (${mando.historialPresencias.length} presencias)`}
+            <History size={13} /> Ver historial
           </button>
-          {verHistorial && (
-            <div className="flex flex-col gap-3 mt-3">
-              <div>
-                <p className="uppercase tracking-wider mb-1" style={{ fontSize: 10, color: 'var(--muted-foreground)', fontWeight: 'var(--font-weight-semibold)' }}>A cargo</p>
-                {mando.historialMando.length === 0 ? <p style={{ fontSize: 11, color: 'var(--muted-foreground)' }}>Nadie estuvo a cargo todavía.</p>
-                  : mando.historialMando.map(m => (
-                    <p key={m.id} style={{ fontSize: 11.5, color: 'var(--foreground)', lineHeight: 1.5 }}>
-                      <strong>{nombreDe(m)}</strong> · {horaExacta(m.desde)} → {m.hasta ? horaExacta(m.hasta) : 'ahora'}
-                      <span style={{ color: 'var(--muted-foreground)' }}> · lo designó {m.asignadoPorNombre}{m.motivo ? ` · ${m.motivo}` : ''}</span>
-                    </p>
-                  ))}
-              </div>
-              <div>
-                <p className="uppercase tracking-wider mb-1" style={{ fontSize: 10, color: 'var(--muted-foreground)', fontWeight: 'var(--font-weight-semibold)' }}>Presencias</p>
-                {mando.historialPresencias.length === 0 ? <p style={{ fontSize: 11, color: 'var(--muted-foreground)' }}>Nadie se registró todavía.</p>
-                  : mando.historialPresencias.map(p => (
-                    <p key={p.id} style={{ fontSize: 11.5, color: 'var(--foreground)', lineHeight: 1.5 }}>
-                      <strong>{nombreDe(p)}</strong> · {horaExacta(p.desde)} → {p.hasta ? horaExacta(p.hasta) : 'presente'}
-                      <span style={{ color: 'var(--muted-foreground)' }}>
-                        {p.ingresoPor !== p.usuarioId ? ` · registró el ingreso ${p.ingresoPorNombre}` : ''}
-                        {p.motivo ? ` · ${p.motivo}` : ''}
-                        {p.egresoPorNombre && p.egresoPorNombre !== nombreDe(p) ? ` (registró ${p.egresoPorNombre})` : ''}
-                      </span>
-                    </p>
-                  ))}
-              </div>
-            </div>
-          )}
         </div>
+      </div>
+
+      {verHistorial && <HistorialPuestoComando mando={mando} onClose={() => setVerHistorial(false)} />}
+    </Overlay>
+  );
+}
+
+/* ── Historial del puesto de comando ───────────────────────────────────── */
+
+interface EventoPuesto {
+  clave: string;
+  t: string;
+  /** Desempate entre hechos del mismo instante: primero el retiro, al final quién queda a cargo. */
+  orden: number;
+  tipo: 'ingreso' | 'retiro' | 'a_cargo' | 'sin_mando';
+  titulo: string;
+  detalle?: string;
+  registro?: string;
+}
+
+const MISMO_INSTANTE_MS = 1000;
+const mismoInstante = (a: string, b: string) => Math.abs(+new Date(a) - +new Date(b)) < MISMO_INSTANTE_MS;
+
+/** Presencias y períodos de mando → una sola línea de tiempo, como la de los grupos. */
+function armarEventos(mando: MandoOperativoApi): EventoPuesto[] {
+  const eventos: EventoPuesto[] = [];
+  for (const p of mando.historialPresencias) {
+    eventos.push({
+      clave: `i-${p.id}`, t: p.desde, orden: 2, tipo: 'ingreso',
+      titulo: `${nombreDe(p)} ingresó al puesto de comando`, registro: p.ingresoPorNombre,
+    });
+    if (p.hasta) {
+      eventos.push({
+        clave: `r-${p.id}`, t: p.hasta, orden: 0, tipo: 'retiro',
+        titulo: `${nombreDe(p)} se retiró del puesto de comando`, detalle: p.motivo ?? undefined,
+        registro: p.egresoPorNombre ?? undefined,
+      });
+    }
+  }
+  for (const m of mando.historialMando) {
+    const anterior = mando.historialMando.find(x => x.hasta && x.usuarioId !== m.usuarioId && mismoInstante(x.hasta, m.desde));
+    const alLlegar = mando.historialPresencias.some(p => p.usuarioId === m.usuarioId && mismoInstante(p.desde, m.desde));
+    eventos.push({
+      clave: `a-${m.id}`, t: m.desde, orden: 3, tipo: 'a_cargo',
+      titulo: `${nombreDe(m)} quedó a cargo del operativo`,
+      detalle: anterior ? `Relevó a ${nombreDe(anterior)}` : alLlegar ? 'Quedó a cargo al llegar' : undefined,
+      registro: m.asignadoPorNombre,
+    });
+    if (m.hasta && !mando.historialMando.some(x => x.id !== m.id && mismoInstante(x.desde, m.hasta!))) {
+      eventos.push({
+        clave: `s-${m.id}`, t: m.hasta, orden: 1, tipo: 'sin_mando',
+        titulo: 'El operativo quedó sin coordinador a cargo', detalle: m.motivo ?? undefined,
+      });
+    }
+  }
+  return eventos.sort((a, b) => +new Date(a.t) - +new Date(b.t) || a.orden - b.orden);
+}
+
+const PUNTO: Record<EventoPuesto['tipo'], string> = {
+  ingreso: '#15803d', retiro: '#6b7280', a_cargo: 'var(--primary)', sin_mando: '#d97706',
+};
+const dia = (iso: string) => new Date(iso).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' });
+
+function HistorialPuestoComando({ mando, onClose }: { mando: MandoOperativoApi; onClose: () => void }) {
+  const eventos = armarEventos(mando);
+  let diaAnterior = '';
+
+  return (
+    <Overlay onClose={onClose} ancho={560}>
+      <div className="flex items-center justify-between px-5 py-4 flex-shrink-0" style={{ borderBottom: '1px solid var(--border)' }}>
+        <div className="flex items-center gap-3 min-w-0">
+          <IconBox bg="rgba(229,75,75,0.1)"><History size={17} style={{ color: 'var(--primary)' }} /></IconBox>
+          <div className="min-w-0">
+            <Titulo>Historial del puesto de comando</Titulo>
+            <Texto>Quién ingresó, quién se retiró y quién estuvo a cargo, con la hora en que pasó.</Texto>
+          </div>
+        </div>
+        <button type="button" onClick={onClose} aria-label="Cerrar" className="p-1.5 rounded-lg"
+          style={{ color: 'var(--muted-foreground)', background: 'none', border: 'none', cursor: 'pointer' }}>
+          <X size={17} />
+        </button>
+      </div>
+
+      {/* Altura máxima propia: con muchos movimientos el cuerpo se desplaza, el modal no crece. */}
+      <div className="px-5 py-4" style={{ overflowY: 'auto', maxHeight: 'min(62vh, 520px)', fontFamily: 'var(--font-family-primary)' }}>
+        {eventos.length === 0 && <Texto>Todavía no hay movimientos en el puesto de comando.</Texto>}
+        <ol className="flex flex-col" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+          {eventos.map(e => {
+            const d = dia(e.t);
+            const mostrarDia = d !== diaAnterior;
+            diaAnterior = d;
+            return (
+              <li key={e.clave}>
+                {mostrarDia && (
+                  <p className="uppercase tracking-wider mt-2 mb-1" style={{ fontSize: 10, color: 'var(--muted-foreground)', fontWeight: 'var(--font-weight-semibold)' }}>{d}</p>
+                )}
+                <div className="grid gap-x-3 py-2" style={{ gridTemplateColumns: '48px 1fr', borderTop: '1px solid var(--border)' }}>
+                  <span style={{ fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--foreground)', fontVariantNumeric: 'tabular-nums', paddingTop: 1 }}>
+                    {horaCorta(e.t)}
+                  </span>
+                  <div className="min-w-0">
+                    <p className="flex items-center gap-1.5" style={{ fontSize: 'var(--text-label)', color: 'var(--foreground)', fontWeight: 'var(--font-weight-semibold)', lineHeight: 1.35 }}>
+                      <span style={{ width: 7, height: 7, borderRadius: '50%', background: PUNTO[e.tipo], display: 'inline-block', flexShrink: 0 }} />
+                      {e.titulo}
+                    </p>
+                    {e.detalle && <p style={{ fontSize: 11, color: 'var(--muted-foreground)', lineHeight: 1.4 }}>{e.detalle}</p>}
+                    {e.registro && (
+                      <p className="flex items-center gap-1 mt-0.5" style={{ fontSize: 10.5, color: 'var(--muted-foreground)' }}>
+                        <User size={11} /> Registró: {e.registro}
+                      </p>
+                    )}
+                  </div>
+                </div>
+              </li>
+            );
+          })}
+        </ol>
       </div>
     </Overlay>
   );
