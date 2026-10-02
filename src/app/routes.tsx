@@ -2,6 +2,7 @@ import { createBrowserRouter, redirect, Outlet } from 'react-router';
 import MainLayout from './components/layout/MainLayout';
 import Login from './pages/Login';
 import Usuarios from './pages/Usuarios';
+import NoEncontrada from './pages/NoEncontrada';
 
 /**
  * Carga de rutas: eager vs. lazy.
@@ -10,9 +11,8 @@ import Usuarios from './pages/Usuarios';
  * Módulo 2; que aparezcan al instante es lo que más se nota.
  *
  * El resto se carga bajo demanda con `lazy`. El motivo es concreto: las páginas
- * de Mapa arrastran Leaflet, y los dashboards arrastran Recharts. Sin
- * dividir, un coordinador que sólo entra a loguearse igual se descargaba todo
- * ese código. Cada `lazy` genera un archivo aparte que sólo viaja si se visita
+ * de Mapa arrastran Leaflet. Sin dividir, un coordinador que sólo entra a
+ * loguearse igual se descargaba todo ese código. Cada `lazy` genera un archivo aparte que sólo viaja si se visita
  * esa pantalla.
  */
 const RootLayout = () => <Outlet />;
@@ -25,6 +25,8 @@ export const router = createBrowserRouter([
   {
     path: '/',
     Component: RootLayout,
+    // Un error al cargar una pantalla muestra la misma página de "no encontrada", no la de la librería.
+    errorElement: <NoEncontrada />,
     children: [
       {
         path: 'login',
@@ -55,10 +57,6 @@ export const router = createBrowserRouter([
         // Portal dedicado para agentes (sin sidebar)
         path: 'agente',
         lazy: cargar(() => import('./pages/AgenteDashboard')),
-      },
-      {
-        path: 'familia/:id',
-        lazy: cargar(() => import('./pages/FamiliaDashboard')),
       },
       {
         path: '/',

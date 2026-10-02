@@ -4,7 +4,6 @@ import {
   AgenteOperativo, AgenteGrupoHistorial, EstadoOperativoAgente,
   inferirCaminante, ESTADOS_GRUPO_EN_TERRENO, ESTADOS_GRUPO_EN_OPERACION, grupoEnOperacion,
 } from '../data/mockData';
-import { generarTokenConfirmacion } from '../services/emailService';
 import { authApi, setToken, getToken, ApiError, UsuarioApi } from '../services/api';
 
 /**
@@ -192,7 +191,6 @@ interface AppContextType {
   deleteOperativo: (id: string) => void;
   getOperativo: (id: string) => Operativo | undefined;
   // Usuarios CRUD
-  addUsuario: (user: Omit<Usuario, 'id' | 'createdAt' | 'emailConfirmado'> & { emailConfirmado?: boolean }) => string;
   updateUsuario: (id: string, user: Partial<Usuario>) => void;
   deleteUsuario: (id: string) => void;
   // Grupos CRUD
@@ -430,23 +428,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [data.operativos]);
 
   /* ── Usuarios CRUD ── */
-
-  const addUsuario = useCallback((user: Omit<Usuario, 'id' | 'createdAt' | 'emailConfirmado'> & { emailConfirmado?: boolean }): string => {
-    const id = uniqueId('u');
-    // Los nuevos usuarios creados vía QR arrancan sin confirmar email
-    const token = generarTokenConfirmacion();
-    const newUser: Usuario = {
-      ...user,
-      id,
-      createdAt: new Date().toISOString().slice(0, 10),
-      // Si el caller ya envió emailConfirmado (ej: admin crea usuario manualmente), respetar.
-      // Si no, el nuevo usuario de QR siempre empieza sin confirmar.
-      emailConfirmado: user.emailConfirmado ?? false,
-      tokenConfirmacion: user.emailConfirmado ? undefined : token,
-    };
-    setData(d => ({ ...d, usuarios: [...d.usuarios, newUser] }));
-    return id;
-  }, []);
 
   const updateUsuario = useCallback((id: string, user: Partial<Usuario>) => {
     // Bloquear intento de poner estado 'eliminado' por la vía normal.
@@ -992,7 +973,6 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       updateOperativo,
       deleteOperativo,
       getOperativo,
-      addUsuario,
       updateUsuario,
       deleteUsuario,
       addGrupo,

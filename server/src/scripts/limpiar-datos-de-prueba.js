@@ -56,7 +56,7 @@ const PASOS = [
         OR registro_id IN (SELECT id FROM t_usuarios UNION SELECT id FROM t_ops
                            UNION SELECT id FROM t_grupos UNION SELECT id FROM t_agentes)`],
   ['intentos_login de prueba', `
-    DELETE FROM intentos_login WHERE clave LIKE 'email:%@prueba.duar'`],
+    DELETE FROM intentos_login WHERE clave LIKE 'email:%@prueba.duar' OR clave LIKE 'email:auto.%'`],
   ['usuarios de prueba (con sus sesiones y alergias)', `DELETE FROM usuarios WHERE id IN (SELECT id FROM t_usuarios)`],
 ];
 
