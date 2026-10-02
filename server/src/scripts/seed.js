@@ -5,7 +5,12 @@
  * Es idempotente: si ya existen, no los duplica.
  *
  *   npm run seed        (desde la carpeta server/)
+ *
+ * La contraseña del administrador NO está escrita acá (el repositorio es
+ * público): se toma de la variable ADMIN_PASSWORD y, si no está, se genera una
+ * al azar y se muestra UNA vez al terminar. Cambiala después desde tu perfil.
  */
+import crypto from 'node:crypto';
 import bcrypt from 'bcryptjs';
 import { pool, query } from '../config/db.js';
 
@@ -14,7 +19,7 @@ const ADMIN = {
   nombre: 'Admin',
   apellido: 'DUAR',
   email: 'admin@duar.cba.gob.ar',
-  password: 'admin1234',
+  password: process.env.ADMIN_PASSWORD || crypto.randomBytes(12).toString('base64url'),
 };
 
 const ROLES = ['administrador', 'coordinador', 'agente'];

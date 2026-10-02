@@ -35,3 +35,12 @@ En `server/.env` (no se sube al repositorio). Ver `server/.env.example`:
 - `TEST_API_URL`: por defecto `http://localhost:3001/api`.
 - `TEST_ADMIN_EMAIL` / `TEST_ADMIN_PASSWORD`: un administrador, sólo para preparar el entorno.
 - `TEST_USUARIOS_PASSWORD`: la clave de los usuarios de prueba.
+
+## Después de publicar
+
+Una vez que el sistema está en producción, esta base es la real. `npm test` crea otra vez los usuarios `auto.*` y el operativo "PRUEBAS AUTOMÁTICAS - no tocar", que verían los usuarios reales. Correr las pruebas solo cuando haga falta (antes de una demo o de un cambio) y **limpiar al terminar**:
+
+```bash
+npm run limpiar-pruebas                # ensayo: cuenta lo que borraría y no cambia nada
+npm run limpiar-pruebas -- --confirmar # borra los datos de prueba (usuarios @prueba.duar y los 3 operativos de prueba)
+```

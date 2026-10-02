@@ -9,6 +9,7 @@ import * as Usuario from '../models/usuario.model.js';
 import * as Sesion from '../models/sesion.model.js';
 import * as TokenEmail from '../models/tokenEmail.model.js';
 import * as Auditoria from '../models/auditoria.model.js';
+import * as Intentos from '../models/intentosLogin.model.js';
 import { enviarRecuperacion, enviarConfirmacion } from '../services/email.service.js';
 import { validarDatosPersonales } from '../utils/validaciones.js';
 import { query } from '../config/db.js';
@@ -22,11 +23,24 @@ function sinHash(usuario) {
   return resto;
 }
 
+/** Un pedido bloqueado por exceso de intentos: 429 con cuánto falta, sin decir si la cuenta existe. */
+function respuestaBloqueado(res, segundos) {
+  res.set('Retry-After', String(segundos));
+  return res.status(429).json({
+    error: `Demasiados intentos fallidos. Por seguridad, probá de nuevo en ${Math.ceil(segundos / 60)} minuto(s).`,
+    motivo: 'bloqueado',
+    segundos,
+  });
+}
+
 /**
  * POST /api/auth/login
  *
  * Paso 5 del CU-01: valida credenciales contra PostgreSQL.
  * Paso 4.2: si la cuenta está inactiva o eliminada, informa el estado.
+ * Antes de publicar (02/10): 5 intentos fallidos en 15 minutos bloquean el
+ * correo 15 minutos (y 30 desde una IP bloquean la IP): sin eso, cualquiera
+ * podía probar contraseñas sin freno.
  */
 export async function login(req, res, next) {
   try {
@@ -35,18 +49,27 @@ export async function login(req, res, next) {
       return res.status(400).json({ error: 'Email y contraseña son obligatorios.' });
     }
 
-    const usuario = await Usuario.buscarPorEmailConHash(email);
+    const correo = String(email).trim().toLowerCase().slice(0, 254);
+    const espera = await Intentos.segundosBloqueado(correo, req.ip);
+    if (espera > 0) return respuestaBloqueado(res, espera);
+
+    // Un fallo cuenta igual exista o no la cuenta (misma respuesta: no se enumera).
+    const fallo = async () => {
+      const segundos = await Intentos.registrarFallo(correo, req.ip);
+      return segundos > 0
+        ? respuestaBloqueado(res, segundos)
+        : res.status(401).json({ error: 'Credenciales incorrectas.', motivo: 'credentials' });
+    };
+
+    const usuario = await Usuario.buscarPorEmailConHash(correo);
 
     // Un usuario ELIMINADO se trata como inexistente: no se revela que la
     // cuenta existió alguna vez (evita enumerar usuarios dados de baja).
-    if (!usuario || usuario.estado === 'ELIMINADO') {
-      return res.status(401).json({ error: 'Credenciales incorrectas.', motivo: 'credentials' });
-    }
+    if (!usuario || usuario.estado === 'ELIMINADO') return fallo();
 
-    const coincide = await bcrypt.compare(password, usuario.passwordHash);
-    if (!coincide) {
-      return res.status(401).json({ error: 'Credenciales incorrectas.', motivo: 'credentials' });
-    }
+    const coincide = await bcrypt.compare(String(password), usuario.passwordHash);
+    if (!coincide) return fallo();
+    await Intentos.limpiar(correo);
 
     // CU-01 paso 4.2 — la cuenta existe y la clave es correcta, pero está suspendida
     if (usuario.estado === 'INACTIVO') {

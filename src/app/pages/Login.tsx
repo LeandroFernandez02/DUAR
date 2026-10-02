@@ -37,6 +37,7 @@ export default function Login() {
       return;
     }
     if (result === 'inactive') setError('inactive');
+    else if (result === 'bloqueado') setError('bloqueado');
     else if (result === 'sin_conexion') setError('sin_conexion');
     else setError('credentials');
   };
@@ -191,10 +192,18 @@ export default function Login() {
                 style={{ background: '#fef9c3', border: '1px solid #fde047', color: '#854d0e', fontSize: 'var(--text-base)' }}
               >
                 <AlertCircle size={16} style={{ marginTop: '1px', flexShrink: 0 }} />
-                <span>
-                  No se pudo contactar al servidor. Verificá que la API esté levantada
-                  (<code>npm --prefix server run dev</code>).
-                </span>
+                <span>No se pudo contactar al servidor. Revisá tu conexión e intentá de nuevo en unos minutos.</span>
+              </div>
+            )}
+
+            {/* Demasiados intentos fallidos: el servidor bloqueó el acceso un rato. */}
+            {error === 'bloqueado' && (
+              <div
+                className="flex items-start gap-2.5 p-3 rounded-lg"
+                style={{ background: '#fee2e2', border: '1px solid #fecaca', color: '#b91c1c', fontSize: 'var(--text-base)' }}
+              >
+                <AlertCircle size={16} style={{ marginTop: '1px', flexShrink: 0 }} />
+                <span>Demasiados intentos fallidos. Por seguridad, esperá unos minutos antes de volver a intentar.</span>
               </div>
             )}
 

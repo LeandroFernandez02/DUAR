@@ -29,7 +29,17 @@ import agenteRoutes from './routes/agente.routes.js';
 
 const app = express();
 
-app.use(cors());
+// Sólo la propia aplicación puede leer la API desde un navegador (02/10; antes, cualquier
+// sitio web podía). En Vercel el frontend y la API comparten dominio, así que ahí CORS ni
+// se usa: esto frena a otros sitios, no a la aplicación. Sin `Origin` (curl, pruebas,
+// servidor a servidor) no hay navegador de por medio y se deja pasar.
+const ORIGENES = new Set([
+  process.env.FRONTEND_URL,
+  process.env.VERCEL_PROJECT_PRODUCTION_URL && `https://${process.env.VERCEL_PROJECT_PRODUCTION_URL}`,
+  process.env.VERCEL_URL && `https://${process.env.VERCEL_URL}`,
+  'http://localhost:5173', 'http://127.0.0.1:5173', 'http://localhost:4173',
+].filter(Boolean).map(o => o.replace(/\/$/, '')));
+app.use(cors({ origin: (origen, cb) => cb(null, !origen || ORIGENES.has(origen)) }));
 app.use(express.json({ limit: '5mb' }));
 app.set('trust proxy', true);            // para registrar la IP real en las sesiones
 

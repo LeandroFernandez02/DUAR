@@ -63,6 +63,7 @@ aplica al proyecto Supabase con el mismo nombre:
 | `014_especialidad_policia.sql` | Especialidad **Policía** en el catálogo, de rastrillaje |
 | `015_indices_tablero.sql` | Índices en `agentes_operativo.grupo_id` y `grupos.lider_id` (se leen en cada refresco del tablero) |
 | `016_presencia_mando.sql` | Puesto de comando: `presencias_mando` (coordinadores presentes) y `mando_operativo` (quién está a cargo) |
+| `017_intentos_login.sql` | `intentos_login`: frena la prueba de contraseñas (5 fallos por correo o 30 por IP en 15 min bloquean 15 min) |
 
 ### PostGIS: diferencia con la instalación local
 

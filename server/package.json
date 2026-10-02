@@ -10,7 +10,8 @@
     "seed": "node src/scripts/seed.js",
     "test": "node --test --test-concurrency=1 \"tests/**/*.test.js\"",
     "test:unidad": "node --test \"tests/unidad/*.test.js\"",
-    "test:informe": "node --test --test-concurrency=1 --test-reporter=spec --test-reporter-destination=stdout --test-reporter=./tests/reporter-informe.mjs --test-reporter-destination=tests/INFORME-PRUEBAS.md \"tests/**/*.test.js\""
+    "test:informe": "node --test --test-concurrency=1 --test-reporter=spec --test-reporter-destination=stdout --test-reporter=./tests/reporter-informe.mjs --test-reporter-destination=tests/INFORME-PRUEBAS.md \"tests/**/*.test.js\"",
+    "limpiar-pruebas": "node src/scripts/limpiar-datos-de-prueba.js"
   },
   "dependencies": {
     "@supabase/supabase-js": "^2.116.0",

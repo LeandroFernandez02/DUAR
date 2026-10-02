@@ -180,7 +180,7 @@ interface AppContextType {
   isDark: boolean;
   toggleDark: () => void;
   data: AppData;
-  login: (email: string, password: string) => Promise<'ok' | 'credentials' | 'inactive' | 'sin_conexion'>;
+  login: (email: string, password: string) => Promise<'ok' | 'credentials' | 'inactive' | 'bloqueado' | 'sin_conexion'>;
   logout: () => Promise<void>;
   /** Autoedición: el propio usuario cambia sus datos (no dni/email/estado/rol). */
   actualizarPerfilPropio: (datos: Record<string, unknown>) => Promise<'ok' | string>;
@@ -312,7 +312,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   const login = useCallback(async (
     email: string,
     password: string
-  ): Promise<'ok' | 'credentials' | 'inactive' | 'sin_conexion'> => {
+  ): Promise<'ok' | 'credentials' | 'inactive' | 'bloqueado' | 'sin_conexion'> => {
     try {
       const { token, usuario: u } = await authApi.login(email, password);
       setToken(token);
@@ -321,6 +321,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     } catch (err) {
       if (err instanceof ApiError) {
         if (err.motivo === 'inactive') return 'inactive';
+        if (err.motivo === 'bloqueado') return 'bloqueado';   // demasiados intentos fallidos (02/10)
         return 'credentials';
       }
       // fetch falló: el backend no está levantado
