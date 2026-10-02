@@ -3,7 +3,7 @@ import { useNavigate } from 'react-router';
 import { differenceInDays } from 'date-fns';
 import {
   MapPin, Calendar, Clock, Cloud, Target,
-  QrCode, FileText,
+  QrCode, FileText, ChevronLeft,
 } from 'lucide-react';
 import StatusBadge from '../../components/shared/StatusBadge';
 import OperativoInfoModal from '../../components/shared/OperativoInfoModal';
@@ -31,6 +31,18 @@ export default function OperativoHeader({ operativo }: Props) {
   const [showInfoModal, setShowInfoModal] = useState(false);
   const [showObjetivoModal, setShowObjetivoModal] = useState(false);
   const [showQRModal, setShowQRModal] = useState(false);
+
+  // Los botones de la derecha se pueden achicar a puros íconos (02/10) y la
+  // elección se recuerda en este navegador. Sin almacenamiento, arranca grande.
+  const [compacto, setCompacto] = useState(() => {
+    try { return localStorage.getItem('duar-encabezado-compacto') === '1'; } catch { return false; }
+  });
+  const alternarCompacto = () => setCompacto(c => {
+    const nuevo = !c;
+    try { localStorage.setItem('duar-encabezado-compacto', nuevo ? '1' : '0'); } catch { /* sin almacenamiento */ }
+    return nuevo;
+  });
+  const relleno = compacto ? 'px-2.5' : 'px-3';
 
   const hasObjetivo = !!operativo.tieneObjetivoBuscado;
   const navigate = useNavigate();
@@ -94,15 +106,33 @@ export default function OperativoHeader({ operativo }: Props) {
         {/* ── Right: quick-action buttons + weather ── */}
         <div className="flex items-center gap-2 flex-wrap min-w-0">
 
+          {/* Achicar / agrandar: la flecha mira a la izquierda para achicar y se gira para agrandar. */}
+          <button
+            type="button"
+            onClick={alternarCompacto}
+            title={compacto ? 'Agrandar los botones' : 'Achicar los botones'}
+            aria-label={compacto ? 'Agrandar los botones' : 'Achicar los botones'}
+            aria-pressed={compacto}
+            className="flex items-center justify-center rounded-[var(--radius-button)] transition-all"
+            style={{
+              width: 30, height: 30, flexShrink: 0,
+              background: 'transparent', border: '1.5px solid var(--border)', color: 'var(--muted-foreground)', cursor: 'pointer',
+            }}
+            onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--muted)'; }}
+            onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
+          >
+            <ChevronLeft size={15} style={{ transform: compacto ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
+          </button>
+
           {/* Puesto de comando: coordinadores presentes y quién está a cargo (01/10). */}
-          <PuestoComando operativoId={operativo.id}
+          <PuestoComando operativoId={operativo.id} compacto={compacto}
             soloLectura={operativo.estado === 'finalizado' || operativo.estado === 'eliminado'} />
 
           {/* Objetivo Buscado */}
           <button
             onClick={() => setShowObjetivoModal(true)}
             title="Ver / editar objetivo buscado"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-[var(--radius-button)] transition-all"
+            className={`flex items-center gap-1.5 ${relleno} py-1.5 rounded-[var(--radius-button)] transition-all`}
             style={hasObjetivo
               ? {
                   background: 'rgba(229,75,75,0.1)',
@@ -131,14 +161,14 @@ export default function OperativoHeader({ operativo }: Props) {
             }}
           >
             <Target size={13} />
-            <span>Objetivo</span>
+            {!compacto && <span>Objetivo</span>}
           </button>
 
           {/* QR Agentes */}
           <button
             onClick={() => setShowQRModal(true)}
             title="Código QR para registro de agentes"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-[var(--radius-button)] transition-all"
+            className={`flex items-center gap-1.5 ${relleno} py-1.5 rounded-[var(--radius-button)] transition-all`}
             style={{
               background: 'var(--muted)',
               border: '1.5px solid var(--border)',
@@ -157,7 +187,7 @@ export default function OperativoHeader({ operativo }: Props) {
             }}
           >
             <QrCode size={13} />
-            <span>QR Agentes</span>
+            {!compacto && <span>QR Agentes</span>}
           </button>
 
           {/* Informe (CU-39). Pasó del sidebar a botón según la Lista de Casos
@@ -166,7 +196,7 @@ export default function OperativoHeader({ operativo }: Props) {
           <button
             onClick={() => navigate(`/operativo/${operativo.id}/informe`)}
             title="Generar el informe del operativo"
-            className="flex items-center gap-1.5 px-3 py-1.5 rounded-[var(--radius-button)] transition-all"
+            className={`flex items-center gap-1.5 ${relleno} py-1.5 rounded-[var(--radius-button)] transition-all`}
             style={{
               background: 'var(--muted)',
               border: '1.5px solid var(--border)',
@@ -185,7 +215,7 @@ export default function OperativoHeader({ operativo }: Props) {
             }}
           >
             <FileText size={13} />
-            <span>Informe</span>
+            {!compacto && <span>Informe</span>}
           </button>
 
           {/* Separador */}
@@ -197,12 +227,15 @@ export default function OperativoHeader({ operativo }: Props) {
             style={{ background: 'rgba(229,75,75,0.08)' }}
           >
             <Clock size={12} style={{ color: 'var(--primary)' }} />
-            <span style={{ color: 'var(--primary)', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)', fontFamily: 'var(--font-family-primary)' }}>
-              Día {diasOperativo + 1}
+            <span style={{ color: 'var(--primary)', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)', fontFamily: 'var(--font-family-primary)' }}
+              title={compacto ? `Día ${diasOperativo + 1} del operativo` : undefined}>
+              {compacto ? diasOperativo + 1 : `Día ${diasOperativo + 1}`}
             </span>
-            <span style={{ color: 'var(--muted-foreground)', fontSize: '11px', fontFamily: 'var(--font-family-primary)' }}>
-              del operativo
-            </span>
+            {!compacto && (
+              <span style={{ color: 'var(--muted-foreground)', fontSize: '11px', fontFamily: 'var(--font-family-primary)' }}>
+                del operativo
+              </span>
+            )}
           </div>
 
           {/* Widget de clima: es sólo el chip. La pantalla de Clima no se presenta
@@ -217,9 +250,11 @@ export default function OperativoHeader({ operativo }: Props) {
             <span style={{ color: 'var(--foreground)', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)', fontFamily: 'var(--font-family-primary)' }}>
               {actual.temperatura}°C
             </span>
-            <span style={{ color: 'var(--muted-foreground)', fontSize: '11px', fontFamily: 'var(--font-family-primary)' }}>
-              {actual.descripcion}
-            </span>
+            {!compacto && (
+              <span style={{ color: 'var(--muted-foreground)', fontSize: '11px', fontFamily: 'var(--font-family-primary)' }}>
+                {actual.descripcion}
+              </span>
+            )}
           </div>
         </div>
       </div>

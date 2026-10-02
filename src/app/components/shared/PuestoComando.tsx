@@ -37,9 +37,11 @@ interface Props {
   operativoId: string;
   /** Operativo finalizado o eliminado: sólo se mira el historial. */
   soloLectura: boolean;
+  /** Encabezado achicado: sólo el ícono (el nombre queda en el título al pasar el mouse). */
+  compacto?: boolean;
 }
 
-export default function PuestoComando({ operativoId, soloLectura }: Props) {
+export default function PuestoComando({ operativoId, soloLectura, compacto = false }: Props) {
   const [mando, setMando] = useState<MandoOperativoApi | null>(null);
   const [abierto, setAbierto] = useState(false);
 
@@ -61,8 +63,11 @@ export default function PuestoComando({ operativoId, soloLectura }: Props) {
       <button
         type="button"
         onClick={() => setAbierto(true)}
-        title="Puesto de comando: quién está presente y quién está a cargo"
-        className="flex items-center gap-1.5 px-3 py-1.5 rounded-[var(--radius-button)] transition-all"
+        title={compacto
+          ? `Puesto de comando · ${mando.aCargo ? `a cargo: ${nombreDe(mando.aCargo)}` : 'sin coordinador a cargo'}`
+          : 'Puesto de comando: quién está presente y quién está a cargo'}
+        aria-label={`Puesto de comando: ${mando.aCargo ? nombreDe(mando.aCargo) : 'sin coordinador a cargo'}`}
+        className={`flex items-center gap-1.5 ${compacto ? 'px-2.5' : 'px-3'} py-1.5 rounded-[var(--radius-button)] transition-all`}
         style={{
           background: sinMando ? '#fef3c7' : 'var(--muted)',
           border: `1.5px solid ${sinMando ? '#fcd34d' : 'var(--border)'}`,
@@ -73,7 +78,7 @@ export default function PuestoComando({ operativoId, soloLectura }: Props) {
       >
         <RadioTower size={13} style={{ flexShrink: 0 }} />
         {/* Sólo el nombre de quien está a cargo; el resto de los presentes, al abrirlo. */}
-        <span className="truncate">{mando.aCargo ? nombreDe(mando.aCargo) : 'Sin coordinador a cargo'}</span>
+        {!compacto && <span className="truncate">{mando.aCargo ? nombreDe(mando.aCargo) : 'Sin coordinador a cargo'}</span>}
       </button>
 
       {abierto && (
