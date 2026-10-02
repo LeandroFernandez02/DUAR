@@ -14,6 +14,7 @@ import { Operativo, EstadoOperativo } from '../data/mockData';
 import { operativosApi, ApiError } from '../services/api';
 import { mapearOperativo } from '../utils/mapearOperativo';
 import SelectorLocalidad from '../components/shared/SelectorLocalidad';
+import FiltroDesplegable from '../components/shared/FiltroDesplegable';
 import {
   validarTitulo, validarFiscal, filtrarFiscal,
   TITULO_MAX, FISCAL_MAX, DESCRIPCION_MAX, NOTA_FINAL_MAX,
@@ -54,7 +55,26 @@ function mandoDe(op: Operativo): { texto: string; alerta: boolean } {
 
 type ModalType = 'create' | 'edit' | 'qr' | 'delete' | 'finalize' | null;
 type ViewMode = 'card' | 'list';
-type FilterEstado = 'vigentes' | 'all' | EstadoOperativo;
+/** "Vigentes": todavía no se cerró (nuevo, en planificación, en proceso o activo). Es el filtro de entrada. */
+const VIGENTES: EstadoOperativo[] = ['nuevo', 'planificación', 'en_proceso', 'activo'];
+
+/** Estados que se pueden elegir en el filtro, con el color de su punto. */
+const ESTADOS_FILTRO: { value: EstadoOperativo; label: string; dot: string }[] = [
+  { value: 'nuevo',         label: 'Nuevo',           dot: '#FFA987' },
+  { value: 'activo',        label: 'Activo',          dot: '#16a34a' },
+  { value: 'planificación', label: 'En Planificación', dot: '#ca8a04' },
+  { value: 'en_proceso',    label: 'En Proceso',      dot: '#2563eb' },
+  { value: 'inactivo',      label: 'Inactivo',        dot: '#dc2626' },
+  { value: 'finalizado',    label: 'Finalizado',      dot: '#6b7280' },
+];
+
+/** Lo que llega en `?estado=` (links de otras pantallas) → estados elegidos. */
+function estadosDesdeUrl(valor: string | null): EstadoOperativo[] {
+  if (!valor || valor === 'vigentes') return VIGENTES;
+  if (valor === 'all') return [];
+  return ESTADOS_FILTRO.some(e => e.value === valor) ? [valor as EstadoOperativo] : VIGENTES;
+}
+const sonVigentes = (sel: EstadoOperativo[]) => sel.length === VIGENTES.length && VIGENTES.every(v => sel.includes(v));
 
 /* ── form base ── */
 const emptyForm = {
@@ -146,9 +166,8 @@ export default function Operativos() {
   const [searchParams] = useSearchParams();
   const [viewMode, setViewMode] = useState<ViewMode>('card');
   const [searchQuery, setSearchQuery] = useState('');
-  const [filterEstado, setFilterEstado] = useState<FilterEstado>(
-    (searchParams.get('estado') as FilterEstado) ?? 'vigentes'
-  );
+  // Estados elegidos (selección múltiple, 02/10). Vacío = todos.
+  const [estadosSel, setEstadosSel] = useState<EstadoOperativo[]>(() => estadosDesdeUrl(searchParams.get('estado')));
 
   /* ── finalize state ── */
   const [finalizeNota, setFinalizeNota] = useState('');
@@ -353,11 +372,7 @@ export default function Operativos() {
   /* ── filtered list ── */
   const filteredOperativos = useMemo(() => {
     let list = [...operativos];
-    if (filterEstado === 'vigentes') {
-      list = list.filter(o => esVigente(o.estado));
-    } else if (filterEstado !== 'all') {
-      list = list.filter(o => o.estado === filterEstado);
-    }
+    if (estadosSel.length) list = list.filter(o => estadosSel.includes(o.estado));
     if (searchQuery.trim()) {
       const q = searchQuery.toLowerCase();
       list = list.filter(o =>
@@ -370,7 +385,7 @@ export default function Operativos() {
       );
     }
     return list;
-  }, [operativos, filterEstado, searchQuery]);
+  }, [operativos, estadosSel, searchQuery]);
 
 
   const estadoColors: Record<string, string> = {
@@ -437,7 +452,7 @@ export default function Operativos() {
 
       {/* ── Toolbar: Search + Tabs + View Toggle ── */}
       <div
-        className="flex flex-col gap-0 mb-5 rounded-[var(--radius-card)] overflow-hidden"
+        className="flex flex-col gap-0 mb-5 rounded-[var(--radius-card)]"
         style={{ background: 'var(--card)', boxShadow: 'var(--elevation-sm)', border: '1px solid var(--border)' }}
       >
         {/* Row 1: search input + view toggle */}
@@ -510,7 +525,7 @@ export default function Operativos() {
           </div>
 
           {/* Results counter */}
-          {(searchQuery || filterEstado !== 'vigentes') && filteredOperativos.length < operativos.length && (
+          {(searchQuery || !sonVigentes(estadosSel)) && filteredOperativos.length < operativos.length && (
             <span
               className="hidden sm:block flex-shrink-0"
               style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-label)', fontFamily: 'var(--font-family-primary)' }}
@@ -520,60 +535,25 @@ export default function Operativos() {
           )}
         </div>
 
-        {/* Row 2: estado filter tabs */}
-        <div
-          className="flex items-stretch overflow-x-auto"
-          style={{ borderTop: '1px solid var(--border)' }}
-        >
-          {([
-            { value: 'all',           label: 'Todos',           dot: 'var(--muted-foreground)', count: operativos.length },
-            { value: 'vigentes',      label: 'Vigentes',        dot: '#16a34a',  count: operativos.filter(o => esVigente(o.estado)).length },
-            { value: 'nuevo',        label: 'Nuevo',           dot: '#FFA987',  count: operativos.filter(o => o.estado === 'nuevo').length },
-            { value: 'activo',       label: 'Activos',         dot: '#16a34a',  count: operativos.filter(o => o.estado === 'activo').length },
-            { value: 'planificación',label: 'En Planificación',dot: '#ca8a04',  count: operativos.filter(o => o.estado === 'planificación').length },
-            { value: 'en_proceso',   label: 'En Proceso',      dot: '#2563eb',  count: operativos.filter(o => o.estado === 'en_proceso').length },
-            { value: 'inactivo',     label: 'Inactivos',       dot: '#dc2626',  count: operativos.filter(o => o.estado === 'inactivo').length },
-            { value: 'finalizado',   label: 'Finalizados',     dot: '#6b7280',  count: operativos.filter(o => o.estado === 'finalizado').length },
-          ] as { value: FilterEstado; label: string; dot: string; count: number }[]).map((tab, idx, arr) => {
-            const isActive = filterEstado === tab.value;
-            return (
-              <button
-                key={tab.value}
-                onClick={() => setFilterEstado(tab.value)}
-                className="flex items-center gap-2 px-4 py-2.5 flex-shrink-0 relative transition-colors"
-                style={{
-                  background: isActive ? 'rgba(229,75,75,0.05)' : 'transparent',
-                  color: isActive ? 'var(--primary)' : 'var(--muted-foreground)',
-                  fontFamily: 'var(--font-family-primary)',
-                  fontSize: 'var(--text-label)',
-                  fontWeight: isActive ? 'var(--font-weight-semibold)' : 'var(--font-weight-medium)',
-                  border: 'none',
-                  borderRight: idx < arr.length - 1 ? '1px solid var(--border)' : 'none',
-                  borderBottom: isActive ? '2px solid var(--primary)' : '2px solid transparent',
-                  cursor: 'pointer',
-                  whiteSpace: 'nowrap',
-                }}
-              >
-                <span
-                  className="w-1.5 h-1.5 rounded-full flex-shrink-0"
-                  style={{ background: isActive ? 'var(--primary)' : tab.dot }}
-                />
-                {tab.label}
-                <span
-                  className="inline-flex items-center justify-center px-1.5 rounded-full min-w-[18px]"
-                  style={{
-                    background: isActive ? 'rgba(229,75,75,0.12)' : 'var(--muted)',
-                    color: isActive ? 'var(--primary)' : 'var(--muted-foreground)',
-                    fontSize: '10px',
-                    fontFamily: 'var(--font-family-primary)',
-                    fontWeight: 'var(--font-weight-semibold)',
-                  }}
-                >
-                  {tab.count}
-                </span>
-              </button>
-            );
-          })}
+        {/* Row 2: filtros desplegables (selección múltiple) */}
+        <div className="flex items-center gap-2 flex-wrap px-4 py-3" style={{ borderTop: '1px solid var(--border)' }}>
+          <span className="shrink-0" style={{ fontSize: 'var(--text-label)', color: 'var(--muted-foreground)', fontFamily: 'var(--font-family-primary)' }}>Filtrar por:</span>
+          <FiltroDesplegable<EstadoOperativo>
+            titulo="Estado"
+            seleccion={estadosSel}
+            onCambiar={setEstadosSel}
+            atajos={[{ label: 'Vigentes', valores: VIGENTES, count: operativos.filter(o => esVigente(o.estado)).length }]}
+            opciones={ESTADOS_FILTRO.map(e => ({ ...e, count: operativos.filter(o => o.estado === e.value).length }))}
+          />
+          {estadosSel.length > 0 && !sonVigentes(estadosSel) && (
+            <button type="button" onClick={() => setEstadosSel(VIGENTES)}
+              style={{ fontSize: 'var(--text-label)', color: 'var(--primary)', fontWeight: 'var(--font-weight-semibold)', background: 'none', border: 'none', cursor: 'pointer', padding: '0 4px', fontFamily: 'var(--font-family-primary)' }}>
+              Ver sólo vigentes
+            </button>
+          )}
+          {estadosSel.length === 0 && (
+            <span style={{ fontSize: 11, color: 'var(--muted-foreground)', fontFamily: 'var(--font-family-primary)' }}>Mostrando todos los operativos</span>
+          )}
         </div>
       </div>
 
@@ -629,7 +609,7 @@ export default function Operativos() {
               : 'No hay operativos activos o en proceso para el filtro seleccionado.'}
           </p>
           <button
-            onClick={() => { setSearchQuery(''); setFilterEstado('vigentes'); }}
+            onClick={() => { setSearchQuery(''); setEstadosSel(VIGENTES); }}
             className="flex items-center gap-2 px-4 py-2 rounded-[var(--radius-button)]"
             style={{
               background: 'var(--muted)', color: 'var(--foreground)',

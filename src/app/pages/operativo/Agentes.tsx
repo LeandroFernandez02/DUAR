@@ -2,7 +2,7 @@ import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } fro
 import { useOutletContext } from 'react-router';
 import {
   UserPlus, Users, Search, X, Check, Pencil, Trash2, ShieldCheck,
-  LayoutGrid, List, AlertTriangle, Loader2, History, Plus, ChevronDown,
+  LayoutGrid, List, AlertTriangle, Loader2, History, Plus,
 } from 'lucide-react';
 import { OperativoOutletContext } from './OperativoLayout';
 import {
@@ -14,6 +14,7 @@ import { haceCuanto } from '../../utils/tiempo';
 import TableroGrupos, { type TableroGruposHandle } from './TableroGrupos';
 import EditarAgenteModal, { EstadoOperativoBadge, ESTADO_OP_CONFIG } from '../../components/shared/EditarAgenteModal';
 import LineaTiempoModal from '../../components/shared/LineaTiempoModal';
+import FiltroDesplegable from '../../components/shared/FiltroDesplegable';
 import AvatarAgente from '../../components/shared/AvatarAgente';
 import { EstadoOperativoAgente, catEspecialidades } from '../../data/mockData';
 
@@ -24,99 +25,6 @@ const ESPECIALIDADES_FILTRO = [
   ...catEspecialidades.filter(e => !e.esRecursoCritico),
   ...catEspecialidades.filter(e => e.esRecursoCritico),
 ];
-
-/**
- * Filtro desplegable de selección múltiple (02/10). Cerrado es una sola píldora
- * ("Estado ▾", o "Estado: Disponible, Agrupado" si hay elegidos); abierto, las
- * opciones son píldoras que se marcan de a varias. Dentro de un filtro se suma
- * (Disponible O Agrupado); entre filtros se cruza (Y).
- */
-function FiltroDesplegable<T extends string>({ titulo, opciones, seleccion, onCambiar }: {
-  titulo: string;
-  opciones: { value: T; label: string; count: number; dot?: string | null }[];
-  seleccion: T[];
-  onCambiar: (v: T[]) => void;
-}) {
-  const [abierto, setAbierto] = useState(false);
-  const caja = useRef<HTMLDivElement>(null);
-
-  useEffect(() => {
-    if (!abierto) return;
-    const fuera = (e: MouseEvent) => { if (!caja.current?.contains(e.target as Node)) setAbierto(false); };
-    const tecla = (e: KeyboardEvent) => { if (e.key === 'Escape') setAbierto(false); };
-    document.addEventListener('mousedown', fuera);
-    document.addEventListener('keydown', tecla);
-    return () => { document.removeEventListener('mousedown', fuera); document.removeEventListener('keydown', tecla); };
-  }, [abierto]);
-
-  const alternar = (v: T) => onCambiar(seleccion.includes(v) ? seleccion.filter(x => x !== v) : [...seleccion, v]);
-  const elegidas = opciones.filter(o => seleccion.includes(o.value));
-  const resumen = elegidas.length === 0 ? '' : elegidas.length <= 2 ? elegidas.map(o => o.label).join(', ') : `${elegidas.length} seleccionadas`;
-  const activo = elegidas.length > 0;
-
-  return (
-    <div ref={caja} className="relative">
-      <button
-        type="button"
-        onClick={() => setAbierto(a => !a)}
-        aria-haspopup="true"
-        aria-expanded={abierto}
-        className="flex items-center gap-1.5 px-3 py-1 rounded-full"
-        style={{
-          border: activo || abierto ? '1.5px solid var(--primary)' : '1.5px solid var(--border)',
-          background: activo ? 'rgba(229,75,75,0.08)' : 'transparent',
-          color: activo ? 'var(--primary)' : 'var(--muted-foreground)',
-          fontSize: 'var(--text-label)',
-          fontWeight: activo ? 'var(--font-weight-semibold)' : 'var(--font-weight-medium)',
-          cursor: 'pointer', transition: 'all 0.13s', maxWidth: '100%',
-        }}
-      >
-        <span className="truncate">{titulo}{resumen ? `: ${resumen}` : ''}</span>
-        <ChevronDown size={13} style={{ flexShrink: 0, transform: abierto ? 'rotate(180deg)' : 'none', transition: 'transform 0.15s' }} />
-      </button>
-
-      {abierto && (
-        <div
-          className="absolute left-0 z-30 mt-2 p-3 rounded-[var(--radius-card)]"
-          style={{ top: '100%', width: 'min(440px, calc(100vw - 56px))', background: 'var(--card)', border: '1px solid var(--border)', boxShadow: 'var(--elevation-md)' }}
-        >
-          <div className="flex flex-wrap gap-2">
-            {opciones.map(f => {
-              const sel = seleccion.includes(f.value);
-              return (
-                <button
-                  key={f.value}
-                  type="button"
-                  onClick={() => alternar(f.value)}
-                  aria-pressed={sel}
-                  className="flex items-center gap-1.5 px-2.5 py-0.5 rounded-full"
-                  style={{
-                    border: sel ? '1.5px solid var(--primary)' : '1.5px solid var(--border)',
-                    background: sel ? 'rgba(229,75,75,0.08)' : 'transparent',
-                    color: sel ? 'var(--primary)' : 'var(--muted-foreground)',
-                    fontSize: 'var(--text-label)',
-                    fontWeight: sel ? 'var(--font-weight-semibold)' : 'var(--font-weight-medium)',
-                    cursor: 'pointer', transition: 'all 0.13s',
-                  }}
-                >
-                  {sel ? <Check size={11} className="shrink-0" /> : f.dot && <span className="w-1.5 h-1.5 rounded-full shrink-0" style={{ background: f.dot }} />}
-                  {f.label}
-                  <span className="px-1.5 rounded" style={{ background: sel ? 'rgba(229,75,75,0.15)' : 'var(--muted)', color: sel ? 'var(--primary)' : 'var(--muted-foreground)', fontSize: '10px' }}>{f.count}</span>
-                </button>
-              );
-            })}
-          </div>
-          {activo && (
-            <button type="button" onClick={() => onCambiar([])} className="mt-3"
-              style={{ fontSize: 11, color: 'var(--primary)', fontWeight: 'var(--font-weight-semibold)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
-              Quitar {titulo.toLowerCase()}
-            </button>
-          )}
-        </div>
-      )}
-    </div>
-  );
-}
 
 /** Dotación / institución. El personal del DUAR lleva el escudo. */
 function Dotacion({ agente }: { agente: PersonalOperativoApi }) {
