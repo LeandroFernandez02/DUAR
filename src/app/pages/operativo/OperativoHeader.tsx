@@ -43,6 +43,8 @@ export default function OperativoHeader({ operativo }: Props) {
     return nuevo;
   });
   const relleno = compacto ? 'px-2.5' : 'px-3';
+  // Achicado, los íconos se agrandan: son lo único que queda para reconocer cada botón.
+  const icono = compacto ? 17 : 13;
 
   const hasObjetivo = !!operativo.tieneObjetivoBuscado;
   const navigate = useNavigate();
@@ -116,7 +118,7 @@ export default function OperativoHeader({ operativo }: Props) {
             className="flex items-center justify-center rounded-[var(--radius-button)] transition-all"
             style={{
               width: 30, height: 30, flexShrink: 0,
-              background: 'transparent', border: '1.5px solid var(--border)', color: 'var(--muted-foreground)', cursor: 'pointer',
+              background: 'transparent', border: 'none', color: 'var(--muted-foreground)', cursor: 'pointer',
             }}
             onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'var(--muted)'; }}
             onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
@@ -160,7 +162,7 @@ export default function OperativoHeader({ operativo }: Props) {
               else (e.currentTarget as HTMLElement).style.opacity = '1';
             }}
           >
-            <Target size={13} />
+            <Target size={icono} />
             {!compacto && <span>Objetivo</span>}
           </button>
 
@@ -186,7 +188,7 @@ export default function OperativoHeader({ operativo }: Props) {
               (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)';
             }}
           >
-            <QrCode size={13} />
+            <QrCode size={icono} />
             {!compacto && <span>QR Agentes</span>}
           </button>
 
@@ -214,7 +216,7 @@ export default function OperativoHeader({ operativo }: Props) {
               (e.currentTarget as HTMLElement).style.borderColor = 'var(--border)';
             }}
           >
-            <FileText size={13} />
+            <FileText size={icono} />
             {!compacto && <span>Informe</span>}
           </button>
 
@@ -226,7 +228,7 @@ export default function OperativoHeader({ operativo }: Props) {
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg"
             style={{ background: 'rgba(229,75,75,0.08)' }}
           >
-            <Clock size={12} style={{ color: 'var(--primary)' }} />
+            <Clock size={compacto ? 15 : 12} style={{ color: 'var(--primary)' }} />
             <span style={{ color: 'var(--primary)', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)', fontFamily: 'var(--font-family-primary)' }}
               title={compacto ? `Día ${diasOperativo + 1} del operativo` : undefined}>
               {compacto ? diasOperativo + 1 : `Día ${diasOperativo + 1}`}
@@ -245,7 +247,7 @@ export default function OperativoHeader({ operativo }: Props) {
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg"
             style={{ background: 'var(--muted)' }}
           >
-            <Cloud size={12} style={{ color: 'var(--muted-foreground)' }} />
+            <Cloud size={compacto ? 15 : 12} style={{ color: 'var(--muted-foreground)' }} />
             <span style={{ fontSize: 'var(--text-base)', fontFamily: 'var(--font-family-primary)' }}>{actual.icono}</span>
             <span style={{ color: 'var(--foreground)', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)', fontFamily: 'var(--font-family-primary)' }}>
               {actual.temperatura}°C
