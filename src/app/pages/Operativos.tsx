@@ -42,16 +42,13 @@ function esVigente(estado: EstadoOperativo): boolean {
 
 /**
  * Coordinador a cargo del puesto de comando (presencia de mando, 01/10), para
- * la tarjeta y la fila del listado. Si el operativo ya cerró, el último que
- * estuvo a cargo. En ámbar sólo cuando está activo y nadie está a cargo.
+ * la tarjeta y la fila del listado: sólo su nombre, o "Sin coordinador a cargo".
+ * En ámbar sólo cuando el operativo está activo y nadie está a cargo (el
+ * historial de quién estuvo a cargo está en el puesto de comando del operativo).
  */
 function mandoDe(op: Operativo): { texto: string; alerta: boolean } {
   const m = op.mandoPreview;
-  const nombre = m ? `${m.nombre} ${m.apellido}`.trim() : '';
-  if (m?.vigente) return { texto: `A cargo: ${nombre}`, alerta: false };
-  if (op.estado === 'finalizado' || op.estado === 'eliminado') {
-    return { texto: m ? `Estuvo a cargo: ${nombre}` : 'Sin coordinador registrado', alerta: false };
-  }
+  if (m?.vigente) return { texto: `${m.nombre} ${m.apellido}`.trim(), alerta: false };
   return { texto: 'Sin coordinador a cargo', alerta: op.estado === 'activo' };
 }
 

@@ -49,7 +49,6 @@ export default function PuestoComando({ operativoId, soloLectura }: Props) {
 
   if (!mando) return null;
   const sinMando = !mando.aCargo && !soloLectura;
-  const otros = mando.presentes.length - (mando.aCargo ? 1 : 0);
 
   return (
     <>
@@ -67,14 +66,8 @@ export default function PuestoComando({ operativoId, soloLectura }: Props) {
         }}
       >
         <RadioTower size={13} style={{ flexShrink: 0 }} />
-        {mando.aCargo ? (
-          <span className="truncate">
-            <span className="hidden sm:inline" style={{ fontWeight: 'var(--font-weight-medium)' }}>Puesto de comando: </span>
-            {mando.aCargo.apellido}{otros > 0 ? ` +${otros}` : ''}
-          </span>
-        ) : (
-          <span className="truncate">{soloLectura ? 'Puesto de comando' : 'Sin coordinador a cargo'}</span>
-        )}
+        {/* Sólo el nombre de quien está a cargo; el resto de los presentes, al abrirlo. */}
+        <span className="truncate">{mando.aCargo ? nombreDe(mando.aCargo) : 'Sin coordinador a cargo'}</span>
       </button>
 
       {abierto && (
