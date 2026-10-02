@@ -12,7 +12,7 @@
  * está a cargo y quedan otros, elige sucesor. Un administrador puede hacer
  * todo, pero no figura él mismo como presente.
  */
-import { useCallback, useEffect, useState } from 'react';
+import { useCallback, useEffect, useRef, useState } from 'react';
 import { RadioTower, X, Crown, LogIn, LogOut, UserPlus, History, AlertTriangle, ArrowRightLeft, Loader2, User } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import {
@@ -371,14 +371,14 @@ function PuestoComandoModal({ operativoId, mando, soloLectura, onCambio, onClose
 
         {/* ── Historial ── */}
         <div className="pt-3" style={{ borderTop: '1px solid var(--border)' }}>
-          <button type="button" onClick={() => setVerHistorial(true)} className="flex items-center gap-1.5"
+          <button type="button" onClick={() => setVerHistorial(v => !v)} className="flex items-center gap-1.5"
             style={{ fontSize: 'var(--text-label)', color: 'var(--primary)', fontWeight: 'var(--font-weight-semibold)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
-            <History size={13} /> Ver historial
+            <History size={13} /> {verHistorial ? 'Ocultar historial' : 'Ver historial'}
           </button>
+          {/* En el mismo modal, pero corto: la lista tiene su propio alto máximo y se desplaza. */}
+          {verHistorial && <HistorialPuestoComando mando={mando} />}
         </div>
       </div>
-
-      {verHistorial && <HistorialPuestoComando mando={mando} onClose={() => setVerHistorial(false)} />}
     </Overlay>
   );
 }
@@ -439,61 +439,50 @@ const PUNTO: Record<EventoPuesto['tipo'], string> = {
 };
 const dia = (iso: string) => new Date(iso).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' });
 
-function HistorialPuestoComando({ mando, onClose }: { mando: MandoOperativoApi; onClose: () => void }) {
+function HistorialPuestoComando({ mando }: { mando: MandoOperativoApi }) {
   const eventos = armarEventos(mando);
+  const caja = useRef<HTMLDivElement>(null);
   let diaAnterior = '';
 
-  return (
-    <Overlay onClose={onClose} ancho={560}>
-      <div className="flex items-center justify-between px-5 py-4 flex-shrink-0" style={{ borderBottom: '1px solid var(--border)' }}>
-        <div className="flex items-center gap-3 min-w-0">
-          <IconBox bg="rgba(229,75,75,0.1)"><History size={17} style={{ color: 'var(--primary)' }} /></IconBox>
-          <div className="min-w-0">
-            <Titulo>Historial del puesto de comando</Titulo>
-            <Texto>Quién ingresó, quién se retiró y quién estuvo a cargo, con la hora en que pasó.</Texto>
-          </div>
-        </div>
-        <button type="button" onClick={onClose} aria-label="Cerrar" className="p-1.5 rounded-lg"
-          style={{ color: 'var(--muted-foreground)', background: 'none', border: 'none', cursor: 'pointer' }}>
-          <X size={17} />
-        </button>
-      </div>
+  // Al abrirlo queda a la vista, aunque el modal haya estado desplazado hacia arriba.
+  useEffect(() => { caja.current?.scrollIntoView({ block: 'nearest', behavior: 'smooth' }); }, []);
 
-      {/* Altura máxima propia: con muchos movimientos el cuerpo se desplaza, el modal no crece. */}
-      <div className="px-5 py-4" style={{ overflowY: 'auto', maxHeight: 'min(62vh, 520px)', fontFamily: 'var(--font-family-primary)' }}>
-        {eventos.length === 0 && <Texto>Todavía no hay movimientos en el puesto de comando.</Texto>}
-        <ol className="flex flex-col" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
-          {eventos.map(e => {
-            const d = dia(e.t);
-            const mostrarDia = d !== diaAnterior;
-            diaAnterior = d;
-            return (
-              <li key={e.clave}>
-                {mostrarDia && (
-                  <p className="uppercase tracking-wider mt-2 mb-1" style={{ fontSize: 10, color: 'var(--muted-foreground)', fontWeight: 'var(--font-weight-semibold)' }}>{d}</p>
-                )}
-                <div className="grid gap-x-3 py-2" style={{ gridTemplateColumns: '48px 1fr', borderTop: '1px solid var(--border)' }}>
-                  <span style={{ fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--foreground)', fontVariantNumeric: 'tabular-nums', paddingTop: 1 }}>
-                    {horaCorta(e.t)}
-                  </span>
-                  <div className="min-w-0">
-                    <p className="flex items-center gap-1.5" style={{ fontSize: 'var(--text-label)', color: 'var(--foreground)', fontWeight: 'var(--font-weight-semibold)', lineHeight: 1.35 }}>
-                      <span style={{ width: 7, height: 7, borderRadius: '50%', background: PUNTO[e.tipo], display: 'inline-block', flexShrink: 0 }} />
-                      {e.titulo}
+  return (
+    <div ref={caja} className="mt-2 rounded-[var(--radius-input)] px-3 py-1" style={{ border: '1px solid var(--border)', overflowY: 'auto', maxHeight: 230 }}>
+      {eventos.length === 0 && (
+        <p className="py-2" style={{ fontSize: 'var(--text-label)', color: 'var(--muted-foreground)' }}>Todavía no hay movimientos en el puesto de comando.</p>
+      )}
+      <ol className="flex flex-col" style={{ listStyle: 'none', margin: 0, padding: 0 }}>
+        {eventos.map(e => {
+          const d = dia(e.t);
+          const mostrarDia = d !== diaAnterior;
+          diaAnterior = d;
+          return (
+            <li key={e.clave}>
+              {mostrarDia && (
+                <p className="uppercase tracking-wider mt-2 mb-1" style={{ fontSize: 10, color: 'var(--muted-foreground)', fontWeight: 'var(--font-weight-semibold)' }}>{d}</p>
+              )}
+              <div className="grid gap-x-3 py-2" style={{ gridTemplateColumns: '44px 1fr', borderTop: '1px solid var(--border)' }}>
+                <span style={{ fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--foreground)', fontVariantNumeric: 'tabular-nums', paddingTop: 1 }}>
+                  {horaCorta(e.t)}
+                </span>
+                <div className="min-w-0">
+                  <p className="flex items-start gap-1.5" style={{ fontSize: 'var(--text-label)', color: 'var(--foreground)', fontWeight: 'var(--font-weight-semibold)', lineHeight: 1.35 }}>
+                    <span style={{ width: 7, height: 7, borderRadius: '50%', background: PUNTO[e.tipo], display: 'inline-block', flexShrink: 0, marginTop: 5 }} />
+                    {e.titulo}
+                  </p>
+                  {e.detalle && <p style={{ fontSize: 11, color: 'var(--muted-foreground)', lineHeight: 1.4 }}>{e.detalle}</p>}
+                  {e.registro && (
+                    <p className="flex items-center gap-1 mt-0.5" style={{ fontSize: 10.5, color: 'var(--muted-foreground)' }}>
+                      <User size={11} /> Registró: {e.registro}
                     </p>
-                    {e.detalle && <p style={{ fontSize: 11, color: 'var(--muted-foreground)', lineHeight: 1.4 }}>{e.detalle}</p>}
-                    {e.registro && (
-                      <p className="flex items-center gap-1 mt-0.5" style={{ fontSize: 10.5, color: 'var(--muted-foreground)' }}>
-                        <User size={11} /> Registró: {e.registro}
-                      </p>
-                    )}
-                  </div>
+                  )}
                 </div>
-              </li>
-            );
-          })}
-        </ol>
-      </div>
-    </Overlay>
+              </div>
+            </li>
+          );
+        })}
+      </ol>
+    </div>
   );
 }
