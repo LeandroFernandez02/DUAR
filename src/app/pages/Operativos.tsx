@@ -13,6 +13,7 @@ import { useApp } from '../context/AppContext';
 import { Operativo, EstadoOperativo } from '../data/mockData';
 import { operativosApi, ApiError } from '../services/api';
 import { mapearOperativo } from '../utils/mapearOperativo';
+import { ahoraEnArgentina, campoDesdeIso, fechaHoraArgentina } from '../utils/fechaArgentina';
 import SelectorLocalidad from '../components/shared/SelectorLocalidad';
 import FiltroDesplegable from '../components/shared/FiltroDesplegable';
 import {
@@ -84,7 +85,7 @@ const emptyForm = {
   fiscal: '',
   punto0lat: '',
   punto0lng: '',
-  fechaInicio: new Date().toISOString().slice(0, 16),
+  fechaInicio: '',   // se completa con la hora de Argentina al abrir "Nuevo operativo"
   descripcion: '',
 };
 
@@ -175,7 +176,7 @@ export default function Operativos() {
 
   /* ── open/close helpers ── */
   const openCreate = () => {
-    setForm(emptyForm);
+    setForm({ ...emptyForm, fechaInicio: ahoraEnArgentina() });
     setSelected(null);
     setFormErrors(new Set());
     setFormErrorMsg('');
@@ -193,7 +194,7 @@ export default function Operativos() {
       fiscal: op.fiscal || '',
       punto0lat: op.punto0 ? String(op.punto0.lat) : '',
       punto0lng: op.punto0 ? String(op.punto0.lng) : '',
-      fechaInicio: op.fechaInicio.length === 10 ? `${op.fechaInicio}T00:00` : op.fechaInicio.slice(0, 16),
+      fechaInicio: campoDesdeIso(op.fechaInicio),
       descripcion: op.descripcion || '',
     });
     setModal('edit');
@@ -663,7 +664,7 @@ export default function Operativos() {
                   <div className="flex items-center gap-2">
                     <Calendar size={13} style={{ color: 'var(--primary)', flexShrink: 0 }} />
                     <span style={{ fontSize: 'var(--text-label)', color: 'var(--muted-foreground)', fontFamily: 'var(--font-family-primary)' }}>
-                      {new Date(op.fechaInicio).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' })}
+                      {fechaHoraArgentina(op.fechaInicio)}
                     </span>
                   </div>
 
@@ -844,7 +845,7 @@ export default function Operativos() {
               <div className="hidden md:flex items-center gap-1.5">
                 <Calendar size={12} style={{ color: 'var(--primary)', flexShrink: 0 }} />
                 <span style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-label)', fontFamily: 'var(--font-family-primary)' }}>
-                  {new Date(op.fechaInicio).toLocaleString('es-AR', { dateStyle: 'short', timeStyle: 'short' })}
+                  {fechaHoraArgentina(op.fechaInicio)}
                 </span>
               </div>
 
@@ -1093,6 +1094,7 @@ export default function Operativos() {
                         <MapPickerModal
                           initialLat={form.punto0lat}
                           initialLng={form.punto0lng}
+                          localidad={form.ubicacion}
                           onConfirm={(lat, lng) => {
                             setForm(f => ({ ...f, punto0lat: lat.toFixed(5), punto0lng: lng.toFixed(5) }));
                             setFormErrors(p => { const n = new Set(p); n.delete('punto0lat'); n.delete('punto0lng'); return n; });

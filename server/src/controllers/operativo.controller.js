@@ -5,6 +5,7 @@
 import * as Operativo from '../models/operativo.model.js';
 import * as Auditoria from '../models/auditoria.model.js';
 import { validarDatosOperativo } from '../utils/validaciones.js';
+import { conZonaArgentina } from '../utils/fechas.js';
 
 const ENTIDAD = 'operativos';
 
@@ -67,7 +68,7 @@ export async function crear(req, res, next) {
       descripcion: b.descripcion || null,
       puntoCeroLat: lat,
       puntoCeroLng: lng,
-      fechaHoraInicio: b.fechaHoraInicio,
+      fechaHoraInicio: conZonaArgentina(b.fechaHoraInicio),
       coordinadorId: req.usuario.id,
     });
 
@@ -120,7 +121,8 @@ export async function actualizar(req, res, next) {
       }
     }
 
-    const actualizado = await Operativo.actualizar(id, b);
+    const datos = b.fechaHoraInicio ? { ...b, fechaHoraInicio: conZonaArgentina(b.fechaHoraInicio) } : b;
+    const actualizado = await Operativo.actualizar(id, datos);
 
     // Paso 6: valores previos y nuevos, para poder reconstruir la evolución
     // de la carátula o el Fiscal ante un requerimiento judicial.

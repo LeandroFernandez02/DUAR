@@ -75,6 +75,33 @@ describe('Sesión, roles y cuentas (CU-01, CU-04 a CU-07)', () => {
     assert.ok(!lista.some(u => u.email === 'auto.rechazado@prueba.duar'), 'no quedó creado');
   });
 
+  test('CU-07 · el DNI y el correo de un usuario eliminado se pueden volver a usar (migración 018)', async () => {
+    const datos = {
+      dni: '98000998', nombre: 'Reuso', apellido: 'Prueba Automatica',
+      email: 'auto.reuso@prueba.duar', password: 'ClaveReuso123', rol: 'agente',
+    };
+    // Si una corrida anterior quedó a medias, su usuario se da de baja primero.
+    await ctx.query(
+      `UPDATE usuarios SET estado = 'ELIMINADO', eliminado_en = now()
+        WHERE (dni = $1 OR lower(email) = $2) AND eliminado_en IS NULL`, [datos.dni, datos.email]);
+
+    const primero = await ctx.api('POST', '/usuarios', datos);
+    motivo(primero, 201);
+    // Mientras está vigente, el DNI y el correo siguen siendo únicos (también en mayúsculas).
+    motivo(await ctx.api('POST', '/usuarios', { ...datos, email: 'otro.reuso@prueba.duar' }), 409);
+    motivo(await ctx.api('POST', '/usuarios', { ...datos, dni: '98000997', email: 'AUTO.REUSO@prueba.duar' }), 409);
+
+    assert.ok([200, 204].includes((await ctx.api('DELETE', `/usuarios/${primero.json.usuario.id}`)).status));
+
+    const segundo = await ctx.api('POST', '/usuarios', datos);
+    motivo(segundo, 201);
+    assert.notEqual(segundo.json.usuario.id, primero.json.usuario.id, 'es un alta nueva, no la cuenta vieja');
+    assert.equal((await ctx.api('GET', `/usuarios/${primero.json.usuario.id}`)).status, 404, 'el eliminado sigue oculto');
+    const lista = (await ctx.api('GET', '/usuarios')).json.usuarios.filter(u => u.email === datos.email);
+    assert.equal(lista.length, 1);
+    assert.equal(lista[0].id, segundo.json.usuario.id);
+  });
+
   test('CU-06 · el coordinador no puede ascender a nadie a administrador → 403', async () => {
     motivo(await comoCoord('PUT', `/usuarios/${ctx.usuarios.delta.uid}`, { rol: 'administrador' }), 403, 'rol_no_permitido');
   });

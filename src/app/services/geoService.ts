@@ -125,3 +125,57 @@ export function separarLocalidad(valor: string): { localidad: string; provincia:
 }
 
 export const unirLocalidad = (localidad: string, provincia: string) => `${localidad}, ${provincia}`;
+
+/* ── Buscador de lugares para el mapa (Punto 0) ──────────────────────────────
+ * Nominatim, el buscador de OpenStreetMap: el mismo proveedor de los mapas que
+ * ya se usan, gratuito, sin clave y con CORS abierto. Encuentra localidades,
+ * direcciones, rutas, diques, cerros, parajes… (Georef sólo tiene localidades
+ * y calles urbanas). Su política de uso pide no buscar "mientras se escribe" y
+ * no más de una consulta por segundo: por eso se busca sólo al apretar Enter o
+ * el botón, nunca en cada tecla.
+ */
+export interface Lugar {
+  nombre: string;          // "Dique San Roque"
+  detalle: string;         // "La Calera, Departamento Santa María, Córdoba"
+  lat: number;
+  lng: number;
+  /** [sur, oeste, norte, este], para encuadrar una localidad entera. */
+  limites: [number, number, number, number] | null;
+}
+
+const NOMINATIM = 'https://nominatim.openstreetmap.org/search';
+
+/**
+ * Busca lugares en Argentina. `cerca` (los bordes del mapa visible: oeste, sur,
+ * este, norte) prioriza los resultados de la zona que se está mirando, sin
+ * excluir los de otras partes.
+ */
+export async function buscarLugares(texto: string, cerca?: [number, number, number, number]): Promise<Lugar[]> {
+  const params = new URLSearchParams({
+    q: texto, format: 'jsonv2', countrycodes: 'ar', limit: '6', 'accept-language': 'es',
+  });
+  if (cerca) params.set('viewbox', cerca.join(','));
+  const res = await fetch(`${NOMINATIM}?${params}`);
+  if (!res.ok) throw new Error(`El buscador respondió ${res.status}`);
+  const datos: Array<{ name: string; display_name: string; lat: string; lon: string; boundingbox?: string[] }> = await res.json();
+  return datos.map(d => {
+    const partes = d.display_name.split(', ');
+    const nombre = d.name || partes[0];
+    const detalle = partes.filter(p => p !== nombre && p !== 'Argentina' && !/^[A-Z]?\d{4}[A-Z]{0,3}$/.test(p)).join(', ');
+    const b = d.boundingbox?.map(Number);
+    return {
+      nombre, detalle, lat: Number(d.lat), lng: Number(d.lon),
+      limites: b && b.length === 4 && b.every(n => !Number.isNaN(n)) ? [b[0], b[2], b[1], b[3]] : null,
+    };
+  });
+}
+
+/** "-31.4201, -64.1888" (o separado por espacios) → coordenadas; null si el texto no son coordenadas válidas. */
+export function leerCoordenadas(texto: string): { lat: number; lng: number } | null {
+  const m = texto.trim().match(/^(-?\d{1,2}(?:[.,]\d+)?)\s*[,;\s]\s*(-?\d{1,3}(?:[.,]\d+)?)$/);
+  if (!m) return null;
+  // Con coma decimal ("-31,42 -64,18") el separador tiene que ser espacio o punto y coma.
+  const lat = Number(m[1].replace(',', '.'));
+  const lng = Number(m[2].replace(',', '.'));
+  return lat >= -90 && lat <= 90 && lng >= -180 && lng <= 180 ? { lat, lng } : null;
+}

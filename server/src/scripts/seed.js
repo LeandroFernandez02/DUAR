@@ -42,7 +42,10 @@ async function main() {
 
   // ── Usuario administrador ────────────────────────────────────────────────
   const { rows: existentes } = await query(
-    `SELECT id, estado FROM usuarios WHERE lower(email) = lower($1)`,
+    // Puede haber varias filas con ese correo (las eliminadas no cuentan para la
+    // unicidad, migración 018): primero la vigente, si no la eliminada más nueva.
+    `SELECT id, estado FROM usuarios WHERE lower(email) = lower($1)
+      ORDER BY eliminado_en IS NOT NULL, eliminado_en DESC LIMIT 1`,
     [ADMIN.email]
   );
 

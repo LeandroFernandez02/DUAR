@@ -94,18 +94,24 @@ export async function buscarPorId(id) {
  * Trae al usuario CON su hash, para verificar la contraseña en el login (CU-01).
  * Es la única función que expone `passwordHash`; se usa sólo desde el controlador
  * de autenticación y el valor nunca sale en una respuesta HTTP.
+ *
+ * Los ELIMINADOS quedan afuera: su correo se puede reutilizar (CU-07, migración
+ * 018), así que puede haber una fila eliminada y otra vigente con el mismo correo.
  */
 export async function buscarPorEmailConHash(email) {
   const { rows } = await query(
-    `SELECT ${CAMPOS}, u.password_hash AS "passwordHash" ${JOINS} WHERE lower(u.email) = lower($1)`,
+    `SELECT ${CAMPOS}, u.password_hash AS "passwordHash" ${JOINS}
+      WHERE lower(u.email) = lower($1) AND u.eliminado_en IS NULL`,
     [email]
   );
   return rows[0] ?? null;
 }
 
+/** ¿Hay un usuario NO eliminado con ese DNI o correo? (el de un eliminado se reutiliza, CU-07). */
 export async function existeDniOEmail(dni, email) {
   const { rows } = await query(
-    `SELECT dni, email FROM usuarios WHERE dni = $1 OR lower(email) = lower($2)`,
+    `SELECT dni, email FROM usuarios
+      WHERE (dni = $1 OR lower(email) = lower($2)) AND eliminado_en IS NULL`,
     [dni, email]
   );
   return {
