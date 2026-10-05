@@ -75,31 +75,67 @@ describe('Sesión, roles y cuentas (CU-01, CU-04 a CU-07)', () => {
     assert.ok(!lista.some(u => u.email === 'auto.rechazado@prueba.duar'), 'no quedó creado');
   });
 
-  test('CU-07 · el DNI y el correo de un usuario eliminado se pueden volver a usar (migración 018)', async () => {
-    const datos = {
-      dni: '98000998', nombre: 'Reuso', apellido: 'Prueba Automatica',
-      email: 'auto.reuso@prueba.duar', password: 'ClaveReuso123', rol: 'agente',
-    };
-    // Si una corrida anterior quedó a medias, su usuario se da de baja primero.
-    await ctx.query(
-      `UPDATE usuarios SET estado = 'ELIMINADO', eliminado_en = now()
-        WHERE (dni = $1 OR lower(email) = $2) AND eliminado_en IS NULL`, [datos.dni, datos.email]);
+  // CU-07 (05/10): quien vuelve con el DNI de una cuenta eliminada recupera ESA cuenta.
+  const REUSO = {
+    dni: '98000998', nombre: 'Reuso', apellido: 'Prueba Automatica',
+    email: 'auto.reuso@prueba.duar', password: 'ClaveReuso123', rol: 'agente',
+  };
+  /** Si una corrida anterior quedó a medias, su cuenta se da de baja primero. */
+  const darDeBajaReuso = () => ctx.query(
+    `UPDATE usuarios SET estado = 'ELIMINADO', eliminado_en = now()
+      WHERE (dni = $1 OR lower(email) LIKE 'auto.reuso%@prueba.duar') AND eliminado_en IS NULL`, [REUSO.dni]);
+  const loginReuso = (email, password) => fetch(`${process.env.TEST_API_URL ?? 'http://localhost:3001/api'}/auth/login`, {
+    method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }),
+  });
 
-    const primero = await ctx.api('POST', '/usuarios', datos);
+  test('CU-07 · el DNI de una cuenta eliminada la REACTIVA: misma cuenta, datos y clave nuevos, correo sin confirmar', async () => {
+    await darDeBajaReuso();
+    const primero = await ctx.api('POST', '/usuarios', REUSO);
     motivo(primero, 201);
-    // Mientras está vigente, el DNI y el correo siguen siendo únicos (también en mayúsculas).
-    motivo(await ctx.api('POST', '/usuarios', { ...datos, email: 'otro.reuso@prueba.duar' }), 409);
-    motivo(await ctx.api('POST', '/usuarios', { ...datos, dni: '98000997', email: 'AUTO.REUSO@prueba.duar' }), 409);
+    const id = primero.json.usuario.id;
+    // Mientras está vigente, el DNI y el correo siguen siendo únicos (el correo, también en mayúsculas).
+    motivo(await ctx.api('POST', '/usuarios', { ...REUSO, email: 'auto.reuso2@prueba.duar' }), 409);
+    motivo(await ctx.api('POST', '/usuarios', { ...REUSO, dni: '98000997', email: 'AUTO.REUSO@prueba.duar' }), 409);
 
-    assert.ok([200, 204].includes((await ctx.api('DELETE', `/usuarios/${primero.json.usuario.id}`)).status));
+    assert.equal((await ctx.api('DELETE', `/usuarios/${id}`)).status, 204);
+    assert.equal((await ctx.api('GET', `/usuarios/${id}`)).status, 404);
 
-    const segundo = await ctx.api('POST', '/usuarios', datos);
-    motivo(segundo, 201);
-    assert.notEqual(segundo.json.usuario.id, primero.json.usuario.id, 'es un alta nueva, no la cuenta vieja');
-    assert.equal((await ctx.api('GET', `/usuarios/${primero.json.usuario.id}`)).status, 404, 'el eliminado sigue oculto');
-    const lista = (await ctx.api('GET', '/usuarios')).json.usuarios.filter(u => u.email === datos.email);
-    assert.equal(lista.length, 1);
-    assert.equal(lista[0].id, segundo.json.usuario.id);
+    const vuelta = await ctx.api('POST', '/usuarios', {
+      ...REUSO, nombre: 'Reusado', email: 'auto.reuso2@prueba.duar', password: 'ClaveNueva456',
+    });
+    motivo(vuelta, 201);
+    assert.equal(vuelta.json.reactivado, true);
+    assert.equal(vuelta.json.usuario.id, id, 'es la MISMA cuenta: el historial sigue unido');
+    assert.equal(vuelta.json.usuario.nombre, 'Reusado');
+    assert.equal(vuelta.json.usuario.email, 'auto.reuso2@prueba.duar');
+    assert.equal(vuelta.json.usuario.estado, 'PENDIENTE', 'tiene que confirmar el correo otra vez');
+    assert.equal(vuelta.json.usuario.emailConfirmado, false);
+
+    // Vale sólo la clave nueva.
+    assert.equal((await loginReuso('auto.reuso2@prueba.duar', 'ClaveReuso123')).status, 401);
+    assert.equal((await loginReuso('auto.reuso2@prueba.duar', 'ClaveNueva456')).status, 200);
+
+    const { rows } = await ctx.query(
+      `SELECT accion FROM logs_auditoria WHERE entidad_afectada = 'usuarios' AND registro_id = $1 ORDER BY 1`, [id]);
+    assert.ok(rows.some(r => r.accion === 'REACTIVAR'), 'queda auditada como reactivación');
+    const filas = (await ctx.query(`SELECT count(*)::int AS n FROM usuarios WHERE dni = $1`, [REUSO.dni])).rows[0].n;
+    assert.equal(filas, 1, 'no se creó una segunda cuenta');
+  });
+
+  test('CU-02/07 · registrarse por QR con el DNI de una cuenta eliminada también la reactiva', async () => {
+    const { rows: [cuenta] } = await ctx.query(`SELECT id FROM usuarios WHERE dni = $1 AND eliminado_en IS NULL`, [REUSO.dni]);
+    assert.ok(cuenta, 'la cuenta de la prueba anterior');
+    assert.equal((await ctx.api('DELETE', `/usuarios/${cuenta.id}`)).status, 204);
+
+    const qr = (await ctx.api('GET', `/operativos/${ctx.op}/qr`)).json.qr.token;
+    const r = await ctx.api('POST', '/auth/registro', {
+      qrToken: qr, dni: REUSO.dni, nombre: 'Reuso', apellido: 'Por QR',
+      email: 'auto.reuso3@prueba.duar', password: 'ClaveQr789',
+    }, null);
+    motivo(r, 201);
+    assert.equal(r.json.reactivado, true);
+    assert.equal(r.json.usuario.id, cuenta.id);
+    assert.equal(r.json.usuario.estado, 'PENDIENTE');
   });
 
   test('CU-06 · el coordinador no puede ascender a nadie a administrador → 403', async () => {

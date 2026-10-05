@@ -191,7 +191,11 @@ export default function Usuarios() {
     try {
       if (modal === 'create') {
         // El backend hashea con bcrypt (CU-05 paso 4); acá nunca se guarda en claro.
-        await usuariosApi.crear({ ...datos, password: form.password });
+        const { usuario: alta, reactivado } = await usuariosApi.crear({ ...datos, password: form.password });
+        // CU-07 (05/10): el DNI era de una cuenta eliminada → se recuperó esa misma, con su historial.
+        if (reactivado) {
+          toast.success(`Se reactivó la cuenta de ${alta.nombre} ${alta.apellido}, que estaba eliminada: conserva su historial de operativos.`);
+        }
       } else if (selected) {
         await usuariosApi.actualizar(selected.id, {
           ...datos,

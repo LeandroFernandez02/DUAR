@@ -190,6 +190,61 @@ export async function actualizar(id, campos) {
 }
 
 /**
+ * La cuenta ELIMINADA de esa persona (por DNI), si existe: la más reciente.
+ * El DNI identifica a la persona real; el correo no (puede cambiar de correo).
+ */
+export async function buscarEliminadoPorDni(dni) {
+  const { rows } = await query(
+    `SELECT ${CAMPOS} ${JOINS}
+      WHERE u.dni = $1 AND u.eliminado_en IS NOT NULL
+      ORDER BY u.eliminado_en DESC LIMIT 1`,
+    [dni]
+  );
+  return rows[0] ?? null;
+}
+
+/**
+ * REACTIVACIÓN (CU-07, decisión del 05/10): quien vuelve a registrarse con el
+ * DNI de una cuenta eliminada recupera ESA cuenta — mismo id, así su historial
+ * de operativos sigue siendo uno solo — con los datos que acaba de cargar.
+ *
+ * Como si fuera un alta nueva en todo lo demás:
+ *  - Vale sólo la contraseña nueva.
+ *  - Vuelve a PENDIENTE y tiene que confirmar el correo otra vez: saber un DNI
+ *    no alcanza para apropiarse de una cuenta.
+ *  - Los enlaces de correo que hubieran quedado pendientes (confirmación o
+ *    recuperación de clave de antes de la baja) se anulan.
+ *  - Los datos que no se cargaron ahora quedan vacíos: no se arrastra nada
+ *    viejo que la persona no haya vuelto a confirmar.
+ */
+export async function reactivar(id, {
+  nombre, apellido, email, passwordHash, rolId,
+  telefono = null, fechaNacimiento = null, genero = null,
+  institucionId = null, dotacionId = null, especialidadId = null,
+  grupoSanguineo = null, alergiaIds = [],
+}) {
+  await withTransaction(async (client) => {
+    const { rowCount } = await client.query(
+      `UPDATE usuarios
+          SET nombre = $2, apellido = $3, email = $4, password_hash = $5, rol_id = $6,
+              telefono = $7, fecha_nacimiento = $8, genero = $9,
+              institucion_id = $10, dotacion_id = $11, especialidad_id = $12,
+              grupo_sanguineo = COALESCE($13, 'DESCONOCIDO')::tipo_sangre,
+              estado = 'PENDIENTE', email_confirmado = false,
+              eliminado_en = NULL, actualizado_en = CURRENT_TIMESTAMP
+        WHERE id = $1 AND eliminado_en IS NOT NULL`,
+      [id, nombre, apellido, email, passwordHash, rolId, telefono, fechaNacimiento, genero,
+       institucionId, dotacionId, especialidadId, grupoSanguineo]
+    );
+    // Otro pedido la reactivó un instante antes: que el controlador lo trate como duplicado.
+    if (rowCount === 0) throw Object.assign(new Error('La cuenta ya no está eliminada.'), { code: '23505' });
+    await client.query(`UPDATE tokens_recuperacion SET usado = true WHERE usuario_id = $1 AND usado = false`, [id]);
+    await sincronizarAlergias(client, id, alergiaIds);
+  });
+  return buscarPorId(id);
+}
+
+/**
  * Borrado LÓGICO puro (Decisión A). Nunca se hace DELETE: el historial operativo
  * del usuario debe permanecer disponible para los informes.
  */

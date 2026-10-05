@@ -81,6 +81,7 @@ export async function obtener(req, res, next) {
  * poder devolver un mensaje claro. La constraint UNIQUE de PostgreSQL queda
  * igual como última línea de defensa (lo dice la Observación del CU).
  * Paso 4: la contraseña se guarda con bcrypt, nunca en claro.
+ * Reactivación (05/10): el DNI de una cuenta eliminada la recupera (ver Usuario.reactivar).
  */
 export async function crear(req, res, next) {
   try {
@@ -108,22 +109,26 @@ export async function crear(req, res, next) {
       return res.status(403).json({ error: 'Sólo un administrador puede crear administradores.', motivo: 'rol_no_permitido' });
     }
 
-    const creado = await Usuario.crear({
-      ...b,
-      rolId: rol.id,
-      passwordHash: await bcrypt.hash(b.password, 10),
-    });
+    const datosAlta = { ...b, rolId: rol.id, passwordHash: await bcrypt.hash(b.password, 10) };
+
+    // CU-07 (05/10): si el DNI es de una cuenta eliminada, se reactiva esa misma
+    // cuenta (mismo id, historial unido) en vez de crear una segunda.
+    const eliminado = await Usuario.buscarEliminadoPorDni(b.dni);
+    const creado = eliminado
+      ? await Usuario.reactivar(eliminado.id, datosAlta)
+      : await Usuario.crear(datosAlta);
 
     await Auditoria.registrar({
       usuarioId: req.usuario.id,
-      accion: Auditoria.ACCION.CREAR,
+      accion: eliminado ? Auditoria.ACCION.REACTIVAR : Auditoria.ACCION.CREAR,
       entidad: ENTIDAD,
       registroId: creado.id,
+      valoresPrevios: eliminado ?? undefined,
       valoresNuevos: creado,
       ip: req.ip,
     });
 
-    res.status(201).json({ usuario: creado });
+    res.status(201).json({ usuario: creado, reactivado: !!eliminado });
   } catch (err) { next(err); }
 }
 

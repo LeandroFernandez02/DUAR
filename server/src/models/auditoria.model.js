@@ -15,6 +15,7 @@ export const ACCION = {
   CREAR: 'CREAR',
   MODIFICAR: 'MODIFICAR',
   ELIMINAR: 'ELIMINAR',
+  REACTIVAR: 'REACTIVAR',   // vuelve una cuenta eliminada (CU-07, 05/10)
   LOGIN: 'LOGIN',
 };
 

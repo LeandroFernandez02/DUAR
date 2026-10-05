@@ -23,6 +23,15 @@ const punto0Icon = new L.Icon({
   shadowSize: [41, 41],
 });
 
+/* Puntero del mapa (05/10): la flecha de siempre; la mano cerrada sólo mientras
+ * se mantiene apretado para arrastrar. Leaflet trae la mano abierta todo el
+ * tiempo (.leaflet-grab), que hace pensar que un clic suelto hace algo. */
+const ESTILO_PUNTERO = `
+  .mapa-punto0.leaflet-container.leaflet-grab { cursor: default; }
+  .mapa-punto0.leaflet-container.leaflet-grab:active,
+  .leaflet-dragging .mapa-punto0.leaflet-container.leaflet-grab { cursor: grabbing; }
+`;
+
 /* ── Interacción con el mapa (pedido del 05/10) ──
  * - Doble clic (o doble toque) marca el Punto 0: un clic suelto no hace nada,
  *   así arrastrar para moverse nunca deja un marcador sin querer.
@@ -344,8 +353,10 @@ export function MapPickerModal({ onConfirm, initialLat, initialLng, localidad }:
 
             {/* Map */}
             <div className="flex-1 min-h-0" style={{ position: 'relative' }}>
+              <style>{ESTILO_PUNTERO}</style>
               <MapContainer
                 ref={mapaRef}
+                className="mapa-punto0"
                 key={mapKey}
                 center={centerCoords}
                 zoom={13}

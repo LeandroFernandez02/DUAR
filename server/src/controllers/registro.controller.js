@@ -96,7 +96,10 @@ export async function registrar(req, res, next) {
     );
     if (!rolAgente[0]) return res.status(500).json({ error: 'Falta el rol "agente" en el catálogo.' });
 
-    const creado = await Usuario.crear({
+    // CU-07 (05/10): quien vuelve con el DNI de una cuenta eliminada recupera esa
+    // misma cuenta (su historial sigue unido); igual tiene que confirmar el correo.
+    const eliminado = await Usuario.buscarEliminadoPorDni(b.dni);
+    const datosAlta = {
       dni: b.dni,
       nombre: b.nombre,
       apellido: b.apellido,
@@ -113,13 +116,17 @@ export async function registrar(req, res, next) {
       alergiaIds: b.alergiaIds ?? [],
       // `esConductor` NO se acepta del cliente: es táctico y
       // lo decide el Coordinador en CU-17 (nota del docx).
-    });
+    };
+    const creado = eliminado
+      ? await Usuario.reactivar(eliminado.id, datosAlta)
+      : await Usuario.crear(datosAlta);
 
     await Auditoria.registrar({
       usuarioId: creado.id,          // se registra a sí mismo
-      accion: Auditoria.ACCION.CREAR,
+      accion: eliminado ? Auditoria.ACCION.REACTIVAR : Auditoria.ACCION.CREAR,
       entidad: 'usuarios',
       registroId: creado.id,
+      valoresPrevios: eliminado ?? undefined,
       valoresNuevos: creado,
       ip: req.ip,
     });
@@ -149,6 +156,7 @@ export async function registrar(req, res, next) {
     res.status(201).json({
       token,
       usuario: creado,
+      reactivado: !!eliminado,
       operativo: { id: acceso.operativoId, titulo: acceso.titulo, localidad: acceso.localidad },
     });
   } catch (err) { next(err); }

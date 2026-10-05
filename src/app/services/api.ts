@@ -292,7 +292,8 @@ export const qrApi = {
 export const registroApi = {
   /** CU-02 · crea el perfil global y deja la sesión abierta. */
   registrar: (datos: RegistroQRPayload) =>
-    api.post<{ token: string; usuario: UsuarioApi; operativo: OperativoQRApi }>(
+    // `reactivado`: el DNI era de una cuenta eliminada y se recuperó esa misma (CU-07, 05/10).
+    api.post<{ token: string; usuario: UsuarioApi; operativo: OperativoQRApi; reactivado: boolean }>(
       '/auth/registro',
       datos
     ),
@@ -381,7 +382,7 @@ export const operativosApi = {
 export const usuariosApi = {
   listar: () => api.get<{ usuarios: UsuarioApi[] }>('/usuarios'),
   crear: (datos: CrearUsuarioPayload) =>
-    api.post<{ usuario: UsuarioApi }>('/usuarios', datos),
+    api.post<{ usuario: UsuarioApi; reactivado: boolean }>('/usuarios', datos),
   actualizar: (id: string, datos: Partial<CrearUsuarioPayload>) =>
     api.put<{ usuario: UsuarioApi }>(`/usuarios/${id}`, datos),
   eliminar: (id: string) => api.del<void>(`/usuarios/${id}`),

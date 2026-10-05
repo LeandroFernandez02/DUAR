@@ -62,6 +62,8 @@ export default function Registro() {
 
   /* ── Email confirmation (nuevo usuario) ── */
   const [nuevoUserEmail, setNuevoUserEmail] = useState('');
+  // El DNI era de una cuenta dada de baja: se recuperó esa misma (CU-07, 05/10).
+  const [cuentaReactivada, setCuentaReactivada] = useState(false);
   const [nuevoUserNombre, setNuevoUserNombre] = useState('');
   const [urlConfirmacionDev, setUrlConfirmacionDev] = useState('');
 
@@ -426,7 +428,7 @@ export default function Registro() {
       // CU-02 paso 5: el registro se persiste en PostgreSQL y queda auditado.
       // El backend devuelve sesión abierta para poder encadenar el alta sin
       // volver a pedir la contraseña recién elegida.
-      const { token } = await registroApi.registrar({
+      const { token, reactivado } = await registroApi.registrar({
         qrToken,
         dni: regForm.dni,
         nombre: regForm.nombre,
@@ -442,6 +444,7 @@ export default function Registro() {
         alergiaIds: regForm.alergiaIds,
       });
       setToken(token);
+      setCuentaReactivada(reactivado);
       setNuevoUserEmail(regForm.email);
       setNuevoUserNombre(regForm.nombre);
       setPendingUserId('sesion');
@@ -1056,6 +1059,12 @@ export default function Registro() {
                 Te enviamos un correo a la casilla de abajo. Hacé clic en el link para confirmar tu cuenta —
                 recién ahí vas a poder unirte a <strong style={{ color: 'var(--foreground)' }}>{operativo.nombre}</strong>.
               </p>
+              {cuentaReactivada && (
+                <p className="mt-2" style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-label)', lineHeight: 1.5 }}>
+                  Tu DNI ya tenía una cuenta que había sido dada de baja: la recuperamos con los datos que cargaste,
+                  así conservás tu historial de operativos.
+                </p>
+              )}
             </div>
 
             <div
