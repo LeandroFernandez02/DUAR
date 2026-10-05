@@ -23,11 +23,20 @@ const punto0Icon = new L.Icon({
   shadowSize: [41, 41],
 });
 
-/* ── Handles map clicks ── */
-function ClickHandler({ onMapClick }: { onMapClick: (lat: number, lng: number) => void }) {
+/* ── Interacción con el mapa (pedido del 05/10) ──
+ * - Doble clic (o doble toque) marca el Punto 0: un clic suelto no hace nada,
+ *   así arrastrar para moverse nunca deja un marcador sin querer.
+ * - Moverse: mantener apretado y arrastrar.
+ * - Zoom: los botones + / − o la rueda del mouse (en el celular, pellizcando).
+ *   Por eso el doble clic NO acerca (doubleClickZoom={false} en el mapa).
+ * - Un clic suelto sólo cierra la lista de resultados del buscador. */
+function ClickHandler({ onDobleClic, onClic }: { onDobleClic: (lat: number, lng: number) => void; onClic: () => void }) {
   useMapEvents({
-    click(e) {
-      onMapClick(e.latlng.lat, e.latlng.lng);
+    dblclick(e) {
+      onDobleClic(e.latlng.lat, e.latlng.lng);
+    },
+    click() {
+      onClic();
     },
   });
   return null;
@@ -144,7 +153,7 @@ export function MapPickerModal({ onConfirm, initialLat, initialLng, localidad }:
     }
   };
 
-  /** Elegir un resultado: el marcador va ahí y el mapa lo encuadra; se puede ajustar con un clic. */
+  /** Elegir un resultado: el marcador va ahí y el mapa lo encuadra; se puede ajustar con doble clic. */
   const elegirLugar = (lugar: Lugar) => {
     setSelected({ lat: lugar.lat, lng: lugar.lng });
     setResultados(null);
@@ -154,6 +163,7 @@ export function MapPickerModal({ onConfirm, initialLat, initialLng, localidad }:
 
   const handleClose = () => setIsOpen(false);
 
+  /** Doble clic en el mapa: ahí va el Punto 0. */
   const handleMapClick = useCallback((lat: number, lng: number) => {
     setSelected({ lat, lng });
     setResultados(null);
@@ -198,8 +208,8 @@ export function MapPickerModal({ onConfirm, initialLat, initialLng, localidad }:
         <div
           className="fixed inset-0 flex items-center justify-center"
           style={{ zIndex: 99999, background: 'rgba(0,0,0,0.65)' }}
-          onClick={e => { if (e.target === e.currentTarget) handleClose(); }}
         >
+          {/* Un clic fuera del modal NO lo cierra (se perdería el punto marcado): sólo la X o Cancelar. */}
           <div
             className="flex flex-col rounded-[var(--radius-card)] overflow-hidden"
             style={{
@@ -327,7 +337,7 @@ export function MapPickerModal({ onConfirm, initialLat, initialLng, localidad }:
                   fontSize: 'var(--text-label)',
                   color: avisoBusqueda ? '#b45309' : 'var(--muted-foreground)',
                 }}>
-                  {avisoBusqueda || 'Buscá el lugar o hacé clic en el mapa para colocar el marcador en el punto de última ubicación conocida (LSP / Punto 0).'}
+                  {avisoBusqueda || 'Buscá el lugar o hacé doble clic en el mapa para marcar el punto de última ubicación conocida (LSP / Punto 0). Arrastrá para moverte; acercá con + / − o la rueda del mouse.'}
                 </p>
               </div>
             </div>
@@ -339,14 +349,34 @@ export function MapPickerModal({ onConfirm, initialLat, initialLng, localidad }:
                 key={mapKey}
                 center={centerCoords}
                 zoom={13}
+                maxZoom={19}
                 style={{ width: '100%', height: '100%' }}
                 zoomControl={true}
+                doubleClickZoom={false}
+                scrollWheelZoom={true}
+                dragging={true}
               >
+                {/* Satelital (Esri World Imagery) + nombres de lugares y rutas encima, para
+                    ubicarse en el terreno sin perder la referencia de localidades y caminos.
+                    En zonas rurales la foto llega hasta el nivel 18; más cerca se amplía la última. */}
                 <TileLayer
-                  url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
-                  attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                  url="https://server.arcgisonline.com/ArcGIS/rest/services/World_Imagery/MapServer/tile/{z}/{y}/{x}"
+                  attribution="Imágenes &copy; Esri, Maxar, Earthstar Geographics"
+                  maxNativeZoom={18}
+                  maxZoom={19}
                 />
-                <ClickHandler onMapClick={handleMapClick} />
+                <TileLayer
+                  url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Transportation/MapServer/tile/{z}/{y}/{x}"
+                  maxNativeZoom={18}
+                  maxZoom={19}
+                />
+                <TileLayer
+                  url="https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile/{z}/{y}/{x}"
+                  attribution="Referencias &copy; Esri"
+                  maxNativeZoom={18}
+                  maxZoom={19}
+                />
+                <ClickHandler onDobleClic={handleMapClick} onClic={() => setResultados(null)} />
                 {selected && (
                   <>
                     <Marker position={[selected.lat, selected.lng]} icon={punto0Icon} />
@@ -379,7 +409,7 @@ export function MapPickerModal({ onConfirm, initialLat, initialLng, localidad }:
                       color: '#fff',
                       textAlign: 'center',
                     }}>
-                      Hacé clic para marcar el Punto 0
+                      Doble clic para marcar el Punto 0
                     </p>
                   </div>
                 </div>
