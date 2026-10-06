@@ -255,8 +255,8 @@ export async function reactivar(id, {
  * Borrado LÓGICO puro (Decisión A). Nunca se hace DELETE: el historial operativo
  * del usuario debe permanecer disponible para los informes.
  */
-export async function eliminarLogico(id) {
-  await query(
+export async function eliminarLogico(id, client = null) {
+  await (client ? client.query.bind(client) : query)(
     `UPDATE usuarios
         SET estado = 'ELIMINADO', eliminado_en = CURRENT_TIMESTAMP, actualizado_en = CURRENT_TIMESTAMP
       WHERE id = $1`,

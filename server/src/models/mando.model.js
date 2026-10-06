@@ -268,10 +268,19 @@ export async function cerrarTodoCon(client, operativoId, autorId, motivo) {
  * ese flujo nadie puede elegir sucesor, y el puesto lo muestra en ámbar.
  */
 export async function cerrarPorAltaComoAgenteCon(client, usuarioId, autorId, operativoTitulo) {
+  await cerrarPresenciaDeCon(client, usuarioId, autorId, `Pasó a rastrillar como agente en "${operativoTitulo}"`);
+}
+
+/**
+ * Cierra la presencia vigente de un coordinador (y su mando, si estaba a cargo)
+ * sin pedir sucesor: lo usan los flujos donde nadie puede elegirlo, como pasar a
+ * rastrillar como agente o que se elimine su cuenta (CU-07). El operativo queda
+ * sin coordinador a cargo y el puesto lo muestra en ámbar.
+ */
+export async function cerrarPresenciaDeCon(client, usuarioId, autorId, motivo) {
   const previa = await presenciaActiva(client, usuarioId);
   if (!previa) return;
   const t = await ahora(client);
-  const motivo = `Pasó a rastrillar como agente en "${operativoTitulo}"`;
   await cerrarPresencia(client, previa.id, t, autorId, motivo);
   const mando = await mandoActivo(client, previa.operativoId);
   if (mando?.usuarioId === usuarioId) await cerrarMando(client, mando.id, t, autorId, motivo);

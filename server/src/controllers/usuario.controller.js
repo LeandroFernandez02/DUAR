@@ -15,10 +15,11 @@ import bcrypt from 'bcryptjs';
 import * as Usuario from '../models/usuario.model.js';
 import * as Sesion from '../models/sesion.model.js';
 import * as Auditoria from '../models/auditoria.model.js';
+import * as AgenteOperativo from '../models/agenteOperativo.model.js';
 import * as TokenEmail from '../models/tokenEmail.model.js';
 import { enviarConfirmacion } from '../services/email.service.js';
 import { validarDatosPersonales } from '../utils/validaciones.js';
-import { query } from '../config/db.js';
+import { query, withTransaction } from '../config/db.js';
 
 const ENTIDAD = 'usuarios';
 const FRONTEND_URL = process.env.FRONTEND_URL ?? 'http://localhost:5173';
@@ -251,6 +252,8 @@ export async function actualizar(req, res, next) {
  * Paso 5 · Soft delete: NUNCA DELETE, el historial operativo debe sobrevivir.
  * Paso 6 · Invalidación inmediata de sesiones (Decisión E).
  * Paso 7 · Registro en logs_auditoria.
+ * Además (05/10): deja los operativos y el puesto de comando en los que estaba
+ * (AgenteOperativo.egresarPorCuentaEliminadaCon).
  */
 export async function eliminar(req, res, next) {
   try {
@@ -275,7 +278,13 @@ export async function eliminar(req, res, next) {
       }
     }
 
-    await Usuario.eliminarLogico(id);
+    // Todo junto: si la persona está en el terreno con un grupo, no se elimina
+    // nada (409 grupo_en_terreno) en vez de dejar la cuenta borrada a medias.
+    const operativosDejados = await withTransaction(async (client) => {
+      const dejados = await AgenteOperativo.egresarPorCuentaEliminadaCon(client, id, req.usuario.id);
+      await Usuario.eliminarLogico(id, client);
+      return dejados;
+    });
     await Sesion.revocarTodasDe(id);   // expulsión inmediata
 
     await Auditoria.registrar({
@@ -284,7 +293,7 @@ export async function eliminar(req, res, next) {
       entidad: ENTIDAD,
       registroId: id,
       valoresPrevios: previo,
-      valoresNuevos: { ...previo, estado: 'ELIMINADO' },
+      valoresNuevos: { ...previo, estado: 'ELIMINADO', operativosDejados },
       ip: req.ip,
     });
 

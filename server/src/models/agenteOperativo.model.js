@@ -268,6 +268,47 @@ export async function egresar(id, usuarioId = null) {
 }
 
 /**
+ * CU-07 (05/10): al eliminar una cuenta, la persona deja todos los operativos
+ * en los que estaba y el puesto de comando, en la MISMA transacción que la baja
+ * de la cuenta. Antes seguía figurando "Disponible" en un operativo con la
+ * cuenta eliminada.
+ *  - En un grupo en la base: sale del grupo (se reabre; si era Líder, queda sin Líder).
+ *  - En un grupo en el terreno: no se puede (409 grupo_en_terreno): primero tiene
+ *    que volver y ser retirado del grupo (CU-26), que deja motivo y sucesión.
+ * Devuelve los operativos que dejó, para la auditoría.
+ */
+export async function egresarPorCuentaEliminadaCon(client, usuarioId, autorId) {
+  const MOTIVO = 'Su cuenta fue eliminada del sistema';
+  const { rows: altas } = await client.query(
+    `SELECT ao.id, ao.operativo_id AS "operativoId", o.titulo
+       FROM agentes_operativo ao JOIN operativos o ON o.id = ao.operativo_id
+      WHERE ao.usuario_id = $1 AND ao.fecha_egreso IS NULL
+      FOR UPDATE OF ao`,
+    [usuarioId]
+  );
+  for (const alta of altas) {
+    await Grupo.liberarPorCambioDeOperativo(client, alta.id, autorId, null, { porEliminacion: true });
+    const { rows } = await client.query(
+      `UPDATE agentes_operativo SET fecha_egreso = CURRENT_TIMESTAMP, grupo_id = NULL
+        WHERE id = $1 RETURNING estado::text AS estado`,
+      [alta.id]
+    );
+    await client.query(
+      `UPDATE agentes_grupo_historial
+          SET fecha_fin = CURRENT_TIMESTAMP, motivo_salida = $2, registrado_por = $3
+        WHERE agente_operativo_id = $1 AND fecha_fin IS NULL`,
+      [alta.id, MOTIVO, autorId]
+    );
+    await Evento.registrar(client, {
+      operativoId: alta.operativoId, entidad: 'AGENTE', agenteOperativoId: alta.id, accion: 'baja',
+      estadoAnterior: rows[0].estado, registradoPor: autorId, fuente: 'SISTEMA', motivo: MOTIVO,
+    });
+  }
+  await Mando.cerrarPresenciaDeCon(client, usuarioId, autorId, MOTIVO);
+  return altas.map(a => a.titulo);
+}
+
+/**
  * Personal actualmente en el operativo (CU-19). Excluye a quienes ya egresaron.
  * Es lo que consume la grilla del Coordinador, que refresca por polling.
  */
