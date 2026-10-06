@@ -95,8 +95,7 @@ export async function buscarPorId(id) {
  * Es la única función que expone `passwordHash`; se usa sólo desde el controlador
  * de autenticación y el valor nunca sale en una respuesta HTTP.
  *
- * Los ELIMINADOS quedan afuera: su correo se puede reutilizar (CU-07, migración
- * 018), así que puede haber una fila eliminada y otra vigente con el mismo correo.
+ * Un ELIMINADO no puede iniciar sesión: se lo trata como inexistente.
  */
 export async function buscarPorEmailConHash(email) {
   const { rows } = await query(
@@ -107,16 +106,24 @@ export async function buscarPorEmailConHash(email) {
   return rows[0] ?? null;
 }
 
-/** ¿Hay un usuario NO eliminado con ese DNI o correo? (el de un eliminado se reutiliza, CU-07). */
+/**
+ * ¿El DNI o el correo ya son de otra persona? (CU-02 paso 4, CU-05 paso 3, CU-07)
+ *
+ *  - DNI: lo ocupa una cuenta VIGENTE. Si sólo hay una eliminada con ese DNI,
+ *    no es duplicado: es la misma persona que vuelve y se reactiva su cuenta.
+ *  - Correo: lo ocupa cualquier cuenta de OTRA persona, vigente o eliminada
+ *    (decisión del 05/10): el correo de una cuenta dada de baja queda
+ *    reservado para su dueño, que lo recupera al volver con su DNI.
+ */
 export async function existeDniOEmail(dni, email) {
   const { rows } = await query(
-    `SELECT dni, email FROM usuarios
-      WHERE (dni = $1 OR lower(email) = lower($2)) AND eliminado_en IS NULL`,
+    `SELECT dni, email, eliminado_en IS NOT NULL AS eliminado FROM usuarios
+      WHERE dni = $1 OR lower(email) = lower($2)`,
     [dni, email]
   );
   return {
-    dni:   rows.some(r => r.dni === dni),
-    email: rows.some(r => r.email.toLowerCase() === email.toLowerCase()),
+    dni:   rows.some(r => r.dni === dni && !r.eliminado),
+    email: rows.some(r => r.email.toLowerCase() === email.toLowerCase() && r.dni !== dni),
   };
 }
 

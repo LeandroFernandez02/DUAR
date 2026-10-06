@@ -88,7 +88,7 @@ describe('Sesión, roles y cuentas (CU-01, CU-04 a CU-07)', () => {
     method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ email, password }),
   });
 
-  test('CU-07 · el DNI de una cuenta eliminada la REACTIVA: misma cuenta, datos y clave nuevos, correo sin confirmar', async () => {
+  test('CU-07 · el DNI de una cuenta eliminada la REACTIVA (misma cuenta, datos y clave nuevos); su correo no lo usa nadie más', async () => {
     await darDeBajaReuso();
     const primero = await ctx.api('POST', '/usuarios', REUSO);
     motivo(primero, 201);
@@ -99,6 +99,11 @@ describe('Sesión, roles y cuentas (CU-01, CU-04 a CU-07)', () => {
 
     assert.equal((await ctx.api('DELETE', `/usuarios/${id}`)).status, 204);
     assert.equal((await ctx.api('GET', `/usuarios/${id}`)).status, 404);
+
+    // El correo de la cuenta eliminada queda reservado para su dueño: otra persona (otro DNI) no lo puede usar.
+    const ajeno = await ctx.api('POST', '/usuarios', { ...REUSO, dni: '98000997', email: REUSO.email });
+    motivo(ajeno, 409);
+    assert.equal(ajeno.json.campo, 'email');
 
     const vuelta = await ctx.api('POST', '/usuarios', {
       ...REUSO, nombre: 'Reusado', email: 'auto.reuso2@prueba.duar', password: 'ClaveNueva456',

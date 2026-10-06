@@ -64,7 +64,6 @@ aplica al proyecto Supabase con el mismo nombre:
 | `015_indices_tablero.sql` | Índices en `agentes_operativo.grupo_id` y `grupos.lider_id` (se leen en cada refresco del tablero) |
 | `016_presencia_mando.sql` | Puesto de comando: `presencias_mando` (coordinadores presentes) y `mando_operativo` (quién está a cargo) |
 | `017_intentos_login.sql` | `intentos_login`: frena la prueba de contraseñas (5 fallos por correo o 30 por IP en 15 min bloquean 15 min) |
-| `018_reusar_dni_email_eliminados.sql` | DNI y correo únicos sólo entre usuarios no eliminados (CU-07: el de un eliminado se reutiliza); CHECK `ELIMINADO` ⇔ `eliminado_en` |
 
 ### PostGIS: diferencia con la instalación local
 
@@ -209,10 +208,11 @@ No son optimizaciones: si se caen, se cae la regla.
 - **Sincronía historial ↔ `grupo_id`**: hoy la coherencia entre
   `agentes_operativo.grupo_id` y el periodo abierto en `agentes_grupo_historial`
   depende de la capa de aplicación. Se puede blindar con un trigger.
-- ~~**DNI/email de usuarios ELIMINADOS**~~ — resuelto en la `018`: la unicidad
-  vale sólo entre los no eliminados (`usuarios_dni_vigente_key`,
-  `usuarios_email_vigente_key` sobre `lower(email)`), y el CHECK
-  `usuario_eliminado_con_fecha_chk` ata `ELIMINADO` a `eliminado_en`.
+- ~~**DNI/email de usuarios ELIMINADOS**~~ — resuelto el 05/10 sin tocar la
+  base: quien vuelve con el DNI de una cuenta eliminada **reactiva esa misma
+  cuenta** (mismo id, historial unido; `usuario.model.js#reactivar`). El DNI y
+  el correo de una cuenta eliminada quedan reservados para su dueño, así que
+  `usuarios_dni_key` y `usuarios_email_key` siguen siendo UNIQUE plenas.
 
 ### Presencia de mando: el puesto de comando (migración `016`)
 

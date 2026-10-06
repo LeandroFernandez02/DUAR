@@ -152,10 +152,11 @@ export async function actualizar(req, res, next) {
       return res.status(400).json({ error: 'Datos inválidos.', errores });
     }
 
-    // Sólo cuentan los usuarios no eliminados: el DNI/correo de un eliminado se reutiliza (CU-07, migración 018).
+    // Cuentan también las cuentas eliminadas: su DNI y su correo quedan reservados
+    // para su dueño, que los recupera reactivando su cuenta (CU-07, 05/10).
     if (b.email && b.email.toLowerCase() !== previo.email.toLowerCase()) {
       const { rows } = await query(
-        `SELECT id FROM usuarios WHERE lower(email) = lower($1) AND id <> $2 AND eliminado_en IS NULL`,
+        `SELECT id FROM usuarios WHERE lower(email) = lower($1) AND id <> $2`,
         [b.email, id]
       );
       if (rows.length) return res.status(409).json({ error: 'Ese email ya está en uso.', campo: 'email' });
@@ -163,7 +164,7 @@ export async function actualizar(req, res, next) {
 
     if (b.dni && b.dni !== previo.dni) {
       const { rows } = await query(
-        `SELECT id FROM usuarios WHERE dni = $1 AND id <> $2 AND eliminado_en IS NULL`,
+        `SELECT id FROM usuarios WHERE dni = $1 AND id <> $2`,
         [b.dni, id]
       );
       if (rows.length) return res.status(409).json({ error: 'Ese DNI ya está en uso.', campo: 'dni' });
