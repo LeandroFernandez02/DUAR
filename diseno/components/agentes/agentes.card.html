@@ -1,0 +1,16 @@
+<!-- @dsCard group="Components" viewport="700x260" name="Agentes" subtitle="AvatarAgente, EstadoAgenteBadge, FiltroDesplegable" -->
+<!DOCTYPE html><html><head><meta charset="utf-8"><link rel="stylesheet" href="../../styles.css">
+<script src="https://unpkg.com/lucide@0.487.0/dist/umd/lucide.min.js"></script>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script><style>body{padding:20px}.row{display:flex;gap:12px;flex-wrap:wrap;align-items:center;margin-bottom:16px}</style></head><body><div id="root"></div>
+<script type="text/babel">
+const { AvatarAgente, EstadoAgenteBadge, FiltroDesplegable } = window.DUARDiseOMapa_7e942c;
+function App(){ const [s,setS]=React.useState(['activo']); return (<div>
+<div className="row"><AvatarAgente esDuar /><AvatarAgente /><AvatarAgente esConductor /><AvatarAgente esRecursoCritico /><AvatarAgente esDuar iniciales="MG" tamano={38} /></div>
+<div className="row">{['disponible','agrupado','desplegado','replegado','en_espera','no_disponible'].map(e=><EstadoAgenteBadge key={e} estado={e} />)}</div>
+<div className="row"><FiltroDesplegable titulo="Estado" seleccion={s} onCambiar={setS} opciones={[{value:'activo',label:'Activo',dot:'#16a34a',count:3},{value:'nuevo',label:'Nuevo',dot:'var(--accent)',count:1}]} /><FiltroDesplegable titulo="Especialidad" seleccion={[]} opciones={[{value:'a',label:'Rastrillaje',count:5}]} /></div>
+</div>);}
+ReactDOM.createRoot(document.getElementById('root')).render(<App/>);
+</script></body></html>

@@ -1,0 +1,148 @@
+/* Paletas en evaluación. Se activan con <html data-paleta="…">; sin atributo = paleta original (naranja).
+   Cada paleta redefine sólo los tokens semánticos: los colores de estado (verde/amarillo/rojo…) no cambian. */
+
+/* ── Paleta 2 · Táctico — colores del DESIGN.md "SAR Tactical Command", tipografía del sistema (Inter) ──
+   Claro por defecto. Ámbar #C07A4A = primario (CTA, activo, Punto Cero) · verde #4C5A46 = secundario y superficies de grupo
+   · caqui #8A7C53 = acento, etiquetas y bordes · carbón #2A2F2A = sidebar y texto · hueso #F2E2C8 = base del fondo.
+   Contornos de 1px en vez de sombras difusas y esquinas de 4px. El modo oscuro recupera la versión oscura original. */
+:root[data-paleta="tactico"] {
+  --paleta-1: #2a2f2a; --paleta-2: #4c5a46; --paleta-3: #8a7c53; --paleta-4: #c07a4a; --paleta-5: #f2e2c8;
+  --background: #efe8da;
+  --foreground: #2a2f2a;
+  --card: #fbf8f1;
+  --card-foreground: #2a2f2a;
+  --popover: #ffffff;
+  --popover-foreground: #2a2f2a;
+  --primary: #E38645;
+  --primary-foreground: #2a2f2a;
+  --boton-primario-borde: #E38645;
+  --boton-primario-borde-ancho: 1px;
+  --ring: #E38645;
+  --secondary: #4c5a46;
+  --secondary-foreground: #f2e2c8;
+  --accent: #8a7c53;
+  --accent-foreground: #ffffff;
+  --accent-strong: #6b5f3c;
+  --muted: rgba(76, 90, 70, 0.08);
+  --muted-foreground: #6b6450;
+  --destructive: #b3261e;
+  --border: rgba(138, 124, 83, 0.32);
+  --input: rgba(76, 90, 70, 0.08);
+  --input-background: #ffffff;
+  --sidebar: #2a2f2a;
+  --sidebar-foreground: #FFFFFF;
+  --sidebar-primary: #E38645;
+  --sidebar-activo: #E38645; /* fondo del ítem activo del menú */
+  --sidebar-texto: #FFFFFF; /* etiquetas de ítems no activos */
+  --sidebar-texto-activo: #FFFFFF; /* texto del ítem activo y del avatar */
+  --sidebar-dim: 1; /* @kind other */ /* sin atenuar textos del menú */
+  --sidebar-dim-titulo: 0.75; /* @kind other */ /* "MÓDULOS" */
+  --sidebar-accent: rgba(242, 226, 200, 0.10);
+  --sidebar-border: rgba(138, 124, 83, 0.30);
+  --marker-punto-cero: #c07a4a;
+  --marker-punto-cero-bg: #f5e2d4;
+  --chart-1: #E38645; --chart-2: #4c5a46; --chart-3: #8a7c53; --chart-4: #2a2f2a; --chart-5: #d6c597;
+  --card-border: transparent; /* el contorno lo da --elevation-sm */
+
+  --radius: 4px; --radius-sm: 2px; --radius-md: 4px; --radius-lg: 6px;
+  --radius-button: 4px; --radius-input: 4px; --radius-card: 6px;
+  --elevation-sm: 0 0 0 1px rgba(138, 124, 83, 0.30);
+  --elevation-md: 0 0 0 1px rgba(138, 124, 83, 0.40), 0 12px 28px rgba(42, 47, 42, 0.14);
+  --elevation-grupo: 0 0 0 1px rgba(76, 90, 70, 0.45);
+  --elevation-modal: 0 0 0 1px rgba(138, 124, 83, 0.45), 0 24px 64px rgba(42, 47, 42, 0.22);
+}
+:root[data-paleta="tactico"].dark {
+  --background: #232723;
+  --foreground: #f2e2c8;
+  --card: #2a2f2a;
+  --card-foreground: #f2e2c8;
+  --popover: #343b34;
+  --popover-foreground: #f2e2c8;
+  --secondary-foreground: #f2e2c8;
+  --accent-foreground: #2a2f2a;
+  --accent-strong: #d6c597;
+  --muted: rgba(76, 90, 70, 0.28);
+  --muted-foreground: #b3a888;
+  --destructive: #f07563;
+  --border: rgba(138, 124, 83, 0.38);
+  --input: rgba(76, 90, 70, 0.30);
+  --input-background: #232723;
+  --sidebar: #1a1e1a;
+  --sidebar-accent: rgba(76, 90, 70, 0.35);
+  --marker-punto-cero-bg: rgba(192, 122, 74, 0.22);
+  --chart-2: #6f8466; --chart-4: #f2e2c8;
+  --tinte-oscuro: 100%;
+  --elevation-sm: 0 0 0 1px rgba(76, 90, 70, 0.55);
+  --elevation-md: 0 0 0 1px rgba(138, 124, 83, 0.50), 0 12px 28px rgba(0, 0, 0, 0.45);
+  --elevation-grupo: 0 0 0 1px rgba(76, 90, 70, 0.70);
+  --elevation-modal: 0 0 0 1px rgba(138, 124, 83, 0.55), 0 24px 64px rgba(0, 0, 0, 0.60);
+}
+:root[data-paleta="tactico"] ::selection { background: rgba(192, 122, 74, 0.35); }
+
+/* ── Paleta 3 · Marino — referencia "Sistema de Búsqueda y Rastreo": primary #023047 · secondary #FB8500 · tertiary #8ECAE6 · neutral #F8FAFC ──
+   Misma estructura y tipografía del sistema. Marino = sidebar y texto · naranja = primario (CTA, ítem activo, filtros activos, Punto Cero)
+   · petróleo = acento (subtítulos, chips de rol, botones secundarios) · celeste = superficies suaves · fondo neutro con grilla de puntos. */
+:root[data-paleta="marino"] {
+  --paleta-1: #023047; --paleta-2: #fb8500; --paleta-3: #8ecae6; --paleta-4: #1f7a8c; --paleta-5: #f8fafc;
+  --background: #f8fafc;
+  --fondo-patron: radial-gradient(circle, rgba(2, 48, 71, 0.16) 1px, transparent 1.4px) 0 0 / 22px 22px; /* @kind other */
+  --foreground: #023047;
+  --card: #ffffff;
+  --card-foreground: #023047;
+  --popover: #ffffff;
+  --popover-foreground: #023047;
+  --primary: #fb8500;
+  --primary-foreground: #ffffff;
+  --ring: #fb8500;
+  --accent: #1f7a8c;
+  --accent-foreground: #ffffff;
+  --accent-strong: #145a68;
+  --secondary: rgba(142, 202, 230, 0.28);
+  --secondary-foreground: #023047;
+  --muted: rgba(2, 48, 71, 0.045);
+  --muted-foreground: rgba(2, 48, 71, 0.62);
+  --border: rgba(2, 48, 71, 0.12);
+  --input: rgba(2, 48, 71, 0.05);
+  --input-background: #ffffff;
+  --sidebar: #023047;
+  --sidebar-foreground: #ffffff;
+  --sidebar-primary: #fb8500;
+  --sidebar-accent: rgba(255, 255, 255, 0.08);
+  --sidebar-border: rgba(255, 255, 255, 0.10);
+  --marker-punto-cero: #fb8500;
+  --marker-punto-cero-bg: #ffecd6;
+  --chart-1: #fb8500; --chart-2: #1f7a8c; --chart-3: #023047; --chart-4: #8ecae6; --chart-5: #ffb703;
+  --elevation-sm: 0px 2px 14px 0px rgba(2, 48, 71, 0.07);
+  --elevation-md: 0px 8px 28px 0px rgba(2, 48, 71, 0.13);
+  --elevation-grupo: 0px 6px 20px 0px rgba(2, 48, 71, 0.14), 0px 1px 3px 0px rgba(2, 48, 71, 0.08);
+}
+:root[data-paleta="marino"].dark {
+  --background: #011a28;
+  --fondo-patron: radial-gradient(circle, rgba(142, 202, 230, 0.10) 1px, transparent 1.4px) 0 0 / 22px 22px; /* @kind other */
+  --foreground: #eef6fa;
+  --card: #032a3f;
+  --card-foreground: #eef6fa;
+  --popover: #033450;
+  --popover-foreground: #eef6fa;
+  --primary: #fb8f1a;
+  --ring: #ffb703;
+  --accent: #5fb4c6;
+  --accent-foreground: #011a28;
+  --accent-strong: #8ecae6;
+  --secondary: rgba(142, 202, 230, 0.14);
+  --secondary-foreground: #eef6fa;
+  --muted: rgba(142, 202, 230, 0.07);
+  --muted-foreground: rgba(238, 246, 250, 0.58);
+  --border: rgba(142, 202, 230, 0.14);
+  --input: rgba(142, 202, 230, 0.08);
+  --input-background: #032a3f;
+  --sidebar: #011422;
+  --sidebar-accent: rgba(255, 255, 255, 0.07);
+  --sidebar-border: rgba(255, 255, 255, 0.07);
+  --marker-punto-cero-bg: rgba(251, 133, 0, 0.22);
+  --chart-3: #eef6fa;
+  --tinte-oscuro: 100%;
+  --elevation-sm: 0px 4px 24px 0px rgba(0, 0, 0, 0.30);
+  --elevation-md: 0px 8px 32px 0px rgba(0, 0, 0, 0.40);
+  --elevation-grupo: 0px 4px 24px 0px rgba(0, 0, 0, 0.30);
+}

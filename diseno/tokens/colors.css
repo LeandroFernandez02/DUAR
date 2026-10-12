@@ -1,0 +1,90 @@
+/* Source: Sistema DUAR/src/styles/theme.css + StatusBadge.tsx + EditarAgenteModal.tsx + grupo.model.js */
+:root {
+  /* Brand palette (naranja #E0662B, reemplaza al rojo #E54B4B | #FFA987 | #F7EBE8 | #444140) */
+  --duar-orange: #E0662B;
+  --duar-red: var(--duar-orange); /* alias heredado */
+  --duar-salmon: #FFA987;
+  --duar-cream: #F7EBE8;
+  --duar-dark: #444140;
+
+  /* Semantic (light) */
+  --background: #F7EBE8;
+  --foreground: #444140;
+  --card: #FFFFFF;
+  --card-foreground: #444140;
+  --popover: #FFFFFF;
+  --popover-foreground: #444140;
+  --primary: #E0662B;
+  --primary-foreground: #FFFFFF;
+  --primary-soft: rgba(224, 102, 43, 0.10);
+  --primary-soft-border: rgba(224, 102, 43, 0.35);
+  --secondary: rgba(255, 169, 135, 0.18);
+  --secondary-foreground: #444140;
+  --muted: rgba(68, 65, 64, 0.06);
+  --muted-foreground: rgba(68, 65, 64, 0.55);
+  --accent: #FFA987;
+  --accent-foreground: #444140;
+  --accent-strong: #7c3d0f;
+  --destructive: #dc2626;
+  --destructive-foreground: #ffffff;
+  --border: rgba(68, 65, 64, 0.15);
+  --input: rgba(68, 65, 64, 0.08);
+  --input-background: #FFFFFF;
+  --ring: #E0662B;
+  /* 0% = superficies claras (badges y avisos con fondo pastel). 100% = superficies oscuras: tinte translúcido + borde del color de estado */
+  --tinte-oscuro: 0%;
+  --fondo-patron: none; /* @kind other */ /* textura opcional del área de contenido (p. ej. grilla de puntos) */
+
+  --sidebar: #444140;
+  --sidebar-foreground: #F7EBE8;
+  --sidebar-primary: #E0662B;
+  --sidebar-accent: rgba(247, 235, 232, 0.10);
+  --sidebar-border: rgba(247, 235, 232, 0.10);
+
+  /* Status colours — ONLY for states (rule from the product brief) */
+  --status-green: #16a34a;   --status-green-bg: #dcfce7;  --status-green-fg: #15803d;
+  --status-yellow: #ca8a04;  --status-yellow-bg: #fef9c3; --status-yellow-fg: #a16207;
+  --status-red: #dc2626;     --status-red-bg: #fee2e2;    --status-red-fg: #b91c1c;
+  --status-amber: #d97706;   --status-amber-bg: #fef3c7;  --status-amber-fg: #92400e;
+  --status-blue: #2563eb;    --status-blue-bg: #dbeafe;   --status-blue-fg: #1d4ed8;
+  --status-gray: #6b7280;    --status-gray-bg: #e5e7eb;   --status-gray-fg: #374151;
+  --status-teal: #0d9488;
+  --status-indigo: #4f46e5;
+  --status-cyan: #0891b2;
+
+  /* Map markers (PuntoDetailPanel MARKER_CFG) */
+  --marker-punto-cero: #E0662B;
+  --marker-punto-cero-bg: #fde8dc;
+  --marker-puesto-comando: #2563eb;
+  --marker-poi: #ca8a04;
+  --marker-hallazgo: #16a34a;
+
+  /* Group palette (grupo.model.js PALETA) — polygons take their group's colour */
+  --grupo-1: #E0662B; --grupo-2: #2563EB; --grupo-3: #16A34A; --grupo-4: #D97706; --grupo-5: #7C3AED;
+  --grupo-6: #0891B2; --grupo-7: #DB2777; --grupo-8: #65A30D; --grupo-9: #EA580C; --grupo-10: #475569;
+
+  /* Charts */
+  --chart-1: #E0662B; --chart-2: #FFA987; --chart-3: #444140; --chart-4: #b5501f; --chart-5: #d4886a;
+}
+
+.dark {
+  --background: #1c1917;
+  --foreground: #F7EBE8;
+  --card: #2a2725;
+  --card-foreground: #F7EBE8;
+  --popover: #2a2725;
+  --popover-foreground: #F7EBE8;
+  --secondary: rgba(255, 169, 135, 0.15);
+  --secondary-foreground: #F7EBE8;
+  --muted: rgba(247, 235, 232, 0.08);
+  --muted-foreground: rgba(247, 235, 232, 0.50);
+  --accent-foreground: #1c1917;
+  --destructive: #ef4444;
+  --border: rgba(247, 235, 232, 0.12);
+  --input: rgba(247, 235, 232, 0.10);
+  --input-background: #2a2725;
+  --sidebar: #111010;
+  --sidebar-accent: rgba(247, 235, 232, 0.08);
+  --sidebar-border: rgba(247, 235, 232, 0.08);
+  --chart-3: #F7EBE8;
+}

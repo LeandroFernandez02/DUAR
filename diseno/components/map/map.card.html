@@ -1,0 +1,23 @@
+<!-- @dsCard group="Components" viewport="760x560" name="Mapa" subtitle="MapMarker, MapToolbar, TreeSection, MapPopup, ElevationProfile, MapLegend, LayerPanel, ElementRow, CoverageBar" -->
+<!DOCTYPE html><html><head><meta charset="utf-8"><link rel="stylesheet" href="../../styles.css">
+<script src="https://unpkg.com/lucide@0.487.0/dist/umd/lucide.min.js"></script>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../../_ds_bundle.js"></script><style>body{padding:18px}</style></head><body><div id="root"></div>
+<script type="text/babel">
+const { MapMarker, MapToolbar, LayerPanel, ElementRow, CoverageBar, Card, TreeSection, TreeRow, MapPopup, ElevationProfile, MapLegend, Button } = window.DUARDiseOMapa_7e942c;
+const sw=c=><span style={{width:12,height:12,borderRadius:3,background:c+'40',border:'1.5px solid '+c}}/>;
+const tools=[{id:'sel',icon:'mouse-pointer-2',label:'Seleccionar'},{sep:true},{id:'pol',icon:'pentagon',label:'Polígono'},{id:'poi',icon:'map-pin-plus',label:'POI'},{id:'p0',icon:'crosshair',label:'Punto Cero'},{sep:true},{id:'gpx',icon:'route',label:'Cargar GPX'}];
+ReactDOM.createRoot(document.getElementById('root')).render(
+<div style={{display:'flex',gap:18}}>
+<MapToolbar tools={tools} active="pol" />
+<div style={{flex:1,display:'flex',flexDirection:'column',gap:14}}>
+<div style={{display:'flex',gap:22,alignItems:'flex-start',padding:'8px 4px'}}><MapMarker tipo="puntoCero" label="Punto 0" /><MapMarker tipo="puestoComando" label="PC" /><MapMarker tipo="poi" selected /><MapMarker tipo="hallazgo" /><MapMarker tipo="poi" variant="chip" /><MapMarker tipo="hallazgo" variant="chip" /><MapMarker tipo="puestoComando" label="PC" /><MapMarker tipo="helipunto" label="Helipunto" /><MapMarker tipo="base" variant="mini" /><MapMarker tipo="acv" variant="mini" /></div>
+<Card padding={8}><ElementRow color="#E0662B" title="Sector 1 — Arroyo" meta="Grupo Alfa · 1,2 km²" estado="completado" onToggleVisible={()=>{}} /><ElementRow color="#2563EB" title="Sector 2 — Quebrada" meta="Grupo Bravo · 1,8 km²" estado="rastrillando" selected onToggleVisible={()=>{}} /><ElementRow color="#16A34A" icon="route" title="Traza Bravo — 02/03" meta="4,6 km · 3 h 12 min" /></Card>
+<Card padding={14}><CoverageBar value={62} /></Card>
+</div>
+<div style={{display:'flex',flexDirection:'column',gap:14}}><Card padding={0} style={{width:280,overflow:'hidden'}}><TreeSection title="Sectores y polígonos" icon="pentagon" badge={4} checked onCheck={()=>{}} defaultOpen><TreeRow checked onCheck={()=>{}} swatch={sw('#E0662B')} label="Sector 1 — Arroyo Seco" meta="100%" /><TreeRow checked selected onCheck={()=>{}} swatch={sw('#2563EB')} label="Sector 2 — Quebrada" meta="48%" /></TreeSection><TreeSection title="Marcadores tácticos / POI" icon="map-pin" badge={8} checked onCheck={()=>{}} /></Card><Card padding={0} style={{width:280}}><MapPopup icon="route" color="#2563EB" kicker="Track GPX" title="Bravo — Mañana" subtitle="Grupo Bravo · 02/03/2026" onClose={()=>{}} actions={<Button variant="muted" icon="pencil">Editar datos</Button>}><ElevationProfile values={[1900,1940,1990,1960,2010,2060,2030,2090]} distances={[0,300,700,1000,1500,1900,2300,2800]} color="#2563EB" width={250} /></MapPopup></Card><MapLegend items={[{kind:'line',color:'#2563EB',label:'Track GPX'},{kind:'areaDashed',color:'#475569',label:'Sector pendiente'},{kind:'marker',tipo:'puestoComando',label:'Puesto de Comando'}]} /></div>
+<LayerPanel base="fisico" bases={[{id:'politico',label:'Político',icon:'map'},{id:'fisico',label:'Físico',icon:'mountain'},{id:'satelital',label:'Satelital',icon:'satellite'}]} overlays={[{id:'a',label:'Polígonos',checked:true,icon:'pentagon',count:4},{id:'b',label:'Trazas GPX',checked:true,icon:'route',count:3},{id:'c',label:'Puntos',checked:true,icon:'map-pin',count:5},{id:'d',label:'Análisis de brechas',icon:'scan'}]} />
+</div>);
+</script></body></html>

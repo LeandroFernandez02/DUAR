@@ -13,6 +13,12 @@
       "runtimeArgs": ["--prefix", "server", "run", "dev"],
       "port": 3001,
       "autoPort": false
+    },
+    {
+      "name": "Diseño del mapa",
+      "runtimeExecutable": "python",
+      "runtimeArgs": ["-m", "http.server", "4321", "--bind", "127.0.0.1", "--directory", "diseno"],
+      "port": 4321
     }
   ]
 }

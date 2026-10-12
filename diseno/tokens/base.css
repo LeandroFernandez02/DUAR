@@ -1,0 +1,11 @@
+html { font-size: var(--font-size); }
+body { background: var(--background); color: var(--foreground); font-family: var(--font-family-primary); margin: 0; }
+a { color: var(--primary); text-decoration: none; }
+a:hover { color: var(--primary); opacity: .85; text-decoration: underline; }
+h1, h2, h3, h4 { font-family: var(--font-display); }
+@keyframes duar-spin { from { transform: rotate(0deg); } to { transform: rotate(360deg); } }
+.leaflet-container img { max-width: none !important; max-height: none !important; }
+.leaflet-container { font-family: var(--font-family-primary); }
+
+/* Logo: escudo con radar (assets/logo-escudo.png). Clase para que la ruta se resuelva desde este archivo en cualquier página */
+.duar-logo-escudo { background: url('../assets/logo-escudo.png') center / contain no-repeat; }

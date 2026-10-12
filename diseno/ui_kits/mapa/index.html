@@ -1,0 +1,42 @@
+<!-- @dsCard group="Mapa" viewport="1440x860" name="Módulo 5 — Mapa operacional" subtitle="Organización tipo Google Earth · CU-26 a CU-38" -->
+<!DOCTYPE html>
+<html lang="es">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>DUAR — Mapa operacional</title>
+<link rel="stylesheet" href="../../styles.css">
+<link rel="stylesheet" href="https://unpkg.com/leaflet@1.9.4/dist/leaflet.css">
+<script src="https://unpkg.com/leaflet@1.9.4/dist/leaflet.js"></script>
+<script src="https://unpkg.com/lucide@0.487.0/dist/umd/lucide.min.js"></script>
+<script src="https://unpkg.com/react@18.3.1/umd/react.development.js" integrity="sha384-hD6/rw4ppMLGNu3tX5cjIb+uRZ7UkRJ6BPkLpg4hAu/6onKUg4lLsHAs9EBPT82L" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/react-dom@18.3.1/umd/react-dom.development.js" integrity="sha384-u6aeetuaXnQ38mYT8rp6sbXaQe3NL9t+IBXmnYxwkUI2Hw4bsp2Wvmx4yRQF1uAm" crossorigin="anonymous"></script>
+<script src="https://unpkg.com/@babel/standalone@7.29.0/babel.min.js" integrity="sha384-m08KidiNqLdpJqLq95G/LEi8Qvjl/xUYll3QILypMoQ65QorJ9Lvtp2RXYGBFj1y" crossorigin="anonymous"></script>
+<script src="../paleta.js"></script>
+<script src="../../_ds_bundle.js"></script>
+<script src="data.js"></script>
+<style>
+html,body{height:100%;margin:0;overflow:hidden}
+.duar-divicon{background:none;border:none}
+.leaflet-tooltip.duar-tip{background:rgba(28,25,23,.86);border:none;border-radius:6px;box-shadow:0 1px 4px rgba(0,0,0,.3);color:#fff;font-family:'Inter',sans-serif;font-size:11px;font-weight:600;padding:3px 8px;display:flex;align-items:center;gap:6px;white-space:nowrap}
+.leaflet-tooltip.duar-tip:before{display:none}
+.duar-tip .dot{width:7px;height:7px;border-radius:50%;display:inline-block;box-shadow:0 0 0 1.5px #fff}
+.duar-ring-lbl{display:inline-block;background:#fff;border:1.5px solid;border-radius:999px;padding:0 7px;font:700 10px/15px 'Inter',sans-serif;white-space:nowrap;box-shadow:0 1px 3px rgba(0,0,0,.25)}
+.duar-divicon:has(.duar-ring-lbl){display:flex;justify-content:center;align-items:center}
+.duar-popup .leaflet-popup-content-wrapper{background:var(--card);color:var(--foreground);border-radius:14px;padding:0;border:1px solid var(--border);box-shadow:0 8px 32px rgba(68,65,64,.22)}
+.duar-popup .leaflet-popup-content{margin:0;width:auto!important;line-height:1.4}
+.duar-popup .leaflet-popup-tip{background:var(--card);box-shadow:none}
+.leaflet-control-attribution{font-size:10px}
+</style>
+<style>.leaflet-grab{cursor:default}.leaflet-dragging .leaflet-grab,.leaflet-dragging .leaflet-grab .leaflet-interactive,.leaflet-dragging .leaflet-marker-draggable{cursor:grabbing}.leaflet-interactive,.leaflet-marker-icon{cursor:pointer}</style>
+</head>
+<body>
+<div id="root"></div>
+<script type="text/babel" src="MapCanvas.jsx"></script>
+<script type="text/babel" src="LeftTree.jsx"></script>
+<script type="text/babel" src="MapChrome.jsx"></script>
+<script type="text/babel" src="Panels.jsx"></script>
+<script type="text/babel" src="Modals.jsx"></script>
+<script type="text/babel" src="App.jsx"></script>
+</body>
+</html>
