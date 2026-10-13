@@ -65,6 +65,7 @@ aplica al proyecto Supabase con el mismo nombre:
 | `016_presencia_mando.sql` | Puesto de comando: `presencias_mando` (coordinadores presentes) y `mando_operativo` (quién está a cargo) |
 | `017_intentos_login.sql` | `intentos_login`: frena la prueba de contraseñas (5 fallos por correo o 30 por IP en 15 min bloquean 15 min) |
 | `019_mapa_operacional.sql` | Módulo 5 (CU-27..38): `poligonos` (sin estado; área y perímetro por trigger; nombre único vigente), `poligono_grupos` (un grupo en un solo polígono a la vez), `tracks_gpx`, `marcadores` (POI, hallazgo, instalación SCI; el hallazgo no se elimina ni cambia de clase), `marcador_fotos`, `radios_operativo`, `punto_cero_historial`, `poligono_eventos`. La 018 se descartó |
+| `020_funciones_search_path.sql` | `search_path` fijo en las dos funciones de trigger de la 019 (asesor de seguridad de Supabase, lint 0011) |
 
 ### PostGIS: diferencia con la instalación local
 

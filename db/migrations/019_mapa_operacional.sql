@@ -53,7 +53,7 @@ CREATE INDEX IF NOT EXISTS poligonos_geom_idx ON poligonos USING gist (geom);
 -- Área y perímetro los calcula la base cada vez que cambia la forma: nunca
 -- pueden quedar desactualizados respecto de geom.
 CREATE OR REPLACE FUNCTION poligono_medidas() RETURNS trigger
-LANGUAGE plpgsql AS $$
+LANGUAGE plpgsql SET search_path = public, extensions AS $$
 BEGIN
     NEW.area_m2     := ST_Area(NEW.geom::geography);
     NEW.perimetro_m := ST_Perimeter(NEW.geom::geography);
@@ -152,7 +152,7 @@ CREATE INDEX IF NOT EXISTS marcadores_geom_idx ON marcadores USING gist (geom);
 -- Un hallazgo no pasa a ser otra clase de marcador (CU-33, 3.2): sería una
 -- forma de quitarle el valor de evidencia y después poder eliminarlo.
 CREATE OR REPLACE FUNCTION marcador_hallazgo_fijo() RETURNS trigger
-LANGUAGE plpgsql AS $$
+LANGUAGE plpgsql SET search_path = public AS $$
 BEGIN
     IF OLD.clase = 'HALLAZGO' AND NEW.clase <> 'HALLAZGO' THEN
         RAISE EXCEPTION 'Un hallazgo no puede pasar a ser otra clase de marcador'
