@@ -27,7 +27,7 @@ const TAMANO_MIN = 2;   // binomio mínimo
 const TAMANO_MAX = 50;
 
 /** Acciones que el coordinador pide por POST .../acciones (disolver va por DELETE). */
-const ACCIONES_COORDINADOR = ['confirmar', 'asignar', 'reabrir', 'salir', 'llegar_poligono', 'volver', 'llegar_base', 'corregir'];
+const ACCIONES_COORDINADOR = ['confirmar', 'asignar', 'desasignar', 'reabrir', 'salir', 'llegar_poligono', 'volver', 'llegar_base', 'corregir'];
 
 const esUuid = (v) => typeof v === 'string' && RE_UUID.test(v);
 const invalido = (res, error, motivo = 'datos_invalidos') => res.status(400).json({ error, motivo });
@@ -150,9 +150,9 @@ export async function accion(req, res, next) {
       if (!terreno) return invalido(res, 'La hora sólo se carga al registrar lo que avisan del terreno.');
       if (Number.isNaN(new Date(b.ocurridoEn).getTime())) return invalido(res, 'La hora no es válida.', 'hora_invalida');
     }
-    const zona = typeof b.zona === 'string' ? b.zona.trim() : '';
-    if (b.accion === 'asignar' && (zona.length < 2 || zona.length > TEXTO_MAX)) {
-      return invalido(res, `Describí la zona asignada (2 a ${TEXTO_MAX} caracteres).`, 'zona_requerida');
+    // CU-28 (Módulo 5): asignar es mandar el grupo a un polígono del mapa.
+    if (b.accion === 'asignar' && !esUuid(b.poligonoId)) {
+      return invalido(res, 'Elegí el polígono al que va el grupo.', 'poligono_requerido');
     }
     const motivo = typeof b.motivo === 'string' ? b.motivo.trim() : '';
     if (b.accion === 'corregir') {
@@ -168,7 +168,7 @@ export async function accion(req, res, next) {
     const r = await Grupo.transicionar(req.params.id, req.params.grupoId, b.accion, {
       fuente: terreno ? 'RADIO' : 'COORDINADOR',
       ocurridoEn: terreno ? (b.ocurridoEn ?? null) : null,
-      nota: b.accion === 'asignar' ? zona : null,
+      poligonoId: b.accion === 'asignar' ? b.poligonoId : null,
       motivo: b.accion === 'corregir' ? motivo : null,
       estadoDestino: b.accion === 'corregir' ? b.estadoDestino : null,
     }, req.usuario.id);

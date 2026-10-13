@@ -4,7 +4,7 @@
  *  · "Mi estado": SIN grupo, el agente se marca Disponible o No disponible
  *    (también al volver Replegado de un retiro, CU-26). CON grupo, su estado
  *    lo define el grupo y acá sólo se muestra.
- *  · "Mi grupo": con quién sale, en qué estado está, qué zona tiene.
+ *  · "Mi grupo": con quién sale, en qué estado está, qué polígono tiene.
  *  · Si es el Líder: informa lo que pasa en el terreno ("Salimos hacia el
  *    polígono", "Llegamos, empezamos a rastrillar", "Volvemos", "Llegamos a la
  *    base"). No elige estados ni disuelve: eso es del coordinador.
@@ -257,7 +257,7 @@ export default function PanelTactico() {
               {grupo.zonaAsignada && (
                 <p className="flex items-start gap-1.5" style={{ fontSize: 'var(--text-label)', color: 'var(--foreground)', lineHeight: 1.4 }}>
                   <MapPin size={13} style={{ color: 'var(--primary)', flexShrink: 0, marginTop: 2 }} />
-                  <span><span style={{ color: 'var(--muted-foreground)' }}>Zona: </span>{grupo.zonaAsignada}</span>
+                  <span><span style={{ color: 'var(--muted-foreground)' }}>Polígono: </span>{grupo.zonaAsignada}</span>
                 </p>
               )}
 
@@ -310,7 +310,7 @@ export default function PanelTactico() {
                     <p style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-label)', lineHeight: 1.5 }}>
                       {grupo.estado === 'EN_ESPERA'
                         ? 'Están en el puesto de comando. El coordinador decide si salen de nuevo o si disuelve el grupo.'
-                        : 'Cuando el coordinador confirme el grupo y les asigne una zona, vas a poder informar la salida desde acá.'}
+                        : 'Cuando el coordinador confirme el grupo y les asigne un polígono, vas a poder informar la salida desde acá.'}
                     </p>
                   )}
                   <p className="flex items-start gap-1.5" style={{ color: 'var(--muted-foreground)', fontSize: 11, lineHeight: 1.45 }}>

@@ -13,6 +13,7 @@ import * as agentesOperativo from '../controllers/agenteOperativo.controller.js'
 import * as objetivo from '../controllers/objetivo.controller.js';
 import * as grupos from '../controllers/grupo.controller.js';
 import * as mando from '../controllers/mando.controller.js';
+import * as poligonos from '../controllers/poligono.controller.js';
 import { requiereSesion, requiereRol } from '../middleware/auth.middleware.js';
 import { subirFotosMiddleware } from '../middleware/upload.middleware.js';
 
@@ -70,6 +71,16 @@ router.get( '/:id/mando',         requiereSesion, gestores, mando.estado);
 router.post('/:id/mando/ingreso', requiereSesion, gestores, mando.ingreso);
 router.post('/:id/mando/retiro',  requiereSesion, gestores, mando.retiro);
 router.post('/:id/mando/a-cargo', requiereSesion, gestores, mando.aCargo);
+
+// Módulo 5 · Mapa Operacional: polígonos y sus grupos (CU-27, 28, 35, 36, 37).
+router.get(   '/:id/poligonos',                                     requiereSesion, gestores, poligonos.listar);
+router.post(  '/:id/poligonos',                                     requiereSesion, gestores, poligonos.crear);        // CU-27
+router.get(   '/:id/poligonos/:poligonoId',                         requiereSesion, gestores, poligonos.obtener);      // CU-37
+router.put(   '/:id/poligonos/:poligonoId',                         requiereSesion, gestores, poligonos.actualizar);   // CU-35
+router.delete('/:id/poligonos/:poligonoId',                         requiereSesion, gestores, poligonos.eliminar);     // CU-36
+router.post(  '/:id/poligonos/:poligonoId/grupos',                  requiereSesion, gestores, poligonos.asignarGrupo); // CU-28
+router.post(  '/:id/poligonos/:poligonoId/grupos/:grupoId/quitar',  requiereSesion, gestores, poligonos.quitarGrupo);
+router.post(  '/:id/poligonos/:poligonoId/grupos/:grupoId/cambiar', requiereSesion, gestores, poligonos.cambiarGrupo);
 
 // Línea de tiempo del terreno (eventos_estado, migración 010).
 router.get('/:id/grupos/:grupoId/linea-tiempo',            requiereSesion, gestores, grupos.lineaTiempoGrupo);

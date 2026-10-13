@@ -36,7 +36,9 @@ const FUENTE: Record<EventoEstadoApi['fuente'], { texto: string; icono: typeof R
 const ACCION_GRUPO: Record<string, string> = {
   crear: 'Grupo creado',
   confirmar: 'Confirmado',
-  asignar: 'Zona asignada',
+  asignar: 'Asignado a un polígono',
+  desasignar: 'Quitado del polígono',
+  quitar_poligono: 'Quitado del polígono estando en el terreno',
   reabrir: 'Reabierto para cambiar su composición',
   salir: 'Salieron hacia el polígono',
   llegar_poligono: 'Llegaron y empezaron a rastrillar',
@@ -68,7 +70,7 @@ function describir(e: EventoEstadoApi, vista: 'grupo' | 'agente'): { titulo: str
   }
   if (e.entidad === 'GRUPO') {
     if (e.accion === 'corregir') return { titulo: `Corrección: ${etiqueta(e.estadoAnterior)} → ${etiqueta(e.estadoNuevo)}`, detalle: e.motivo ?? undefined };
-    if (e.accion === 'asignar') return { titulo: `Zona asignada: ${e.nota ?? '—'}` };
+    if (e.accion === 'asignar') return { titulo: `Asignado a ${e.nota ?? 'un polígono'}` };
     if (e.accion === 'cambio_lider') return { titulo: e.motivo ?? 'Cambio de Líder' };
     return { titulo: ACCION_GRUPO[e.accion] ?? e.accion, detalle: e.motivo ?? undefined };
   }

@@ -53,6 +53,8 @@ export const ESTADOS_CORREGIBLES = ['ASIGNADO', 'DESPLEGADO', 'RASTRILLANDO', 'R
 export const ACCIONES = {
   confirmar:       { desde: ['EN_FORMACION', 'EN_ESPERA'],              hacia: 'CONFIRMADO',   quien: ['COORDINADOR'] },
   asignar:         { desde: ['CONFIRMADO'],                             hacia: 'ASIGNADO',     quien: ['COORDINADOR'] },
+  // Quitar del polígono a un grupo que todavía no salió (CU-28, 12/10): vuelve a quedar libre.
+  desasignar:      { desde: ['ASIGNADO'],                               hacia: 'CONFIRMADO',   quien: ['COORDINADOR'] },
   reabrir:         { desde: ['CONFIRMADO', 'ASIGNADO', 'EN_ESPERA'],    hacia: 'EN_FORMACION', quien: ['COORDINADOR'] },
   salir:           { desde: ['ASIGNADO'],                               hacia: 'DESPLEGADO',   quien: ['COORDINADOR', 'LIDER'] },
   llegar_poligono: { desde: ['DESPLEGADO'],                             hacia: 'RASTRILLANDO', quien: ['COORDINADOR', 'LIDER'] },

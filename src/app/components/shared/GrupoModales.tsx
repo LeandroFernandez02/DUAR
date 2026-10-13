@@ -11,12 +11,12 @@
  * pasar para que el coordinador decida sabiendo, y muestran el error del
  * backend tal cual si algo cambió mientras tanto.
  */
-import { useState } from 'react';
+import { useEffect, useState } from 'react';
 import { Users, Edit2, Wand2, Trash2, AlertTriangle, Check, X, ArrowRight, Radio, Wrench } from 'lucide-react';
 import {
-  gruposApi, ApiError,
+  gruposApi, poligonosApi, ApiError,
   type GrupoApi, type EstadoGrupoApi, type PersonalOperativoApi, type ArmadoAutomaticoApi, type AccionGrupo,
-  type ClaseGrupoApi,
+  type ClaseGrupoApi, type PoligonoApi,
 } from '../../services/api';
 import {
   Overlay, IconBox, Titulo, Texto, Etiqueta, BotonSecundario, BotonPrimario, ErrorCaja,
@@ -319,7 +319,7 @@ export function EditarGrupoModal({ operativoId, grupo, nombresUsados, onClose, o
 
 /**
  * Confirmar una acción sobre el grupo, explicando antes lo que provoca.
- *  · asignar              → pide la zona.
+ *  · asignar              → pide el polígono (CU-28: uno de rastrillaje por polígono).
  *  · acciones del terreno → las registra el coordinador cuando el Líder se lo
  *    avisa por radio (decisión del 28/09: sin señal, el Líder llama; no hay cola
  *    en el celular ni hora cargada a mano). Quedan con la hora del registro.
@@ -336,7 +336,17 @@ export function AccionGrupoModal({ operativoId, grupo, accion, onClose, onHecho 
   const esTerreno = (ACCIONES_TERRENO as string[]).includes(accion);
   const info = esCorreccion ? null : ACCION_INFO[accion];
 
-  const [zona, setZona] = useState(grupo.zonaAsignada ?? '');
+  const [poligonoId, setPoligonoId] = useState('');
+  const [poligonos, setPoligonos] = useState<PoligonoApi[] | null>(null);
+  useEffect(() => {
+    if (accion !== 'asignar') return;
+    poligonosApi.listar(operativoId)
+      .then(r => setPoligonos(r.poligonos))
+      .catch(err => { setPoligonos([]); setError(mensaje(err, 'No se pudieron cargar los polígonos.')); });
+  }, [accion, operativoId]);
+  /** El de rastrillaje que ya ocupa ese polígono (no entra otro). */
+  const ocupadoPor = (p: PoligonoApi) =>
+    grupo.clase === 'RASTRILLAJE' ? p.grupos.find(g => g.clase === 'RASTRILLAJE')?.nombre ?? null : null;
   const [motivo, setMotivo] = useState('');
   const [destino, setDestino] = useState<EstadoGrupoApi | ''>('');
   const [enviando, setEnviando] = useState(false);
@@ -346,7 +356,7 @@ export function AccionGrupoModal({ operativoId, grupo, accion, onClose, onHecho 
   const destinosCorreccion = CORREGIBLES.filter(e => e !== grupo.estado);
   const puede = !enviando && (
     esCorreccion ? (!!destino && motivo.trim().length >= 3)
-    : accion === 'asignar' ? zona.trim().length >= 2
+    : accion === 'asignar' ? !!poligonoId
     : true
   );
 
@@ -357,7 +367,7 @@ export function AccionGrupoModal({ operativoId, grupo, accion, onClose, onHecho 
     try {
       const r = await gruposApi.accion(operativoId, grupo.id, {
         accion,
-        ...(accion === 'asignar' ? { zona: zona.trim() } : {}),
+        ...(accion === 'asignar' ? { poligonoId } : {}),
         ...(esCorreccion ? { estadoDestino: destino as EstadoGrupoApi, motivo: motivo.trim() } : {}),
       });
       onHecho();
@@ -391,11 +401,26 @@ export function AccionGrupoModal({ operativoId, grupo, accion, onClose, onHecho 
         )}
 
         {accion === 'asignar' && (
-          <div>
-            <Etiqueta htmlFor="accion-zona">Zona asignada *</Etiqueta>
-            <input id="accion-zona" autoFocus value={zona} maxLength={TEXTO_MAX} onChange={e => setZona(e.target.value)}
-              placeholder="Ej: Margen norte del río, polígono 3" className="w-full px-3 py-2 outline-none" style={estiloCampo} />
-          </div>
+          poligonos === null ? <Texto>Cargando los polígonos…</Texto>
+          : poligonos.length === 0 ? (
+            <Texto>Todavía no hay polígonos en este operativo. Se dibujan en el Mapa.</Texto>
+          ) : (
+            <div>
+              <Etiqueta htmlFor="accion-poligono">Polígono *</Etiqueta>
+              <select id="accion-poligono" autoFocus value={poligonoId} onChange={e => setPoligonoId(e.target.value)}
+                className="w-full px-3 py-2 outline-none" style={estiloCampo}>
+                <option value="">— Elegí el polígono —</option>
+                {poligonos.map(p => {
+                  const ocupado = ocupadoPor(p);
+                  return (
+                    <option key={p.id} value={p.id} disabled={!!ocupado}>
+                      {p.nombre} · {Math.round(p.coberturaPct)} % cubierto{ocupado ? ` · ya tiene a ${ocupado}` : ''}
+                    </option>
+                  );
+                })}
+              </select>
+            </div>
+          )
         )}
 
         {esCorreccion && (
@@ -500,7 +525,7 @@ export function ArmadoAutomaticoModal({ operativoId, disponibles, lideresDuar, r
               Quedaron sin asignar: {resultado.sinAsignar.map(a => `${a.nombre} ${a.apellido}`).join(', ')}.
             </div>
           )}
-          <Texto>Revisalos y confirmalos para poder asignarles zona.</Texto>
+          <Texto>Revisalos y confirmalos para poder asignarles un polígono.</Texto>
           {recursosEspeciales > 0 && (
             <Texto>
               Los recursos especiales y conductores ({recursosEspeciales}) siguen en "Sin grupo": sumalos a mano o armales su grupo especial con "Nuevo Grupo".

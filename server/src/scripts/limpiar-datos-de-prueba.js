@@ -30,6 +30,28 @@ const OPERATIVOS_DE_PRUEBA = [
 const CONFIRMAR = process.argv.includes('--confirmar');
 
 const PASOS = [
+  // Módulo 5 (migración 019): antes que grupos, agentes y operativos, que estas tablas referencian.
+  ['poligono_eventos', `
+    DELETE FROM poligono_eventos
+     WHERE operativo_id IN (SELECT id FROM t_ops) OR grupo_id IN (SELECT id FROM t_grupos)
+        OR registrado_por IN (SELECT id FROM t_usuarios)`],
+  ['poligono_grupos', `
+    DELETE FROM poligono_grupos
+     WHERE grupo_id IN (SELECT id FROM t_grupos)
+        OR poligono_id IN (SELECT id FROM poligonos WHERE operativo_id IN (SELECT id FROM t_ops))
+        OR asignado_por IN (SELECT id FROM t_usuarios) OR salida_por IN (SELECT id FROM t_usuarios)`],
+  ['tracks_gpx', `
+    DELETE FROM tracks_gpx
+     WHERE operativo_id IN (SELECT id FROM t_ops) OR agente_operativo_id IN (SELECT id FROM t_agentes)
+        OR cargado_por IN (SELECT id FROM t_usuarios)`],
+  ['marcador_fotos', `
+    DELETE FROM marcador_fotos
+     WHERE marcador_id IN (SELECT id FROM marcadores WHERE operativo_id IN (SELECT id FROM t_ops))
+        OR subido_por IN (SELECT id FROM t_usuarios)`],
+  ['marcadores', `DELETE FROM marcadores WHERE operativo_id IN (SELECT id FROM t_ops) OR creado_por IN (SELECT id FROM t_usuarios)`],
+  ['radios_operativo', `DELETE FROM radios_operativo WHERE operativo_id IN (SELECT id FROM t_ops) OR creado_por IN (SELECT id FROM t_usuarios)`],
+  ['punto_cero_historial', `DELETE FROM punto_cero_historial WHERE operativo_id IN (SELECT id FROM t_ops) OR registrado_por IN (SELECT id FROM t_usuarios)`],
+  ['poligonos', `DELETE FROM poligonos WHERE operativo_id IN (SELECT id FROM t_ops) OR creado_por IN (SELECT id FROM t_usuarios)`],
   ['eventos_estado (línea de tiempo)', `
     DELETE FROM eventos_estado
      WHERE operativo_id IN (SELECT id FROM t_ops) OR agente_operativo_id IN (SELECT id FROM t_agentes)

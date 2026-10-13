@@ -37,12 +37,12 @@ describe('Grupos: ciclo de estados y Regla 1 (CU-23, CU-17, CU-25)', () => {
     motivo(await ctx.accion(G, { accion: 'salir' }), 409, 'transicion_invalida');
   });
 
-  test('CU-23 · confirmar y asignar exige describir la zona → 400 zona_requerida', async () => {
+  test('CU-23/28 · confirmar y asignar sin polígono → 400 poligono_requerido', async () => {
     motivo(await ctx.accion(G, { accion: 'confirmar' }), 200);
-    motivo(await ctx.accion(G, { accion: 'asignar' }), 400, 'zona_requerida');
+    motivo(await ctx.accion(G, { accion: 'asignar' }), 400, 'poligono_requerido');
   });
 
-  test('CU-23 · asignar con zona → Asignado; los integrantes siguen Agrupados y sin tiempo en el terreno', async () => {
+  test('CU-23/28 · asignar a un polígono → Asignado; los integrantes siguen Agrupados y sin tiempo en el terreno', async () => {
     const r = await ctx.accion(G, { accion: 'asignar', zona: 'Quebrada norte, polígono 2' });
     motivo(r, 200);
     assert.equal(r.json.grupo.estado, 'ASIGNADO');

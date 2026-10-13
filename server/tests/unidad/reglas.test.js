@@ -66,7 +66,7 @@ describe('Reglas puras del modelo de estados y de composición', () => {
 
   test('Estados · el Líder informa sólo hechos del terreno; confirmar, asignar y disolver son del coordinador', () => {
     for (const a of ['salir', 'llegar_poligono', 'volver', 'llegar_base']) assert.ok(ACCIONES[a].quien.includes('LIDER'), a);
-    for (const a of ['confirmar', 'asignar', 'reabrir', 'disolver']) assert.deepEqual(ACCIONES[a].quien, ['COORDINADOR'], a);
+    for (const a of ['confirmar', 'asignar', 'desasignar', 'reabrir', 'disolver']) assert.deepEqual(ACCIONES[a].quien, ['COORDINADOR'], a);
   });
 
   test('CU-21/24 · a un grupo de rastrillaje entra un agente o un conductor, no un recurso especial', () => {

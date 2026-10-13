@@ -33,7 +33,10 @@
 import { query, withTransaction } from '../config/db.js';
 import * as Est from './estados.js';
 import * as Evento from './evento.model.js';
+import * as Asig from './poligonoAsignacion.js';
+import { ReglaError } from './reglaError.js';
 
+export { ReglaError };
 export { EN_BASE, EN_OPERACION, ACCIONES, ACCIONES_TERRENO, ESTADOS_CORREGIBLES, entraARastrillaje } from './estados.js';
 
 const PALETA = [
@@ -53,19 +56,6 @@ export const CLASES = ['RASTRILLAJE', 'ESPECIAL'];
 
 /** Margen para relojes de celular levemente adelantados. */
 const TOLERANCIA_FUTURO_MS = 2 * 60 * 1000;
-
-/**
- * Una regla de negocio rechazada. Lleva el status HTTP y un `motivo` estable
- * que el frontend usa para decidir qué mostrar; app.js lo convierte en respuesta.
- */
-export class ReglaError extends Error {
-  constructor(status, motivo, mensaje, datos = {}) {
-    super(mensaje);
-    this.status = status;
-    this.motivo = motivo;
-    this.datos = datos;
-  }
-}
 
 const ejecutar = (db, texto, params) => (db ? db.query(texto, params) : query(texto, params));
 const hhmm = (d) => new Date(d).toLocaleTimeString('es-AR', {
@@ -93,12 +83,19 @@ const SELECT_GRUPO = `
          (g.clase = 'RASTRILLAJE'
             AND g.estado IN ('DESPLEGADO', 'RASTRILLANDO', 'REPLEGADO')
             AND count(ao.id) FILTER (WHERE NOT ao.es_conductor) = 1) AS "alertaBinomio",
-         -- Hasta el CU-28 (Módulo 5), la "zona" es la descripción que cargó el
-         -- coordinador al asignar. Vive en el evento, no en una columna provisoria.
-         (SELECT e.nota FROM eventos_estado e
-           WHERE e.grupo_id = g.id AND e.entidad = 'GRUPO' AND e.estado_nuevo = 'ASIGNADO'
-             AND e.resultado = 'APLICADO'
-           ORDER BY e.ocurrido_en DESC LIMIT 1) AS "zonaAsignada",
+         -- El polígono en el que está hoy (CU-28, Módulo 5). "zonaAsignada" se
+         -- conserva como nombre de lo asignado: el polígono, o la descripción
+         -- libre que se cargaba antes del Módulo 5 (eventos viejos).
+         (SELECT pg.poligono_id FROM poligono_grupos pg
+           WHERE pg.grupo_id = g.id AND pg.salida_en IS NULL) AS "poligonoId",
+         COALESCE(
+           (SELECT p.nombre FROM poligono_grupos pg JOIN poligonos p ON p.id = pg.poligono_id
+             WHERE pg.grupo_id = g.id AND pg.salida_en IS NULL),
+           (SELECT e.nota FROM eventos_estado e
+             WHERE e.grupo_id = g.id AND e.entidad = 'GRUPO' AND e.estado_nuevo = 'ASIGNADO'
+               AND e.resultado = 'APLICADO' AND g.estado::text IN ('ASIGNADO', 'DESPLEGADO', 'RASTRILLANDO')
+             ORDER BY e.ocurrido_en DESC LIMIT 1)
+         ) AS "zonaAsignada",
          COALESCE(
            json_agg(json_build_object(
              'id',                  ao.id,
@@ -354,8 +351,11 @@ async function adelantarDesde(client, grupo, eventoId, t) {
   );
 }
 
-/** Precondiciones de negocio de cada acción (además de la tabla de transiciones). */
-async function precondiciones(client, grupo, accion, { nota }) {
+/**
+ * Precondiciones de negocio de cada acción (además de la tabla de transiciones).
+ * Devuelve lo que la aplicación necesita (el polígono, al asignar).
+ */
+async function precondiciones(client, grupo, accion, { poligonoId = null } = {}) {
   // Los grupos especiales se confirman sin requisitos (decisión del 26/09).
   if (accion === 'confirmar' && grupo.clase === 'RASTRILLAJE') {
     const lista = await miembros(client, grupo.id);
@@ -376,16 +376,16 @@ async function precondiciones(client, grupo, accion, { nota }) {
         'Un grupo de rastrillaje necesita al menos dos agentes que rastrillen (el conductor no cuenta): nadie rastrilla solo.');
     }
   }
+  // CU-28 (12/10): asignar es mandar el grupo a un polígono del mapa.
   if (accion === 'asignar') {
-    const zona = String(nota ?? '').trim();
-    if (zona.length < 2) {
-      throw new ReglaError(400, 'zona_requerida', 'Describí la zona asignada (hasta que exista el mapa, es un texto).');
-    }
+    if (!poligonoId) throw new ReglaError(400, 'poligono_requerido', 'Elegí el polígono al que va el grupo.');
+    return { poligono: await Asig.bloquearPoligono(client, grupo.operativoId, poligonoId) };
   }
+  return {};
 }
 
 /** Escribe el cambio: estado del grupo, su evento, historial y cascada (o liberación, si se disuelve). */
-async function aplicar(client, grupo, accion, hacia, { t, confiable, base, usuarioId }) {
+async function aplicar(client, grupo, accion, hacia, { t, confiable, base, usuarioId, poligono = null }) {
   const anterior = grupo.estado;
   if (hacia === 'DISUELTO') {
     await client.query(
@@ -408,6 +408,17 @@ async function aplicar(client, grupo, accion, hacia, { t, confiable, base, usuar
 
   await sincronizarHistorial(client, grupo, anterior, hacia, t, usuarioId,
     { correccion: accion === 'corregir', motivo: base.motivo });
+
+  // Polígono (CU-28): entra al asignar; sale apenas deja de estar asignado o en
+  // el terreno — al replegarse (sale solo), al disolverse o si se lo reabre o
+  // se le quita la asignación. Un solo lugar para todos esos caminos.
+  if (accion === 'asignar' && poligono) {
+    await Asig.abrirAsignacion(client, { poligono, grupo, usuarioId, t });
+  } else if (!Asig.ESTADOS_EN_POLIGONO.includes(hacia)) {
+    await Asig.cerrarAsignacionDeGrupo(client, grupo, {
+      motivo: hacia === 'REPLEGADO' ? 'REPLEGADO' : hacia === 'DISUELTO' ? 'DISUELTO' : 'QUITADO', usuarioId, t,
+    });
+  }
 
   if (hacia === 'DISUELTO') {
     // CU-25: todos vuelven a "Sin grupo" como DISPONIBLES. lider_id no se toca:
@@ -437,7 +448,8 @@ async function aplicar(client, grupo, accion, hacia, { t, confiable, base, usuar
  * @param {object} opts
  *   · fuente                 'COORDINADOR' | 'RADIO' | 'PORTAL_LIDER' | 'SISTEMA'
  *   · ocurridoEn             hora del hecho (celular, o la que carga el coordinador)
- *   · motivo, nota           motivo (corregir) / zona (asignar)
+ *   · motivo                 motivo (corregir)
+ *   · poligonoId             el polígono al que va el grupo (asignar, CU-28)
  *   · estadoDestino          sólo para 'corregir'
  *   · clienteEventoId        id de la cola sin señal del celular (idempotencia)
  *   · autorAgenteOperativoId quien lo manda desde el portal (tiene que ser el Líder)
@@ -451,8 +463,8 @@ async function aplicar(client, grupo, accion, hacia, { t, confiable, base, usuar
  */
 export async function transicionar(operativoId, grupoId, accion, opts, usuarioId) {
   const {
-    fuente, ocurridoEn = null, motivo = null, nota = null, estadoDestino = null,
-    clienteEventoId = null, autorAgenteOperativoId = null,
+    fuente, ocurridoEn = null, motivo = null, estadoDestino = null,
+    clienteEventoId = null, autorAgenteOperativoId = null, poligonoId = null,
   } = opts;
   const desdePortal = fuente === 'PORTAL_LIDER';
   const antes = await buscar(operativoId, grupoId);
@@ -471,7 +483,7 @@ export async function transicionar(operativoId, grupoId, accion, opts, usuarioId
 
     const base = {
       operativoId, entidad: 'GRUPO', grupoId, accion, registradoPor: usuarioId, fuente,
-      motivo, nota: accion === 'asignar' ? String(nota ?? '').trim() : null, clienteEventoId,
+      motivo, nota: null, clienteEventoId,
     };
     const registrarSin = async (res, extra = {}) => {
       eventoId = await Evento.registrar(client, { ...base, estadoNuevo: hacia, resultado: res, ...extra });
@@ -543,14 +555,41 @@ export async function transicionar(operativoId, grupoId, accion, opts, usuarioId
       }
     }
 
-    // 5. Reglas de negocio de la acción y aplicación.
-    await precondiciones(client, grupo, accion, { nota });
-    eventoId = await aplicar(client, grupo, accion, hacia, { t, confiable, base, usuarioId });
+    // 5. Reglas de negocio de la acción y aplicación. Al asignar, la "zona" de
+    //    la línea de tiempo es el nombre del polígono.
+    const ctx = await precondiciones(client, grupo, accion, { poligonoId });
+    if (ctx.poligono) base.nota = ctx.poligono.nombre;
+    eventoId = await aplicar(client, grupo, accion, hacia, { t, confiable, base, usuarioId, poligono: ctx.poligono });
     resultado = 'APLICADO';
   });
 
   const despues = await buscar(operativoId, grupoId);
   return { resultado, eventoId, antes, despues };
+}
+
+/**
+ * Asignar o desasignar dentro de una transacción ajena (poligono.model.js:
+ * cambiar de grupo o eliminar un polígono lo hacen en un solo paso). Mismas
+ * reglas que transicionar() para el coordinador, sin la cola del celular.
+ */
+export async function accionCoordinadorCon(client, operativoId, grupoId, accion, { poligonoId = null, motivo = null } = {}, usuarioId) {
+  if (!['asignar', 'desasignar'].includes(accion)) throw new ReglaError(400, 'accion_invalida', 'Acción desconocida.');
+  const grupo = await bloquearGrupo(client, operativoId, grupoId);
+  if (!Est.ACCIONES[accion].desde.includes(grupo.estado)) {
+    throw new ReglaError(409, 'transicion_invalida',
+      accion === 'asignar'
+        ? `Sólo se asigna un grupo Confirmado: ${grupo.nombre} está ${Est.ETIQUETA_GRUPO[grupo.estado]}.`
+        : `${grupo.nombre} está ${Est.ETIQUETA_GRUPO[grupo.estado]}: ya no se le puede quitar el polígono como asignado.`,
+      { estadoGrupo: grupo.estado });
+  }
+  const t = new Date();
+  const ctx = await precondiciones(client, grupo, accion, { poligonoId });
+  const base = {
+    operativoId, entidad: 'GRUPO', grupoId, accion, registradoPor: usuarioId, fuente: 'COORDINADOR',
+    motivo, nota: ctx.poligono?.nombre ?? null,
+  };
+  return aplicar(client, grupo, accion, Est.ACCIONES[accion].hacia,
+    { t, confiable: true, base, usuarioId, poligono: ctx.poligono });
 }
 
 /* ── CU-21 · Crear Grupo de Trabajo ────────────────────────────────────── */

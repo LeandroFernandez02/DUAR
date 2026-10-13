@@ -37,15 +37,15 @@ export const ACCION_INFO: Record<Exclude<AccionGrupo, 'corregir'>, {
 }> = {
   confirmar: {
     boton: 'Confirmar', titulo: 'Confirmar el grupo', hacia: 'CONFIRMADO', desde: ['EN_FORMACION', 'EN_ESPERA'],
-    efecto: 'La composición queda cerrada: para cambiarla hay que reabrirlo. Ya se le puede asignar una zona.',
+    efecto: 'La composición queda cerrada: para cambiarla hay que reabrirlo. Ya se le puede asignar un polígono.',
   },
   asignar: {
-    boton: 'Asignar zona', titulo: 'Asignar zona de búsqueda', hacia: 'ASIGNADO', desde: ['CONFIRMADO'],
-    efecto: 'El grupo queda listo para salir. Hasta que exista el mapa (CU-28), la zona es una descripción.',
+    boton: 'Asignar polígono', titulo: 'Asignar polígono de búsqueda', hacia: 'ASIGNADO', desde: ['CONFIRMADO'],
+    efecto: 'El grupo queda listo para salir al polígono elegido. Un polígono admite un solo grupo de rastrillaje, más los grupos especiales que hagan falta.',
   },
   reabrir: {
     boton: 'Reabrir', titulo: 'Reabrir el grupo', hacia: 'EN_FORMACION', desde: ['CONFIRMADO', 'ASIGNADO', 'EN_ESPERA'],
-    efecto: 'Vuelve a En formación para cambiar su composición. Después hay que confirmarlo y asignarle zona de nuevo.',
+    efecto: 'Vuelve a En formación para cambiar su composición y sale de su polígono. Después hay que confirmarlo y asignarle un polígono de nuevo.',
   },
   salir: {
     boton: 'Registrar salida', titulo: 'Salieron hacia el polígono', hacia: 'DESPLEGADO', desde: ['ASIGNADO'],
@@ -62,6 +62,10 @@ export const ACCION_INFO: Record<Exclude<AccionGrupo, 'corregir'>, {
   llegar_base: {
     boton: 'Registrar llegada a la base', titulo: 'Llegaron al puesto de comando', hacia: 'EN_ESPERA', desde: ['REPLEGADO'],
     efecto: 'Los integrantes pasan a En espera y se cierra su período en el historial.',
+  },
+  desasignar: {
+    boton: 'Quitar del polígono', titulo: 'Quitar del polígono', hacia: 'CONFIRMADO', desde: ['ASIGNADO'],
+    efecto: 'Todavía no salió: vuelve a Confirmado y queda libre para otro polígono. Queda en el historial del polígono.',
   },
 };
 

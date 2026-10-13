@@ -464,7 +464,7 @@ export type EstadoGrupoApi =
 export type AccionTerreno = 'salir' | 'llegar_poligono' | 'volver' | 'llegar_base';
 
 /** Acciones del coordinador sobre un grupo (disolver va aparte). */
-export type AccionGrupo = 'confirmar' | 'asignar' | 'reabrir' | AccionTerreno | 'corregir';
+export type AccionGrupo = 'confirmar' | 'asignar' | 'desasignar' | 'reabrir' | AccionTerreno | 'corregir';
 
 export interface IntegranteGrupoApi {
   /** id de `agentes_operativo` (el alta táctica), no del usuario. */
@@ -496,7 +496,9 @@ export interface GrupoApi {
   rastrillan: number;
   /** De rastrillaje, en el terreno y con uno solo rastrillando. Calculado, no guardado. */
   alertaBinomio: boolean;
-  /** Hasta el CU-28 (Módulo 5), la zona es la descripción que cargó el coordinador al asignar. */
+  /** El polígono en el que está hoy (CU-28): mientras está Asignado o en el terreno. */
+  poligonoId: string | null;
+  /** Nombre de lo asignado: el polígono (o la descripción libre de antes del Módulo 5). */
   zonaAsignada: string | null;
   /** El Líder primero, después por apellido. */
   integrantes: IntegranteGrupoApi[];
@@ -594,6 +596,82 @@ export const mandoApi = {
     api.post<{ mando: MandoOperativoApi }>(`/operativos/${operativoId}/mando/a-cargo`, { usuarioId }),
 };
 
+/* ── Módulo 5 · Polígonos del mapa (CU-27, 28, 35, 36, 37) ─────────────── */
+
+/** GeoJSON Polygon en [longitud, latitud], como lo dibuja Leaflet. */
+export interface GeometriaPoligono { type: 'Polygon'; coordinates: number[][][]; }
+
+export interface GrupoEnPoligonoApi {
+  id: string; nombre: string; clase: ClaseGrupoApi; estado: EstadoGrupoApi;
+  color: string | null; asignadoEn: string; liderNombre: string | null;
+}
+
+/** Un polígono. No tiene estado (decisión del 12/10): lo describe su cobertura. */
+export interface PoligonoApi {
+  id: string;
+  operativoId: string;
+  nombre: string;
+  notas: string | null;
+  geometria: GeometriaPoligono;
+  areaM2: number;
+  perimetroM: number;
+  coberturaPct: number;
+  coberturaKm: number;
+  coberturaCalculadaEn: string | null;
+  creadoEn: string;
+  tracks: number;
+  /** A lo sumo uno de rastrillaje, más los especiales. */
+  grupos: GrupoEnPoligonoApi[];
+}
+
+export interface EventoPoligonoApi {
+  id: string;
+  tipo: 'CREADO' | 'NOMBRE' | 'GEOMETRIA' | 'NOTAS' | 'ELIMINADO'
+    | 'GRUPO_ASIGNADO' | 'GRUPO_CAMBIADO' | 'GRUPO_QUITADO' | 'GRUPO_REPLEGADO' | 'GRUPO_SALIO'
+    | 'TRACK_CARGADO' | 'TRACK_REASIGNADO' | 'TRACK_ELIMINADO';
+  registradoEn: string;
+  detalle: Record<string, unknown> | null;
+  grupoId: string | null;
+  grupoNombre: string | null;
+  grupoColor: string | null;
+  trackId: string | null;
+  registradoPor: string | null;
+}
+
+/** CU-37: el polígono con lo que pasó en él. */
+export interface PoligonoDetalleApi extends PoligonoApi {
+  brechas: unknown | null;
+  asistieron: { id: string; nombre: string; color: string | null; clase: ClaseGrupoApi; primeraVez: string }[];
+  listaTracks: { id: string; agente: string; inicio: string | null; fin: string | null; cargadoEn: string; distanciaM: number; color: string | null }[];
+  historial: EventoPoligonoApi[];
+}
+
+export const poligonosApi = {
+  listar: (operativoId: string) =>
+    api.get<{ poligonos: PoligonoApi[] }>(`/operativos/${operativoId}/poligonos`),
+  /** CU-37 */
+  obtener: (operativoId: string, poligonoId: string) =>
+    api.get<{ poligono: PoligonoDetalleApi }>(`/operativos/${operativoId}/poligonos/${poligonoId}`),
+  /** CU-27 (con `grupoId`, lo asigna en el mismo paso) */
+  crear: (operativoId: string, datos: { nombre: string; geometria: GeometriaPoligono; notas?: string; grupoId?: string }) =>
+    api.post<{ poligono: PoligonoDetalleApi }>(`/operativos/${operativoId}/poligonos`, datos),
+  /** CU-35: nombre, notas y/o forma */
+  actualizar: (operativoId: string, poligonoId: string, datos: { nombre?: string; notas?: string | null; geometria?: GeometriaPoligono }) =>
+    api.put<{ poligono: PoligonoDetalleApi }>(`/operativos/${operativoId}/poligonos/${poligonoId}`, datos),
+  /** CU-36: baja con registro (no se puede con un grupo en el terreno) */
+  eliminar: (operativoId: string, poligonoId: string) =>
+    api.del<void>(`/operativos/${operativoId}/poligonos/${poligonoId}`),
+  /** CU-28: sólo grupos Confirmados */
+  asignarGrupo: (operativoId: string, poligonoId: string, grupoId: string) =>
+    api.post<{ poligono: PoligonoDetalleApi }>(`/operativos/${operativoId}/poligonos/${poligonoId}/grupos`, { grupoId }),
+  /** CU-28: con el grupo en el terreno hace falta `confirmar: true` */
+  quitarGrupo: (operativoId: string, poligonoId: string, grupoId: string, confirmar = false) =>
+    api.post<{ poligono: PoligonoDetalleApi }>(`/operativos/${operativoId}/poligonos/${poligonoId}/grupos/${grupoId}/quitar`, { confirmar }),
+  /** CU-28: sólo si el actual todavía no salió (Asignado) */
+  cambiarGrupo: (operativoId: string, poligonoId: string, grupoId: string, nuevoGrupoId: string) =>
+    api.post<{ poligono: PoligonoDetalleApi }>(`/operativos/${operativoId}/poligonos/${poligonoId}/grupos/${grupoId}/cambiar`, { nuevoGrupoId }),
+};
+
 export const gruposApi = {
   /** CU-23 */
   listar: (operativoId: string) =>
@@ -613,7 +691,7 @@ export const gruposApi = {
    * Si el mismo hecho ya estaba registrado, `resultado` es CONFIRMACION.
    */
   accion: (operativoId: string, grupoId: string, datos: {
-    accion: AccionGrupo; ocurridoEn?: string; zona?: string; motivo?: string; estadoDestino?: EstadoGrupoApi;
+    accion: AccionGrupo; ocurridoEn?: string; poligonoId?: string; motivo?: string; estadoDestino?: EstadoGrupoApi;
   }) => api.post<{ grupo: GrupoApi; resultado: EventoEstadoApi['resultado'] }>(`/operativos/${operativoId}/grupos/${grupoId}/acciones`, datos),
   /** CU-21 paso 6 / CU-24: arrastrar, sólo con grupos En formación. `destinoGrupoId: null` = "Sin grupo". */
   mover: (operativoId: string, agenteOperativoId: string, destinoGrupoId: string | null) =>

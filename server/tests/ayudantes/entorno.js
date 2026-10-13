@@ -225,6 +225,22 @@ async function limpiarGrupos(admin, op) {
   }
 }
 
+/**
+ * Los polígonos que dejó otra corrida se dan de baja (los grupos ya salieron de
+ * ellos al disolverse). Va por SQL porque es limpieza del entorno, no un caso.
+ */
+async function limpiarPoligonos(op) {
+  await query(
+    `UPDATE poligonos SET eliminado_en = CURRENT_TIMESTAMP WHERE operativo_id = $1 AND eliminado_en IS NULL`, [op]);
+}
+
+/** Un cuadrado de ~500 m en la zona de pruebas, corrido según `i` para que no se pisen. */
+export function cuadrado(i = 0, lado = 0.005) {
+  const x = -64.95 + (i % 10) * 0.01;
+  const y = -31.95 - Math.floor(i / 10) * 0.01;
+  return { type: 'Polygon', coordinates: [[[x, y], [x + lado, y], [x + lado, y - lado], [x, y - lado], [x, y]]] };
+}
+
 /** Todos los agentes en el operativo, Disponibles, con la especialidad y el conductor de base. */
 async function asegurarAgentes(admin, op, usuarios, cat) {
   const { rows } = await query(
@@ -255,10 +271,12 @@ export async function preparar() {
   const op = await asegurarOperativo(admin);
   await verificarAislamiento(op);
   await limpiarGrupos(admin, op);
+  await limpiarPoligonos(op);
   await limpiarMando(admin, op);
   await quitarSobrantes(admin, op, usuarios);
   await asegurarAgentes(admin, op, usuarios, cat);
 
+  const poligonosPorNombre = new Map();
   const ctx = {
     admin, op, usuarios, cat,
     coordinador: usuarios.hotel.token,
@@ -266,8 +284,27 @@ export async function preparar() {
     /** Estado del puesto de comando del operativo de pruebas. */
     mando: async () => (await api('GET', `/operativos/${op}/mando`, undefined, admin)).json,
     api: (m, ruta, body, token = admin) => api(m, ruta, body, token),
-    /** Acción de estado sobre un grupo (como coordinador). */
-    accion: (grupoId, body) => api('POST', `/operativos/${op}/grupos/${grupoId}/acciones`, body, admin),
+    /**
+     * Acción de estado sobre un grupo (como coordinador). Desde el Módulo 5,
+     * asignar es mandar el grupo a un polígono: `{ accion: 'asignar', zona: 'X' }`
+     * lo asigna al polígono de prueba llamado X (se crea si no existe).
+     */
+    accion: async (grupoId, body) => {
+      if (body?.accion === 'asignar' && body.zona) {
+        const { zona, ...resto } = body;
+        body = { ...resto, poligonoId: await ctx.poligono(zona) };
+      }
+      return api('POST', `/operativos/${op}/grupos/${grupoId}/acciones`, body, admin);
+    },
+    /** Id de un polígono de prueba con ese nombre (lo crea la primera vez, cada uno en su lugar). */
+    async poligono(nombre) {
+      if (poligonosPorNombre.has(nombre)) return poligonosPorNombre.get(nombre);
+      const i = poligonosPorNombre.size;
+      const r = await api('POST', `/operativos/${op}/poligonos`, { nombre, geometria: cuadrado(i) }, admin);
+      if (r.status !== 201) throw new Error(`No se pudo crear el polígono ${nombre}: ${JSON.stringify(r.json)}`);
+      poligonosPorNombre.set(nombre, r.json.poligono.id);
+      return r.json.poligono.id;
+    },
     crearGrupo: (nombreGrupo, lider, clase = 'RASTRILLAJE') =>
       api('POST', `/operativos/${op}/grupos`, { nombre: nombreGrupo, liderId: ctx.agentes[lider].id, clase }, admin),
     mover: (clave, destinoGrupoId) =>

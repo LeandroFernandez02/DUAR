@@ -26,7 +26,7 @@
  * cargo ausente.
  */
 import { query, withTransaction } from '../config/db.js';
-import { ReglaError } from './grupo.model.js';
+import { ReglaError } from './reglaError.js';
 
 const ADMITE_PRESENCIA = ['ACTIVO', 'EN_PLANIFICACION'];
 

@@ -8,6 +8,7 @@
  */
 import { query, withTransaction } from '../config/db.js';
 import * as Mando from './mando.model.js';
+import * as Asig from './poligonoAsignacion.js';
 
 const CAMPOS = `
   o.id,
@@ -231,6 +232,8 @@ export async function finalizar(id, { notaFinal = null, usuarioId = null } = {})
     );
     // El puesto de comando también se cierra (presencia de mando, migración 016).
     await Mando.cerrarTodoCon(client, id, usuarioId, 'Operativo finalizado');
+    // Los grupos salen de sus polígonos (CU-28), con el motivo en el historial de cada uno.
+    await Asig.cerrarTodasDelOperativo(client, id, usuarioId);
     // Los grupos vigentes se disuelven con la misma baja lógica del CU-25
     // (estado DISUELTO + eliminado_en). Sin esto quedaban grupos "rastrillando"
     // en un operativo cerrado, sin integrantes. lider_id no se toca: es parte
