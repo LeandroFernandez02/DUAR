@@ -115,6 +115,14 @@ export async function urlFirmadaGpx(path, ttlSegundos = 600) {
   } catch { return null; }
 }
 
+/** Sólo para el script de limpieza de datos de prueba: borra fotos (marcadores de prueba). */
+export async function borrarFotos(paths) {
+  if (!cliente || !paths.length) return 0;
+  const { data, error } = await cliente.storage.from(BUCKET).remove(paths);
+  if (error) throw new Error(`No se pudieron borrar las fotos de prueba: ${error.message}`);
+  return data?.length ?? 0;
+}
+
 /** Sólo para el script de limpieza de datos de prueba: borra archivos GPX. */
 export async function borrarGpx(paths) {
   if (!cliente || !paths.length) return 0;

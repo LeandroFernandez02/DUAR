@@ -87,7 +87,10 @@ const emptyForm = {
   punto0lng: '',
   fechaInicio: '',   // se completa con la hora de Argentina al abrir "Nuevo operativo"
   descripcion: '',
+  motivoPuntoCero: '',   // CU-34: sólo al mover el Punto 0 con el operativo en curso
 };
+
+const MOTIVO_PUNTO_CERO_MAX = 500;
 
 function inputStyle(extra?: React.CSSProperties): React.CSSProperties {
   return {
@@ -196,6 +199,7 @@ export default function Operativos() {
       punto0lng: op.punto0 ? String(op.punto0.lng) : '',
       fechaInicio: campoDesdeIso(op.fechaInicio),
       descripcion: op.descripcion || '',
+      motivoPuntoCero: '',
     });
     setModal('edit');
   };
@@ -332,6 +336,11 @@ export default function Operativos() {
     const lngVal = parseFloat(form.punto0lng);
     if (isNaN(latVal) || latVal < -90 || latVal > 90)   { setFormErrors(new Set(['punto0lat'])); setFormErrorMsg('Latitud inválida (–90 a 90).'); return; }
     if (isNaN(lngVal) || lngVal < -180 || lngVal > 180) { setFormErrors(new Set(['punto0lng'])); setFormErrorMsg('Longitud inválida (–180 a 180).'); return; }
+    if (pideMotivoPuntoCero && !form.motivoPuntoCero.trim()) {
+      setFormErrors(new Set(['motivoPuntoCero']));
+      setFormErrorMsg('Escribí por qué se mueve el Punto 0: con el operativo en curso, el motivo queda en su historial.');
+      return;
+    }
     setFormErrors(new Set());
     setFormErrorMsg('');
     try {
@@ -343,8 +352,12 @@ export default function Operativos() {
         localidad: form.ubicacion.trim(),
         fiscalInstruccion: form.fiscal.trim(),
         descripcion: form.descripcion || undefined,
-        puntoCeroLat: latVal,
-        puntoCeroLng: lngVal,
+        // El Punto 0 sólo viaja si se movió (CU-34: cada movimiento queda en su historial).
+        ...(puntoCeroMovido ? {
+          puntoCeroLat: latVal,
+          puntoCeroLng: lngVal,
+          motivoPuntoCero: form.motivoPuntoCero.trim() || undefined,
+        } : {}),
         fechaHoraInicio: form.fechaInicio,
       });
       setModal(null);
@@ -400,6 +413,12 @@ export default function Operativos() {
   };
 
   /* read-only mode: operativos finalizados o eliminados no pueden modificarse */
+  /** CU-34: ¿se movió el Punto 0 respecto del guardado? Con el operativo en curso, pide motivo. */
+  const puntoCeroMovido = modal === 'edit' && !!selected?.punto0 && (
+    Math.abs(parseFloat(form.punto0lat) - selected.punto0.lat) > 1e-7 ||
+    Math.abs(parseFloat(form.punto0lng) - selected.punto0.lng) > 1e-7);
+  const pideMotivoPuntoCero = puntoCeroMovido && selected?.estado !== 'nuevo';
+
   const isEditReadOnly =
     modal === 'edit' &&
     (selected?.estado === 'finalizado' || selected?.estado === 'eliminado');
@@ -1136,6 +1155,24 @@ export default function Operativos() {
                           {!isEditReadOnly && formErrors.has('punto0lng') && <span style={{ color: 'var(--primary)', fontSize: '11px', fontFamily: 'var(--font-family-primary)' }}>Obligatorio</span>}
                         </div>
                       </div>
+
+                      {pideMotivoPuntoCero && !isEditReadOnly && (
+                        <div>
+                          <label style={labelStyle()}>Motivo del cambio del Punto 0 *</label>
+                          <textarea
+                            value={form.motivoPuntoCero}
+                            maxLength={MOTIVO_PUNTO_CERO_MAX}
+                            onChange={e => { setForm({ ...form, motivoPuntoCero: e.target.value }); setFormErrors(p => { const n = new Set(p); n.delete('motivoPuntoCero'); return n; }); }}
+                            rows={2}
+                            placeholder="Ej.: apareció una prenda 1 km al norte"
+                            className="w-full px-3 py-2.5 rounded-lg border outline-none resize-none"
+                            style={errStyle(inputStyle(), formErrors.has('motivoPuntoCero'))}
+                          />
+                          <span style={{ color: formErrors.has('motivoPuntoCero') ? 'var(--primary)' : 'var(--muted-foreground)', fontSize: '11px', fontFamily: 'var(--font-family-primary)' }}>
+                            El operativo está en curso: el movimiento queda en el historial del Punto 0, con quién, cuándo y por qué.
+                          </span>
+                        </div>
+                      )}
 
                       {form.punto0lat && form.punto0lng ? (
                         <div

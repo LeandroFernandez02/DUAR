@@ -9,6 +9,7 @@
 import { query, withTransaction } from '../config/db.js';
 import * as Mando from './mando.model.js';
 import * as Asig from './poligonoAsignacion.js';
+import * as PuntoCero from './puntoCero.model.js';
 
 const CAMPOS = `
   o.id,
@@ -119,24 +120,31 @@ export async function crear({
   titulo, localidad, fiscalInstruccion, descripcion = null,
   puntoCeroLat, puntoCeroLng, fechaHoraInicio, coordinadorId,
 }) {
-  const { rows } = await query(
-    `INSERT INTO operativos
-       (titulo, localidad, fiscal_instruccion, descripcion, punto_cero,
-        fecha_hora_inicio, coordinador_id, estado)
-     VALUES ($1,$2,$3,$4, extensions.ST_SetSRID(extensions.ST_MakePoint($5,$6),4326),
-             $7,$8,'NUEVO')
-     RETURNING id`,
-    [titulo, localidad, fiscalInstruccion, descripcion,
-     puntoCeroLng, puntoCeroLat, fechaHoraInicio, coordinadorId]
-  );
-  return buscarPorId(rows[0].id);
+  const id = await withTransaction(async (client) => {
+    const { rows } = await client.query(
+      `INSERT INTO operativos
+         (titulo, localidad, fiscal_instruccion, descripcion, punto_cero,
+          fecha_hora_inicio, coordinador_id, estado)
+       VALUES ($1,$2,$3,$4, extensions.ST_SetSRID(extensions.ST_MakePoint($5,$6),4326),
+               $7,$8,'NUEVO')
+       RETURNING id`,
+      [titulo, localidad, fiscalInstruccion, descripcion,
+       puntoCeroLng, puntoCeroLat, fechaHoraInicio, coordinadorId]
+    );
+    // CU-34: el historial del Punto Cero arranca con su definición.
+    await PuntoCero.registrarInicial(client, rows[0].id, coordinadorId);
+    return rows[0].id;
+  });
+  return buscarPorId(id);
 }
 
 /**
  * CU-09 · UPDATE parcial, igual patrón que usuario.model.js: sólo toca las
  * columnas presentes en `campos`. El UUID nunca cambia (Observaciones del CU).
+ * Si cambia el Punto Cero, rigen las reglas del CU-34 (historial y motivo
+ * obligatorio con el operativo en curso), en la misma transacción.
  */
-export async function actualizar(id, campos) {
+export async function actualizar(id, campos, { usuarioId = null, motivoPuntoCero = null } = {}) {
   const permitidos = {
     titulo: 'titulo',
     localidad: 'localidad',
@@ -153,20 +161,24 @@ export async function actualizar(id, campos) {
       sets.push(`${columna} = $${valores.length}`);
     }
   }
-  // Punto Cero va aparte: es una expresión PostGIS, no un valor simple.
-  if (campos.puntoCeroLat !== undefined && campos.puntoCeroLng !== undefined) {
-    valores.push(campos.puntoCeroLng, campos.puntoCeroLat);
-    sets.push(`punto_cero = extensions.ST_SetSRID(extensions.ST_MakePoint($${valores.length - 1},$${valores.length}),4326)`);
-  }
+  const mueve = campos.puntoCeroLat !== undefined && campos.puntoCeroLng !== undefined;
+  if (sets.length === 0 && !mueve) return buscarPorId(id);
 
-  if (sets.length === 0) return buscarPorId(id);
-
-  valores.push(id);
-  await query(
-    `UPDATE operativos SET ${sets.join(', ')}, actualizado_en = CURRENT_TIMESTAMP
-      WHERE id = $${valores.length}`,
-    valores
-  );
+  await withTransaction(async (client) => {
+    if (sets.length) {
+      valores.push(id);
+      await client.query(
+        `UPDATE operativos SET ${sets.join(', ')}, actualizado_en = CURRENT_TIMESTAMP
+          WHERE id = $${valores.length}`,
+        valores
+      );
+    }
+    // Punto Cero va aparte: tiene historial y, en curso, motivo (CU-34).
+    if (mueve) {
+      await PuntoCero.moverCon(client, id,
+        { lat: campos.puntoCeroLat, lng: campos.puntoCeroLng, motivo: motivoPuntoCero }, usuarioId);
+    }
+  });
   return buscarPorId(id);
 }
 

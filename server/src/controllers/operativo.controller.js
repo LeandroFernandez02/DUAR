@@ -8,6 +8,7 @@ import { validarDatosOperativo } from '../utils/validaciones.js';
 import { conZonaArgentina } from '../utils/fechas.js';
 
 const ENTIDAD = 'operativos';
+const MOTIVO_PUNTO_CERO_MAX = 500;
 
 /** GET /api/operativos — CU-11, con ?busqueda= y ?estado= */
 export async function listar(req, res, next) {
@@ -121,8 +122,17 @@ export async function actualizar(req, res, next) {
       }
     }
 
+    // CU-34: con el operativo en curso, mover el Punto Cero pide motivo.
+    let motivoPuntoCero = null;
+    if (b.motivoPuntoCero !== undefined && b.motivoPuntoCero !== null) {
+      if (typeof b.motivoPuntoCero !== 'string' || b.motivoPuntoCero.trim().length > MOTIVO_PUNTO_CERO_MAX) {
+        return res.status(400).json({ error: `El motivo puede tener hasta ${MOTIVO_PUNTO_CERO_MAX} caracteres.`, motivo: 'datos_invalidos' });
+      }
+      motivoPuntoCero = b.motivoPuntoCero.trim() || null;
+    }
+
     const datos = b.fechaHoraInicio ? { ...b, fechaHoraInicio: conZonaArgentina(b.fechaHoraInicio) } : b;
-    const actualizado = await Operativo.actualizar(id, datos);
+    const actualizado = await Operativo.actualizar(id, datos, { usuarioId: req.usuario.id, motivoPuntoCero });
 
     // Paso 6: valores previos y nuevos, para poder reconstruir la evolución
     // de la carátula o el Fiscal ante un requerimiento judicial.

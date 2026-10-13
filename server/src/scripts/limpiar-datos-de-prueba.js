@@ -28,6 +28,8 @@ const OPERATIVOS_DE_PRUEBA = [
   'PRUEBA Modulo 4 UI - borrar',
   'PRUEBAS AUTOMÁTICAS - no tocar',
 ];
+// Los que crea cada corrida de las pruebas del Punto Cero (uno por corrida: el título no se repite en 24 h).
+const PREFIJO_OPERATIVOS_DE_PRUEBA = 'PRUEBAS AUTOMÁTICAS - Punto Cero ';
 const CONFIRMAR = process.argv.includes('--confirmar');
 
 const PASOS = [
@@ -49,7 +51,8 @@ const PASOS = [
   ['marcador_fotos', `
     DELETE FROM marcador_fotos
      WHERE marcador_id IN (SELECT id FROM marcadores WHERE operativo_id IN (SELECT id FROM t_ops))
-        OR subido_por IN (SELECT id FROM t_usuarios)`],
+        OR subido_por IN (SELECT id FROM t_usuarios)
+     RETURNING url_foto`],
   ['marcadores', `DELETE FROM marcadores WHERE operativo_id IN (SELECT id FROM t_ops) OR creado_por IN (SELECT id FROM t_usuarios)`],
   ['radios_operativo', `DELETE FROM radios_operativo WHERE operativo_id IN (SELECT id FROM t_ops) OR creado_por IN (SELECT id FROM t_usuarios)`],
   ['punto_cero_historial', `DELETE FROM punto_cero_historial WHERE operativo_id IN (SELECT id FROM t_ops) OR registrado_por IN (SELECT id FROM t_usuarios)`],
@@ -79,6 +82,17 @@ const PASOS = [
      WHERE usuario_id IN (SELECT id FROM t_usuarios)
         OR registro_id IN (SELECT id FROM t_usuarios UNION SELECT id FROM t_ops
                            UNION SELECT id FROM t_grupos UNION SELECT id FROM t_agentes)`],
+  // El Módulo 5 nunca borra de verdad (todo es baja con registro): si la fila
+  // ya no existe, era un elemento de prueba borrado por este script. Las
+  // pruebas usan la cuenta del administrador real, por eso no alcanza con el autor.
+  ['logs_auditoria del mapa (elementos de prueba ya borrados)', `
+    DELETE FROM logs_auditoria l
+     WHERE (l.entidad_afectada = 'poligonos'        AND NOT EXISTS (SELECT 1 FROM poligonos x        WHERE x.id = l.registro_id))
+        OR (l.entidad_afectada = 'tracks_gpx'       AND NOT EXISTS (SELECT 1 FROM tracks_gpx x       WHERE x.id = l.registro_id))
+        OR (l.entidad_afectada = 'marcadores'       AND NOT EXISTS (SELECT 1 FROM marcadores x       WHERE x.id = l.registro_id))
+        OR (l.entidad_afectada = 'radios_operativo' AND NOT EXISTS (SELECT 1 FROM radios_operativo x WHERE x.id = l.registro_id))
+        OR (l.entidad_afectada = 'marcador_fotos'   AND NOT EXISTS (SELECT 1 FROM marcadores x       WHERE x.id = l.registro_id)
+                                                    AND NOT EXISTS (SELECT 1 FROM marcador_fotos x   WHERE x.id = l.registro_id))`],
   ['intentos_login de prueba', `
     DELETE FROM intentos_login WHERE clave LIKE 'email:%@prueba.duar' OR clave LIKE 'email:auto.%'`],
   ['usuarios de prueba (con sus sesiones y alergias)', `DELETE FROM usuarios WHERE id IN (SELECT id FROM t_usuarios)`],
@@ -89,7 +103,8 @@ async function main() {
   try {
     await cliente.query('BEGIN');
     await cliente.query(`CREATE TEMP TABLE t_usuarios ON COMMIT DROP AS SELECT id FROM usuarios WHERE email ILIKE '%@prueba.duar'`);
-    await cliente.query(`CREATE TEMP TABLE t_ops ON COMMIT DROP AS SELECT id FROM operativos WHERE titulo = ANY($1::text[])`, [OPERATIVOS_DE_PRUEBA]);
+    await cliente.query(`CREATE TEMP TABLE t_ops ON COMMIT DROP AS SELECT id FROM operativos
+      WHERE titulo = ANY($1::text[]) OR titulo LIKE $2`, [OPERATIVOS_DE_PRUEBA, `${PREFIJO_OPERATIVOS_DE_PRUEBA}%`]);
     await cliente.query(`CREATE TEMP TABLE t_agentes ON COMMIT DROP AS
       SELECT id FROM agentes_operativo WHERE operativo_id IN (SELECT id FROM t_ops) OR usuario_id IN (SELECT id FROM t_usuarios)`);
     await cliente.query(`CREATE TEMP TABLE t_grupos ON COMMIT DROP AS SELECT id FROM grupos WHERE operativo_id IN (SELECT id FROM t_ops)`);
@@ -98,22 +113,29 @@ async function main() {
       `SELECT (SELECT count(*) FROM t_usuarios)::int AS usuarios, (SELECT count(*) FROM t_ops)::int AS operativos`);
     console.log(`${CONFIRMAR ? 'BORRANDO' : 'ENSAYO (no se borra nada)'}: ${n.usuarios} usuarios y ${n.operativos} operativos de prueba.\n`);
 
-    // Los .gpx originales de los tracks borrados (bucket privado) se borran
-    // después del COMMIT, para no perder un archivo si la base se descarta.
+    // Los .gpx originales de los tracks y las fotos de los marcadores borrados
+    // (buckets privados) se borran después del COMMIT, para no perder un
+    // archivo si la base se descarta.
     const archivosGpx = [];
+    const fotos = [];
     for (const [nombre, sql] of PASOS) {
       const r = await cliente.query(sql);
-      for (const f of r.rows ?? []) if (f.archivo_ruta) archivosGpx.push(f.archivo_ruta);
+      for (const f of r.rows ?? []) {
+        if (f.archivo_ruta) archivosGpx.push(f.archivo_ruta);
+        if (f.url_foto) fotos.push(f.url_foto);
+      }
       console.log(`  ${nombre.padEnd(52)} ${r.rowCount}`);
     }
     console.log(`  ${'archivos GPX en el almacenamiento'.padEnd(52)} ${archivosGpx.length}`);
+    console.log(`  ${'fotos de marcadores en el almacenamiento'.padEnd(52)} ${fotos.length}`);
 
     if (CONFIRMAR) {
       await cliente.query('COMMIT');
       try {
         await Storage.borrarGpx(archivosGpx);
+        await Storage.borrarFotos(fotos);
       } catch (err) {
-        console.error(`\nLa base quedó limpia, pero no se pudieron borrar ${archivosGpx.length} archivos GPX:`, err.message);
+        console.error('\nLa base quedó limpia, pero no se pudieron borrar algunos archivos del almacenamiento:', err.message);
         process.exitCode = 1;
       }
       console.log('\nListo: los datos de prueba se borraron.');

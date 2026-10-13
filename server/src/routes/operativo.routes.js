@@ -15,6 +15,8 @@ import * as grupos from '../controllers/grupo.controller.js';
 import * as mando from '../controllers/mando.controller.js';
 import * as poligonos from '../controllers/poligono.controller.js';
 import * as tracks from '../controllers/track.controller.js';
+import * as marcadores from '../controllers/marcador.controller.js';
+import * as puntoCero from '../controllers/puntoCero.controller.js';
 import { requiereSesion, requiereRol } from '../middleware/auth.middleware.js';
 import { subirFotosMiddleware, subirGpxMiddleware } from '../middleware/upload.middleware.js';
 
@@ -90,6 +92,23 @@ router.get(   '/:id/tracks',          requiereSesion, gestores, tracks.listar);
 router.get(   '/:id/tracks/:trackId', requiereSesion, gestores, tracks.obtener);
 router.put(   '/:id/tracks/:trackId', requiereSesion, gestores, tracks.actualizar);                    // CU-30
 router.delete('/:id/tracks/:trackId', requiereSesion, gestores, tracks.eliminar);                      // CU-36
+
+// Módulo 5 · Marcadores: puntos de interés, hallazgos e instalaciones SCI (CU-32, CU-33, CU-36).
+router.get(   '/:id/marcadores',                            requiereSesion, gestores, marcadores.listar);
+router.post(  '/:id/marcadores',                            requiereSesion, gestores, marcadores.crear);        // CU-32
+router.get(   '/:id/marcadores/:marcadorId',                requiereSesion, gestores, marcadores.obtener);
+router.put(   '/:id/marcadores/:marcadorId',                requiereSesion, gestores, marcadores.actualizar);   // CU-33
+router.delete('/:id/marcadores/:marcadorId',                requiereSesion, gestores, marcadores.eliminar);     // CU-36
+router.post(  '/:id/marcadores/:marcadorId/fotos',          requiereSesion, gestores, subirFotosMiddleware, marcadores.subirFotos);
+router.delete('/:id/marcadores/:marcadorId/fotos/:fotoId',  requiereSesion, gestores, marcadores.eliminarFoto);
+
+// Módulo 5 · Punto Cero (con historial) y radios del operativo (CU-34).
+router.get(   '/:id/punto-cero',       requiereSesion, gestores, puntoCero.obtener);
+router.put(   '/:id/punto-cero',       requiereSesion, gestores, puntoCero.mover);
+router.get(   '/:id/radios',           requiereSesion, gestores, puntoCero.listarRadios);
+router.post(  '/:id/radios',           requiereSesion, gestores, puntoCero.crearRadio);
+router.put(   '/:id/radios/:radioId',  requiereSesion, gestores, puntoCero.actualizarRadio);
+router.delete('/:id/radios/:radioId',  requiereSesion, gestores, puntoCero.eliminarRadio);
 
 // Línea de tiempo del terreno (eventos_estado, migración 010).
 router.get('/:id/grupos/:grupoId/linea-tiempo',            requiereSesion, gestores, grupos.lineaTiempoGrupo);

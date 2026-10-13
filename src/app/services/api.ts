@@ -368,7 +368,8 @@ export const operativosApi = {
   obtener: (id: string) => api.get<{ operativo: OperativoApi }>(`/operativos/${id}`),
   crear: (datos: CrearOperativoPayload) =>
     api.post<{ operativo: OperativoApi }>('/operativos', datos),
-  actualizar: (id: string, datos: Partial<CrearOperativoPayload>) =>
+  /** CU-09. Si se mueve el Punto Cero con el operativo en curso, `motivoPuntoCero` es obligatorio (CU-34). */
+  actualizar: (id: string, datos: Partial<CrearOperativoPayload> & { motivoPuntoCero?: string }) =>
     api.put<{ operativo: OperativoApi }>(`/operativos/${id}`, datos),
   /** CU-08 paso 8: transición NUEVO → ACTIVO al entrar. Idempotente. */
   activar: (id: string) => api.post<{ operativo: OperativoApi }>(`/operativos/${id}/activar`),
@@ -746,6 +747,114 @@ export const tracksApi = {
   /** CU-36: baja con registro. */
   eliminar: (operativoId: string, trackId: string) =>
     api.del<void>(`/operativos/${operativoId}/tracks/${trackId}`),
+};
+
+/* ── Marcadores, Punto Cero y radios (Módulo 5 · CU-32, 33, 34, 36) ───────── */
+
+export type ClaseMarcadorApi = 'POI' | 'HALLAZGO' | 'INSTALACION';
+export type TipoInstalacionApi =
+  'PUESTO_COMANDO' | 'BASE' | 'CAMPAMENTO' | 'HELIPUNTO' | 'AREA_ESPERA' | 'AREA_CONCENTRACION_VICTIMAS';
+
+export const TIPOS_INSTALACION: Record<TipoInstalacionApi, string> = {
+  PUESTO_COMANDO: 'Puesto de Comando',
+  BASE: 'Base',
+  CAMPAMENTO: 'Campamento',
+  HELIPUNTO: 'Helipunto',
+  AREA_ESPERA: 'Área de Espera',
+  AREA_CONCENTRACION_VICTIMAS: 'Área de Concentración de Víctimas',
+};
+
+export interface MarcadorApi {
+  id: string;
+  operativoId: string;
+  clase: ClaseMarcadorApi;
+  tipoInstalacion: TipoInstalacionApi | null;
+  nombre: string;
+  descripcion: string | null;
+  detalle: string | null;
+  responsable: string | null;
+  notas: string | null;
+  lat: number;
+  lng: number;
+  creadoPor: string | null;
+  creadoEn: string;
+  actualizadoEn: string;
+  /** URL firmada (bucket privado; vence). */
+  fotos: { id: string; url: string | null }[];
+}
+
+export interface DatosMarcador {
+  clase?: ClaseMarcadorApi;
+  tipoInstalacion?: TipoInstalacionApi;
+  nombre?: string;
+  descripcion?: string | null;
+  detalle?: string | null;
+  responsable?: string | null;
+  notas?: string | null;
+  /** Al crear, obligatorias. Al modificar, sólo para reubicar una instalación. */
+  lat?: number;
+  lng?: number;
+}
+
+export const marcadoresApi = {
+  listar: (operativoId: string) =>
+    api.get<{ marcadores: MarcadorApi[] }>(`/operativos/${operativoId}/marcadores`),
+  obtener: (operativoId: string, marcadorId: string) =>
+    api.get<{ marcador: MarcadorApi }>(`/operativos/${operativoId}/marcadores/${marcadorId}`),
+  /** CU-32 */
+  crear: (operativoId: string, datos: DatosMarcador & { clase: ClaseMarcadorApi; lat: number; lng: number }) =>
+    api.post<{ marcador: MarcadorApi }>(`/operativos/${operativoId}/marcadores`, datos),
+  /** CU-33: un hallazgo no cambia de clase; sólo las instalaciones se reubican. */
+  actualizar: (operativoId: string, marcadorId: string, datos: DatosMarcador) =>
+    api.put<{ marcador: MarcadorApi }>(`/operativos/${operativoId}/marcadores/${marcadorId}`, datos),
+  /** CU-36: un hallazgo no se elimina. */
+  eliminar: (operativoId: string, marcadorId: string) =>
+    api.del<void>(`/operativos/${operativoId}/marcadores/${marcadorId}`),
+  /** Hasta 8 por marcador; no en instalaciones. */
+  subirFotos: (operativoId: string, marcadorId: string, archivos: File[]) => {
+    const f = new FormData();
+    archivos.forEach(a => f.append('fotos', a));
+    return requestFormData<{ marcador: MarcadorApi }>(`/operativos/${operativoId}/marcadores/${marcadorId}/fotos`, f);
+  },
+  /** Las fotos de un hallazgo no se quitan. */
+  eliminarFoto: (operativoId: string, marcadorId: string, fotoId: string) =>
+    api.del<void>(`/operativos/${operativoId}/marcadores/${marcadorId}/fotos/${fotoId}`),
+};
+
+export interface MovimientoPuntoCeroApi {
+  id: string;
+  /** null en la definición inicial (al crear el operativo). */
+  desdeLat: number | null;
+  desdeLng: number | null;
+  hastaLat: number;
+  hastaLng: number;
+  distanciaM: number | null;
+  motivo: string | null;
+  registradoEn: string;
+  registradoPor: string | null;
+}
+
+export interface RadioApi {
+  id: string;
+  radioM: number;
+  color: string;
+  creadoEn: string;
+}
+
+export const puntoCeroApi = {
+  obtener: (operativoId: string) =>
+    api.get<{ puntoCero: { lat: number; lng: number }; historial: MovimientoPuntoCeroApi[] }>(`/operativos/${operativoId}/punto-cero`),
+  /** CU-34: con el operativo en curso, `motivo` es obligatorio. */
+  mover: (operativoId: string, datos: { lat: number; lng: number; motivo?: string }) =>
+    api.put<{ puntoCero: { lat: number; lng: number }; historial: MovimientoPuntoCeroApi[] }>(`/operativos/${operativoId}/punto-cero`, datos),
+  listarRadios: (operativoId: string) =>
+    api.get<{ radios: RadioApi[] }>(`/operativos/${operativoId}/radios`),
+  crearRadio: (operativoId: string, datos: { radioM: number; color: string }) =>
+    api.post<{ radio: RadioApi }>(`/operativos/${operativoId}/radios`, datos),
+  actualizarRadio: (operativoId: string, radioId: string, datos: { radioM?: number; color?: string }) =>
+    api.put<{ radio: RadioApi }>(`/operativos/${operativoId}/radios/${radioId}`, datos),
+  eliminarRadio: (operativoId: string, radioId: string) =>
+    api.del<void>(`/operativos/${operativoId}/radios/${radioId}`),
 };
 
 export const gruposApi = {

@@ -78,12 +78,14 @@ export async function api(metodo, ruta, body, token) {
 
 /**
  * Subida de un archivo (multipart) a la API, como la hace el navegador.
- * `archivo` = { nombre, contenido } (texto); `campos` = el resto del formulario.
+ * `archivo` = { nombre, contenido } (el GPX, campo `archivo`); `archivos` =
+ * [{ campo, nombre, contenido, tipo }] (p. ej. fotos); `campos` = el resto.
  */
-export async function subir(ruta, { archivo, campos = {} } = {}, token) {
+export async function subir(ruta, { archivo, archivos = [], campos = {} } = {}, token) {
   for (let intento = 0; ; intento++) {
     const form = new FormData();
     if (archivo) form.append('archivo', new Blob([archivo.contenido], { type: 'application/gpx+xml' }), archivo.nombre);
+    for (const a of archivos) form.append(a.campo, new Blob([a.contenido], { type: a.tipo }), a.nombre);
     for (const [k, v] of Object.entries(campos)) if (v !== undefined) form.append(k, v);
     try {
       const r = await fetch(API + ruta, {
@@ -254,6 +256,12 @@ async function limpiarGrupos(admin, op) {
  * ellos al disolverse). Va por SQL porque es limpieza del entorno, no un caso.
  */
 async function limpiarPoligonos(op) {
+  // Radios y marcadores de otra corrida (los hallazgos no se dan de baja: quedan).
+  await query(
+    `UPDATE radios_operativo SET eliminado_en = CURRENT_TIMESTAMP WHERE operativo_id = $1 AND eliminado_en IS NULL`, [op]);
+  await query(
+    `UPDATE marcadores SET eliminado_en = CURRENT_TIMESTAMP
+      WHERE operativo_id = $1 AND eliminado_en IS NULL AND clase <> 'HALLAZGO'`, [op]);
   // Los tracks de otra corrida también: si no, el mismo GPX sería un duplicado.
   await query(
     `UPDATE tracks_gpx SET eliminado_en = CURRENT_TIMESTAMP WHERE operativo_id = $1 AND eliminado_en IS NULL`, [op]);
