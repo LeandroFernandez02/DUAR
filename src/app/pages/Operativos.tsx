@@ -87,7 +87,7 @@ const emptyForm = {
   punto0lng: '',
   fechaInicio: '',   // se completa con la hora de Argentina al abrir "Nuevo operativo"
   descripcion: '',
-  motivoPuntoCero: '',   // CU-34: sólo al mover el Punto 0 con el operativo en curso
+  motivoPuntoCero: '',   // CU-36: sólo al mover el Punto 0 con el operativo en curso
 };
 
 const MOTIVO_PUNTO_CERO_MAX = 500;
@@ -211,7 +211,7 @@ export default function Operativos() {
    * CU-08 paso 8 (Transición Automática): entrar por primera vez a un
    * operativo NUEVO lo pasa a ACTIVO. Se espera la respuesta antes de navegar
    * para que el panel ya encuentre el estado correcto — si se generara un QR
-   * ahí mismo, la precondición de CU-15 (ACTIVO/EN_PLANIFICACION) tiene que
+   * ahí mismo, la precondición de CU-16 (ACTIVO/EN_PLANIFICACION) tiene que
    * estar cumplida.
    */
   const entrarAOperativo = async (op: Operativo) => {
@@ -352,7 +352,7 @@ export default function Operativos() {
         localidad: form.ubicacion.trim(),
         fiscalInstruccion: form.fiscal.trim(),
         descripcion: form.descripcion || undefined,
-        // El Punto 0 sólo viaja si se movió (CU-34: cada movimiento queda en su historial).
+        // El Punto 0 sólo viaja si se movió (CU-36: cada movimiento queda en su historial).
         ...(puntoCeroMovido ? {
           puntoCeroLat: latVal,
           puntoCeroLng: lngVal,
@@ -413,7 +413,7 @@ export default function Operativos() {
   };
 
   /* read-only mode: operativos finalizados o eliminados no pueden modificarse */
-  /** CU-34: ¿se movió el Punto 0 respecto del guardado? Con el operativo en curso, pide motivo. */
+  /** CU-36: ¿se movió el Punto 0 respecto del guardado? Con el operativo en curso, pide motivo. */
   const puntoCeroMovido = modal === 'edit' && !!selected?.punto0 && (
     Math.abs(parseFloat(form.punto0lat) - selected.punto0.lat) > 1e-7 ||
     Math.abs(parseFloat(form.punto0lng) - selected.punto0.lng) > 1e-7);

@@ -1,5 +1,5 @@
 /**
- * ExtraerAgenteModal — CU-26: Extraer Agente de Grupo Activo (Baja Parcial / Contingencia)
+ * ExtraerAgenteModal — CU-27: Extraer Agente de Grupo Activo (Baja Parcial / Contingencia)
  *
  * Retira a un agente de su cuadrilla en el terreno SIN desarmar el grupo:
  *  · Paso 3   → motivo de la baja. El retirado queda siempre REPLEGADO y sin

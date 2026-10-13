@@ -62,10 +62,19 @@ aplica al proyecto Supabase con el mismo nombre:
 | `013_sin_caminante.sql` | ⚠️ **Pendiente: aplicar al subir a producción.** Borra `agentes_operativo.es_caminante` (la versión publicada todavía la usa) |
 | `014_especialidad_policia.sql` | Especialidad **Policía** en el catálogo, de rastrillaje |
 | `015_indices_tablero.sql` | Índices en `agentes_operativo.grupo_id` y `grupos.lider_id` (se leen en cada refresco del tablero) |
-| `016_presencia_mando.sql` | Puesto de comando: `presencias_mando` (coordinadores presentes) y `mando_operativo` (quién está a cargo) |
+| `016_presencia_mando.sql` | Puesto de comando (CU-15): `presencias_mando` (coordinadores presentes) y `mando_operativo` (quién está a cargo) |
 | `017_intentos_login.sql` | `intentos_login`: frena la prueba de contraseñas (5 fallos por correo o 30 por IP en 15 min bloquean 15 min) |
-| `019_mapa_operacional.sql` | Módulo 5 (CU-27..38): `poligonos` (sin estado; área y perímetro por trigger; nombre único vigente), `poligono_grupos` (un grupo en un solo polígono a la vez), `tracks_gpx`, `marcadores` (POI, hallazgo, instalación SCI; el hallazgo no se elimina ni cambia de clase), `marcador_fotos`, `radios_operativo`, `punto_cero_historial`, `poligono_eventos`. La 018 se descartó |
+| `019_mapa_operacional.sql` | Módulo 5 (CU-28..40): `poligonos` (sin estado; área y perímetro por trigger; nombre único vigente), `poligono_grupos` (un grupo en un solo polígono a la vez), `tracks_gpx`, `marcadores` (POI, hallazgo, instalación SCI; el hallazgo no se elimina ni cambia de clase), `marcador_fotos`, `radios_operativo`, `punto_cero_historial`, `poligono_eventos`. La 018 se descartó |
 | `020_funciones_search_path.sql` | `search_path` fijo en las dos funciones de trigger de la 019 (asesor de seguridad de Supabase, lint 0011) |
+
+**Numeración de los CU.** Desde el 13/10/2026 los CU van del 01 al 44: se sumó
+el CU-15 «Registrar Presencia de Mando» y «Extraer Agente de Grupo» quedó como
+CU-27 (planilla «planilla trazos casos de uso - Copia Claude»). Este README y el
+código usan esa numeración. Los archivos de `migrations/`, el
+`00_tipos_y_extensiones.sql` y los `COMMENT` que dejaron en la base son
+registro histórico y conservan la de su fecha (42 CU): ahí, CU-15 a CU-25 son
+hoy CU-16 a CU-26, CU-26 (Extraer Agente) es CU-27, y CU-27 a CU-42 son
+CU-29 a CU-44.
 
 ### PostGIS: diferencia con la instalación local
 
@@ -114,7 +123,7 @@ El grupo recorre su ciclo y sus integrantes lo siguen. Qué significa cada uno:
 |-------|-----------|------------------------|
 | EN_FORMACION | Se está armando; la composición se puede cambiar | AGRUPADO |
 | CONFIRMADO | Composición cerrada (de rastrillaje: Líder del DUAR y al menos 2 que rastrillen) | AGRUPADO |
-| ASIGNADO | Tiene zona; listo para salir. Hasta el CU-28 la zona es una descripción | AGRUPADO |
+| ASIGNADO | Tiene zona; listo para salir. Hasta el CU-30 la zona es una descripción | AGRUPADO |
 | DESPLEGADO | En el terreno sin rastrillar: yendo, o en apoyo | DESPLEGADO |
 | RASTRILLANDO | Rastrillando el polígono | RASTRILLANDO; el conductor queda DESPLEGADO (espera con la camioneta) |
 | REPLEGADO | Volviendo | REPLEGADO |
@@ -125,7 +134,7 @@ Reglas que la base y el backend garantizan:
 
 - **Un agente en un grupo nunca contradice al grupo** (tabla de arriba). Nadie
   está NO_DISPONIBLE dentro de un grupo. Sin grupo sólo existen DISPONIBLE,
-  NO_DISPONIBLE y REPLEGADO (el retirado por CU-26 que vuelve a la base).
+  NO_DISPONIBLE y REPLEGADO (el retirado por CU-27 que vuelve a la base).
 - **Hechos vs. reportes**: AGRUPADO, CONFIRMADO, ASIGNADO y DISUELTO los escribe
   sólo su acción. Los estados del terreno los informa el Líder desde su celular
   o el coordinador por radio, y el coordinador puede corregirlos con motivo.
@@ -151,7 +160,7 @@ elige al crear y no cambia.
 | Líder | Del DUAR, no recurso especial y no conductor (camina con su grupo) | Cualquiera |
 | Para confirmar | Al menos 2 que rastrillen (el conductor no cuenta) | Sin requisitos |
 | Alerta de binomio en el terreno | Sí | No |
-| Asignación automática (CU-22) | La arma, sólo con agentes (sin conductores) | No los toca |
+| Asignación automática (CU-23) | La arma, sólo con agentes (sin conductores) | No los toca |
 
 **Sin "caminante" (29/09).** Rastrilla todo integrante que no es conductor. El
 **conductor** (`agentes_operativo.es_conductor`) espera al grupo con la camioneta,
@@ -159,7 +168,7 @@ no cuenta para el binomio y entra a cualquier grupo, aunque su especialidad sea 
 recurso especial: en el operativo, su papel es manejar.
 
 **Recurso especial** = `cat_especialidades.es_recurso_critico` de la especialidad
-**táctica** del agente (`agentes_operativo.especialidad_id`, editable en CU-17):
+**táctica** del agente (`agentes_operativo.especialidad_id`, editable en CU-18):
 Dron, Paramedico, Canes, Caballería y Buzos. Que un grupo de rastrillaje no
 tenga recursos especiales adentro lo garantiza `grupo.model.js` con las filas
 bloqueadas (es otra tabla: no es un CHECK).
@@ -190,7 +199,7 @@ No son optimizaciones: si se caen, se cae la regla.
 - **`agente_unico_activo_idx`** — UNIQUE parcial sobre
   `agentes_operativo(usuario_id) WHERE fecha_egreso IS NULL`. Es la **Regla de
   Ubicuidad** (Decisión B): un efectivo no puede estar activo en dos operativos
-  a la vez. Parcial para permitir el reingreso tras una baja (CU-20).
+  a la vez. Parcial para permitir el reingreso tras una baja (CU-21).
 - **`agente_un_solo_grupo_activo_idx`** — UNIQUE parcial sobre
   `agentes_grupo_historial(agente_operativo_id) WHERE fecha_fin IS NULL`: no se
   pueden tener dos períodos de grupo abiertos al mismo tiempo.
@@ -200,7 +209,7 @@ No son optimizaciones: si se caen, se cae la regla.
   sin grupo" (la correspondencia exacta con el estado del grupo la mantiene el
   backend, porque está en otra tabla).
 - **`grupo_disuelto_con_baja_chk`** — CHECK en `grupos`: `estado = DISUELTO` si
-  y sólo si `eliminado_en` tiene fecha (CU-25 paso 5).
+  y sólo si `eliminado_en` tiene fecha (CU-26 paso 5).
 
 ## Pendientes conocidos
 

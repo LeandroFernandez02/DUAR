@@ -1,7 +1,7 @@
 /**
  * Ciclo de estados de un grupo (modelo del 24/09) y Regla 1: un agente en un
  * grupo nunca contradice al grupo. También el historial de tiempo en el
- * terreno y las restricciones del CU-17 con grupo.
+ * terreno y las restricciones del CU-18 con grupo.
  */
 import { describe, test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -20,7 +20,7 @@ const estados = async claves => {
   return Object.fromEntries(claves.map(k => [k, a[k].estado]));
 };
 
-describe('Grupos: ciclo de estados y Regla 1 (CU-23, CU-17, CU-25)', () => {
+describe('Grupos: ciclo de estados y Regla 1 (CU-24, CU-18, CU-26)', () => {
   before(async () => {
     ctx = await preparar();
     G = (await ctx.crearGrupo('Ciclo', 'alfa')).json.grupo.id;
@@ -29,20 +29,20 @@ describe('Grupos: ciclo de estados y Regla 1 (CU-23, CU-17, CU-25)', () => {
   });
   after(terminar);
 
-  test('CU-23 · en formación, todos los integrantes están Agrupados', async () => {
+  test('CU-24 · en formación, todos los integrantes están Agrupados', async () => {
     assert.deepEqual(await estados(MIEMBROS), { alfa: 'AGRUPADO', bravo: 'AGRUPADO', golf: 'AGRUPADO' });
   });
 
-  test('CU-23 · salir sin estar asignado → 409 transicion_invalida', async () => {
+  test('CU-24 · salir sin estar asignado → 409 transicion_invalida', async () => {
     motivo(await ctx.accion(G, { accion: 'salir' }), 409, 'transicion_invalida');
   });
 
-  test('CU-23/28 · confirmar y asignar sin polígono → 400 poligono_requerido', async () => {
+  test('CU-24/30 · confirmar y asignar sin polígono → 400 poligono_requerido', async () => {
     motivo(await ctx.accion(G, { accion: 'confirmar' }), 200);
     motivo(await ctx.accion(G, { accion: 'asignar' }), 400, 'poligono_requerido');
   });
 
-  test('CU-23/28 · asignar a un polígono → Asignado; los integrantes siguen Agrupados y sin tiempo en el terreno', async () => {
+  test('CU-24/30 · asignar a un polígono → Asignado; los integrantes siguen Agrupados y sin tiempo en el terreno', async () => {
     const r = await ctx.accion(G, { accion: 'asignar', zona: 'Quebrada norte, polígono 2' });
     motivo(r, 200);
     assert.equal(r.json.grupo.estado, 'ASIGNADO');
@@ -51,50 +51,50 @@ describe('Grupos: ciclo de estados y Regla 1 (CU-23, CU-17, CU-25)', () => {
     assert.equal(await ctx.periodosAbiertos(G), 0);
   });
 
-  test('CU-23 · salir → Desplegado: todos Desplegados y se abre el tiempo en el terreno de cada uno', async () => {
+  test('CU-24 · salir → Desplegado: todos Desplegados y se abre el tiempo en el terreno de cada uno', async () => {
     const r = await ctx.accion(G, { accion: 'salir' });
     assert.equal(r.json?.grupo?.estado, 'DESPLEGADO');
     assert.deepEqual(await estados(MIEMBROS), { alfa: 'DESPLEGADO', bravo: 'DESPLEGADO', golf: 'DESPLEGADO' });
     assert.equal(await ctx.periodosAbiertos(G), 3);
   });
 
-  test('CU-25 · no se disuelve un grupo en el terreno → 409', async () => {
+  test('CU-26 · no se disuelve un grupo en el terreno → 409', async () => {
     motivo(await ctx.disolver(G), 409, 'transicion_invalida');
   });
 
-  test('CU-23 · llegar al polígono → Rastrillando; el conductor queda Desplegado con la camioneta', async () => {
+  test('CU-24 · llegar al polígono → Rastrillando; el conductor queda Desplegado con la camioneta', async () => {
     const r = await ctx.accion(G, { accion: 'llegar_poligono' });
     assert.equal(r.json?.grupo?.estado, 'RASTRILLANDO');
     assert.deepEqual(await estados(MIEMBROS), { alfa: 'RASTRILLANDO', bravo: 'RASTRILLANDO', golf: 'DESPLEGADO' });
   });
 
-  test('CU-17 · con grupo, el estado del agente no se cambia a mano → 409 agente_en_grupo', async () => {
+  test('CU-18 · con grupo, el estado del agente no se cambia a mano → 409 agente_en_grupo', async () => {
     motivo(await ctx.cu17('bravo', { estado: 'NO_DISPONIBLE' }), 409, 'agente_en_grupo');
   });
 
-  test('CU-17 · el Líder de un grupo de rastrillaje no puede pasar a ser conductor → 409', async () => {
+  test('CU-18 · el Líder de un grupo de rastrillaje no puede pasar a ser conductor → 409', async () => {
     motivo(await ctx.cu17('alfa', { esConductor: true }), 409, 'lider_conductor');
   });
 
-  test('CU-17 · sacarle el conductor a alguien que rastrilla lo pone a rastrillar (Regla 1)', async () => {
+  test('CU-18 · sacarle el conductor a alguien que rastrilla lo pone a rastrillar (Regla 1)', async () => {
     motivo(await ctx.cu17('golf', { esConductor: false }), 200);
     assert.equal((await estados(['golf'])).golf, 'RASTRILLANDO');
     motivo(await ctx.cu17('golf', { esConductor: true }), 200);
     assert.equal((await estados(['golf'])).golf, 'DESPLEGADO');
   });
 
-  test('CU-23 · corregir un estado exige motivo → 400 motivo_requerido', async () => {
+  test('CU-24 · corregir un estado exige motivo → 400 motivo_requerido', async () => {
     motivo(await ctx.accion(G, { accion: 'corregir', estadoDestino: 'DESPLEGADO' }), 400, 'motivo_requerido');
   });
 
-  test('CU-23 · corregir con motivo → vuelve a Desplegado y arrastra a los integrantes', async () => {
+  test('CU-24 · corregir con motivo → vuelve a Desplegado y arrastra a los integrantes', async () => {
     const r = await ctx.accion(G, { accion: 'corregir', estadoDestino: 'DESPLEGADO', motivo: 'Se marcó antes de llegar' });
     assert.equal(r.json?.grupo?.estado, 'DESPLEGADO');
     assert.deepEqual(await estados(MIEMBROS), { alfa: 'DESPLEGADO', bravo: 'DESPLEGADO', golf: 'DESPLEGADO' });
     await ctx.accion(G, { accion: 'llegar_poligono' });
   });
 
-  test('CU-23 · volver → Replegado y llegar a la base → En espera; se cierra el tiempo en el terreno', async () => {
+  test('CU-24 · volver → Replegado y llegar a la base → En espera; se cierra el tiempo en el terreno', async () => {
     assert.equal((await ctx.accion(G, { accion: 'volver' })).json?.grupo?.estado, 'REPLEGADO');
     assert.deepEqual(await estados(MIEMBROS), { alfa: 'REPLEGADO', bravo: 'REPLEGADO', golf: 'REPLEGADO' });
     assert.equal((await ctx.accion(G, { accion: 'llegar_base' })).json?.grupo?.estado, 'EN_ESPERA');
@@ -102,13 +102,13 @@ describe('Grupos: ciclo de estados y Regla 1 (CU-23, CU-17, CU-25)', () => {
     assert.equal(await ctx.periodosAbiertos(G), 0);
   });
 
-  test('CU-23 · reabrir desde En espera → En formación y todos Agrupados', async () => {
+  test('CU-24 · reabrir desde En espera → En formación y todos Agrupados', async () => {
     const r = await ctx.accion(G, { accion: 'reabrir' });
     assert.equal(r.json?.grupo?.estado, 'EN_FORMACION');
     assert.ok(r.json.grupo.integrantes.every(i => i.estado === 'AGRUPADO'));
   });
 
-  test('CU-25 · disolver en la base → todos Disponibles y sin grupo', async () => {
+  test('CU-26 · disolver en la base → todos Disponibles y sin grupo', async () => {
     motivo(await ctx.disolver(G), 204);
     assert.deepEqual(await estados(MIEMBROS), { alfa: 'DISPONIBLE', bravo: 'DISPONIBLE', golf: 'DISPONIBLE' });
   });

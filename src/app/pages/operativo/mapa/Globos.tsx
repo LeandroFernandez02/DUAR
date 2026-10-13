@@ -1,5 +1,5 @@
 /**
- * Globos de información al hacer clic en un elemento del mapa (CU-31): track
+ * Globos de información al hacer clic en un elemento del mapa (CU-33): track
  * (con perfil de elevación), punto de interés o hallazgo, instalación SCI y
  * Punto Cero.
  */

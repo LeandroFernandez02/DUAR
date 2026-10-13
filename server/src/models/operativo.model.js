@@ -52,7 +52,7 @@ export async function buscarPorId(id) {
   return rows[0] ?? null;
 }
 
-/** ¿Admite que entre personal? Precondición de CU-15: ACTIVO o EN_PLANIFICACION. */
+/** ¿Admite que entre personal? Precondición de CU-16: ACTIVO o EN_PLANIFICACION. */
 export function admiteIngresos(operativo) {
   return ['ACTIVO', 'EN_PLANIFICACION'].includes(operativo?.estado);
 }
@@ -131,7 +131,7 @@ export async function crear({
       [titulo, localidad, fiscalInstruccion, descripcion,
        puntoCeroLng, puntoCeroLat, fechaHoraInicio, coordinadorId]
     );
-    // CU-34: el historial del Punto Cero arranca con su definición.
+    // CU-36: el historial del Punto Cero arranca con su definición.
     await PuntoCero.registrarInicial(client, rows[0].id, coordinadorId);
     return rows[0].id;
   });
@@ -141,7 +141,7 @@ export async function crear({
 /**
  * CU-09 · UPDATE parcial, igual patrón que usuario.model.js: sólo toca las
  * columnas presentes en `campos`. El UUID nunca cambia (Observaciones del CU).
- * Si cambia el Punto Cero, rigen las reglas del CU-34 (historial y motivo
+ * Si cambia el Punto Cero, rigen las reglas del CU-36 (historial y motivo
  * obligatorio con el operativo en curso), en la misma transacción.
  */
 export async function actualizar(id, campos, { usuarioId = null, motivoPuntoCero = null } = {}) {
@@ -173,7 +173,7 @@ export async function actualizar(id, campos, { usuarioId = null, motivoPuntoCero
         valores
       );
     }
-    // Punto Cero va aparte: tiene historial y, en curso, motivo (CU-34).
+    // Punto Cero va aparte: tiene historial y, en curso, motivo (CU-36).
     if (mueve) {
       await PuntoCero.moverCon(client, id,
         { lat: campos.puntoCeroLat, lng: campos.puntoCeroLng, motivo: motivoPuntoCero }, usuarioId);
@@ -244,9 +244,9 @@ export async function finalizar(id, { notaFinal = null, usuarioId = null } = {})
     );
     // El puesto de comando también se cierra (presencia de mando, migración 016).
     await Mando.cerrarTodoCon(client, id, usuarioId, 'Operativo finalizado');
-    // Los grupos salen de sus polígonos (CU-28), con el motivo en el historial de cada uno.
+    // Los grupos salen de sus polígonos (CU-30), con el motivo en el historial de cada uno.
     await Asig.cerrarTodasDelOperativo(client, id, usuarioId);
-    // Los grupos vigentes se disuelven con la misma baja lógica del CU-25
+    // Los grupos vigentes se disuelven con la misma baja lógica del CU-26
     // (estado DISUELTO + eliminado_en). Sin esto quedaban grupos "rastrillando"
     // en un operativo cerrado, sin integrantes. lider_id no se toca: es parte
     // del registro histórico del grupo.

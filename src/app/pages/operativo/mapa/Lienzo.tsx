@@ -1,5 +1,5 @@
 /**
- * Lienzo Leaflet del mapa operacional (CU-31). Imperativo a propósito, como el
+ * Lienzo Leaflet del mapa operacional (CU-33). Imperativo a propósito, como el
  * prototipo: hay pocos elementos y redibujar la capa entera ante cada cambio
  * es más simple y predecible que sincronizar componentes uno por uno.
  *

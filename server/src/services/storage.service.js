@@ -70,9 +70,9 @@ export async function generarUrlFirmada(path, ttlSegundos = 3600) {
   }
 }
 
-/* ── Archivos GPX originales (Módulo 5 · CU-29) ────────────────────────────
+/* ── Archivos GPX originales (Módulo 5 · CU-31) ────────────────────────────
  * Bucket PRIVADO aparte del de las fotos: el .gpx tal como lo subió el agente
- * es la prueba de lo recorrido (los datos del track no se editan, CU-30). El
+ * es la prueba de lo recorrido (los datos del track no se editan, CU-32). El
  * bucket se crea solo la primera vez que hace falta, cerrado y limitado a
  * archivos de texto de hasta 4 MB (el techo de un envío en Vercel).
  */

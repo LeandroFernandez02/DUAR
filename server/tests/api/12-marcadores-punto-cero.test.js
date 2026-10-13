@@ -1,5 +1,5 @@
 /**
- * Módulo 5 · Marcadores, Punto Cero y radios (CU-32, CU-33, CU-34, CU-36; y
+ * Módulo 5 · Marcadores, Punto Cero y radios (CU-34, CU-35, CU-36, CU-38; y
  * el Punto Cero de CU-08 / CU-09), con las decisiones del 12/10: un hallazgo
  * es evidencia (no se elimina, no cambia de clase, sus fotos no se quitan);
  * sólo las instalaciones se reubican; el Punto Cero tiene historial y, con el
@@ -24,13 +24,13 @@ const radios = (m, ruta = '', body) => ctx.api(m, `/operativos/${ctx.op}/radios$
 const PNG = Buffer.from('iVBORw0KGgoAAAANSUhEUgAAAAEAAAABCAYAAAAfFcSJAAAADUlEQVR42mP8z8BQDwAEhQGAhKmMIQAAAABJRU5ErkJggg==', 'base64');
 const fotos = (n) => ({ archivos: Array.from({ length: n }, (_, i) => ({ campo: 'fotos', nombre: `pista-${i}.png`, contenido: PNG, tipo: 'image/png' })) });
 
-describe('Módulo 5 · Marcadores, Punto Cero y radios (CU-32, 33, 34, 36)', () => {
+describe('Módulo 5 · Marcadores, Punto Cero y radios (CU-34, 35, 36, 38)', () => {
   before(async () => { ctx = await preparar(); });
   after(terminar);
 
   /* ── Marcadores ── */
 
-  test('CU-32 · marcar un punto de interés: queda con coordenadas, autor y hora', async () => {
+  test('CU-34 · marcar un punto de interés: queda con coordenadas, autor y hora', async () => {
     const r = await marc('POST', '', { clase: 'POI', nombre: 'Refugio Los Gigantes', descripcion: 'Techo de chapa', lat: -31.40, lng: -64.80 });
     motivo(r, 201);
     POI = r.json.marcador.id;
@@ -40,7 +40,7 @@ describe('Módulo 5 · Marcadores, Punto Cero y radios (CU-32, 33, 34, 36)', () 
     assert.deepEqual(r.json.marcador.fotos, []);
   });
 
-  test('CU-32 · una instalación toma el nombre de su tipo; lleva responsable y notas', async () => {
+  test('CU-34 · una instalación toma el nombre de su tipo; lleva responsable y notas', async () => {
     const r = await marc('POST', '', { clase: 'INSTALACION', tipoInstalacion: 'HELIPUNTO', responsable: 'Of. Pérez', lat: -31.41, lng: -64.81 });
     motivo(r, 201);
     INST = r.json.marcador.id;
@@ -48,7 +48,7 @@ describe('Módulo 5 · Marcadores, Punto Cero y radios (CU-32, 33, 34, 36)', () 
     assert.equal(r.json.marcador.responsable, 'Of. Pérez');
   });
 
-  test('CU-32 3.1 / 4.1 · sin nombre, sin tipo de instalación, coordenadas inválidas o datos de otra clase → 400', async () => {
+  test('CU-34 3.1 / 4.1 · sin nombre, sin tipo de instalación, coordenadas inválidas o datos de otra clase → 400', async () => {
     motivo(await marc('POST', '', { clase: 'HALLAZGO', nombre: '   ', lat: -31.4, lng: -64.8 }), 400, 'nombre_requerido');
     motivo(await marc('POST', '', { clase: 'INSTALACION', lat: -31.4, lng: -64.8 }), 400, 'tipo_invalido');
     motivo(await marc('POST', '', { clase: 'INSTALACION', tipoInstalacion: 'BUNKER', lat: -31.4, lng: -64.8 }), 400, 'tipo_invalido');
@@ -57,7 +57,7 @@ describe('Módulo 5 · Marcadores, Punto Cero y radios (CU-32, 33, 34, 36)', () 
     motivo(await marc('POST', '', { clase: 'OTRA', nombre: 'X', lat: -31.4, lng: -64.8 }), 400, 'clase_invalida');
   });
 
-  test('CU-32 · un hallazgo con fotos; las fotos salen con enlace firmado', async () => {
+  test('CU-34 · un hallazgo con fotos; las fotos salen con enlace firmado', async () => {
     const r = await marc('POST', '', { clase: 'HALLAZGO', nombre: 'Campera roja', detalle: 'Talle M, junto al arroyo', lat: -31.42, lng: -64.82 });
     motivo(r, 201);
     HALLAZGO = r.json.marcador.id;
@@ -67,7 +67,7 @@ describe('Módulo 5 · Marcadores, Punto Cero y radios (CU-32, 33, 34, 36)', () 
     assert.match(f.json.marcador.fotos[0].url ?? '', /^https:\/\//);
   });
 
-  test('CU-36 · un hallazgo no se elimina, no pasa a punto de interés y sus fotos no se quitan', async () => {
+  test('CU-38 · un hallazgo no se elimina, no pasa a punto de interés y sus fotos no se quitan', async () => {
     motivo(await marc('DELETE', `/${HALLAZGO}`), 409, 'hallazgo_no_se_elimina');
     motivo(await marc('PUT', `/${HALLAZGO}`, { clase: 'POI' }), 409, 'hallazgo_fijo');
     const { fotos: [foto] } = (await marc('GET', `/${HALLAZGO}`)).json.marcador;
@@ -77,7 +77,7 @@ describe('Módulo 5 · Marcadores, Punto Cero y radios (CU-32, 33, 34, 36)', () 
     await assert.rejects(ctx.query(`UPDATE marcadores SET clase = 'POI' WHERE id = $1`, [HALLAZGO]));
   });
 
-  test('CU-33 · se corrigen los datos de un hallazgo (nombre vacío no) y un punto de interés puede pasar a hallazgo', async () => {
+  test('CU-35 · se corrigen los datos de un hallazgo (nombre vacío no) y un punto de interés puede pasar a hallazgo', async () => {
     motivo(await marc('PUT', `/${HALLAZGO}`, { nombre: '' }), 400, 'nombre_requerido');
     const r = await marc('PUT', `/${HALLAZGO}`, { detalle: 'Talle M, mojada, junto al arroyo' });
     motivo(r, 200);
@@ -90,7 +90,7 @@ describe('Módulo 5 · Marcadores, Punto Cero y radios (CU-32, 33, 34, 36)', () 
     assert.equal(r2.json.marcador.clase, 'HALLAZGO');
   });
 
-  test('CU-33 2.x · sólo una instalación se reubica (y queda la ubicación anterior en la auditoría)', async () => {
+  test('CU-35 2.x · sólo una instalación se reubica (y queda la ubicación anterior en la auditoría)', async () => {
     motivo(await marc('PUT', `/${POI}`, { lat: -31.401, lng: -64.801 }), 409, 'no_se_reubica');
     motivo(await marc('PUT', `/${HALLAZGO}`, { lat: -31.421, lng: -64.821 }), 409, 'no_se_reubica');
     const r = await marc('PUT', `/${INST}`, { lat: -31.415, lng: -64.815 });
@@ -103,7 +103,7 @@ describe('Módulo 5 · Marcadores, Punto Cero y radios (CU-32, 33, 34, 36)', () 
     motivo(await marc('PUT', `/${INST}`, { clase: 'POI' }), 409, 'clase_no_cambia');
   });
 
-  test('CU-32 · fotos: hasta 8 por marcador, no en instalaciones, y las de un punto de interés se quitan', async () => {
+  test('CU-34 · fotos: hasta 8 por marcador, no en instalaciones, y las de un punto de interés se quitan', async () => {
     motivo(await ctx.subir(`/operativos/${ctx.op}/marcadores/${INST}/fotos`, fotos(1)), 409, 'sin_fotos');
     motivo(await ctx.subir(`/operativos/${ctx.op}/marcadores/${HALLAZGO}/fotos`, fotos(7)), 409, 'demasiadas_fotos');
     const f = await ctx.subir(`/operativos/${ctx.op}/marcadores/${POI}/fotos`, fotos(1));
@@ -112,7 +112,7 @@ describe('Módulo 5 · Marcadores, Punto Cero y radios (CU-32, 33, 34, 36)', () 
     assert.equal((await marc('GET', `/${POI}`)).json.marcador.fotos.length, 0);
   });
 
-  test('CU-36 · eliminar un punto de interés o una instalación: baja con registro, sale de la lista', async () => {
+  test('CU-38 · eliminar un punto de interés o una instalación: baja con registro, sale de la lista', async () => {
     motivo(await marc('DELETE', `/${POI}`), 204);
     motivo(await marc('DELETE', `/${INST}`), 204);
     const ids = (await marc('GET')).json.marcadores.map(m => m.id);
@@ -123,7 +123,7 @@ describe('Módulo 5 · Marcadores, Punto Cero y radios (CU-32, 33, 34, 36)', () 
 
   /* ── Radios ── */
 
-  test('CU-34 R1 · agregar radios; la misma distancia dos veces → 409 «Ya existe un radio de 2 km»', async () => {
+  test('CU-36 R1 · agregar radios; la misma distancia dos veces → 409 «Ya existe un radio de 2 km»', async () => {
     const r = await radios('POST', '', { radioM: 2000, color: '#e54b4b' });
     motivo(r, 201);
     R2K = r.json.radio.id;
@@ -135,7 +135,7 @@ describe('Módulo 5 · Marcadores, Punto Cero y radios (CU-32, 33, 34, 36)', () 
     assert.deepEqual((await radios('GET')).json.radios.map(x => x.radioM), [500, 2000]);
   });
 
-  test('CU-34 R1-R2 · valores fuera de rango o color inválido → 400; cambiar km y color; quitar', async () => {
+  test('CU-36 R1-R2 · valores fuera de rango o color inválido → 400; cambiar km y color; quitar', async () => {
     motivo(await radios('POST', '', { radioM: 10, color: '#000000' }), 400, 'radio_invalido');
     motivo(await radios('POST', '', { radioM: 3000, color: 'rojo' }), 400, 'color_invalido');
     motivo(await radios('PUT', `/${R2K}`, { radioM: 500 }), 409, 'radio_duplicado');
@@ -148,7 +148,7 @@ describe('Módulo 5 · Marcadores, Punto Cero y radios (CU-32, 33, 34, 36)', () 
 
   /* ── Punto Cero ── */
 
-  test('CU-34 · con el operativo en curso, mover el Punto Cero pide motivo; queda en el historial con la distancia', async () => {
+  test('CU-36 · con el operativo en curso, mover el Punto Cero pide motivo; queda en el historial con la distancia', async () => {
     const antes = (await ctx.api('GET', `/operativos/${ctx.op}/punto-cero`)).json;
     const destino = { lat: antes.puntoCero.lat + 0.01, lng: antes.puntoCero.lng };   // ~1,1 km al norte
     motivo(await ctx.api('PUT', `/operativos/${ctx.op}/punto-cero`, destino), 400, 'motivo_requerido');
@@ -192,7 +192,7 @@ describe('Módulo 5 · Marcadores, Punto Cero y radios (CU-32, 33, 34, 36)', () 
     assert.deepEqual(h.map(x => x.motivo), ['Testigo lo vio más al sur', null, null]);
   });
 
-  test('CU-34 / CU-36 · con el operativo finalizado el mapa es de sólo lectura', async () => {
+  test('CU-36 / CU-38 · con el operativo finalizado el mapa es de sólo lectura', async () => {
     motivo(await ctx.api('POST', `/operativos/${opNuevo}/finalizar`, {}), 200);
     motivo(await ctx.api('PUT', `/operativos/${opNuevo}/punto-cero`, { lat: -31.6, lng: -64.5, motivo: 'x' }), 409, 'operativo_cerrado');
     motivo(await ctx.api('POST', `/operativos/${opNuevo}/radios`, { radioM: 1000, color: '#000000' }), 409, 'operativo_cerrado');

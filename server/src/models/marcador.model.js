@@ -1,8 +1,8 @@
 /**
  * MODELO · Marcadores del mapa (Módulo 5)
- *   · CU-32 Marcar Punto de Interés, Hallazgo o Instalación SCI
- *   · CU-33 Modificar (las instalaciones, además, se reubican)
- *   · CU-36 Eliminar (baja con registro; un hallazgo NO se elimina)
+ *   · CU-34 Marcar Punto de Interés, Hallazgo o Instalación SCI
+ *   · CU-35 Modificar (las instalaciones, además, se reubican)
+ *   · CU-38 Eliminar (baja con registro; un hallazgo NO se elimina)
  *
  * Un hallazgo es evidencia del caso: queda con hora y autor, no se elimina, no
  * pasa a ser otra clase de marcador y sus fotos no se quitan. La base lo
@@ -50,7 +50,7 @@ async function conUrls(m) {
   return { ...m, fotos };
 }
 
-/** Marcadores vigentes del operativo (CU-31: se dibujan con su símbolo). */
+/** Marcadores vigentes del operativo (CU-33: se dibujan con su símbolo). */
 export async function listar(operativoId) {
   const { rows } = await query(
     `SELECT ${CAMPOS} ${DESDE} WHERE m.operativo_id = $1 AND m.eliminado_en IS NULL ORDER BY m.creado_en`,
@@ -78,7 +78,7 @@ async function bloquear(client, operativoId, marcadorId) {
   return rows[0];
 }
 
-/** CU-32: `datos` ya validado por el controlador (campos según la clase). */
+/** CU-34: `datos` ya validado por el controlador (campos según la clase). */
 export async function crear(operativoId, datos, usuarioId) {
   const nombre = datos.nombre ?? (datos.clase === 'INSTALACION' ? TIPOS_INSTALACION[datos.tipoInstalacion] : null);
   const { rows } = await query(
@@ -97,7 +97,7 @@ const EDITABLES = {
 };
 
 /**
- * CU-33: corrige datos y, si es una instalación, la reubica (lat/lng).
+ * CU-35: corrige datos y, si es una instalación, la reubica (lat/lng).
  * Reglas: un hallazgo no cambia de clase; un punto de interés puede pasar a
  * hallazgo (resultó ser evidencia); una instalación sigue siendo instalación;
  * los puntos de interés y los hallazgos quedan donde se marcaron.
@@ -150,7 +150,7 @@ export async function actualizar(operativoId, marcadorId, cambios) {
   });
 }
 
-/** CU-36: baja con registro. Un hallazgo no se elimina. */
+/** CU-38: baja con registro. Un hallazgo no se elimina. */
 export async function eliminar(operativoId, marcadorId, usuarioId) {
   return withTransaction(async (client) => {
     const previo = await bloquear(client, operativoId, marcadorId);
@@ -165,7 +165,7 @@ export async function eliminar(operativoId, marcadorId, usuarioId) {
   });
 }
 
-/** Fotos de un punto de interés o un hallazgo (CU-32/33): cuántas puede sumar todavía. */
+/** Fotos de un punto de interés o un hallazgo (CU-34/35): cuántas puede sumar todavía. */
 export async function lugarParaFotos(operativoId, marcadorId) {
   const { rows: [m] } = await query(
     `SELECT m.clase, (SELECT count(*)::int FROM marcador_fotos f WHERE f.marcador_id = m.id AND f.eliminado_en IS NULL) AS n

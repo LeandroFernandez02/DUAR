@@ -1,5 +1,5 @@
 /**
- * Panel izquierdo «Gestión del mapa» (CU-31), al estilo Google Earth: buscador
+ * Panel izquierdo «Gestión del mapa» (CU-33), al estilo Google Earth: buscador
  * y árbol por secciones (radios, polígonos, marcadores, tracks, ajustes), con
  * casillas para mostrar u ocultar cada sección y cada elemento.
  */

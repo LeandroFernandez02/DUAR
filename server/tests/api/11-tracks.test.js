@@ -1,5 +1,5 @@
 /**
- * Módulo 5 · Tracks GPX y cobertura (CU-29, CU-30, CU-36, CU-38), con las
+ * Módulo 5 · Tracks GPX y cobertura (CU-31, CU-32, CU-38, CU-40), con las
  * decisiones del 12/10: el agente carga su recorrido desde el portal o el
  * coordinador lo carga en su nombre; el polígono se detecta por coordenadas
  * (≥ 30 % de los puntos); el .gpx original queda guardado; la cobertura se
@@ -37,7 +37,7 @@ const archivo = (contenido, nombre = 'recorrido.gpx') => ({ archivo: { nombre, c
 const tracks = (ruta = '') => `/operativos/${ctx.op}/tracks${ruta}`;
 const detallePol = async () => (await ctx.api('GET', `/operativos/${ctx.op}/poligonos/${P}`)).json.poligono;
 
-describe('Módulo 5 · Tracks GPX y cobertura (CU-29, 30, 36, 38)', () => {
+describe('Módulo 5 · Tracks GPX y cobertura (CU-31, 32, 38, 40)', () => {
   before(async () => {
     ctx = await preparar();
     const r = await ctx.api('POST', `/operativos/${ctx.op}/poligonos`, { nombre: 'Track Quebrada', geometria: cuadrado(40) });
@@ -46,7 +46,7 @@ describe('Módulo 5 · Tracks GPX y cobertura (CU-29, 30, 36, 38)', () => {
   });
   after(terminar);
 
-  test('CU-29 pasos 3-5 · analizar muestra puntos, horas, desnivel y el polígono detectado, sin guardar nada', async () => {
+  test('CU-31 pasos 3-5 · analizar muestra puntos, horas, desnivel y el polígono detectado, sin guardar nada', async () => {
     const r = await ctx.subir(tracks('/analizar'), archivo(gpx(ZIGZAG, '2026-10-12T11:00:00Z')));
     motivo(r, 200);
     const a = r.json.analisis;
@@ -60,7 +60,7 @@ describe('Módulo 5 · Tracks GPX y cobertura (CU-29, 30, 36, 38)', () => {
     assert.equal((await ctx.api('GET', tracks())).json.tracks.length, 0, 'analizar no guarda');
   });
 
-  test('CU-29 · el coordinador carga en nombre de un agente: queda en el polígono detectado y la cobertura se calcula sola', async () => {
+  test('CU-31 · el coordinador carga en nombre de un agente: queda en el polígono detectado y la cobertura se calcula sola', async () => {
     const r = await ctx.subir(tracks(), {
       ...archivo(gpx(ZIGZAG, '2026-10-12T11:00:00Z'), 'alfa-quebrada.gpx'),
       campos: { agenteOperativoId: ctx.agentes.alfa.id, notas: 'Cargado por radio' },
@@ -83,7 +83,7 @@ describe('Módulo 5 · Tracks GPX y cobertura (CU-29, 30, 36, 38)', () => {
     assert.equal(p.historial[0].tipo, 'TRACK_CARGADO');
   });
 
-  test('CU-29 · el .gpx original queda guardado tal cual y se descarga con un enlace temporal', async () => {
+  test('CU-31 · el .gpx original queda guardado tal cual y se descarga con un enlace temporal', async () => {
     const r = await ctx.api('GET', tracks(`/${T1}`));
     motivo(r, 200);
     assert.match(r.json.track.archivoUrl ?? '', /^https:\/\//);
@@ -91,14 +91,14 @@ describe('Módulo 5 · Tracks GPX y cobertura (CU-29, 30, 36, 38)', () => {
     assert.equal(original, gpx(ZIGZAG, '2026-10-12T11:00:00Z'));
   });
 
-  test('CU-29 · el mismo recorrido dos veces (mismo agente, misma hora de inicio y fin) → 409 track_duplicado', async () => {
+  test('CU-31 · el mismo recorrido dos veces (mismo agente, misma hora de inicio y fin) → 409 track_duplicado', async () => {
     const r = await ctx.subir(tracks(), {
       ...archivo(gpx(ZIGZAG, '2026-10-12T11:00:00Z')), campos: { agenteOperativoId: ctx.agentes.alfa.id },
     });
     motivo(r, 409, 'track_duplicado');
   });
 
-  test('CU-29 paso 4 · con menos del 30 % de los puntos adentro queda «Fuera de polígono»', async () => {
+  test('CU-31 paso 4 · con menos del 30 % de los puntos adentro queda «Fuera de polígono»', async () => {
     const r = await ctx.subir(tracks(), {
       ...archivo(gpx(CASI_AFUERA, '2026-10-12T13:00:00Z')), campos: { agenteOperativoId: ctx.agentes.alfa.id },
     });
@@ -109,7 +109,7 @@ describe('Módulo 5 · Tracks GPX y cobertura (CU-29, 30, 36, 38)', () => {
     assert.equal((await detallePol()).coberturaPct, coberturaConT1, 'no suma al polígono');
   });
 
-  test('CU-30 · se corrige el polígono a mano: suma cobertura y queda en el historial de dónde vino', async () => {
+  test('CU-32 · se corrige el polígono a mano: suma cobertura y queda en el historial de dónde vino', async () => {
     const r = await ctx.api('PUT', tracks(`/${T2}`), { poligonoId: P });
     motivo(r, 200);
     assert.equal(r.json.track.poligonoId, P);
@@ -119,7 +119,7 @@ describe('Módulo 5 · Tracks GPX y cobertura (CU-29, 30, 36, 38)', () => {
     assert.equal(p.historial[0].detalle.desde, 'Fuera de polígono');
   });
 
-  test('CU-30 · sólo se editan polígono y notas: horas o agente → 400 dato_no_editable; sin cambios → 400', async () => {
+  test('CU-32 · sólo se editan polígono y notas: horas o agente → 400 dato_no_editable; sin cambios → 400', async () => {
     motivo(await ctx.api('PUT', tracks(`/${T2}`), { inicio: '2026-10-12T10:00:00Z' }), 400, 'dato_no_editable');
     motivo(await ctx.api('PUT', tracks(`/${T2}`), { agenteOperativoId: ctx.agentes.bravo.id }), 400, 'dato_no_editable');
     motivo(await ctx.api('PUT', tracks(`/${T2}`), {}), 400, 'sin_cambios');
@@ -128,7 +128,7 @@ describe('Módulo 5 · Tracks GPX y cobertura (CU-29, 30, 36, 38)', () => {
     assert.equal(r.json.track.notas, 'GPS con poca señal');
   });
 
-  test('CU-36 · eliminar un track es una baja con registro: deja de sumar cobertura', async () => {
+  test('CU-38 · eliminar un track es una baja con registro: deja de sumar cobertura', async () => {
     motivo(await ctx.api('DELETE', tracks(`/${T2}`)), 204);
     motivo(await ctx.api('GET', tracks(`/${T2}`)), 404, 'track_no_encontrado');
     const p = await detallePol();
@@ -138,7 +138,7 @@ describe('Módulo 5 · Tracks GPX y cobertura (CU-29, 30, 36, 38)', () => {
     assert.ok(fila.eliminado_en && fila.eliminado_por, 'la fila sigue, dada de baja');
   });
 
-  test('CU-29 flujo principal · el agente analiza y carga su propio recorrido desde el portal', async () => {
+  test('CU-31 flujo principal · el agente analiza y carga su propio recorrido desde el portal', async () => {
     const bravo = ctx.usuarios.bravo.token;
     const contenido = gpx(ZIGZAG.map(([x, y]) => [x + 0.0002, y]), '2026-10-12T15:00:00Z');   // sin elevación
     const a = await ctx.subir('/mis-tracks/analizar', archivo(contenido), bravo);
@@ -159,13 +159,13 @@ describe('Módulo 5 · Tracks GPX y cobertura (CU-29, 30, 36, 38)', () => {
     assert.ok((await detallePol()).coberturaPct > coberturaConT1);
   });
 
-  test('CU-29 · portal sin operativo en curso → 404 sin_operativo; un agente no usa la carga del coordinador → 403', async () => {
+  test('CU-31 · portal sin operativo en curso → 404 sin_operativo; un agente no usa la carga del coordinador → 403', async () => {
     motivo(await ctx.subir('/mis-tracks/analizar', archivo(gpx(ZIGZAG, '2026-10-12T17:00:00Z')), ctx.coordinador), 404, 'sin_operativo');
     assert.deepEqual((await ctx.api('GET', '/mis-tracks', undefined, ctx.coordinador)).json.tracks, []);
     motivo(await ctx.subir(tracks('/analizar'), archivo(gpx(ZIGZAG, '2026-10-12T17:00:00Z')), ctx.usuarios.bravo.token), 403);
   });
 
-  test('CU-29 2.x · archivo faltante, que no es .gpx, sin puntos, o de un agente ajeno → rechazos claros', async () => {
+  test('CU-31 2.x · archivo faltante, que no es .gpx, sin puntos, o de un agente ajeno → rechazos claros', async () => {
     motivo(await ctx.subir(tracks('/analizar'), {}), 400, 'archivo_requerido');
     motivo(await ctx.subir(tracks('/analizar'), archivo('hola', 'notas.txt')), 400, 'archivo_no_gpx');
     motivo(await ctx.subir(tracks('/analizar'), archivo(gpx([[-64.948, -31.992]], '2026-10-12T18:00:00Z'))), 400, 'gpx_sin_puntos');
@@ -175,7 +175,7 @@ describe('Módulo 5 · Tracks GPX y cobertura (CU-29, 30, 36, 38)', () => {
     }), 404, 'agente_no_encontrado');
   });
 
-  test('CU-36 · al eliminar el polígono sus tracks quedan «Fuera de polígono» (no se borran)', async () => {
+  test('CU-38 · al eliminar el polígono sus tracks quedan «Fuera de polígono» (no se borran)', async () => {
     motivo(await ctx.api('DELETE', `/operativos/${ctx.op}/poligonos/${P}`), 204);
     const lista = (await ctx.api('GET', tracks())).json.tracks;
     assert.deepEqual(lista.map(t => [t.id, t.poligonoId]).sort(), [[T1, null], [T3, null]].sort());

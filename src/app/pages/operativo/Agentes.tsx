@@ -51,8 +51,8 @@ function Dato({ titulo, children }: { titulo: string; children: ReactNode }) {
 const INTERVALO_MS = 10_000;
 
 /**
- * CU-17..19 (Agentes de Operativo) y, en la pestaña Grupos, CU-21..26 — todo
- * contra la API real. CU-23 paso 1 ubica el tablero de grupos "dentro del menú
+ * CU-18..20 (Agentes de Operativo) y, en la pestaña Grupos, CU-22..27 — todo
+ * contra la API real. CU-24 paso 1 ubica el tablero de grupos "dentro del menú
  * del Módulo de Agentes": por eso es una pestaña acá y no otra página.
  */
 export default function Agentes() {
@@ -139,7 +139,7 @@ export default function Agentes() {
 
   const idsEnOperativo = useMemo(() => new Set(agentes.map(a => a.usuarioId)), [agentes]);
 
-  // Sólo agentes con cuenta ACTIVA (mismo gate que el alta por QR — CU-15
+  // Sólo agentes con cuenta ACTIVA (mismo gate que el alta por QR — CU-16
   // paso 6.1: PENDIENTE/INACTIVO no puede quedar operando).
   const disponibles = useMemo(() =>
     usuarios.filter(u =>
@@ -188,7 +188,7 @@ export default function Agentes() {
     if (fallidos.size === 0) setModalAdd(false);
   };
 
-  // ── Editar (reutiliza EditarAgenteModal — CU-17) ──
+  // ── Editar (reutiliza EditarAgenteModal — CU-18) ──
   const [editUsuarioId, setEditUsuarioId] = useState<string | null>(null);
   const agenteEnEdicion = agentes.find(a => a.usuarioId === editUsuarioId) ?? null;
 
@@ -234,7 +234,7 @@ export default function Agentes() {
         </div>
       </div>
 
-      {/* Pestañas: el tablero de grupos vive dentro de Agentes (CU-23 paso 1). El
+      {/* Pestañas: el tablero de grupos vive dentro de Agentes (CU-24 paso 1). El
           botón de acción principal cambia con la pestaña, al mismo nivel que las tabs. */}
       <div className="flex items-center justify-between gap-3 flex-wrap mb-5">
         <div role="tablist" aria-label="Vista del personal" className="flex gap-1 p-1 rounded-[var(--radius-button)] w-fit"
@@ -498,7 +498,7 @@ export default function Agentes() {
           onClose={() => setHistoria(null)} />
       )}
 
-      {/* ── MODAL: Editar Agente (datos operativos, CU-17) ── */}
+      {/* ── MODAL: Editar Agente (datos operativos, CU-18) ── */}
       {agenteEnEdicion && (
         <EditarAgenteModal
           agente={agenteEnEdicion}

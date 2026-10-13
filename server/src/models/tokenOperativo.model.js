@@ -1,11 +1,11 @@
 /**
- * MODELO · Tokens de QR de operativo (CU-15)
+ * MODELO · Tokens de QR de operativo (CU-16)
  *
  * El Coordinador exhibe un QR y el personal lo escanea para darse de alta. El
  * token que viaja en ese QR vive acá, no en el navegador: el agente escanea con
  * su propio celular, así que Coordinador y Agente necesitan una fuente común.
  *
- * Reglas del CU-15:
+ * Reglas del CU-16:
  *  · Vigencia de 24 h (paso 2.1 y nota "Cambiar duración de QR a 24hs").
  *  · Un solo token vigente por operativo: refrescar revoca el anterior. Es el
  *    "Control de Puerta" de las Observaciones — si el QR se filtró por WhatsApp,
@@ -64,7 +64,7 @@ export async function emitirNuevo(operativoId, generadoPor = null) {
 
 /**
  * Devuelve el token vigente; si no hay o ya venció, emite uno.
- * Es lo que consume el Coordinador al abrir el modal del QR (CU-15 paso 2):
+ * Es lo que consume el Coordinador al abrir el modal del QR (CU-16 paso 2):
  * mientras siga vigente ve SIEMPRE el mismo código, y sólo se renueva solo
  * cuando pasaron las 24 h (paso 2.1).
  */
@@ -76,7 +76,7 @@ export async function obtenerOEmitir(operativoId, generadoPor = null) {
  * Valida un token escaneado y devuelve el operativo al que da acceso.
  * Null si no existe, fue revocado, venció, o el operativo ya no admite ingresos.
  *
- * La condición sobre el estado del operativo es la precondición del CU-15: sólo
+ * La condición sobre el estado del operativo es la precondición del CU-16: sólo
  * se puede entrar a uno ACTIVO o EN_PLANIFICACION. Un QR viejo de un operativo
  * ya finalizado no debe dejar entrar a nadie.
  */

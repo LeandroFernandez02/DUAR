@@ -39,7 +39,7 @@ export function QRModal({ operativo, onClose }: Props) {
 
   /**
    * El token viene del backend, no de localStorage. Es la corrección de fondo del
-   * CU-15: el agente escanea con SU celular, así que el código tiene que vivir en
+   * CU-16: el agente escanea con SU celular, así que el código tiene que vivir en
    * un lugar que ambos dispositivos puedan consultar — la base.
    */
   useEffect(() => {
@@ -61,7 +61,7 @@ export function QRModal({ operativo, onClose }: Props) {
   }, [operativo.id]);
 
   // Cuenta regresiva. Al vencer no se genera nada acá: se le vuelve a pedir al
-  // backend, que es el único que decide cuándo emitir un token nuevo (CU-15 2.1).
+  // backend, que es el único que decide cuándo emitir un token nuevo (CU-16 2.1).
   useEffect(() => {
     if (!tokenInfo) return;
     const iv = setInterval(() => {
@@ -86,7 +86,7 @@ export function QRModal({ operativo, onClose }: Props) {
   const expiryColor = getExpiryColor(progress);
   const isExpiringSoon = progress >= 0.9;
 
-  /** "Control de Puerta" (CU-15 Observaciones): invalida el QR filtrado. */
+  /** "Control de Puerta" (CU-16 Observaciones): invalida el QR filtrado. */
   const handleRegenerate = useCallback(async () => {
     setRegenerating(true);
     setShowConfirmRegen(false);

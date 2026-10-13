@@ -1,5 +1,5 @@
 /**
- * RUTAS · Validación pública del QR (CU-15 pasos 4-5)
+ * RUTAS · Validación pública del QR (CU-16 pasos 4-5)
  *
  * Deliberadamente SIN sesión: el agente acaba de escanear con su celular y
  * todavía puede no tener cuenta. Recién después el flujo lo deriva a iniciar

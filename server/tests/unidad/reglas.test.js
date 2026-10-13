@@ -59,7 +59,7 @@ describe('Reglas puras del modelo de estados y de composición', () => {
     assert.equal(ACCIONES.llegar_base.hacia, 'EN_ESPERA');
   });
 
-  test('CU-25 · sólo se disuelve un grupo que está en la base', () => {
+  test('CU-26 · sólo se disuelve un grupo que está en la base', () => {
     assert.deepEqual([...ACCIONES.disolver.desde].sort(), [...EN_BASE].sort());
     for (const e of EN_OPERACION) assert.ok(!ACCIONES.disolver.desde.includes(e), e);
   });
@@ -69,14 +69,14 @@ describe('Reglas puras del modelo de estados y de composición', () => {
     for (const a of ['confirmar', 'asignar', 'desasignar', 'reabrir', 'disolver']) assert.deepEqual(ACCIONES[a].quien, ['COORDINADOR'], a);
   });
 
-  test('CU-21/24 · a un grupo de rastrillaje entra un agente o un conductor, no un recurso especial', () => {
+  test('CU-22/25 · a un grupo de rastrillaje entra un agente o un conductor, no un recurso especial', () => {
     assert.equal(entraARastrillaje({ esRecursoCritico: false, esConductor: false }), true);
     assert.equal(entraARastrillaje({ esRecursoCritico: true, esConductor: false }), false);
     assert.equal(entraARastrillaje({ esRecursoCritico: true, esConductor: true }), true);
     assert.equal(entraARastrillaje({ esRecursoCritico: false, esConductor: true }), true);
   });
 
-  test('CU-21/24/26 · Líder de rastrillaje: del DUAR, no recurso especial y no conductor', () => {
+  test('CU-22/25/27 · Líder de rastrillaje: del DUAR, no recurso especial y no conductor', () => {
     const duar = { esDuar: true, esRecursoCritico: false, esConductor: false };
     assert.equal(motivoLiderNoApto(duar, 'RASTRILLAJE'), null);
     assert.equal(motivoLiderNoApto({ ...duar, esDuar: false }, 'RASTRILLAJE'), 'lider_no_duar');
@@ -84,11 +84,11 @@ describe('Reglas puras del modelo de estados y de composición', () => {
     assert.equal(motivoLiderNoApto({ ...duar, esConductor: true }, 'RASTRILLAJE'), 'lider_conductor');
   });
 
-  test('CU-21 · un grupo especial lo lidera cualquiera, incluso un conductor de afuera', () => {
+  test('CU-22 · un grupo especial lo lidera cualquiera, incluso un conductor de afuera', () => {
     assert.equal(motivoLiderNoApto({ esDuar: false, esRecursoCritico: true, esConductor: true }, 'ESPECIAL'), null);
   });
 
-  test('CU-26 · binomio: rastrillan todos menos el conductor', () => {
+  test('CU-27 · binomio: rastrillan todos menos el conductor', () => {
     assert.equal(cuantosRastrillan([{ esConductor: false }, { esConductor: true }, { esConductor: false }]), 2);
     assert.equal(cuantosRastrillan([{ esConductor: true }, { esConductor: true }]), 0);
     assert.equal(cuantosRastrillan([]), 0);

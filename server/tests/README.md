@@ -13,9 +13,9 @@ npm run test:informe   # corre todo y escribe tests/INFORME-PRUEBAS.md (tabla pa
 | Carpeta | Qué prueba | Necesita |
 |---|---|---|
 | `unidad/` | Reglas puras de `src/models/estados.js`: estados, Regla 1, quién entra a qué clase de grupo, quién lidera, binomio | Nada |
-| `api/` | Casos de uso de los Módulos 1, 2 y 4 contra la API real (CU-01, 04–07, 17, 21–26, portal del Líder, línea de tiempo) | API local + base |
+| `api/` | Casos de uso de los Módulos 1 a 5 contra la API real (CU-01, 02, 04–11, 15, 18, 22–27, 29–32 y 34–40, portal del Líder, línea de tiempo) | API local + base |
 
-Cada prueba empieza con el CU o la regla que verifica (`CU-21 · ...`): de ahí sale la columna "CU / regla" del informe.
+Cada prueba empieza con el CU o la regla que verifica (`CU-22 · ...`): de ahí sale la columna "CU / regla" del informe.
 
 ## Aislamiento (no hay una base aparte)
 

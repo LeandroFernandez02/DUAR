@@ -22,7 +22,7 @@ router.get( '/mi-grupo',         requiereSesion, portal.miGrupo);
 router.post('/mi-grupo/eventos', requiereSesion, portal.eventosMiGrupo);
 router.put( '/mi-estado',        requiereSesion, portal.miEstado);
 
-// Módulo 5 · el agente carga el GPX de su propio recorrido (CU-29, flujo principal).
+// Módulo 5 · el agente carga el GPX de su propio recorrido (CU-31, flujo principal).
 router.get( '/mis-tracks',          requiereSesion, tracks.misTracksListar);
 router.post('/mis-tracks/analizar', requiereSesion, subirGpxMiddleware, tracks.misTracksAnalizar);
 router.post('/mis-tracks',          requiereSesion, subirGpxMiddleware, tracks.misTracksCrear);

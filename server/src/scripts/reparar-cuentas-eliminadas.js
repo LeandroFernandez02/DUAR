@@ -12,7 +12,7 @@
  * tiempo "Su cuenta fue eliminada del sistema".
  *
  * Si alguna está en el terreno con un grupo, no se toca nada (hay que retirarla
- * del grupo primero, CU-26). Todo corre en UNA transacción.
+ * del grupo primero, CU-27). Todo corre en UNA transacción.
  */
 import { pool } from '../config/db.js';
 import * as AgenteOperativo from '../models/agenteOperativo.model.js';

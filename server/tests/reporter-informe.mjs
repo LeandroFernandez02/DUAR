@@ -6,7 +6,7 @@
  * Uso: npm run test:informe  →  server/tests/INFORME-PRUEBAS.md
  *
  * El nombre de cada prueba empieza con el CU o la regla que verifica, separado
- * por " · " (ej. "CU-21 · crear un grupo..."): de ahí sale la columna CU.
+ * por " · " (ej. "CU-22 · crear un grupo..."): de ahí sale la columna CU.
  */
 const escapar = t => String(t).replace(/\|/g, '\\|').replace(/\r?\n/g, ' ');
 
@@ -46,7 +46,7 @@ export default async function* informe(source) {
     + (fallidas.length ? ` · **${fallidas.length} fallidas**` : '') + '\n';
   md += '- **Cómo se corre:** `cd server && npm run test:informe`, con la API local levantada (`npm run dev`).\n';
   md += '- **Alcance:** reglas puras del modelo de estados, de composición y de la lectura de archivos GPX, y casos '
-    + 'de uso de los Módulos 1, 2, 4 y 5 (Mapa Operacional) contra la API real, la base y el almacenamiento de archivos. '
+    + 'de uso de los Módulos 1 a 5 (del 3, Punto Cero, finalizar, listado y presencia de mando; el 5 es el Mapa Operacional) contra la API real, la base y el almacenamiento de archivos. '
     + 'Las pruebas de API corren sobre un operativo y usuarios propios ("PRUEBAS AUTOMÁTICAS - no tocar", '
     + 'auto.*@prueba.duar) y se detienen si encuentran datos ajenos; después se borran con `npm run limpiar-pruebas -- --confirmar`.\n';
 

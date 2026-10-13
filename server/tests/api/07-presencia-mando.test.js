@@ -1,5 +1,5 @@
 /**
- * Puesto de comando: presencia de mando (01/10, migración 016).
+ * CU-15 · Puesto de comando: presencia de mando (01/10, migración 016).
  *
  * Dos partes:
  *  · Reglas que necesitan un segundo operativo o finalizar uno (ubicuidad del
@@ -51,7 +51,7 @@ async function operativoTemporal(client) {
   return rows[0].id;
 }
 
-describe('Puesto de comando: presencia de mando (CU nuevo del Módulo 3)', () => {
+describe('Puesto de comando: presencia de mando (CU-15)', () => {
   before(async () => {
     ctx = await preparar();
     hotel = ctx.usuarios.hotel.uid;
@@ -62,7 +62,7 @@ describe('Puesto de comando: presencia de mando (CU nuevo del Módulo 3)', () =>
 
   /* ── Reglas sobre el modelo, en una transacción descartada ── */
 
-  test('Mando · un coordinador presente en otro operativo no entra sin trasladarse; al trasladarse deja el otro', async () => {
+  test('CU-15 · un coordinador presente en otro operativo no entra sin trasladarse; al trasladarse deja el otro', async () => {
     await enTransaccionDescartada(async client => {
       const otro = await operativoTemporal(client);
       await Mando.ingresarCon(client, { operativoId: otro, usuarioId: hotel, autorId: hotel });
@@ -82,7 +82,7 @@ describe('Puesto de comando: presencia de mando (CU nuevo del Módulo 3)', () =>
     });
   });
 
-  test('Mando · la base impide que un coordinador tenga dos presencias abiertas a la vez', async () => {
+  test('CU-15 · la base impide que un coordinador tenga dos presencias abiertas a la vez', async () => {
     await enTransaccionDescartada(async client => {
       await Mando.ingresarCon(client, { operativoId: ctx.op, usuarioId: india, autorId: india });
       await client.query('SAVEPOINT duplicado');
@@ -109,15 +109,15 @@ describe('Puesto de comando: presencia de mando (CU nuevo del Módulo 3)', () =>
 
   /* ── Contra la API ── */
 
-  test('Mando · un administrador tiene que elegir qué coordinador ingresa → 400', async () => {
+  test('CU-15 · un administrador tiene que elegir qué coordinador ingresa → 400', async () => {
     motivo(await comoAdmin('POST', `/operativos/${ctx.op}/mando/ingreso`, {}), 400, 'usuario_requerido');
   });
 
-  test('Mando · en el puesto de comando sólo se registra a coordinadores → 409', async () => {
+  test('CU-15 · en el puesto de comando sólo se registra a coordinadores → 409', async () => {
     motivo(await comoAdmin('POST', `/operativos/${ctx.op}/mando/ingreso`, { usuarioId: ctx.usuarios.alfa.uid }), 409, 'no_es_coordinador');
   });
 
-  test('Mando · el primer coordinador que ingresa queda a cargo', async () => {
+  test('CU-15 · el primer coordinador que ingresa queda a cargo', async () => {
     const r = await ingreso('hotel');
     motivo(r, 201);
     assert.equal(r.json.quedoACargo, true);
@@ -132,11 +132,11 @@ describe('Puesto de comando: presencia de mando (CU nuevo del Módulo 3)', () =>
     assert.equal(op.mandoHasta, null);
   });
 
-  test('Mando · ingresar dos veces → 409 ya_presente', async () => {
+  test('CU-15 · ingresar dos veces → 409 ya_presente', async () => {
     motivo(await ingreso('hotel'), 409, 'ya_presente');
   });
 
-  test('Mando · un coordinador registra el ingreso de otro: queda presente, no a cargo, y consta quién lo registró', async () => {
+  test('CU-15 · un coordinador registra el ingreso de otro: queda presente, no a cargo, y consta quién lo registró', async () => {
     const r = await ingreso('hotel', { usuarioId: india });
     motivo(r, 201);
     assert.equal(r.json.quedoACargo, false);
@@ -145,11 +145,11 @@ describe('Puesto de comando: presencia de mando (CU nuevo del Módulo 3)', () =>
     assert.equal(p.ingresoPor, hotel);
   });
 
-  test('Mando · sólo quien está a cargo pasa el mando → 403 solo_a_cargo', async () => {
+  test('CU-15 · sólo quien está a cargo pasa el mando → 403 solo_a_cargo', async () => {
     motivo(await aCargo('india', india), 403, 'solo_a_cargo');
   });
 
-  test('Mando · traspaso: el que está a cargo le pasa el mando a otro presente, sin huecos en la historia', async () => {
+  test('CU-15 · traspaso: el que está a cargo le pasa el mando a otro presente, sin huecos en la historia', async () => {
     motivo(await aCargo('hotel', india), 200);
     const m = await ctx.mando();
     assert.equal(m.aCargo.usuarioId, india);
@@ -158,17 +158,17 @@ describe('Puesto de comando: presencia de mando (CU nuevo del Módulo 3)', () =>
     assert.equal(new Date(anterior.hasta).getTime(), new Date(actual.desde).getTime());
   });
 
-  test('Mando · registrar el retiro de otro coordinador exige motivo → 400', async () => {
+  test('CU-15 · registrar el retiro de otro coordinador exige motivo → 400', async () => {
     motivo(await retiro('hotel', { usuarioId: india }), 400, 'motivo_requerido');
   });
 
-  test('Mando · si se retira el que está a cargo y quedan otros, tiene que elegir sucesor → 409', async () => {
+  test('CU-15 · si se retira el que está a cargo y quedan otros, tiene que elegir sucesor → 409', async () => {
     const r = await retiro('india');
     motivo(r, 409, 'sucesion_requerida');
     assert.deepEqual(r.json.presentes.map(p => p.usuarioId), [hotel]);
   });
 
-  test('Mando · con sucesor: se retira y el mando pasa en el mismo instante', async () => {
+  test('CU-15 · con sucesor: se retira y el mando pasa en el mismo instante', async () => {
     motivo(await retiro('india', { sucesorId: hotel }), 200);
     const m = await ctx.mando();
     assert.equal(m.aCargo.usuarioId, hotel);
@@ -178,7 +178,7 @@ describe('Puesto de comando: presencia de mando (CU nuevo del Módulo 3)', () =>
     assert.equal(new Date(anterior.hasta).getTime(), new Date(actual.desde).getTime());
   });
 
-  test('Mando · un administrador registra presencias y pasa el mando aunque no esté a cargo', async () => {
+  test('CU-15 · un administrador registra presencias y pasa el mando aunque no esté a cargo', async () => {
     motivo(await comoAdmin('POST', `/operativos/${ctx.op}/mando/ingreso`, { usuarioId: india }), 201);
     motivo(await comoAdmin('POST', `/operativos/${ctx.op}/mando/a-cargo`, { usuarioId: india }), 200);
     assert.equal((await ctx.mando()).aCargo.usuarioId, india);
@@ -199,7 +199,7 @@ describe('Puesto de comando: presencia de mando (CU nuevo del Módulo 3)', () =>
     motivo(await ctx.disolver(g.json.grupo.id), 204);
   });
 
-  test('Mando · si el que está a cargo se registra como agente, deja el puesto y el operativo queda sin coordinador a cargo', async () => {
+  test('CU-15 · si el que está a cargo se registra como agente, deja el puesto y el operativo queda sin coordinador a cargo', async () => {
     motivo(await ingreso('hotel'), 201);                                      // hotel vuelve, sin quedar a cargo
     motivo(await comoAdmin('POST', `/operativos/${ctx.op}/agentes`, { usuarioId: india }), 201);
     const m = await ctx.mando();
@@ -209,16 +209,16 @@ describe('Puesto de comando: presencia de mando (CU nuevo del Módulo 3)', () =>
     assert.match(cerrada.motivo, /^Pasó a rastrillar como agente/);
   });
 
-  test('Mando · quien figura como agente no entra al puesto de comando → 409 es_agente', async () => {
+  test('CU-15 · quien figura como agente no entra al puesto de comando → 409 es_agente', async () => {
     motivo(await ingreso('india'), 409, 'es_agente');
   });
 
-  test('Mando · sin nadie a cargo, un presente toma el mando', async () => {
+  test('CU-15 · sin nadie a cargo, un presente toma el mando', async () => {
     motivo(await aCargo('hotel', hotel), 200);
     assert.equal((await ctx.mando()).aCargo.usuarioId, hotel);
   });
 
-  test('Mando · el último a cargo se retira solo: el operativo queda sin coordinador a cargo', async () => {
+  test('CU-15 · el último a cargo se retira solo: el operativo queda sin coordinador a cargo', async () => {
     const r = await retiro('hotel');
     motivo(r, 200);
     assert.equal(r.json.quedaSinMando, true);
@@ -233,7 +233,7 @@ describe('Puesto de comando: presencia de mando (CU nuevo del Módulo 3)', () =>
     assert.ok(op.mandoHasta, 'el último período de mando está cerrado');
   });
 
-  test('Mando · cada movimiento del puesto de comando queda en la auditoría', async () => {
+  test('CU-15 · cada movimiento del puesto de comando queda en la auditoría', async () => {
     const { rows } = await ctx.query(
       `SELECT valores_nuevos->>'accion' AS accion FROM logs_auditoria
         WHERE entidad_afectada = 'presencias_mando' AND registro_id = $1

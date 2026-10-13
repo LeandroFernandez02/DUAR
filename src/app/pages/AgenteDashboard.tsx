@@ -547,7 +547,7 @@ export default function AgenteDashboard() {
               <OperativoCard op={operativoActual} variant="current" />
               {/* Módulo 4: mi estado, mi grupo y, si soy el Líder, el estado del grupo */}
               <PanelTactico />
-              {/* Módulo 5 · CU-29: el GPX de lo que recorrió */}
+              {/* Módulo 5 · CU-31: el GPX de lo que recorrió */}
               <MisRecorridos />
             </div>
           ) : (

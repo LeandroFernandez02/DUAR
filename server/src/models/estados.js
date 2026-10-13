@@ -20,7 +20,7 @@ export const ESTADOS_AGENTE = [
 /** Los únicos estados posibles sin grupo (CHECK agente_estado_segun_grupo_chk). */
 export const ESTADOS_AGENTE_SIN_GRUPO = ['DISPONIBLE', 'NO_DISPONIBLE', 'REPLEGADO'];
 
-/** Lo que se puede elegir para un agente sin grupo (el coordinador en CU-17, o él mismo). */
+/** Lo que se puede elegir para un agente sin grupo (el coordinador en CU-18, o él mismo). */
 export const ESTADOS_AGENTE_ELEGIBLES = ['DISPONIBLE', 'NO_DISPONIBLE'];
 
 export const ESTADOS_GRUPO = [
@@ -28,13 +28,13 @@ export const ESTADOS_GRUPO = [
   'RASTRILLANDO', 'REPLEGADO', 'EN_ESPERA', 'DISUELTO',
 ];
 
-/** En el puesto de comando. Desde acá se puede disolver (CU-25). */
+/** En el puesto de comando. Desde acá se puede disolver (CU-26). */
 export const EN_BASE = ['EN_FORMACION', 'CONFIRMADO', 'ASIGNADO', 'EN_ESPERA'];
 
 /**
  * En el terreno. Al entrar se abren los períodos del historial (el armado no
  * deja rastro, decisión del 28/08) y al volver a la base se cierran. Es también
- * la precondición del retiro del CU-26.
+ * la precondición del retiro del CU-27.
  */
 export const EN_OPERACION = ['DESPLEGADO', 'RASTRILLANDO', 'REPLEGADO'];
 
@@ -53,7 +53,7 @@ export const ESTADOS_CORREGIBLES = ['ASIGNADO', 'DESPLEGADO', 'RASTRILLANDO', 'R
 export const ACCIONES = {
   confirmar:       { desde: ['EN_FORMACION', 'EN_ESPERA'],              hacia: 'CONFIRMADO',   quien: ['COORDINADOR'] },
   asignar:         { desde: ['CONFIRMADO'],                             hacia: 'ASIGNADO',     quien: ['COORDINADOR'] },
-  // Quitar del polígono a un grupo que todavía no salió (CU-28, 12/10): vuelve a quedar libre.
+  // Quitar del polígono a un grupo que todavía no salió (CU-30, 12/10): vuelve a quedar libre.
   desasignar:      { desde: ['ASIGNADO'],                               hacia: 'CONFIRMADO',   quien: ['COORDINADOR'] },
   reabrir:         { desde: ['CONFIRMADO', 'ASIGNADO', 'EN_ESPERA'],    hacia: 'EN_FORMACION', quien: ['COORDINADOR'] },
   salir:           { desde: ['ASIGNADO'],                               hacia: 'DESPLEGADO',   quien: ['COORDINADOR', 'LIDER'] },

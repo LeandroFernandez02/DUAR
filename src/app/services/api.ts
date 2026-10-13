@@ -25,7 +25,7 @@ export function setToken(token: string | null): void {
  *
  * `datos` guarda el cuerpo completo de la respuesta: hay rechazos que traen
  * información necesaria para decidir qué mostrar. El caso concreto es la Regla
- * de Ubicuidad (CU-15 paso 6.2), donde el 409 incluye qué operativo ocupa hoy
+ * de Ubicuidad (CU-16 paso 6.2), donde el 409 incluye qué operativo ocupa hoy
  * al agente para poder nombrarlo en el modal.
  */
 export class ApiError extends Error {
@@ -219,7 +219,7 @@ export interface CrearUsuarioPayload {
   alergiaIds?: string[];
 }
 
-/* ── Flujo QR: CU-15 Generar QR · CU-02 Registro · alta en operativo ─────── */
+/* ── Flujo QR: CU-16 Generar QR · CU-02 Registro · alta en operativo ─────── */
 
 export interface QRTokenApi {
   id: string;
@@ -264,27 +264,27 @@ export interface RegistroQRPayload {
   grupoSanguineo?: string;
   alergiaIds?: string[];
   // `esConductor` NO va acá a propósito: es táctico y lo decide el
-  // Coordinador (CU-17), no el agente.
+  // Coordinador (CU-18), no el agente.
 }
 
 export const qrApi = {
-  /** CU-15 pasos 4-5 · público: ¿a qué operativo da acceso este QR? */
+  /** CU-16 pasos 4-5 · público: ¿a qué operativo da acceso este QR? */
   validar: (token: string) =>
     api.get<{ operativo: OperativoQRApi; expiraEn: string }>(`/qr/${token}`),
 
-  /** CU-15 pasos 1-2 · el Coordinador obtiene el QR vigente (o uno nuevo). */
+  /** CU-16 pasos 1-2 · el Coordinador obtiene el QR vigente (o uno nuevo). */
   obtener: (operativoId: string) =>
     api.get<{ qr: QRTokenApi; operativo: { id: string; titulo: string } }>(
       `/operativos/${operativoId}/qr`
     ),
 
-  /** CU-15 Observaciones · "Control de Puerta": invalida el QR filtrado. */
+  /** CU-16 Observaciones · "Control de Puerta": invalida el QR filtrado. */
   refrescar: (operativoId: string) =>
     api.post<{ qr: QRTokenApi; operativo: { id: string; titulo: string } }>(
       `/operativos/${operativoId}/qr/refrescar`
     ),
 
-  /** CU-19 · grilla del Coordinador (se consulta por polling). */
+  /** CU-20 · grilla del Coordinador (se consulta por polling). */
   personal: (operativoId: string) =>
     api.get<{ personal: unknown[] }>(`/operativos/${operativoId}/personal`),
 };
@@ -299,7 +299,7 @@ export const registroApi = {
     ),
 
   /**
-   * CU-15 pasos 6-8 · alta en el operativo.
+   * CU-16 pasos 6-8 · alta en el operativo.
    * Si el agente ya está en otro, el backend responde 409 con
    * `motivo: 'regla_ubicuidad'`; hay que repetir con `abandonarAnterior: true`
    * sólo después de que el agente lo confirme en el modal.
@@ -368,7 +368,7 @@ export const operativosApi = {
   obtener: (id: string) => api.get<{ operativo: OperativoApi }>(`/operativos/${id}`),
   crear: (datos: CrearOperativoPayload) =>
     api.post<{ operativo: OperativoApi }>('/operativos', datos),
-  /** CU-09. Si se mueve el Punto Cero con el operativo en curso, `motivoPuntoCero` es obligatorio (CU-34). */
+  /** CU-09. Si se mueve el Punto Cero con el operativo en curso, `motivoPuntoCero` es obligatorio (CU-36). */
   actualizar: (id: string, datos: Partial<CrearOperativoPayload> & { motivoPuntoCero?: string }) =>
     api.put<{ operativo: OperativoApi }>(`/operativos/${id}`, datos),
   /** CU-08 paso 8: transición NUEVO → ACTIVO al entrar. Idempotente. */
@@ -396,7 +396,7 @@ export const usuariosApi = {
 
 /**
  * Encarnación TÁCTICA de un usuario en UN operativo (Decisión A). Es lo que
- * devuelve `GET /:id/personal` (CU-19), ya con el JOIN a `usuarios` resuelto
+ * devuelve `GET /:id/personal` (CU-20), ya con el JOIN a `usuarios` resuelto
  * — por eso trae nombre/dni/etc. además de los campos propios de la fila.
  */
 export interface PersonalOperativoApi {
@@ -426,14 +426,14 @@ export interface PersonalOperativoApi {
 }
 
 export const agentesOperativoApi = {
-  /** CU-19: personal actualmente en el operativo. */
+  /** CU-20: personal actualmente en el operativo. */
   listar: (operativoId: string) =>
     api.get<{ personal: PersonalOperativoApi[] }>(`/operativos/${operativoId}/personal`),
-  /** CU-17: alta directa por el Coordinador (sin QR). */
+  /** CU-18: alta directa por el Coordinador (sin QR). */
   agregar: (operativoId: string, datos: { usuarioId: string; especialidadId?: string; abandonarAnterior?: boolean }) =>
     api.post<{ agente: PersonalOperativoApi }>(`/operativos/${operativoId}/agentes`, datos),
   /**
-   * CU-17: datos tácticos. `estado` sólo para quien NO está en un grupo
+   * CU-18: datos tácticos. `estado` sólo para quien NO está en un grupo
    * (Disponible / No disponible); con grupo el backend responde 409 `agente_en_grupo`.
    */
   actualizar: (operativoId: string, usuarioId: string, datos: { estado?: EstadoAgenteApi; especialidadId?: string | null; esConductor?: boolean }) =>
@@ -443,7 +443,7 @@ export const agentesOperativoApi = {
     api.del<void>(`/operativos/${operativoId}/agentes/${usuarioId}`),
 };
 
-/* ── Grupos de Trabajo (Módulo 4 · CU-21..26) ────────────────────────────── */
+/* ── Grupos de Trabajo (Módulo 4 · CU-22..27) ────────────────────────────── */
 /* Modelo de estados del 24/09 (migración 010).                              */
 
 /** Los 7 de `estado_agente`. */
@@ -457,7 +457,7 @@ export type EstadoAgenteApi =
  */
 export type ClaseGrupoApi = 'RASTRILLAJE' | 'ESPECIAL';
 
-/** Los 8 de `estado_grupo`. DISUELTO sólo se alcanza disolviendo (CU-25). */
+/** Los 8 de `estado_grupo`. DISUELTO sólo se alcanza disolviendo (CU-26). */
 export type EstadoGrupoApi =
   | 'EN_FORMACION' | 'CONFIRMADO' | 'ASIGNADO' | 'DESPLEGADO' | 'RASTRILLANDO' | 'REPLEGADO' | 'EN_ESPERA' | 'DISUELTO';
 
@@ -497,7 +497,7 @@ export interface GrupoApi {
   rastrillan: number;
   /** De rastrillaje, en el terreno y con uno solo rastrillando. Calculado, no guardado. */
   alertaBinomio: boolean;
-  /** El polígono en el que está hoy (CU-28): mientras está Asignado o en el terreno. */
+  /** El polígono en el que está hoy (CU-30): mientras está Asignado o en el terreno. */
   poligonoId: string | null;
   /** Nombre de lo asignado: el polígono (o la descripción libre de antes del Módulo 5). */
   zonaAsignada: string | null;
@@ -542,11 +542,11 @@ export interface ArmadoAutomaticoApi {
   creados: { id: string; nombre: string; integrantes: number }[];
   asignados: number;
   sinAsignar: { id: string; nombre: string; apellido: string }[];
-  /** true si se armaron menos grupos de los pedidos por falta de líderes DUAR (CU-22 5.1). */
+  /** true si se armaron menos grupos de los pedidos por falta de líderes DUAR (CU-23 5.1). */
   limitadoPorLideres: boolean;
 }
 
-/* ── Puesto de comando: presencia de mando (01/10, migración 016) ─────────── */
+/* ── Puesto de comando: presencia de mando (CU-15; 01/10, migración 016) ── */
 
 /** Un coordinador presente (o un período ya cerrado, en el historial). */
 export interface PresenciaMandoApi {
@@ -597,7 +597,7 @@ export const mandoApi = {
     api.post<{ mando: MandoOperativoApi }>(`/operativos/${operativoId}/mando/a-cargo`, { usuarioId }),
 };
 
-/* ── Módulo 5 · Polígonos del mapa (CU-27, 28, 35, 36, 37) ─────────────── */
+/* ── Módulo 5 · Polígonos del mapa (CU-29, 30, 37, 38, 39) ─────────────── */
 
 /** GeoJSON Polygon en [longitud, latitud], como lo dibuja Leaflet. */
 export interface GeometriaPoligono { type: 'Polygon'; coordinates: number[][][]; }
@@ -641,7 +641,7 @@ export interface EventoPoligonoApi {
   registradoPor: string | null;
 }
 
-/** CU-37: el polígono con lo que pasó en él. */
+/** CU-39: el polígono con lo que pasó en él. */
 export interface PoligonoDetalleApi extends PoligonoApi {
   brechas: unknown | null;
   asistieron: { id: string; nombre: string; color: string | null; clase: ClaseGrupoApi; primeraVez: string }[];
@@ -652,32 +652,32 @@ export interface PoligonoDetalleApi extends PoligonoApi {
 export const poligonosApi = {
   listar: (operativoId: string) =>
     api.get<{ poligonos: PoligonoApi[] }>(`/operativos/${operativoId}/poligonos`),
-  /** CU-37 */
+  /** CU-39 */
   obtener: (operativoId: string, poligonoId: string) =>
     api.get<{ poligono: PoligonoDetalleApi }>(`/operativos/${operativoId}/poligonos/${poligonoId}`),
-  /** CU-27 (con `grupoId`, lo asigna en el mismo paso) */
+  /** CU-29 (con `grupoId`, lo asigna en el mismo paso) */
   crear: (operativoId: string, datos: { nombre: string; geometria: GeometriaPoligono; notas?: string; grupoId?: string }) =>
     api.post<{ poligono: PoligonoDetalleApi }>(`/operativos/${operativoId}/poligonos`, datos),
-  /** CU-35: nombre, notas y/o forma */
+  /** CU-37: nombre, notas y/o forma */
   actualizar: (operativoId: string, poligonoId: string, datos: { nombre?: string; notas?: string | null; geometria?: GeometriaPoligono }) =>
     api.put<{ poligono: PoligonoDetalleApi }>(`/operativos/${operativoId}/poligonos/${poligonoId}`, datos),
-  /** CU-36: baja con registro (no se puede con un grupo en el terreno) */
+  /** CU-38: baja con registro (no se puede con un grupo en el terreno) */
   eliminar: (operativoId: string, poligonoId: string) =>
     api.del<void>(`/operativos/${operativoId}/poligonos/${poligonoId}`),
-  /** CU-28: sólo grupos Confirmados */
+  /** CU-30: sólo grupos Confirmados */
   asignarGrupo: (operativoId: string, poligonoId: string, grupoId: string) =>
     api.post<{ poligono: PoligonoDetalleApi }>(`/operativos/${operativoId}/poligonos/${poligonoId}/grupos`, { grupoId }),
-  /** CU-28: con el grupo en el terreno hace falta `confirmar: true` */
+  /** CU-30: con el grupo en el terreno hace falta `confirmar: true` */
   quitarGrupo: (operativoId: string, poligonoId: string, grupoId: string, confirmar = false) =>
     api.post<{ poligono: PoligonoDetalleApi }>(`/operativos/${operativoId}/poligonos/${poligonoId}/grupos/${grupoId}/quitar`, { confirmar }),
-  /** CU-28: sólo si el actual todavía no salió (Asignado) */
+  /** CU-30: sólo si el actual todavía no salió (Asignado) */
   cambiarGrupo: (operativoId: string, poligonoId: string, grupoId: string, nuevoGrupoId: string) =>
     api.post<{ poligono: PoligonoDetalleApi }>(`/operativos/${operativoId}/poligonos/${poligonoId}/grupos/${grupoId}/cambiar`, { nuevoGrupoId }),
 };
 
-/* ── Tracks GPX (Módulo 5 · CU-29, 30, 36) ───────────────────────────────── */
+/* ── Tracks GPX (Módulo 5 · CU-31, 32, 38) ───────────────────────────────── */
 
-/** Lo que muestra CU-29 pasos 3 a 5, antes de confirmar la carga (no se guarda nada). */
+/** Lo que muestra CU-31 pasos 3 a 5, antes de confirmar la carga (no se guarda nada). */
 export interface AnalisisGpxApi {
   nombre: string | null;
   puntos: number;
@@ -733,7 +733,7 @@ function formularioGpx(archivo: File, campos: Record<string, string | undefined>
   return f;
 }
 
-/** El coordinador, desde el mapa (CU-29 en nombre de un agente, CU-30, CU-36). */
+/** El coordinador, desde el mapa (CU-31 en nombre de un agente, CU-32, CU-38). */
 export const tracksApi = {
   analizar: (operativoId: string, archivo: File) =>
     requestFormData<{ analisis: AnalisisGpxApi }>(`/operativos/${operativoId}/tracks/analizar`, formularioGpx(archivo)),
@@ -743,15 +743,15 @@ export const tracksApi = {
     api.get<{ tracks: TrackApi[] }>(`/operativos/${operativoId}/tracks`),
   obtener: (operativoId: string, trackId: string) =>
     api.get<{ track: TrackApi }>(`/operativos/${operativoId}/tracks/${trackId}`),
-  /** CU-30: sólo el polígono (null = fuera de polígono) y las notas. */
+  /** CU-32: sólo el polígono (null = fuera de polígono) y las notas. */
   actualizar: (operativoId: string, trackId: string, datos: { poligonoId?: string | null; notas?: string | null }) =>
     api.put<{ track: TrackApi }>(`/operativos/${operativoId}/tracks/${trackId}`, datos),
-  /** CU-36: baja con registro. */
+  /** CU-38: baja con registro. */
   eliminar: (operativoId: string, trackId: string) =>
     api.del<void>(`/operativos/${operativoId}/tracks/${trackId}`),
 };
 
-/* ── Marcadores, Punto Cero y radios (Módulo 5 · CU-32, 33, 34, 36) ───────── */
+/* ── Marcadores, Punto Cero y radios (Módulo 5 · CU-34, 35, 36, 38) ───────── */
 
 export type ClaseMarcadorApi = 'POI' | 'HALLAZGO' | 'INSTALACION';
 export type TipoInstalacionApi =
@@ -803,13 +803,13 @@ export const marcadoresApi = {
     api.get<{ marcadores: MarcadorApi[] }>(`/operativos/${operativoId}/marcadores`),
   obtener: (operativoId: string, marcadorId: string) =>
     api.get<{ marcador: MarcadorApi }>(`/operativos/${operativoId}/marcadores/${marcadorId}`),
-  /** CU-32 */
+  /** CU-34 */
   crear: (operativoId: string, datos: DatosMarcador & { clase: ClaseMarcadorApi; lat: number; lng: number }) =>
     api.post<{ marcador: MarcadorApi }>(`/operativos/${operativoId}/marcadores`, datos),
-  /** CU-33: un hallazgo no cambia de clase; sólo las instalaciones se reubican. */
+  /** CU-35: un hallazgo no cambia de clase; sólo las instalaciones se reubican. */
   actualizar: (operativoId: string, marcadorId: string, datos: DatosMarcador) =>
     api.put<{ marcador: MarcadorApi }>(`/operativos/${operativoId}/marcadores/${marcadorId}`, datos),
-  /** CU-36: un hallazgo no se elimina. */
+  /** CU-38: un hallazgo no se elimina. */
   eliminar: (operativoId: string, marcadorId: string) =>
     api.del<void>(`/operativos/${operativoId}/marcadores/${marcadorId}`),
   /** Hasta 8 por marcador; no en instalaciones. */
@@ -846,7 +846,7 @@ export interface RadioApi {
 export const puntoCeroApi = {
   obtener: (operativoId: string) =>
     api.get<{ puntoCero: { lat: number; lng: number }; historial: MovimientoPuntoCeroApi[] }>(`/operativos/${operativoId}/punto-cero`),
-  /** CU-34: con el operativo en curso, `motivo` es obligatorio. */
+  /** CU-36: con el operativo en curso, `motivo` es obligatorio. */
   mover: (operativoId: string, datos: { lat: number; lng: number; motivo?: string }) =>
     api.put<{ puntoCero: { lat: number; lng: number }; historial: MovimientoPuntoCeroApi[] }>(`/operativos/${operativoId}/punto-cero`, datos),
   listarRadios: (operativoId: string) =>
@@ -860,16 +860,16 @@ export const puntoCeroApi = {
 };
 
 export const gruposApi = {
-  /** CU-23 */
+  /** CU-24 */
   listar: (operativoId: string) =>
     api.get<{ grupos: GrupoApi[] }>(`/operativos/${operativoId}/grupos`),
-  /** CU-21. En un grupo especial el Líder puede ser cualquiera; en uno de rastrillaje, del DUAR. */
+  /** CU-22. En un grupo especial el Líder puede ser cualquiera; en uno de rastrillaje, del DUAR. */
   crear: (operativoId: string, datos: { nombre: string; liderId: string; clase: ClaseGrupoApi }) =>
     api.post<{ grupo: GrupoApi }>(`/operativos/${operativoId}/grupos`, datos),
-  /** CU-22 */
+  /** CU-23 */
   armadoAutomatico: (operativoId: string, tamano: number) =>
     api.post<ArmadoAutomaticoApi>(`/operativos/${operativoId}/grupos/automatico`, { tamano }),
-  /** CU-24: nombre y Líder (el Líder sólo con el grupo En formación). El estado va por `accion`. */
+  /** CU-25: nombre y Líder (el Líder sólo con el grupo En formación). El estado va por `accion`. */
   actualizar: (operativoId: string, grupoId: string, datos: { nombre?: string; liderId?: string }) =>
     api.put<{ grupo: GrupoApi }>(`/operativos/${operativoId}/grupos/${grupoId}`, datos),
   /**
@@ -880,14 +880,14 @@ export const gruposApi = {
   accion: (operativoId: string, grupoId: string, datos: {
     accion: AccionGrupo; ocurridoEn?: string; poligonoId?: string; motivo?: string; estadoDestino?: EstadoGrupoApi;
   }) => api.post<{ grupo: GrupoApi; resultado: EventoEstadoApi['resultado'] }>(`/operativos/${operativoId}/grupos/${grupoId}/acciones`, datos),
-  /** CU-21 paso 6 / CU-24: arrastrar, sólo con grupos En formación. `destinoGrupoId: null` = "Sin grupo". */
+  /** CU-22 paso 6 / CU-25: arrastrar, sólo con grupos En formación. `destinoGrupoId: null` = "Sin grupo". */
   mover: (operativoId: string, agenteOperativoId: string, destinoGrupoId: string | null) =>
     api.post<{ agente: unknown }>(`/operativos/${operativoId}/grupos/mover`, { agenteOperativoId, destinoGrupoId }),
-  /** CU-26: el retirado queda Replegado y sin grupo. */
+  /** CU-27: el retirado queda Replegado y sin grupo. */
   extraer: (operativoId: string, grupoId: string, datos: {
     agenteOperativoId: string; motivo: string; nuevoLiderId?: string; riesgoAceptado?: boolean;
   }) => api.post<{ grupo: GrupoApi; alertaBinomio: boolean }>(`/operativos/${operativoId}/grupos/${grupoId}/extraer`, datos),
-  /** CU-25 (baja lógica, sólo desde la base) */
+  /** CU-26 (baja lógica, sólo desde la base) */
   disolver: (operativoId: string, grupoId: string) =>
     api.del<void>(`/operativos/${operativoId}/grupos/${grupoId}`),
   /** La historia de un grupo. */
@@ -930,12 +930,12 @@ export const portalApi = {
   /** El agente SIN grupo se marca Disponible o No disponible. */
   cambiarMiEstado: (estado: 'DISPONIBLE' | 'NO_DISPONIBLE') =>
     api.put<{ agente: MiEstadoApi }>('/mi-estado', { estado }),
-  /** CU-29: mis recorridos en el operativo en el que estoy. */
+  /** CU-31: mis recorridos en el operativo en el que estoy. */
   misTracks: () => api.get<{ tracks: TrackApi[] }>('/mis-tracks'),
-  /** CU-29 pasos 3 a 5: el resumen del archivo antes de confirmar. */
+  /** CU-31 pasos 3 a 5: el resumen del archivo antes de confirmar. */
   analizarMiTrack: (archivo: File) =>
     requestFormData<{ analisis: AnalisisGpxApi }>('/mis-tracks/analizar', formularioGpx(archivo)),
-  /** CU-29: queda «recorrido de» y «cargado por» uno mismo. */
+  /** CU-31: queda «recorrido de» y «cargado por» uno mismo. */
   cargarMiTrack: (archivo: File, notas?: string) =>
     requestFormData<{ track: TrackApi }>('/mis-tracks', formularioGpx(archivo, { notas })),
 };

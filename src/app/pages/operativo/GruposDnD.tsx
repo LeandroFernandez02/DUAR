@@ -1,13 +1,13 @@
 /**
- * Tablero de grupos con Drag & Drop (CU-21 paso 6, CU-23, CU-24).
+ * Tablero de grupos con Drag & Drop (CU-22 paso 6, CU-24, CU-25).
  *
  * Es sólo la vista: recibe grupos y agentes ya cargados de la API y avisa qué
  * se arrastró adónde. Quien decide si el movimiento vale es el backend
  * (grupo.model.js#moverAgente); acá se anticipan las mismas reglas sólo para
  * que el cursor y el resaltado no inviten a un movimiento que va a rebotar:
- *  · el Líder no se arrastra (CU-21 6.1 / CU-24 2.1) — se cambia en Editar;
+ *  · el Líder no se arrastra (CU-22 6.1 / CU-25 2.1) — se cambia en Editar;
  *  · sólo se arrastra con el grupo En formación (24/09); en el terreno se usa
- *    "Retirar del grupo" (CU-26);
+ *    "Retirar del grupo" (CU-27);
  *  · un recurso especial no entra a un grupo de rastrillaje (26/09), salvo
  *    que vaya de conductor (29/09).
  * El estado del grupo se cambia con los botones de acción de cada tarjeta.
@@ -190,7 +190,7 @@ function Chip({ agente, desdeGrupoId, esLider = false, colorGrupo, fijo = false,
   /** No se puede arrastrar (Líder, grupo en operación u operativo cerrado). */
   fijo?: boolean;
   motivoFijo?: string;
-  /** CU-26: sólo en grupos en operación. */
+  /** CU-27: sólo en grupos en operación. */
   onRetirar?: () => void;
   /** Fondo de la ficha (no líder). Por defecto gris, para contrastar contra un panel blanco.
    *  Dentro de una tarjeta de grupo (que ya es gris) se pasa blanco, para que la ficha no se pierda. */
@@ -303,7 +303,7 @@ function Chip({ agente, desdeGrupoId, esLider = false, colorGrupo, fijo = false,
         <button
           type="button"
           onClick={e => { e.stopPropagation(); onRetirar(); }}
-          title="Retirar del Grupo (CU-26)"
+          title="Retirar del Grupo (CU-27)"
           aria-label={`Retirar del grupo a ${agente.nombre} ${agente.apellido}`}
           style={{ display: 'flex', background: 'none', border: 'none', padding: 3, borderRadius: 4, cursor: 'pointer', color: 'var(--muted-foreground)', flexShrink: 0 }}
           onMouseEnter={e => { e.currentTarget.style.color = '#dc2626'; }}
@@ -503,7 +503,7 @@ function PanelSinGrupo({ agentes, noAptos, editable, onSoltar, onArmadoAutomatic
         )}
         {noAptos > 0 && (
           <p style={{ marginTop: 'auto', paddingTop: 8, fontSize: 10.5, color: 'var(--muted-foreground)', lineHeight: 1.4, fontFamily: 'var(--font-family-primary)' }}>
-            {noAptos} sin grupo {noAptos === 1 ? 'no aparece' : 'no aparecen'} por estar No disponible o Replegado (CU-23). Cambiá su estado en la pestaña Agentes para integrarlos.
+            {noAptos} sin grupo {noAptos === 1 ? 'no aparece' : 'no aparecen'} por estar No disponible o Replegado (CU-24). Cambiá su estado en la pestaña Agentes para integrarlos.
           </p>
         )}
       </div>
@@ -657,7 +657,7 @@ function TarjetaGrupo({ grupo, editable, onSoltar, onEditar, onDisolver, onRetir
           </div>
         </div>
 
-        {/* Binomio mínimo (CU-26): en el terreno con uno solo rastrillando. El grupo sigue; se avisa. */}
+        {/* Binomio mínimo (CU-27): en el terreno con uno solo rastrillando. El grupo sigue; se avisa. */}
         {grupo.alertaBinomio && (
           <div role="alert" className="flex items-start gap-1.5 p-2 rounded-[var(--radius-input)]" style={{ background: '#fee2e2', color: '#b91c1c', fontSize: 11, lineHeight: 1.4, fontWeight: 'var(--font-weight-semibold)', fontFamily: 'var(--font-family-primary)' }}>
             <AlertTriangle size={12} style={{ flexShrink: 0, marginTop: 1 }} />

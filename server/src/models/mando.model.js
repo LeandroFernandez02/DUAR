@@ -1,5 +1,5 @@
 /**
- * MODELO · Presencia de mando (01/10, migración 016)
+ * MODELO · Presencia de mando (CU-15 Registrar Presencia de Mando; 01/10, migración 016)
  *
  * Qué coordinadores están en el puesto de comando de un operativo y quién está
  * a cargo. El coordinador NO es un agente: no tiene estados tácticos, grupo ni
@@ -15,7 +15,7 @@
  *   · El mando lo pasa quien está a cargo (o un administrador). Si nadie está a
  *     cargo, cualquier gestor designa a un presente (o se lo toma él).
  *   · Si el que está a cargo se retira y quedan otros, tiene que elegir sucesor
- *     (como la sucesión del Líder en el CU-26). Si estaba solo, el operativo
+ *     (como la sucesión del Líder en el CU-27). Si estaba solo, el operativo
  *     queda sin coordinador a cargo.
  *   · No puede figurar a la vez como agente: si se registra como agente se
  *     cierra su presencia, y quien figura como agente no entra al puesto.

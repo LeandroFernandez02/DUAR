@@ -1,5 +1,5 @@
 /**
- * CONTROLADOR · Agentes de un Operativo (CU-17 Editar Agentes de Operativo)
+ * CONTROLADOR · Agentes de un Operativo (CU-18 Editar Agentes de Operativo)
  *
  * El alta por QR (auto-servicio) vive en registro.controller.js#altaEnOperativo.
  * Acá está el camino del Coordinador: agregar a alguien que ya tiene cuenta,
@@ -51,7 +51,7 @@ export async function agregar(req, res, next) {
       });
     }
 
-    // Regla de Ubicuidad (Decisión B): mismo patrón que CU-15 paso 6.2 — se
+    // Regla de Ubicuidad (Decisión B): mismo patrón que CU-16 paso 6.2 — se
     // informa y se espera confirmación explícita, esta vez del Coordinador.
     if (altaPrevia && !b.abandonarAnterior) {
       return res.status(409).json({
@@ -189,7 +189,7 @@ export async function quitar(req, res, next) {
     // La baja del operativo no se saltea las reglas de grupo (24/09): sólo se da
     // de baja a quien no está en un grupo. En la base se lo saca arrastrando
     // (reabriendo el grupo si ya estaba confirmado); en el terreno, con
-    // "Retirar del grupo" (CU-26), que deja el motivo y cuida la sucesión.
+    // "Retirar del grupo" (CU-27), que deja el motivo y cuida la sucesión.
     if (previo.grupoId) {
       const grupo = await Grupo.estadoDeGrupo(previo.grupoId);
       return res.status(409).json({

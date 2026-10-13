@@ -2,7 +2,7 @@
  * Portal del Agente — lo táctico (modelo de estados del 24/09):
  *
  *  · "Mi estado": SIN grupo, el agente se marca Disponible o No disponible
- *    (también al volver Replegado de un retiro, CU-26). CON grupo, su estado
+ *    (también al volver Replegado de un retiro, CU-27). CON grupo, su estado
  *    lo define el grupo y acá sólo se muestra.
  *  · "Mi grupo": con quién sale, en qué estado está, qué polígono tiene.
  *  · Si es el Líder: informa lo que pasa en el terreno ("Salimos hacia el

@@ -1,12 +1,12 @@
 /**
- * Portal del Agente — Mis recorridos (Módulo 5 · CU-29, flujo principal).
+ * Portal del Agente — Mis recorridos (Módulo 5 · CU-31, flujo principal).
  *
  * El agente sube el .gpx de lo que caminó (lo exporta del reloj, Wikiloc, el
  * GPS…). Antes de guardarlo ve lo que el sistema leyó del archivo: puntos,
  * distancia, horas, desnivel y en qué polígono cae. Al confirmar, el recorrido
  * queda a su nombre, el original se guarda tal cual y la cobertura del
  * polígono se recalcula sola. Lo que se corrige después (polígono, notas) lo
- * hace el coordinador desde el mapa (CU-30).
+ * hace el coordinador desde el mapa (CU-32).
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Route, Upload, Loader2, MapPin, Check, X, AlertCircle } from 'lucide-react';
@@ -78,7 +78,7 @@ export default function MisRecorridos() {
   const limpiar = () => { setArchivo(null); setAnalisis(null); setNotas(''); setErrorModal(null); };
   const cerrar = () => { if (!trabajando) limpiar(); };
 
-  /** CU-29 pasos 2 a 5: se valida el archivo y se muestra el resumen. */
+  /** CU-31 pasos 2 a 5: se valida el archivo y se muestra el resumen. */
   const elegir = async (f: File | undefined) => {
     if (input.current) input.current.value = '';   // permite volver a elegir el mismo archivo
     if (!f) return;
@@ -97,7 +97,7 @@ export default function MisRecorridos() {
     }
   };
 
-  /** CU-29 paso 6: se guarda. */
+  /** CU-31 paso 6: se guarda. */
   const confirmar = async () => {
     if (!archivo) return;
     setErrorModal(null);
@@ -178,7 +178,7 @@ export default function MisRecorridos() {
           : <><Upload size={15} /> Cargar recorrido GPX</>}
       </button>
 
-      {/* ── CU-29 paso 5: resumen y confirmación ── */}
+      {/* ── CU-31 paso 5: resumen y confirmación ── */}
       {analisis && archivo && (
         <Overlay onClose={cerrar}>
           <div className="px-5 pt-5 flex items-start gap-3">

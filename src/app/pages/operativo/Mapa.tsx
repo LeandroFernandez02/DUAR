@@ -1,5 +1,5 @@
 /**
- * Mapa operacional (Módulo 5 · CU-27 a CU-38), según el diseño de Claude
+ * Mapa operacional (Módulo 5 · CU-28 a CU-40), según el diseño de Claude
  * Design guardado en diseno/ui_kits/mapa: árbol «Gestión del mapa» a la
  * izquierda, herramientas y vistas sobre el mapa, globos de información,
  * paneles de detalle a la derecha y modales para crear y confirmar.
@@ -112,7 +112,7 @@ export default function Mapa() {
   const poligonos = useMemo(() => poligonosApiL.map(p => aPoligonoVista(p, grupos)), [poligonosApiL, grupos]);
   const tracks = useMemo(() => tracksApiL.map(t => aTrackVista(t, grupos)), [tracksApiL, grupos]);
 
-  /* ── Preferencias de cada usuario (CU-31) ── */
+  /* ── Preferencias de cada usuario (CU-33) ── */
   const [prefs, setPrefs] = useState<Preferencias>(() => leerPreferencias(opId));
   useEffect(() => { guardarPreferencias(opId, prefs); }, [opId, prefs]);
   const ocultos = useMemo(() => new Set(prefs.ocultos), [prefs.ocultos]);

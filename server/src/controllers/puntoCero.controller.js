@@ -1,5 +1,5 @@
 /**
- * CONTROLADOR · Punto Cero y radios (Módulo 5 · CU-34)
+ * CONTROLADOR · Punto Cero y radios (Módulo 5 · CU-36)
  *
  * Mover el Punto Cero desde el mapa (con historial y, en curso, motivo) y los
  * radios del operativo, que se dibujan siempre centrados en el Punto Cero
@@ -45,7 +45,7 @@ export async function obtener(req, res, next) {
   } catch (err) { next(err); }
 }
 
-/** PUT /api/operativos/:id/punto-cero — CU-34: { lat, lng, motivo } */
+/** PUT /api/operativos/:id/punto-cero — CU-36: { lat, lng, motivo } */
 export async function mover(req, res, next) {
   try {
     const b = req.body ?? {};

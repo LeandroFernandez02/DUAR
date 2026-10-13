@@ -1,5 +1,5 @@
 /**
- * CONTROLADOR · Grupos de Trabajo (Módulo 4 · CU-21 a CU-26), lado Coordinador.
+ * CONTROLADOR · Grupos de Trabajo (Módulo 4 · CU-22 a CU-27), lado Coordinador.
  *
  * Valida la FORMA del pedido y audita en logs_auditoria (Decisión D). Las
  * reglas de negocio viven en grupo.model.js y estados.js, dentro de la
@@ -60,7 +60,7 @@ function validarNombre(nombre) {
   return null;
 }
 
-/** GET /api/operativos/:id/grupos — CU-23 */
+/** GET /api/operativos/:id/grupos — CU-24 */
 export async function listar(req, res, next) {
   try {
     if (!(await operativoEditable(req, res, { soloLectura: true }))) return;
@@ -68,7 +68,7 @@ export async function listar(req, res, next) {
   } catch (err) { next(err); }
 }
 
-/** POST /api/operativos/:id/grupos — CU-21. body: { nombre, liderId, clase: 'RASTRILLAJE' | 'ESPECIAL' } */
+/** POST /api/operativos/:id/grupos — CU-22. body: { nombre, liderId, clase: 'RASTRILLAJE' | 'ESPECIAL' } */
 export async function crear(req, res, next) {
   try {
     const b = req.body ?? {};
@@ -93,7 +93,7 @@ export async function crear(req, res, next) {
 }
 
 /**
- * PUT /api/operativos/:id/grupos/:grupoId — CU-24, sólo nombre y Líder.
+ * PUT /api/operativos/:id/grupos/:grupoId — CU-25, sólo nombre y Líder.
  * body: { nombre?, liderId? }. La clase no se edita.
  */
 export async function actualizar(req, res, next) {
@@ -121,7 +121,7 @@ export async function actualizar(req, res, next) {
     const { antes, despues } = await Grupo.actualizar(req.params.id, req.params.grupoId, cambios, req.usuario.id);
 
     // Si cambió el Líder, `liderId` aparece distinto en el antes y el después
-    // (CU-24, principio de no repudio).
+    // (CU-25, principio de no repudio).
     await Auditoria.registrar({
       usuarioId: req.usuario.id, accion: Auditoria.ACCION.MODIFICAR, entidad: ENTIDAD,
       registroId: despues.id, valoresPrevios: antes, valoresNuevos: despues, ip: req.ip,
@@ -135,7 +135,7 @@ export async function actualizar(req, res, next) {
  * body: { accion, ocurridoEn?, zona?, motivo?, estadoDestino? }
  *
  *  · confirmar / reabrir                      → acciones de armado.
- *  · asignar { zona }                         → hasta el CU-28 (Módulo 5), la zona es un texto.
+ *  · asignar { zona }                         → hasta el CU-30 (Módulo 5), la zona es un texto.
  *  · salir / llegar_poligono / volver /       → lo que avisa el Líder por radio. `ocurridoEn`
  *    llegar_base { ocurridoEn? }                opcional: la hora en que pasó, si el aviso llegó tarde.
  *  · corregir { estadoDestino, motivo }       → arreglar lo que quedó mal registrado.
@@ -150,7 +150,7 @@ export async function accion(req, res, next) {
       if (!terreno) return invalido(res, 'La hora sólo se carga al registrar lo que avisan del terreno.');
       if (Number.isNaN(new Date(b.ocurridoEn).getTime())) return invalido(res, 'La hora no es válida.', 'hora_invalida');
     }
-    // CU-28 (Módulo 5): asignar es mandar el grupo a un polígono del mapa.
+    // CU-30 (Módulo 5): asignar es mandar el grupo a un polígono del mapa.
     if (b.accion === 'asignar' && !esUuid(b.poligonoId)) {
       return invalido(res, 'Elegí el polígono al que va el grupo.', 'poligono_requerido');
     }
@@ -185,7 +185,7 @@ export async function accion(req, res, next) {
 }
 
 /**
- * POST /api/operativos/:id/grupos/mover — CU-21 paso 6 / CU-24 (Drag & Drop).
+ * POST /api/operativos/:id/grupos/mover — CU-22 paso 6 / CU-25 (Drag & Drop).
  * body: { agenteOperativoId, destinoGrupoId: uuid | null }  (null = "Sin grupo")
  */
 export async function mover(req, res, next) {
@@ -201,7 +201,7 @@ export async function mover(req, res, next) {
       req.usuario.id
     );
 
-    // La asignación se audita sobre el AGENTE (su grupo_id es lo que cambia, CU-21 paso 8).
+    // La asignación se audita sobre el AGENTE (su grupo_id es lo que cambia, CU-22 paso 8).
     await Auditoria.registrar({
       usuarioId: req.usuario.id, accion: Auditoria.ACCION.MODIFICAR, entidad: 'agentes_operativo',
       registroId: despues.id, valoresPrevios: antes, valoresNuevos: despues, ip: req.ip,
@@ -211,7 +211,7 @@ export async function mover(req, res, next) {
 }
 
 /**
- * POST /api/operativos/:id/grupos/:grupoId/extraer — CU-26.
+ * POST /api/operativos/:id/grupos/:grupoId/extraer — CU-27.
  * body: { agenteOperativoId, motivo, nuevoLiderId?, riesgoAceptado? }
  * El retirado queda siempre REPLEGADO y sin grupo (decisión 21/09 y 24/09).
  */
@@ -247,7 +247,7 @@ export async function extraer(req, res, next) {
   } catch (err) { next(err); }
 }
 
-/** DELETE /api/operativos/:id/grupos/:grupoId — CU-25 (baja lógica, sólo desde la base). */
+/** DELETE /api/operativos/:id/grupos/:grupoId — CU-26 (baja lógica, sólo desde la base). */
 export async function disolver(req, res, next) {
   try {
     if (!(await operativoEditable(req, res))) return;
@@ -263,7 +263,7 @@ export async function disolver(req, res, next) {
   } catch (err) { next(err); }
 }
 
-/** POST /api/operativos/:id/grupos/automatico — CU-22. body: { tamano } */
+/** POST /api/operativos/:id/grupos/automatico — CU-23. body: { tamano } */
 export async function armadoAutomatico(req, res, next) {
   try {
     const tamano = Number(req.body?.tamano);

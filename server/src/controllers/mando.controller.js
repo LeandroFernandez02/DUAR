@@ -1,5 +1,5 @@
 /**
- * CONTROLADOR · Puesto de comando: presencia de mando (01/10, migración 016)
+ * CONTROLADOR · Puesto de comando: presencia de mando (CU-15; 01/10, migración 016)
  *
  *   GET  /api/operativos/:id/mando           → a cargo, presentes e historial
  *   POST /api/operativos/:id/mando/ingreso   { usuarioId?, trasladar? }

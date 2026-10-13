@@ -8,12 +8,12 @@ export type EstadoOperativo = 'activo' | 'planificación' | 'inactivo' | 'nuevo'
  * mock (Mapa, Informe) y los catálogos visuales.
  *  · en_formacion → armándose; la composición se edita sólo acá
  *  · confirmado   → composición cerrada
- *  · asignado     → tiene zona / polígono (CU-28)
+ *  · asignado     → tiene zona / polígono (CU-30)
  *  · desplegado   → yendo al polígono
  *  · rastrillando → trabajando el polígono
  *  · replegado    → volviendo
  *  · en_espera    → de vuelta en el puesto de comando, sin decisión
- *  · disuelto     → terminal, baja lógica (CU-25). Nunca se hace DELETE.
+ *  · disuelto     → terminal, baja lógica (CU-26). Nunca se hace DELETE.
  */
 export type EstadoGrupo =
   | 'en_formacion'
@@ -25,7 +25,7 @@ export type EstadoGrupo =
   | 'en_espera'
   | 'disuelto';
 
-/** Grupo en el terreno: no se puede disolver (CU-25 paso 2.1). */
+/** Grupo en el terreno: no se puede disolver (CU-26 paso 2.1). */
 export const ESTADOS_GRUPO_EN_TERRENO: EstadoGrupo[] = ['desplegado', 'rastrillando', 'replegado'];
 
 /**
@@ -33,7 +33,7 @@ export const ESTADOS_GRUPO_EN_TERRENO: EstadoGrupo[] = ['desplegado', 'rastrilla
  *  · ARMADO (en la base) → no se registra historial: un agente podría pasar por
  *    cinco grupos en dos minutos y eso no prueba nada.
  *  · OPERACIÓN (estos estados) → se abren los períodos del historial (valor
- *    judicial) y sacar a alguien exige la ceremonia de CU-26.
+ *    judicial) y sacar a alguien exige la ceremonia de CU-27.
  */
 export const ESTADOS_GRUPO_EN_OPERACION: EstadoGrupo[] = ['desplegado', 'rastrillando', 'replegado'];
 
@@ -188,7 +188,7 @@ export interface AgenteOperativo {
   esCaminante: boolean;
   /**
    * Estado logístico: cumple la función de conductor del vehículo.
-   * Exclusivo del Coordinador (CU-17); el usuario no lo elige al registrarse.
+   * Exclusivo del Coordinador (CU-18); el usuario no lo elige al registrarse.
    */
   esConductor: boolean;
   /** Override TÁCTICO de especialidad. Si es undefined, vale la del perfil global. */
@@ -202,7 +202,7 @@ export interface AgenteOperativo {
 
 /**
  * Período de pertenencia de un agente a un grupo — espejo de la tabla
- * `agentes_grupo_historial` (CU-26, Observación 1).
+ * `agentes_grupo_historial` (CU-27, Observación 1).
  *
  * Existe porque `AgenteOperativo.grupoId` es un único campo mutable: al extraer
  * a alguien (grupoId → undefined) se perdería el rastro de que estuvo ahí.
@@ -216,7 +216,7 @@ export interface AgenteGrupoHistorial {
   fechaInicio: string;
   /** ISO. undefined = sigue integrando el grupo. */
   fechaFin?: string;
-  /** CU-26 paso 3: "Lesión", "Emergencia Personal", "Reasignación"... */
+  /** CU-27 paso 3: "Lesión", "Emergencia Personal", "Reasignación"... */
   motivoSalida?: string;
   /** Usuario (Coordinador) que ejecutó la baja. */
   registradoPor?: string;
@@ -228,11 +228,11 @@ export interface GrupoRastrillaje {
   lider: string;
   /**
    * Snapshot histórico de integrantes. Si estado==='disuelto', NO se vuelve a
-   * tocar (CU-25 obs.: "el Grupo existió de 08:00 a 12:00, integrado por X,Y,Z").
+   * tocar (CU-26 obs.: "el Grupo existió de 08:00 a 12:00, integrado por X,Y,Z").
    */
   agenteIds: string[];
   estado: EstadoGrupo;
-  /** ISO. Baja lógica — se setea junto con estado='disuelto' (CU-25). */
+  /** ISO. Baja lógica — se setea junto con estado='disuelto' (CU-26). */
   eliminadoEn?: string;
   color: string;
   kmRecorridos: number;
@@ -318,7 +318,7 @@ export interface AppData {
    * pertenencia para el código que aún la consume.
    */
   agentesOperativo: AgenteOperativo[];
-  /** Períodos de pertenencia a grupos — registro forense (CU-26). */
+  /** Períodos de pertenencia a grupos — registro forense (CU-27). */
   agentesGrupoHistorial: AgenteGrupoHistorial[];
 }
 
@@ -772,7 +772,7 @@ export const initialData: AppData = {
 };
 
 /* ────────────────────────────────────────────────────────────────────────────
- * Reglas de negocio de los estados logísticos (CU-17, CU-18, CU-26)
+ * Reglas de negocio de los estados logísticos (CU-18, CU-19, CU-27)
  * ──────────────────────────────────────────────────────────────────────────── */
 
 /**
@@ -884,7 +884,7 @@ export function esDuar(u?: { institucionId?: string }): boolean {
 }
 
 /**
- * Regla del Líder (CU-21/22/24/26): sólo personal del DUAR puede conducir una
+ * Regla del Líder (CU-22/23/25/27): sólo personal del DUAR puede conducir una
  * cuadrilla, porque son los capacitados para dar instrucciones en terreno.
  *
  * Se encapsula acá a propósito: si mañana el cliente habilita a otra fuerza,
@@ -962,16 +962,16 @@ export function esRecursoCritico(especialidad?: Especialidad): boolean {
  * Se lee del catálogo en vez de una lista blanca hardcodeada: así una
  * especialidad nueva (Defensa Civil, Dron, Caballería...) queda clasificada de forma
  * explícita y no cae por omisión en "no camina", que es el error peligroso —
- * dejaría al agente fuera del rastrillaje y del Binomio Mínimo (CU-26).
+ * dejaría al agente fuera del rastrillaje y del Binomio Mínimo (CU-27).
  *
- * El Coordinador puede sobrescribirlo dentro del operativo, con advertencia (CU-17).
+ * El Coordinador puede sobrescribirlo dentro del operativo, con advertencia (CU-18).
  */
 export function inferirCaminante(especialidad?: Especialidad): boolean {
   return !esRecursoCritico(especialidad);
 }
 
 /**
- * Rastrilladores efectivos de un grupo (CU-26 · Binomio Mínimo).
+ * Rastrilladores efectivos de un grupo (CU-27 · Binomio Mínimo).
  *
  * El conductor que se queda con el vehículo NO cuenta como rastrillador, aunque
  * siga perteneciendo al grupo. Por eso el criterio es `esCaminante`, no la mera

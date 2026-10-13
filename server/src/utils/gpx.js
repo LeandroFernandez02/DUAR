@@ -1,5 +1,5 @@
 /**
- * Lectura de archivos GPX (CU-29). Función pura, sin dependencias: un GPX es un
+ * Lectura de archivos GPX (CU-31). Función pura, sin dependencias: un GPX es un
  * XML simple y sólo hacen falta los puntos del recorrido (trkpt, o rtept si el
  * archivo trae una ruta), con su elevación y su hora si las tiene.
  *

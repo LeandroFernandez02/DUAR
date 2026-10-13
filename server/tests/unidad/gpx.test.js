@@ -1,5 +1,5 @@
 /**
- * Lectura de GPX (CU-29): puntos, elevación, horas y desnivel, sin base.
+ * Lectura de GPX (CU-31): puntos, elevación, horas y desnivel, sin base.
  */
 import { describe, test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -16,7 +16,7 @@ const GPX = `<?xml version="1.0"?>
   </trkseg></trk>
 </gpx>`;
 
-describe('Lectura de archivos GPX (CU-29)', () => {
+describe('Lectura de archivos GPX (CU-31)', () => {
   test('lee puntos con elevación y hora, en cualquier orden de atributos, y descarta los inválidos', () => {
     const { puntos, nombre } = leerGpx(GPX);
     assert.equal(nombre, 'Rastrillaje Quebrada');

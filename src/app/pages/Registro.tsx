@@ -82,7 +82,7 @@ export default function Registro() {
    * El token se valida contra el BACKEND, no contra localStorage. Es la
    * corrección de fondo del flujo: el agente escanea con su propio celular, así
    * que el código sólo puede verificarse contra la base, que es lo único que
-   * ambos dispositivos comparten (CU-15 pasos 4-5).
+   * ambos dispositivos comparten (CU-16 pasos 4-5).
    */
   const qrToken = searchParams.get('qr');
   const [accesoQR, setAccesoQR] = useState<OperativoQRApi | null>(null);
@@ -329,7 +329,7 @@ export default function Registro() {
   /* ────────────────────────────────────────────────────────── */
 
   /**
-   * Intenta el alta en el operativo (CU-15 pasos 6-8).
+   * Intenta el alta en el operativo (CU-16 pasos 6-8).
    *
    * La Regla de Ubicuidad la evalúa el BACKEND, no esta pantalla: es él quien
    * conoce todos los operativos y quien tiene el índice que la hace cumplir. Si
@@ -461,7 +461,7 @@ export default function Registro() {
     }
   };
 
-  /** CU-02 paso 7 / CU-15 paso 8 — "Confirmar Ingreso". */
+  /** CU-02 paso 7 / CU-16 paso 8 — "Confirmar Ingreso". */
   const handleConfirmar = () => { void intentarAlta(false); };
 
   /** Reenvía el correo de confirmación (self-service, con cooldown de 2 min). */
@@ -482,7 +482,7 @@ export default function Registro() {
     }
   };
 
-  /** CU-15 paso 6.2 — el agente acepta abandonar el operativo anterior. */
+  /** CU-16 paso 6.2 — el agente acepta abandonar el operativo anterior. */
   const handleDarmeDeAlta = () => { void intentarAlta(true); };
 
   /* ────────────────────────────────────────────────────────── */

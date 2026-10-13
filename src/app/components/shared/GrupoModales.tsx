@@ -1,11 +1,11 @@
 /**
  * Modales del tablero de grupos (Módulo 4, modelo de estados del 24/09):
- *  · CrearGrupoModal         → CU-21 pasos 2-3 (clase, nombre y Líder del panel "Sin grupo")
- *  · EditarGrupoModal        → CU-24 (nombre; Líder sólo con el grupo En formación)
+ *  · CrearGrupoModal         → CU-22 pasos 2-3 (clase, nombre y Líder del panel "Sin grupo")
+ *  · EditarGrupoModal        → CU-25 (nombre; Líder sólo con el grupo En formación)
  *  · AccionGrupoModal        → cambiar el estado: confirmar, asignar zona, reabrir,
  *                              registrar lo que avisan del terreno, o corregir con motivo
- *  · ArmadoAutomaticoModal   → CU-22 (tamaño máximo por grupo)
- *  · DisolverGrupoModal      → CU-25 (confirmación, o la alerta de grupo en terreno)
+ *  · ArmadoAutomaticoModal   → CU-23 (tamaño máximo por grupo)
+ *  · DisolverGrupoModal      → CU-26 (confirmación, o la alerta de grupo en terreno)
  *
  * Todas las reglas las aplica el backend; los modales anticipan lo que va a
  * pasar para que el coordinador decida sabiendo, y muestran el error del
@@ -66,7 +66,7 @@ function Transicion({ desde, hacia }: { desde: EstadoGrupoApi; hacia: EstadoGrup
   );
 }
 
-/* ── CU-21 · Crear Grupo ───────────────────────────────────────────────── */
+/* ── CU-22 · Crear Grupo ───────────────────────────────────────────────── */
 
 /** Qué es cada clase, dicho para el coordinador al crear (decisión del 26/09). */
 const CLASES: { valor: ClaseGrupoApi; titulo: string; detalle: string }[] = [
@@ -208,7 +208,7 @@ export function CrearGrupoModal({ operativoId, disponibles, nombresUsados, onClo
   );
 }
 
-/* ── CU-24 · Editar nombre y Líder ─────────────────────────────────────── */
+/* ── CU-25 · Editar nombre y Líder ─────────────────────────────────────── */
 
 export function EditarGrupoModal({ operativoId, grupo, nombresUsados, onClose, onGuardado, onCorregirEstado }: {
   operativoId: string;
@@ -225,7 +225,7 @@ export function EditarGrupoModal({ operativoId, grupo, nombresUsados, onClose, o
   const [error, setError] = useState<string | null>(null);
 
   // El Líder es parte de la composición: se cambia sólo En formación. En el
-  // terreno se cambia al retirar al Líder (sucesión de mando del CU-26).
+  // terreno se cambia al retirar al Líder (sucesión de mando del CU-27).
   const liderEditable = grupo.estado === 'EN_FORMACION';
   const especial = grupo.clase === 'ESPECIAL';
   // De rastrillaje: integrantes del DUAR. Especial: cualquier integrante.
@@ -319,7 +319,7 @@ export function EditarGrupoModal({ operativoId, grupo, nombresUsados, onClose, o
 
 /**
  * Confirmar una acción sobre el grupo, explicando antes lo que provoca.
- *  · asignar              → pide el polígono (CU-28: uno de rastrillaje por polígono).
+ *  · asignar              → pide el polígono (CU-30: uno de rastrillaje por polígono).
  *  · acciones del terreno → las registra el coordinador cuando el Líder se lo
  *    avisa por radio (decisión del 28/09: sin señal, el Líder llama; no hay cola
  *    en el celular ni hora cargada a mano). Quedan con la hora del registro.
@@ -462,7 +462,7 @@ export function AccionGrupoModal({ operativoId, grupo, accion, onClose, onHecho 
   );
 }
 
-/* ── CU-22 · Asignación y Armado Automático ────────────────────────────── */
+/* ── CU-23 · Asignación y Armado Automático ────────────────────────────── */
 
 export function ArmadoAutomaticoModal({ operativoId, disponibles, lideresDuar, recursosEspeciales, onClose, onHecho }: {
   operativoId: string;
@@ -579,7 +579,7 @@ export function ArmadoAutomaticoModal({ operativoId, disponibles, lideresDuar, r
   );
 }
 
-/* ── CU-25 · Disolución ────────────────────────────────────────────────── */
+/* ── CU-26 · Disolución ────────────────────────────────────────────────── */
 
 export function DisolverGrupoModal({ grupo, onClose, onConfirmar }: {
   grupo: GrupoApi;

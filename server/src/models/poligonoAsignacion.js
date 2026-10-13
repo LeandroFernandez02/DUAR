@@ -1,5 +1,5 @@
 /**
- * MODELO · Grupos en los polígonos (CU-28) — las piezas que comparten
+ * MODELO · Grupos en los polígonos (CU-30) — las piezas que comparten
  * grupo.model.js (que las llama al cambiar el estado de un grupo) y
  * poligono.model.js (asignar, quitar, cambiar, eliminar un polígono).
  *

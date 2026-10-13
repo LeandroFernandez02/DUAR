@@ -1,5 +1,5 @@
 /**
- * EditarAgenteModal — CU-17 (Editar Agentes de Operativo)
+ * EditarAgenteModal — CU-18 (Editar Agentes de Operativo)
  *
  * Modifica los datos TÁCTICOS del agente dentro de ESTE operativo, escribiendo
  * sobre su AgenteOperativo y nunca sobre el Usuario global (Decisión A):
@@ -99,7 +99,7 @@ export function EstadoOperativoBadge({
 
 /* ── Modal principal ────────────────────────────────────────── */
 interface Props {
-  /** Registro TÁCTICO real (join agentes_operativo + usuarios) — CU-19. */
+  /** Registro TÁCTICO real (join agentes_operativo + usuarios) — CU-20. */
   agente: PersonalOperativoApi;
   operativoId: string;
   onClose: () => void;

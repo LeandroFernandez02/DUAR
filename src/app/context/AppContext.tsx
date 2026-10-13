@@ -64,7 +64,7 @@ function sanitizeData(raw: AppData): AppData {
 
   // Build agent ownership map: each agent belongs to at most one ACTIVE group.
   // Los grupos DISUELTOS quedan afuera de este cómputo: su agenteIds es una foto
-  // histórica (CU-25), no una reclamación de pertenencia vigente. Si no los
+  // histórica (CU-26), no una reclamación de pertenencia vigente. Si no los
   // excluyéramos, un ex-integrante que ya se unió a un grupo nuevo podría perder
   // esa membresía porque el grupo disuelto (más viejo, primero en el array) "gana"
   // la disputa de ownership por orden de aparición.
@@ -89,7 +89,7 @@ function sanitizeData(raw: AppData): AppData {
 
   // Pass 3: rebuild each ACTIVE group keeping only agents owned by that group.
   // Los grupos DISUELTOS se preservan intactos — no se les toca agenteIds/lider,
-  // es el registro forense de quién los integró (CU-25).
+  // es el registro forense de quién los integró (CU-26).
   const grupos = rawGrupos.map(g => {
     if (g.estado === 'disuelto') return g;
     const filteredIds = g.agenteIds.filter(aid => agentOwnership.get(aid) === g.id);
@@ -159,7 +159,7 @@ function sanitizeData(raw: AppData): AppData {
   };
 }
 
-/** Resultado de evaluar una extracción de grupo (CU-26). */
+/** Resultado de evaluar una extracción de grupo (CU-27). */
 export type EvaluacionExtraccion =
   | { permitido: false; motivo: 'sin_grupo' | 'estado_grupo' | 'minimo_integrantes'; grupo?: GrupoRastrillaje }
   | {
@@ -198,11 +198,11 @@ interface AppContextType {
   updateGrupo: (id: string, grupo: Partial<GrupoRastrillaje>) => void;
   /** Mueve un agente entre grupos manteniendo agenteIds + grupoId + historial. */
   moverAgenteAGrupo: (operativoId: string, usuarioId: string, destinoGrupoId: string | null) => 'ok' | 'lider' | 'sin_agente' | 'origen_en_operacion';
-  /** CU-26: evalúa si se puede extraer un agente (sin mutar). */
+  /** CU-27: evalúa si se puede extraer un agente (sin mutar). */
   evaluarExtraccion: (agenteOperativoId: string) => EvaluacionExtraccion;
-  /** CU-26: ejecuta la extracción con motivo, nuevo estado y sucesión de mando. */
+  /** CU-27: ejecuta la extracción con motivo, nuevo estado y sucesión de mando. */
   extraerAgenteDeGrupo: (agenteOperativoId: string, opciones: { motivo: string; nuevoEstado: EstadoOperativoAgente; nuevoLiderUsuarioId?: string }) => void;
-  /** CU-25: disolución con baja lógica. 'bloqueado' si el grupo está rastrillando. */
+  /** CU-26: disolución con baja lógica. 'bloqueado' si el grupo está rastrillando. */
   deleteGrupo: (id: string) => 'ok' | 'bloqueado';
   // Agentes en operativo
   addAgenteToOperativo: (operativoId: string, agenteId: string) => void;
@@ -576,7 +576,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [usuario?.id]);
 
   /**
-   * Disolución de Grupo (CU-25). Baja lógica — nunca DELETE:
+   * Disolución de Grupo (CU-26). Baja lógica — nunca DELETE:
    *  · Precondición de seguridad: bloquea si el grupo está en el terreno
    *    ('rastrillando'); el Coordinador debe replegarlo primero.
    *  · Transacción única: estado→'disuelto' + eliminadoEn, y libera a todos
@@ -601,7 +601,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           ? { ...ao, grupoId: undefined, estado: 'disponible' as const }
           : ao
       ),
-      // Cierra los períodos abiertos de ese grupo (trazabilidad, CU-25/CU-26)
+      // Cierra los períodos abiertos de ese grupo (trazabilidad, CU-26/CU-27)
       agentesGrupoHistorial: d.agentesGrupoHistorial.map(h =>
         h.grupoId === id && !h.fechaFin
           ? { ...h, fechaFin: ahora, motivoSalida: 'Disolución del grupo', registradoPor: ejecutor }
@@ -614,7 +614,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   /* ── Agentes en operativo ── */
 
   /**
-   * Alta de un usuario en un operativo (CU-16).
+   * Alta de un usuario en un operativo (CU-17).
    * Crea su encarnación TÁCTICA (AgenteOperativo) infiriendo `esCaminante`
    * por especialidad, y hace cumplir la Regla de Ubicuidad cerrando cualquier
    * alta activa previa en otro operativo.
@@ -637,7 +637,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
         return o;
       });
 
-      // Ubicuidad en la entidad táctica: cerrar la fila activa anterior (CU-20)
+      // Ubicuidad en la entidad táctica: cerrar la fila activa anterior (CU-21)
       let agentesOperativo = d.agentesOperativo.map(ao =>
         ao.usuarioId === agenteId && !ao.fechaEgreso && ao.operativoId !== operativoId
           ? { ...ao, fechaEgreso: ahora, estado: 'replegado' as const, grupoId: undefined }
@@ -659,7 +659,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
             operativoId,
             estado: 'disponible',
             esCaminante: inferirCaminante(usuario?.especialidad),
-            esConductor: false, // exclusivo del Coordinador (CU-17)
+            esConductor: false, // exclusivo del Coordinador (CU-18)
             fechaIngreso: ahora,
           },
         ];
@@ -670,7 +670,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, []);
 
   /**
-   * Baja de un agente del operativo (CU-20).
+   * Baja de un agente del operativo (CU-21).
    * Borrado lógico: registra `fechaEgreso`, pasa el estado a REPLEGADO y lo
    * desvincula del grupo. Eso lo libera para otros operativos (Ubicuidad).
    */
@@ -693,7 +693,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
           ? { ...ao, fechaEgreso: ahora, estado: 'replegado' as const, grupoId: undefined }
           : ao
       ),
-      // Si estaba en un grupo, cerrar su período (CU-20 también deja rastro)
+      // Si estaba en un grupo, cerrar su período (CU-21 también deja rastro)
       agentesGrupoHistorial: d.agentesGrupoHistorial.map(h => {
         const suyo = d.agentesOperativo.find(
           ao => ao.id === h.agenteOperativoId && ao.usuarioId === agenteId && ao.operativoId === operativoId
@@ -712,13 +712,13 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
    * de forma atómica las tres representaciones que conviven en el modelo:
    *   1. `grupo.agenteIds`            — lo que dibuja el tablero
    *   2. `agenteOperativo.grupoId`    — la pertenencia táctica (Decisión A)
-   *   3. `agentesGrupoHistorial`      — los períodos, registro forense (CU-26)
+   *   3. `agentesGrupoHistorial`      — los períodos, registro forense (CU-27)
    *
    * Antes cada drop tocaba sólo (1) y dejaba que `sanitizeData` dedujera el resto,
    * con lo cual (2) y (3) quedaban desincronizados y se perdía la trazabilidad.
    *
    * Devuelve 'lider' si se intenta mover al líder: para cambiarlo hay que editar
-   * el grupo (CU-24) o extraerlo con sucesión de mando (CU-26).
+   * el grupo (CU-25) o extraerlo con sucesión de mando (CU-27).
    */
   const moverAgenteAGrupo = useCallback((
     operativoId: string,
@@ -736,7 +736,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
     // Si el grupo de origen YA salió a terreno, sacar a alguien no es un
     // reacomodo: es una baja parcial con consecuencias (sucesión de mando,
-    // binomio mínimo, motivo registrado). Eso es CU-26, no un arrastre.
+    // binomio mínimo, motivo registrado). Eso es CU-27, no un arrastre.
     if (origen && grupoEnOperacion(origen.estado)) return 'origen_en_operacion';
 
     const ahora = new Date().toISOString();
@@ -772,7 +772,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return 'ok';
   }, [data.agentesOperativo, data.grupos]);
 
-  /* ── CU-26: Extraer Agente de Grupo Activo (Baja Parcial / Contingencia) ── */
+  /* ── CU-27: Extraer Agente de Grupo Activo (Baja Parcial / Contingencia) ── */
 
   /**
    * Evalúa si se puede extraer a un agente de su grupo, SIN mutar nada.
@@ -785,7 +785,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     const grupo = data.grupos.find(g => g.id === ao.grupoId);
     if (!grupo) return { permitido: false as const, motivo: 'sin_grupo' as const };
 
-    // Precondición CU-26: grupo DESPLEGADO, RASTRILLANDO o EN PAUSA
+    // Precondición CU-27: grupo DESPLEGADO, RASTRILLANDO o EN PAUSA
     if (!ESTADOS_GRUPO_EN_OPERACION.includes(grupo.estado)) {
       return { permitido: false as const, motivo: 'estado_grupo' as const, grupo };
     }
@@ -795,7 +795,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       a => a.grupoId === grupo.id && !a.fechaEgreso
     );
 
-    // Precondición CU-26: al menos 2 integrantes asignados
+    // Precondición CU-27: al menos 2 integrantes asignados
     if (miembros.length < 2) {
       return { permitido: false as const, motivo: 'minimo_integrantes' as const, grupo };
     }
@@ -817,7 +817,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   }, [data.agentesOperativo, data.grupos]);
 
   /**
-   * Ejecuta la extracción (CU-26 pasos 7 y 8) como una transacción única:
+   * Ejecuta la extracción (CU-27 pasos 7 y 8) como una transacción única:
    *  7. grupo_id = NULL en el agente + su estado individual al elegido.
    *  8.1 Si quedan 2+, el estado del grupo NO se modifica.
    *  8.2 Si queda 1 solo, el grupo pasa automáticamente a EN PAUSA.

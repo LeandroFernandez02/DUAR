@@ -1,5 +1,5 @@
 /**
- * MODELO · Grupos de Trabajo (Módulo 4 · CU-21 a CU-26), con el modelo de
+ * MODELO · Grupos de Trabajo (Módulo 4 · CU-22 a CU-27), con el modelo de
  * estados rediseñado el 24/09 (migración 010).
  *
  * Un grupo es una cuadrilla dentro de UN operativo: gente que sale junta y
@@ -13,7 +13,7 @@
  *   · ESPECIAL    → recursos especiales (dron, canes, paramédico, caballería,
  *                   buzos) con agentes de apoyo; Líder libre, sin binomio ni mínimo.
  * "Recurso especial" = `cat_especialidades.es_recurso_critico` de la
- * especialidad TÁCTICA del agente (la que se cambia en CU-17).
+ * especialidad TÁCTICA del agente (la que se cambia en CU-18).
  *
  * Desde el 29/09 no existe "caminante": quién rastrilla lo dice la especialidad
  * y el papel. El CONDUCTOR no rastrilla (espera al grupo en la camioneta) y,
@@ -44,7 +44,7 @@ const PALETA = [
   '#0891B2', '#DB2777', '#65A30D', '#EA580C', '#475569',
 ];
 
-/** Nombres del armado automático (CU-22): alfabeto fonético, el que se usa por radio. */
+/** Nombres del armado automático (CU-23): alfabeto fonético, el que se usa por radio. */
 const FONETICO = [
   'Alfa', 'Bravo', 'Charlie', 'Delta', 'Eco', 'Foxtrot', 'Golf', 'Hotel', 'India',
   'Julieta', 'Kilo', 'Lima', 'Mike', 'Noviembre', 'Oscar', 'Papa', 'Quebec', 'Romeo',
@@ -77,13 +77,13 @@ const SELECT_GRUPO = `
          g.estado_actualizado_en AS "estadoActualizadoEn",
          -- Los que rastrillan: todos menos el conductor (29/09).
          (count(ao.id) FILTER (WHERE NOT ao.es_conductor))::int AS rastrillan,
-         -- Binomio mínimo (CU-26): nadie rastrilla solo. Se calcula en cada lectura,
+         -- Binomio mínimo (CU-27): nadie rastrilla solo. Se calcula en cada lectura,
          -- no se guarda, así nunca queda desactualizado respecto de la composición.
          -- Sólo en los de rastrillaje: los especiales no tienen binomio (26/09).
          (g.clase = 'RASTRILLAJE'
             AND g.estado IN ('DESPLEGADO', 'RASTRILLANDO', 'REPLEGADO')
             AND count(ao.id) FILTER (WHERE NOT ao.es_conductor) = 1) AS "alertaBinomio",
-         -- El polígono en el que está hoy (CU-28, Módulo 5). "zonaAsignada" se
+         -- El polígono en el que está hoy (CU-30, Módulo 5). "zonaAsignada" se
          -- conserva como nombre de lo asignado: el polígono, o la descripción
          -- libre que se cargaba antes del Módulo 5 (eventos viejos).
          (SELECT pg.poligono_id FROM poligono_grupos pg
@@ -120,13 +120,13 @@ const SELECT_GRUPO = `
     LEFT JOIN cat_especialidades  e ON e.id = ao.especialidad_id
 `;
 
-/** Grupos vigentes del operativo (CU-23). Los disueltos quedan como registro histórico. */
+/** Grupos vigentes del operativo (CU-24). Los disueltos quedan como registro histórico. */
 export async function listarDeOperativo(operativoId) {
   const { rows } = await query(
     `${SELECT_GRUPO}
       WHERE g.operativo_id = $1 AND g.eliminado_en IS NULL
       GROUP BY g.id
-      -- Desempate estable: los grupos del armado automático (CU-22) comparten
+      -- Desempate estable: los grupos del armado automático (CU-23) comparten
       -- creado_en; sin esto las tarjetas cambiaban de orden en cada refresco.
       ORDER BY g.creado_en, g.nombre, g.id`,
     [operativoId]
@@ -205,7 +205,7 @@ async function miembros(client, grupoId) {
   return rows;
 }
 
-/** Traduce la violación del índice de nombre único (migración 009) a la alerta del CU-21 3.2. */
+/** Traduce la violación del índice de nombre único (migración 009) a la alerta del CU-22 3.2. */
 function comoNombreDuplicado(err) {
   if (err.code === '23505' && String(err.constraint ?? '').includes('grupo_nombre_unico')) {
     return new ReglaError(409, 'nombre_duplicado', 'El nombre del grupo ya está en uso.');
@@ -376,7 +376,7 @@ async function precondiciones(client, grupo, accion, { poligonoId = null } = {})
         'Un grupo de rastrillaje necesita al menos dos agentes que rastrillen (el conductor no cuenta): nadie rastrilla solo.');
     }
   }
-  // CU-28 (12/10): asignar es mandar el grupo a un polígono del mapa.
+  // CU-30 (12/10): asignar es mandar el grupo a un polígono del mapa.
   if (accion === 'asignar') {
     if (!poligonoId) throw new ReglaError(400, 'poligono_requerido', 'Elegí el polígono al que va el grupo.');
     return { poligono: await Asig.bloquearPoligono(client, grupo.operativoId, poligonoId) };
@@ -409,7 +409,7 @@ async function aplicar(client, grupo, accion, hacia, { t, confiable, base, usuar
   await sincronizarHistorial(client, grupo, anterior, hacia, t, usuarioId,
     { correccion: accion === 'corregir', motivo: base.motivo });
 
-  // Polígono (CU-28): entra al asignar; sale apenas deja de estar asignado o en
+  // Polígono (CU-30): entra al asignar; sale apenas deja de estar asignado o en
   // el terreno — al replegarse (sale solo), al disolverse o si se lo reabre o
   // se le quita la asignación. Un solo lugar para todos esos caminos.
   if (accion === 'asignar' && poligono) {
@@ -421,7 +421,7 @@ async function aplicar(client, grupo, accion, hacia, { t, confiable, base, usuar
   }
 
   if (hacia === 'DISUELTO') {
-    // CU-25: todos vuelven a "Sin grupo" como DISPONIBLES. lider_id no se toca:
+    // CU-26: todos vuelven a "Sin grupo" como DISPONIBLES. lider_id no se toca:
     // es parte del registro histórico ("el Grupo 04 existió de 08:00 a 12:00…").
     const lista = await miembros(client, grupo.id);
     for (const m of lista) {
@@ -449,7 +449,7 @@ async function aplicar(client, grupo, accion, hacia, { t, confiable, base, usuar
  *   · fuente                 'COORDINADOR' | 'RADIO' | 'PORTAL_LIDER' | 'SISTEMA'
  *   · ocurridoEn             hora del hecho (celular, o la que carga el coordinador)
  *   · motivo                 motivo (corregir)
- *   · poligonoId             el polígono al que va el grupo (asignar, CU-28)
+ *   · poligonoId             el polígono al que va el grupo (asignar, CU-30)
  *   · estadoDestino          sólo para 'corregir'
  *   · clienteEventoId        id de la cola sin señal del celular (idempotencia)
  *   · autorAgenteOperativoId quien lo manda desde el portal (tiene que ser el Líder)
@@ -592,7 +592,7 @@ export async function accionCoordinadorCon(client, operativoId, grupoId, accion,
     { t, confiable: true, base, usuarioId, poligono: ctx.poligono });
 }
 
-/* ── CU-21 · Crear Grupo de Trabajo ────────────────────────────────────── */
+/* ── CU-22 · Crear Grupo de Trabajo ────────────────────────────────────── */
 
 /**
  * Crea el "envase" EN_FORMACION con su Líder adentro (pasos 2 a 5). El resto
@@ -644,12 +644,12 @@ export async function crear(operativoId, { nombre, liderId, clase }, usuarioId) 
   return buscar(operativoId, id);
 }
 
-/* ── CU-24 · Nombre y Líder ────────────────────────────────────────────── */
+/* ── CU-25 · Nombre y Líder ────────────────────────────────────────────── */
 
 /**
  * El estado NO se cambia acá: va por transicionar(). El Líder se cambia sólo
  * con el grupo EN_FORMACION (es parte de su composición); en el terreno se
- * cambia al retirar al Líder (sucesión de mando del CU-26).
+ * cambia al retirar al Líder (sucesión de mando del CU-27).
  */
 export async function actualizar(operativoId, grupoId, { nombre, liderId }, usuarioId) {
   const antes = await buscar(operativoId, grupoId);
@@ -690,7 +690,7 @@ export async function actualizar(operativoId, grupoId, { nombre, liderId }, usua
   return { antes, despues: await buscar(operativoId, grupoId) };
 }
 
-/* ── CU-21 paso 6 / CU-24 · Drag & Drop ───────────────────────────────── */
+/* ── CU-22 paso 6 / CU-25 · Drag & Drop ───────────────────────────────── */
 
 /** Mensaje de por qué la composición de un grupo no se puede tocar ahora. */
 function composicionCerrada(grupo) {
@@ -707,8 +707,8 @@ function composicionCerrada(grupo) {
  *  · La composición sólo se toca con el grupo EN_FORMACION (decisión 24/09):
  *    un grupo confirmado se reabre, y al terreno no se suma gente — lo que sale
  *    aparte (los drones al precipicio) sale en su propio grupo.
- *  · El Líder no se arrastra (CU-21 6.1, CU-24 2.1).
- *  · Entra sólo quien está DISPONIBLE (CU-23 obs. 2) y queda AGRUPADO; quien
+ *  · El Líder no se arrastra (CU-22 6.1, CU-25 2.1).
+ *  · Entra sólo quien está DISPONIBLE (CU-24 obs. 2) y queda AGRUPADO; quien
  *    sale vuelve a DISPONIBLE.
  *  · A un grupo de rastrillaje no entra un recurso especial (26/09); a uno
  *    especial entra cualquiera (los agentes van de apoyo).
@@ -782,7 +782,7 @@ export async function moverAgente(operativoId, { agenteOperativoId, destinoGrupo
   });
 }
 
-/* ── CU-26 · Extraer Agente de Grupo Activo ────────────────────────────── */
+/* ── CU-27 · Extraer Agente de Grupo Activo ────────────────────────────── */
 
 /**
  * Baja parcial en el terreno (grupo DESPLEGADO, RASTRILLANDO o REPLEGADO, con
@@ -857,14 +857,14 @@ export async function extraerAgente(operativoId, grupoId,
   return { antes, despues, alertaBinomio: Boolean(despues?.alertaBinomio) };
 }
 
-/* ── CU-25 · Disolución ────────────────────────────────────────────────── */
+/* ── CU-26 · Disolución ────────────────────────────────────────────────── */
 
 /** Baja lógica (paso 5): sólo desde la base, sólo el coordinador. Ver aplicar(). */
 export async function disolver(operativoId, grupoId, usuarioId) {
   return transicionar(operativoId, grupoId, 'disolver', { fuente: 'COORDINADOR' }, usuarioId);
 }
 
-/* ── CU-22 · Asignación y Armado Automático de Grupos ──────────────────── */
+/* ── CU-23 · Asignación y Armado Automático de Grupos ──────────────────── */
 
 /**
  * Arma N grupos de RASTRILLAJE EN_FORMACION de una vez con los agentes sin
@@ -1051,7 +1051,7 @@ export async function liberarPorCambioDeOperativo(client, agenteOperativoId, usu
 }
 
 /**
- * Tras un cambio de conductor (CU-17) de alguien que está en un grupo, su
+ * Tras un cambio de conductor (CU-18) de alguien que está en un grupo, su
  * estado se recalcula con la Regla 1: dejar de ser conductor con el grupo
  * rastrillando lo pone a rastrillar, y al revés.
  */
@@ -1079,7 +1079,7 @@ export async function grupoDelAgente(alta) {
   return { ...grupo, soyLider: grupo.liderId === alta.id };
 }
 
-/** Estado y Líder del grupo de un agente (para las guardas del portal y del CU-17). */
+/** Estado y Líder del grupo de un agente (para las guardas del portal y del CU-18). */
 export async function estadoDeGrupo(grupoId) {
   if (!grupoId) return null;
   const { rows } = await query(

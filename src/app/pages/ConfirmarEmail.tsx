@@ -57,7 +57,7 @@ export default function ConfirmarEmail() {
           return;
         }
         if (err instanceof ApiError && err.motivo === 'regla_ubicuidad') {
-          // Requiere una decisión del agente (CU-15 paso 6.2) — se lo manda
+          // Requiere una decisión del agente (CU-16 paso 6.2) — se lo manda
           // de vuelta a la pantalla de registro, que ya tiene ese modal armado.
           limpiarAltaPendiente();
           setEstadoAlta('conflicto');

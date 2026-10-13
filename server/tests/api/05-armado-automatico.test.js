@@ -1,5 +1,5 @@
 /**
- * CU-22 · Asignación y Armado Automático de Grupos: sólo arma grupos de
+ * CU-23 · Asignación y Armado Automático de Grupos: sólo arma grupos de
  * rastrillaje, con agentes que rastrillan (ni conductores ni recursos
  * especiales), Líder del DUAR y al menos dos por grupo.
  */
@@ -11,15 +11,15 @@ let ctx;
 let resultado;
 const armar = tamano => ctx.api('POST', `/operativos/${ctx.op}/grupos/automatico`, { tamano });
 
-describe('Armado automático (CU-22)', () => {
+describe('Armado automático (CU-23)', () => {
   before(async () => { ctx = await preparar(); });
   after(terminar);
 
-  test('CU-22 · un tamaño fuera de rango → 400', async () => {
+  test('CU-23 · un tamaño fuera de rango → 400', async () => {
     assert.equal((await armar(1)).status, 400);
   });
 
-  test('CU-22 · con 5 agentes que rastrillan y tamaño 3 arma 2 grupos y los reparte a todos', async () => {
+  test('CU-23 · con 5 agentes que rastrillan y tamaño 3 arma 2 grupos y los reparte a todos', async () => {
     const r = await armar(3);
     assert.equal(r.status, 201, JSON.stringify(r.json));
     resultado = r.json;
@@ -28,7 +28,7 @@ describe('Armado automático (CU-22)', () => {
     assert.equal(resultado.sinAsignar.length, 0);
   });
 
-  test('CU-22 · cada grupo es de rastrillaje, En formación, con Líder del DUAR que no maneja y al menos dos integrantes', async () => {
+  test('CU-23 · cada grupo es de rastrillaje, En formación, con Líder del DUAR que no maneja y al menos dos integrantes', async () => {
     const grupos = (await ctx.api('GET', `/operativos/${ctx.op}/grupos`)).json.grupos;
     for (const g of grupos) {
       assert.equal(g.clase, 'RASTRILLAJE');
@@ -40,13 +40,13 @@ describe('Armado automático (CU-22)', () => {
     }
   });
 
-  test('CU-22 · el conductor y el recurso especial quedan sin grupo, para sumarlos a mano', async () => {
+  test('CU-23 · el conductor y el recurso especial quedan sin grupo, para sumarlos a mano', async () => {
     const a = await ctx.refrescar();
     assert.equal(a.golf.grupoId, null);
     assert.equal(a.foxtrot.grupoId, null);
   });
 
-  test('CU-22 · sin agentes del DUAR disponibles para liderar → 409 sin_lideres_duar', async () => {
+  test('CU-23 · sin agentes del DUAR disponibles para liderar → 409 sin_lideres_duar', async () => {
     const r = await armar(3);
     assert.equal(r.status, 409);
     assert.equal(r.json?.motivo, 'sin_lideres_duar');

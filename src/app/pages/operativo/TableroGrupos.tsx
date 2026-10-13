@@ -1,6 +1,6 @@
 /**
- * Pestaña "Grupos" del panel de Agentes (CU-23 paso 1) — el tablero del
- * Coordinador para CU-21 a CU-26, contra la API real.
+ * Pestaña "Grupos" del panel de Agentes (CU-24 paso 1) — el tablero del
+ * Coordinador para CU-22 a CU-27, contra la API real.
  *
  * Tiempo real = consulta periódica cada 10 s (decisión del 22/09: Vercel no
  * sostiene WebSockets) más recarga inmediata después de cada acción propia.
@@ -57,7 +57,7 @@ const TableroGrupos = forwardRef<TableroGruposHandle, Props>(function TableroGru
       setPersonal(p.personal);
       setError(null);
     } catch (err) {
-      // CU-23 (Fracaso): se avisa la desconexión en vez de dejar un tablero viejo como si fuera actual.
+      // CU-24 (Fracaso): se avisa la desconexión en vez de dejar un tablero viejo como si fuera actual.
       setError(err instanceof ApiError ? err.message : 'Sin conexión con el servidor: el tablero puede estar desactualizado.');
     } finally {
       setCargando(false);
@@ -82,8 +82,8 @@ const TableroGrupos = forwardRef<TableroGruposHandle, Props>(function TableroGru
   const vigente = (g: GrupoApi | null) => (g ? grupos.find(x => x.id === g.id) ?? g : null);
 
   // Sólo un agente DISPONIBLE entra a un grupo. Sin grupo también puede haber
-  // No disponibles y Replegados (retirados por CU-26 que vuelven): se cuentan
-  // aparte (CU-23 obs. 2) y se habilitan desde la pestaña Agentes o su portal.
+  // No disponibles y Replegados (retirados por CU-27 que vuelven): se cuentan
+  // aparte (CU-24 obs. 2) y se habilitan desde la pestaña Agentes o su portal.
   const sinGrupo: AgenteTablero[] = useMemo(
     () => personal.filter(a => !a.grupoId && a.estado === 'DISPONIBLE'),
     [personal]
@@ -113,7 +113,7 @@ const TableroGrupos = forwardRef<TableroGruposHandle, Props>(function TableroGru
     );
   }
 
-  // CU-23 paso 3.1: tablero vacío.
+  // CU-24 paso 3.1: tablero vacío.
   if (personal.length === 0 && grupos.length === 0) {
     return (
       <div className="flex flex-col items-center justify-center text-center gap-3 py-16 rounded-[var(--radius-card)]"

@@ -1,8 +1,8 @@
 /**
  * MODELO · Polígonos del Mapa Operacional (Módulo 5)
- *   · CU-27 Dibujar Polígono · CU-28 Asignar Polígono a Grupo
- *   · CU-35 Modificar Polígono · CU-36 Eliminar (baja con registro)
- *   · CU-37 Consultar Polígono · CU-38 Calcular Cobertura
+ *   · CU-29 Dibujar Polígono · CU-30 Asignar Polígono a Grupo
+ *   · CU-37 Modificar Polígono · CU-38 Eliminar (baja con registro)
+ *   · CU-39 Consultar Polígono · CU-40 Calcular Cobertura
  *
  * Decisiones del 12/10: el polígono NO tiene estado (lo describe su cobertura);
  * admite a lo sumo un grupo de rastrillaje más los especiales; sólo se asignan
@@ -18,7 +18,7 @@ import * as Asig from './poligonoAsignacion.js';
 import * as Grupo from './grupo.model.js';
 import * as Evento from './evento.model.js';
 
-/** CU-38: lo que ve una persona a cada lado de su recorrido (decisión del 12/10: 2 m, 4 m en total). */
+/** CU-40: lo que ve una persona a cada lado de su recorrido (decisión del 12/10: 2 m, 4 m en total). */
 export const ANCHO_BARRIDO_M = 2;
 
 const EN_TERRENO = ['DESPLEGADO', 'RASTRILLANDO'];
@@ -51,7 +51,7 @@ const CAMPOS = `
 
 /** Polígonos vigentes del operativo (lo que dibuja el mapa y lista el panel). */
 export async function listar(operativoId) {
-  // Con las brechas: el mapa las dibuja todas juntas (CU-31, «Análisis de brechas»).
+  // Con las brechas: el mapa las dibuja todas juntas (CU-33, «Análisis de brechas»).
   const { rows } = await query(
     `SELECT ${CAMPOS}, ST_AsGeoJSON(p.brechas)::json AS brechas FROM poligonos p
       WHERE p.operativo_id = $1 AND p.eliminado_en IS NULL
@@ -61,7 +61,7 @@ export async function listar(operativoId) {
   return rows;
 }
 
-/** CU-37: el polígono con sus grupos, cobertura y brechas, tracks e historial. */
+/** CU-39: el polígono con sus grupos, cobertura y brechas, tracks e historial. */
 export async function detalle(operativoId, poligonoId) {
   const { rows } = await query(
     `SELECT ${CAMPOS}, ST_AsGeoJSON(p.brechas)::json AS brechas
@@ -118,7 +118,7 @@ function comoErrorDePoligono(err) {
   return err;
 }
 
-/* ── CU-38 · Cobertura ─────────────────────────────────────────────────── */
+/* ── CU-40 · Cobertura ─────────────────────────────────────────────────── */
 
 /**
  * Cobertura = parte del polígono que quedó a menos de ANCHO_BARRIDO_M de algún
@@ -147,11 +147,11 @@ export async function recalcularCoberturaCon(client, poligonoId) {
   );
 }
 
-/* ── CU-27 · Dibujar ───────────────────────────────────────────────────── */
+/* ── CU-29 · Dibujar ───────────────────────────────────────────────────── */
 
 /**
  * @param geojson  texto GeoJSON de un Polygon ya validado por el controlador
- * @param grupoId  opcional: asignarlo en el mismo paso (reglas del CU-28)
+ * @param grupoId  opcional: asignarlo en el mismo paso (reglas del CU-30)
  */
 export async function crear(operativoId, { nombre, geojson, notas = null, grupoId = null }, usuarioId) {
   try {
@@ -175,7 +175,7 @@ export async function crear(operativoId, { nombre, geojson, notas = null, grupoI
   } catch (err) { throw comoErrorDePoligono(err); }
 }
 
-/* ── CU-35 · Modificar (forma, nombre, notas) ──────────────────────────── */
+/* ── CU-37 · Modificar (forma, nombre, notas) ──────────────────────────── */
 
 export async function actualizar(operativoId, poligonoId, { nombre, notas, geojson }, usuarioId) {
   try {
@@ -214,7 +214,7 @@ export async function actualizar(operativoId, poligonoId, { nombre, notas, geojs
   } catch (err) { throw comoErrorDePoligono(err); }
 }
 
-/* ── CU-36 · Eliminar (baja con registro) ──────────────────────────────── */
+/* ── CU-38 · Eliminar (baja con registro) ──────────────────────────────── */
 
 /**
  * No se puede con un grupo trabajando en el polígono. Los grupos Asignados
@@ -254,7 +254,7 @@ export async function eliminar(operativoId, poligonoId, usuarioId) {
   });
 }
 
-/* ── CU-28 · Grupos en el polígono ─────────────────────────────────────── */
+/* ── CU-30 · Grupos en el polígono ─────────────────────────────────────── */
 
 /** Asignar un grupo Confirmado: pasa a Asignado (reglas en grupo.model y poligonoAsignacion). */
 export async function asignarGrupo(operativoId, poligonoId, grupoId, usuarioId) {

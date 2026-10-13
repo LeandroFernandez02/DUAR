@@ -1,8 +1,8 @@
 /**
  * MODELO · Tracks GPX (Módulo 5)
- *   · CU-29 Cargar Traza GPX (el agente desde su portal, o el coordinador en su nombre)
- *   · CU-30 Modificar Datos de Traza (sólo el polígono y las notas)
- *   · CU-36 Eliminar (baja con registro) · CU-38 Cobertura (al cargar, mover o eliminar)
+ *   · CU-31 Cargar Traza GPX (el agente desde su portal, o el coordinador en su nombre)
+ *   · CU-32 Modificar Datos de Traza (sólo el polígono y las notas)
+ *   · CU-38 Eliminar (baja con registro) · CU-40 Cobertura (al cargar, mover o eliminar)
  *
  * El recorrido, las horas y la elevación salen del archivo y no se editan: son
  * la prueba de por dónde pasó cada persona. El .gpx original queda guardado en
@@ -16,7 +16,7 @@ import { recalcularCoberturaCon } from './poligono.model.js';
 import * as Storage from '../services/storage.service.js';
 import { leerGpx, resumirGpx, lineaWkt } from '../utils/gpx.js';
 
-/** CU-29 paso 4: un polígono "es" el del track si contiene al menos este porcentaje de sus puntos. */
+/** CU-31 paso 4: un polígono "es" el del track si contiene al menos este porcentaje de sus puntos. */
 export const UMBRAL_DETECCION_PCT = 30;
 const MAX_PUNTOS = 100000;
 
@@ -43,7 +43,7 @@ const SELECT_TRACK = `
          round(t.desnivel_negativo_m)::int AS "desnivelNegativoM",
          t.deteccion_pct::float  AS "deteccionPct",
          t.notas,
-         ST_AsGeoJSON(t.geom)::json AS geometria      -- [lng, lat, elevación]: el perfil del globo (CU-31)
+         ST_AsGeoJSON(t.geom)::json AS geometria      -- [lng, lat, elevación]: el perfil del globo (CU-33)
     FROM tracks_gpx t
     JOIN agentes_operativo ao ON ao.id = t.agente_operativo_id
     JOIN usuarios ua ON ua.id = ao.usuario_id
@@ -52,7 +52,7 @@ const SELECT_TRACK = `
     LEFT JOIN grupos g ON g.id = t.grupo_id
 `;
 
-/** Lee el archivo y valida que sea un recorrido. Lanza ReglaError con lo que dice el CU-29. */
+/** Lee el archivo y valida que sea un recorrido. Lanza ReglaError con lo que dice el CU-31. */
 function interpretar(buffer) {
   const { puntos, nombre } = leerGpx(buffer.toString('utf8'));
   if (puntos.length < 2) {
@@ -64,7 +64,7 @@ function interpretar(buffer) {
   return { puntos, nombre, ...resumirGpx(puntos) };
 }
 
-/** Distancia (geografía exacta) y polígono detectado por coordenadas (CU-29 paso 4). */
+/** Distancia (geografía exacta) y polígono detectado por coordenadas (CU-31 paso 4). */
 async function medir(db, operativoId, puntos) {
   const { rows: [m] } = await ejecutar(db,
     `WITH linea AS (SELECT ST_SetSRID(ST_GeomFromText($1), 4326) AS g),
@@ -89,7 +89,7 @@ async function medir(db, operativoId, puntos) {
 }
 
 /**
- * CU-29 pasos 3-5: lo que el agente o el coordinador ven ANTES de confirmar
+ * CU-31 pasos 3-5: lo que el agente o el coordinador ven ANTES de confirmar
  * (puntos, distancia, horas, desnivel y polígono detectado). No guarda nada.
  */
 export async function analizar(operativoId, buffer) {
@@ -104,7 +104,7 @@ export async function analizar(operativoId, buffer) {
 }
 
 /**
- * CU-29: guarda el track. `agenteOperativoId` = de quién es el recorrido (el
+ * CU-31: guarda el track. `agenteOperativoId` = de quién es el recorrido (el
  * alta en ESTE operativo, vigente o ya egresada); `cargadoPor` = quién lo
  * subió (él mismo o el coordinador). El grupo es el que tenía el agente a la
  * hora de inicio del recorrido, no el de ahora.
@@ -166,7 +166,7 @@ export async function crear(operativoId, { agenteOperativoId, buffer, archivoNom
   }
 }
 
-/** Tracks vigentes del operativo (CU-31: se dibujan en el mapa con el color de su grupo). */
+/** Tracks vigentes del operativo (CU-33: se dibujan en el mapa con el color de su grupo). */
 export async function listar(operativoId) {
   const { rows } = await query(
     `${SELECT_TRACK} WHERE t.operativo_id = $1 AND t.eliminado_en IS NULL ORDER BY t.inicio NULLS LAST, t.cargado_en`,
@@ -207,7 +207,7 @@ async function bloquearTrack(client, operativoId, trackId) {
 }
 
 /**
- * CU-30: sólo se corrigen el polígono (cuando la detección falló) y las notas.
+ * CU-32: sólo se corrigen el polígono (cuando la detección falló) y las notas.
  * `poligonoId` null = «Fuera de polígono». Recalcula la cobertura de los dos.
  */
 export async function actualizar(operativoId, trackId, { poligonoId, notas }, usuarioId) {
@@ -239,7 +239,7 @@ export async function actualizar(operativoId, trackId, { poligonoId, notas }, us
   return detalle(operativoId, trackId);
 }
 
-/** CU-36: baja con registro; deja de sumar cobertura. */
+/** CU-38: baja con registro; deja de sumar cobertura. */
 export async function eliminar(operativoId, trackId, usuarioId) {
   await withTransaction(async (client) => {
     const previo = await bloquearTrack(client, operativoId, trackId);

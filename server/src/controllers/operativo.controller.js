@@ -122,7 +122,7 @@ export async function actualizar(req, res, next) {
       }
     }
 
-    // CU-34: con el operativo en curso, mover el Punto Cero pide motivo.
+    // CU-36: con el operativo en curso, mover el Punto Cero pide motivo.
     let motivoPuntoCero = null;
     if (b.motivoPuntoCero !== undefined && b.motivoPuntoCero !== null) {
       if (typeof b.motivoPuntoCero !== 'string' || b.motivoPuntoCero.trim().length > MOTIVO_PUNTO_CERO_MAX) {

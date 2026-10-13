@@ -1,5 +1,5 @@
 /**
- * MODELO · Radios desde el Punto Cero (Módulo 5 · CU-34 R1-R3)
+ * MODELO · Radios desde el Punto Cero (Módulo 5 · CU-36 R1-R3)
  *
  * Son del operativo: todos los coordinadores ven los mismos. No guardan
  * centro: se dibujan siempre en el Punto Cero vigente, así que lo siguen

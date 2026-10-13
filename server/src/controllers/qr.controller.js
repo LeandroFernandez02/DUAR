@@ -1,10 +1,10 @@
 /**
- * CONTROLADOR · QR de operativo (CU-15 Generar QR de Operativo)
+ * CONTROLADOR · QR de operativo (CU-16 Generar QR de Operativo)
  *
  * Dos caras del mismo flujo:
  *  · El Coordinador genera y exhibe el QR (requiere sesión y rol).
  *  · El Agente escanea y consulta a qué operativo da acceso (SIN sesión: todavía
- *    puede no tener cuenta — CU-15 paso 5.1 deriva a CU-01 o CU-02).
+ *    puede no tener cuenta — CU-16 paso 5.1 deriva a CU-01 o CU-02).
  */
 import * as Operativo from '../models/operativo.model.js';
 import * as TokenOperativo from '../models/tokenOperativo.model.js';
@@ -14,7 +14,7 @@ import * as Auditoria from '../models/auditoria.model.js';
 const ENTIDAD = 'tokens_operativo';
 
 /**
- * GET /api/operativos/:id/qr — CU-15 pasos 1-2
+ * GET /api/operativos/:id/qr — CU-16 pasos 1-2
  * Devuelve el token vigente; si venció (24 h) emite uno nuevo automáticamente.
  */
 export async function obtener(req, res, next) {
@@ -35,7 +35,7 @@ export async function obtener(req, res, next) {
 }
 
 /**
- * POST /api/operativos/:id/qr/refrescar — CU-15 Observaciones ("Control de Puerta")
+ * POST /api/operativos/:id/qr/refrescar — CU-16 Observaciones ("Control de Puerta")
  *
  * Invalida el QR anterior y emite uno nuevo. Es la herramienta del Coordinador
  * cuando sospecha que el código se filtró (ej. lo mandaron por WhatsApp para dar
@@ -70,7 +70,7 @@ export async function refrescar(req, res, next) {
 }
 
 /**
- * GET /api/qr/:token — CU-15 pasos 4-5. PÚBLICO, sin sesión.
+ * GET /api/qr/:token — CU-16 pasos 4-5. PÚBLICO, sin sesión.
  *
  * El agente acaba de escanear y todavía puede no tener cuenta. Devuelve los datos
  * del operativo para armar la pantalla de bienvenida ("Ya tengo cuenta" / "Soy
@@ -83,7 +83,7 @@ export async function validar(req, res, next) {
   try {
     const acceso = await TokenOperativo.validar(req.params.token);
     if (!acceso) {
-      // Mensaje textual del CU-15 paso 4.1.
+      // Mensaje textual del CU-16 paso 4.1.
       return res.status(410).json({
         error: 'Código de acceso vencido. Solicite el QR actualizado.',
         motivo: 'qr_invalido',
@@ -104,8 +104,8 @@ export async function validar(req, res, next) {
 }
 
 /**
- * GET /api/operativos/:id/personal — CU-19
- * La grilla del Coordinador. Se consulta por polling: el CU-15 paso 9 pedía
+ * GET /api/operativos/:id/personal — CU-20
+ * La grilla del Coordinador. Se consulta por polling: el CU-16 paso 9 pedía
  * WebSockets, pero el sistema corre en Vercel serverless, que no los soporta.
  */
 export async function personal(req, res, next) {

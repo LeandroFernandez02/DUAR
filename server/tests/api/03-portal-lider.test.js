@@ -18,7 +18,7 @@ const aviso = (accion, ocurridoEn, id = randomUUID()) => ({ id, grupoId: G, acci
 const enviar = (clave, eventos) => ctx.api('POST', '/mi-grupo/eventos', { eventos }, ctx.usuarios[clave].token);
 const resultado = r => r.json?.resultados?.[0]?.resultado;
 
-describe('Portal del Líder: avisos del terreno y radio (CU-23)', () => {
+describe('Portal del Líder: avisos del terreno y radio (CU-24)', () => {
   before(async () => {
     ctx = await preparar();
     G = (await ctx.crearGrupo('Portal', 'alfa')).json.grupo.id;

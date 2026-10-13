@@ -192,7 +192,7 @@ export default function OperativoHeader({ operativo }: Props) {
             {!compacto && <span>QR Agentes</span>}
           </button>
 
-          {/* Informe (CU-39). Pasó del sidebar a botón según la Lista de Casos
+          {/* Informe (CU-41). Pasó del sidebar a botón según la Lista de Casos
               de Uso del 21/09, que además sacó el Portal de Familia (ex CU-44)
               del alcance de la tesis: este lugar era el del botón "Familia". */}
           <button

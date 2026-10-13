@@ -1,7 +1,7 @@
 /**
  * CONTROLADOR · Registro por QR y alta en operativo
  *   · CU-02 Registro de Usuario
- *   · CU-15 pasos 6-8 (validación de restricciones y confirmación de ingreso)
+ *   · CU-16 pasos 6-8 (validación de restricciones y confirmación de ingreso)
  *
  * Este es el flujo de campo: el personal llega al Puesto de Comando, escanea el
  * QR y queda operativo. Son DOS pasos separados a propósito, siguiendo el CU-02:
@@ -55,7 +55,7 @@ export async function registrar(req, res, next) {
   try {
     const b = req.body ?? {};
 
-    // Precondición del CU-02: haber escaneado el QR del operativo (CU-15).
+    // Precondición del CU-02: haber escaneado el QR del operativo (CU-16).
     const acceso = await TokenOperativo.validar(b.qrToken ?? '');
     if (!acceso) {
       return res.status(410).json({
@@ -115,7 +115,7 @@ export async function registrar(req, res, next) {
       grupoSanguineo: b.grupoSanguineo || null,
       alergiaIds: b.alergiaIds ?? [],
       // `esConductor` NO se acepta del cliente: es táctico y
-      // lo decide el Coordinador en CU-17 (nota del docx).
+      // lo decide el Coordinador en CU-18 (nota del docx).
     };
     const creado = eliminado
       ? await Usuario.reactivar(eliminado.id, datosAlta)
@@ -163,7 +163,7 @@ export async function registrar(req, res, next) {
 }
 
 /**
- * POST /api/operativos/:id/alta — CU-15 pasos 6-8 · CU-02 paso 7
+ * POST /api/operativos/:id/alta — CU-16 pasos 6-8 · CU-02 paso 7
  *
  * Requiere sesión: el agente ya se autenticó (CU-01) o acaba de registrarse.
  * Valida las restricciones y lo deja en estado DISPONIBLE.
@@ -186,7 +186,7 @@ export async function altaEnOperativo(req, res, next) {
       });
     }
 
-    // CU-15 paso 6.1 — cuenta suspendida: se bloquea el acceso.
+    // CU-16 paso 6.1 — cuenta suspendida: se bloquea el acceso.
     // (El middleware ya corta las INACTIVO, pero queda explícito por el CU.)
     if (req.usuario.estado !== 'ACTIVO') {
       return res.status(403).json({
@@ -218,7 +218,7 @@ export async function altaEnOperativo(req, res, next) {
       });
     }
 
-    // CU-15 paso 6.2 — Regla de Ubicuidad. La decisión es del agente, no del
+    // CU-16 paso 6.2 — Regla de Ubicuidad. La decisión es del agente, no del
     // sistema: se le informa y se espera confirmación explícita.
     if (altaPrevia && !b.abandonarAnterior) {
       return res.status(409).json({

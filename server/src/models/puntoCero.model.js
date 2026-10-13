@@ -1,10 +1,10 @@
 /**
- * MODELO · Punto Cero (Módulo 5 · CU-34, y CU-08 / CU-09)
+ * MODELO · Punto Cero (Módulo 5 · CU-36, y CU-08 / CU-09)
  *
  * `operativos.punto_cero` es el punto vigente; `punto_cero_historial` guarda
  * cada movimiento (desde, hasta, cuántos metros, quién, cuándo y por qué). Es
  * un dato forense: muestra cómo fue cambiando la hipótesis de dónde estaba la
- * persona buscada (lo usa el Informe, CU-39).
+ * persona buscada (lo usa el Informe, CU-41).
  *
  * El motivo es obligatorio con el operativo en curso, es decir, en cualquier
  * estado que no sea NUEVO (nadie entró todavía: se está terminando de cargar).
@@ -29,7 +29,7 @@ export async function registrarInicial(client, operativoId, usuarioId) {
 }
 
 /**
- * CU-34 / CU-09: mueve el Punto Cero dentro de una transacción ya abierta.
+ * CU-36 / CU-09: mueve el Punto Cero dentro de una transacción ya abierta.
  * Devuelve el movimiento registrado, o null si el punto no cambió.
  */
 export async function moverCon(client, operativoId, { lat, lng, motivo = null }, usuarioId) {
@@ -62,7 +62,7 @@ export async function moverCon(client, operativoId, { lat, lng, motivo = null },
   return mov;
 }
 
-/** CU-34 desde el mapa: en su propia transacción. null = ya estaba ahí. */
+/** CU-36 desde el mapa: en su propia transacción. null = ya estaba ahí. */
 export async function mover(operativoId, datos, usuarioId) {
   return withTransaction(client => moverCon(client, operativoId, datos, usuarioId));
 }
@@ -74,7 +74,7 @@ export async function vigente(operativoId) {
   return rows[0] ?? null;
 }
 
-/** El historial del Punto Cero, del más nuevo al más viejo (CU-34, CU-39). */
+/** El historial del Punto Cero, del más nuevo al más viejo (CU-36, CU-41). */
 export async function historial(operativoId) {
   const { rows } = await query(
     `SELECT h.id,

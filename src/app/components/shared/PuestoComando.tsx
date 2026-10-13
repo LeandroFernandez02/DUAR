@@ -1,5 +1,5 @@
 /**
- * Puesto de comando: presencia de mando (01/10, migración 016).
+ * Puesto de comando: presencia de mando (CU-15; 01/10, migración 016).
  *
  * Un indicador en el encabezado del operativo ("Puesto de comando: Fierro +2",
  * o "Sin coordinador a cargo" en ámbar) y, al tocarlo, el detalle: quién está

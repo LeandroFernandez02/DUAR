@@ -25,7 +25,7 @@ const upload = multer({
 
 export const subirFotosMiddleware = upload.array('fotos', MAX_FOTOS);
 
-/* ── Archivo GPX (Módulo 5 · CU-29) ─────────────────────────────────────── */
+/* ── Archivo GPX (Módulo 5 · CU-31) ─────────────────────────────────────── */
 const GPX_MAX_BYTES = 4 * 1024 * 1024;   // techo de un envío en producción (Vercel ~4,5 MB)
 
 const subirGpx = multer({

@@ -1,6 +1,6 @@
 /**
  * Lo que la pantalla del mapa arma a partir de la API: vértices y colores
- * listos para dibujar, y lo que cada usuario decide ver (CU-31: mostrar u
+ * listos para dibujar, y lo que cada usuario decide ver (CU-33: mostrar u
  * ocultar es de cada usuario, se guarda en su navegador).
  */
 import type { GrupoApi, MarcadorApi, PoligonoApi, TrackApi } from '../../../services/api';
