@@ -623,6 +623,8 @@ export interface PoligonoApi {
   tracks: number;
   /** A lo sumo uno de rastrillaje, más los especiales. */
   grupos: GrupoEnPoligonoApi[];
+  /** Lo que queda sin recorrer (GeoJSON), o null si todavía no hay tracks. */
+  brechas?: unknown | null;
 }
 
 export interface EventoPoligonoApi {
@@ -715,8 +717,8 @@ export interface TrackApi {
   desnivelNegativoM: number | null;
   deteccionPct: number;
   notas: string | null;
-  /** GeoJSON LineString (no viaja al portal del agente). */
-  geometria?: unknown;
+  /** GeoJSON LineString con [lng, lat, elevación] (no viaja al portal del agente). */
+  geometria?: { type: 'LineString'; coordinates: number[][] };
   /** Enlace temporal (10 min) al .gpx original; sólo en el detalle. */
   archivoUrl?: string | null;
 }

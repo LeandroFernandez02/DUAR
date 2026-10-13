@@ -51,8 +51,9 @@ const CAMPOS = `
 
 /** Polígonos vigentes del operativo (lo que dibuja el mapa y lista el panel). */
 export async function listar(operativoId) {
+  // Con las brechas: el mapa las dibuja todas juntas (CU-31, «Análisis de brechas»).
   const { rows } = await query(
-    `SELECT ${CAMPOS} FROM poligonos p
+    `SELECT ${CAMPOS}, ST_AsGeoJSON(p.brechas)::json AS brechas FROM poligonos p
       WHERE p.operativo_id = $1 AND p.eliminado_en IS NULL
       ORDER BY p.creado_en, p.nombre`,
     [operativoId]

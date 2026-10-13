@@ -43,7 +43,7 @@ const SELECT_TRACK = `
          round(t.desnivel_negativo_m)::int AS "desnivelNegativoM",
          t.deteccion_pct::float  AS "deteccionPct",
          t.notas,
-         ST_AsGeoJSON(ST_Force2D(t.geom))::json AS geometria
+         ST_AsGeoJSON(t.geom)::json AS geometria      -- [lng, lat, elevación]: el perfil del globo (CU-31)
     FROM tracks_gpx t
     JOIN agentes_operativo ao ON ao.id = t.agente_operativo_id
     JOIN usuarios ua ON ua.id = ao.usuario_id
