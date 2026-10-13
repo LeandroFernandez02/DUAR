@@ -38,16 +38,17 @@ export default async function* informe(source) {
 
   const total = casos.length;
   const fallidas = casos.filter(c => !c.ok);
-  const fecha = new Date().toLocaleString('es-AR', { timeZone: 'America/Argentina/Cordoba', dateStyle: 'short', timeStyle: 'short' });
+  const fecha = new Date().toLocaleString('es-AR', { timeZone: 'America/Argentina/Cordoba', dateStyle: 'short', timeStyle: 'short', hourCycle: 'h23' });
 
   let md = '# Informe de pruebas automatizadas · Sistema DUAR\n\n';
   md += `- **Fecha:** ${fecha} (hora de Córdoba)\n`;
   md += `- **Resultado:** ${total - fallidas.length} de ${total} pruebas OK`
     + (fallidas.length ? ` · **${fallidas.length} fallidas**` : '') + '\n';
   md += '- **Cómo se corre:** `cd server && npm run test:informe`, con la API local levantada (`npm run dev`).\n';
-  md += '- **Alcance:** reglas puras del modelo de estados y de composición, y casos de uso de los Módulos 1, 2 y 4 '
-    + 'contra la API real. Las pruebas de API corren sobre un operativo y usuarios propios '
-    + '("PRUEBAS AUTOMÁTICAS - no tocar", auto.*@prueba.duar) y se detienen si encuentran datos ajenos.\n';
+  md += '- **Alcance:** reglas puras del modelo de estados, de composición y de la lectura de archivos GPX, y casos '
+    + 'de uso de los Módulos 1, 2, 4 y 5 (Mapa Operacional) contra la API real, la base y el almacenamiento de archivos. '
+    + 'Las pruebas de API corren sobre un operativo y usuarios propios ("PRUEBAS AUTOMÁTICAS - no tocar", '
+    + 'auto.*@prueba.duar) y se detienen si encuentran datos ajenos; después se borran con `npm run limpiar-pruebas -- --confirmar`.\n';
 
   const archivos = [...new Set(casos.map(c => c.archivo))];
   let n = 0;
