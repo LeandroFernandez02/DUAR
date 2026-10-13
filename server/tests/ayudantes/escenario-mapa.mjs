@@ -21,5 +21,6 @@ const p1 = await ctx.api('POST', `/operativos/${ctx.op}/poligonos`, { nombre: 'Q
 const p2 = await ctx.api('POST', `/operativos/${ctx.op}/poligonos`, { nombre: 'Filo del Cerro', geometria: cuadrado(31) });
 await ctx.api('POST', `/operativos/${ctx.op}/poligonos/${p2.json.poligono.id}/grupos`, { grupoId: B });
 
-console.log(JSON.stringify({ operativo: ctx.op, token: ctx.admin }));
+// Paso 2 (tracks): también la sesión de un agente (alfa, Líder del Grupo Norte) para su portal.
+console.log(JSON.stringify({ operativo: ctx.op, token: ctx.admin, tokenAgente: ctx.usuarios.alfa.token }));
 await terminar();

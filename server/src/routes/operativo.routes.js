@@ -14,8 +14,9 @@ import * as objetivo from '../controllers/objetivo.controller.js';
 import * as grupos from '../controllers/grupo.controller.js';
 import * as mando from '../controllers/mando.controller.js';
 import * as poligonos from '../controllers/poligono.controller.js';
+import * as tracks from '../controllers/track.controller.js';
 import { requiereSesion, requiereRol } from '../middleware/auth.middleware.js';
-import { subirFotosMiddleware } from '../middleware/upload.middleware.js';
+import { subirFotosMiddleware, subirGpxMiddleware } from '../middleware/upload.middleware.js';
 
 const router = Router();
 
@@ -81,6 +82,14 @@ router.delete('/:id/poligonos/:poligonoId',                         requiereSesi
 router.post(  '/:id/poligonos/:poligonoId/grupos',                  requiereSesion, gestores, poligonos.asignarGrupo); // CU-28
 router.post(  '/:id/poligonos/:poligonoId/grupos/:grupoId/quitar',  requiereSesion, gestores, poligonos.quitarGrupo);
 router.post(  '/:id/poligonos/:poligonoId/grupos/:grupoId/cambiar', requiereSesion, gestores, poligonos.cambiarGrupo);
+
+// Módulo 5 · Tracks GPX (CU-29, CU-30, CU-36). /analizar va antes que /:trackId.
+router.post(  '/:id/tracks/analizar', requiereSesion, gestores, subirGpxMiddleware, tracks.analizar); // CU-29 pasos 3-5
+router.post(  '/:id/tracks',          requiereSesion, gestores, subirGpxMiddleware, tracks.crear);    // CU-29
+router.get(   '/:id/tracks',          requiereSesion, gestores, tracks.listar);
+router.get(   '/:id/tracks/:trackId', requiereSesion, gestores, tracks.obtener);
+router.put(   '/:id/tracks/:trackId', requiereSesion, gestores, tracks.actualizar);                    // CU-30
+router.delete('/:id/tracks/:trackId', requiereSesion, gestores, tracks.eliminar);                      // CU-36
 
 // Línea de tiempo del terreno (eventos_estado, migración 010).
 router.get('/:id/grupos/:grupoId/linea-tiempo',            requiereSesion, gestores, grupos.lineaTiempoGrupo);

@@ -69,3 +69,56 @@ export async function generarUrlFirmada(path, ttlSegundos = 3600) {
     return null;
   }
 }
+
+/* ── Archivos GPX originales (Módulo 5 · CU-29) ────────────────────────────
+ * Bucket PRIVADO aparte del de las fotos: el .gpx tal como lo subió el agente
+ * es la prueba de lo recorrido (los datos del track no se editan, CU-30). El
+ * bucket se crea solo la primera vez que hace falta, cerrado y limitado a
+ * archivos de texto de hasta 4 MB (el techo de un envío en Vercel).
+ */
+const BUCKET_GPX = process.env.SUPABASE_BUCKET_GPX ?? 'tracks-gpx';
+const GPX_MAX_BYTES = 4 * 1024 * 1024;
+let bucketGpxListo = false;
+
+async function asegurarBucketGpx() {
+  if (bucketGpxListo) return;
+  const { data } = await cliente.storage.getBucket(BUCKET_GPX);
+  if (!data) {
+    const { error } = await cliente.storage.createBucket(BUCKET_GPX, {
+      public: false,
+      fileSizeLimit: GPX_MAX_BYTES,
+      allowedMimeTypes: ['application/gpx+xml', 'application/xml', 'text/xml', 'application/octet-stream'],
+    });
+    if (error && !/already exists/i.test(error.message)) throw new Error(`No se pudo crear el bucket de GPX: ${error.message}`);
+  }
+  bucketGpxListo = true;
+}
+
+/** Guarda el .gpx original en `{operativoId}/{trackId}.gpx`. Lanza si falla. */
+export async function subirGpx(operativoId, trackId, buffer) {
+  if (!cliente) throw new Error('El almacenamiento de archivos no está configurado.');
+  await asegurarBucketGpx();
+  const path = `${operativoId}/${trackId}.gpx`;
+  const { error } = await cliente.storage.from(BUCKET_GPX).upload(path, buffer, {
+    contentType: 'application/gpx+xml', upsert: false,
+  });
+  if (error) throw new Error(`No se pudo guardar el archivo GPX: ${error.message}`);
+  return path;
+}
+
+/** URL firmada para descargar el .gpx original (o null, sin tumbar la pantalla). */
+export async function urlFirmadaGpx(path, ttlSegundos = 600) {
+  if (!cliente || !path) return null;
+  try {
+    const { data, error } = await cliente.storage.from(BUCKET_GPX).createSignedUrl(path, ttlSegundos);
+    return error ? null : data.signedUrl;
+  } catch { return null; }
+}
+
+/** Sólo para el script de limpieza de datos de prueba: borra archivos GPX. */
+export async function borrarGpx(paths) {
+  if (!cliente || !paths.length) return 0;
+  const { data, error } = await cliente.storage.from(BUCKET_GPX).remove(paths);
+  if (error) throw new Error(`No se pudieron borrar los GPX de prueba: ${error.message}`);
+  return data?.length ?? 0;
+}

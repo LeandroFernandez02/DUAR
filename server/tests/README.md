@@ -42,5 +42,5 @@ Una vez que el sistema está en producción, esta base es la real. `npm test` cr
 
 ```bash
 npm run limpiar-pruebas                # ensayo: cuenta lo que borraría y no cambia nada
-npm run limpiar-pruebas -- --confirmar # borra los datos de prueba (usuarios @prueba.duar y los 3 operativos de prueba)
+npm run limpiar-pruebas -- --confirmar # borra los datos de prueba (usuarios @prueba.duar, los 3 operativos de prueba y sus archivos GPX)
 ```

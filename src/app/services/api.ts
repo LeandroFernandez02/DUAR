@@ -672,6 +672,82 @@ export const poligonosApi = {
     api.post<{ poligono: PoligonoDetalleApi }>(`/operativos/${operativoId}/poligonos/${poligonoId}/grupos/${grupoId}/cambiar`, { nuevoGrupoId }),
 };
 
+/* ── Tracks GPX (Módulo 5 · CU-29, 30, 36) ───────────────────────────────── */
+
+/** Lo que muestra CU-29 pasos 3 a 5, antes de confirmar la carga (no se guarda nada). */
+export interface AnalisisGpxApi {
+  nombre: string | null;
+  puntos: number;
+  distanciaM: number;
+  inicio: string | null;
+  fin: string | null;
+  duracionS: number | null;
+  conElevacion: boolean;
+  desnivelPositivoM: number | null;
+  desnivelNegativoM: number | null;
+  /** El polígono que contiene al menos el 30 % de los puntos; null = «Fuera de polígono». */
+  poligono: { id: string; nombre: string } | null;
+  deteccionPct: number;
+}
+
+export interface TrackApi {
+  id: string;
+  operativoId: string;
+  poligonoId: string | null;
+  poligonoNombre: string | null;
+  agenteOperativoId: string;
+  /** De quién es el recorrido. */
+  agente: string;
+  grupoId: string | null;
+  grupoNombre: string | null;
+  color: string | null;
+  /** Quién lo subió: él mismo, o el coordinador en su nombre. */
+  cargadoPor: string;
+  cargadoEn: string;
+  archivoNombre: string;
+  inicio: string | null;
+  fin: string | null;
+  duracionS: number | null;
+  distanciaM: number;
+  conElevacion: boolean;
+  desnivelPositivoM: number | null;
+  desnivelNegativoM: number | null;
+  deteccionPct: number;
+  notas: string | null;
+  /** GeoJSON LineString (no viaja al portal del agente). */
+  geometria?: unknown;
+  /** Enlace temporal (10 min) al .gpx original; sólo en el detalle. */
+  archivoUrl?: string | null;
+}
+
+/** Máximo que acepta el servidor (techo de un envío en producción). */
+export const GPX_MAX_BYTES = 4 * 1024 * 1024;
+
+function formularioGpx(archivo: File, campos: Record<string, string | undefined> = {}): FormData {
+  const f = new FormData();
+  f.append('archivo', archivo);
+  for (const [k, v] of Object.entries(campos)) if (v) f.append(k, v);
+  return f;
+}
+
+/** El coordinador, desde el mapa (CU-29 en nombre de un agente, CU-30, CU-36). */
+export const tracksApi = {
+  analizar: (operativoId: string, archivo: File) =>
+    requestFormData<{ analisis: AnalisisGpxApi }>(`/operativos/${operativoId}/tracks/analizar`, formularioGpx(archivo)),
+  crear: (operativoId: string, archivo: File, agenteOperativoId: string, notas?: string) =>
+    requestFormData<{ track: TrackApi }>(`/operativos/${operativoId}/tracks`, formularioGpx(archivo, { agenteOperativoId, notas })),
+  listar: (operativoId: string) =>
+    api.get<{ tracks: TrackApi[] }>(`/operativos/${operativoId}/tracks`),
+  obtener: (operativoId: string, trackId: string) =>
+    api.get<{ track: TrackApi }>(`/operativos/${operativoId}/tracks/${trackId}`),
+  /** CU-30: sólo el polígono (null = fuera de polígono) y las notas. */
+  actualizar: (operativoId: string, trackId: string, datos: { poligonoId?: string | null; notas?: string | null }) =>
+    api.put<{ track: TrackApi }>(`/operativos/${operativoId}/tracks/${trackId}`, datos),
+  /** CU-36: baja con registro. */
+  eliminar: (operativoId: string, trackId: string) =>
+    api.del<void>(`/operativos/${operativoId}/tracks/${trackId}`),
+};
+
 export const gruposApi = {
   /** CU-23 */
   listar: (operativoId: string) =>
@@ -743,6 +819,14 @@ export const portalApi = {
   /** El agente SIN grupo se marca Disponible o No disponible. */
   cambiarMiEstado: (estado: 'DISPONIBLE' | 'NO_DISPONIBLE') =>
     api.put<{ agente: MiEstadoApi }>('/mi-estado', { estado }),
+  /** CU-29: mis recorridos en el operativo en el que estoy. */
+  misTracks: () => api.get<{ tracks: TrackApi[] }>('/mis-tracks'),
+  /** CU-29 pasos 3 a 5: el resumen del archivo antes de confirmar. */
+  analizarMiTrack: (archivo: File) =>
+    requestFormData<{ analisis: AnalisisGpxApi }>('/mis-tracks/analizar', formularioGpx(archivo)),
+  /** CU-29: queda «recorrido de» y «cargado por» uno mismo. */
+  cargarMiTrack: (archivo: File, notas?: string) =>
+    requestFormData<{ track: TrackApi }>('/mis-tracks', formularioGpx(archivo, { notas })),
 };
 
 /* ── Objetivo Buscado (Módulo 3 · CU-12..14) ─────────────────────────────── */

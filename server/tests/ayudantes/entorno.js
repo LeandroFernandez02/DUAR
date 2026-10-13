@@ -76,6 +76,30 @@ export async function api(metodo, ruta, body, token) {
   }
 }
 
+/**
+ * Subida de un archivo (multipart) a la API, como la hace el navegador.
+ * `archivo` = { nombre, contenido } (texto); `campos` = el resto del formulario.
+ */
+export async function subir(ruta, { archivo, campos = {} } = {}, token) {
+  for (let intento = 0; ; intento++) {
+    const form = new FormData();
+    if (archivo) form.append('archivo', new Blob([archivo.contenido], { type: 'application/gpx+xml' }), archivo.nombre);
+    for (const [k, v] of Object.entries(campos)) if (v !== undefined) form.append(k, v);
+    try {
+      const r = await fetch(API + ruta, {
+        method: 'POST', body: form, headers: token ? { Authorization: `Bearer ${token}` } : {},
+      });
+      const texto = await r.text();
+      let json = null;
+      try { json = texto ? JSON.parse(texto) : null; } catch { json = texto; }
+      return { status: r.status, json };
+    } catch (err) {
+      if (intento >= 5) throw new Error(`La API no responde en ${API}: ¿está levantado el servidor? (${err.message})`);
+      await esperar(1500);
+    }
+  }
+}
+
 async function login(email, password) {
   const r = await api('POST', '/auth/login', { email, password });
   return r.status === 200 ? r.json.token : null;
@@ -230,6 +254,9 @@ async function limpiarGrupos(admin, op) {
  * ellos al disolverse). Va por SQL porque es limpieza del entorno, no un caso.
  */
 async function limpiarPoligonos(op) {
+  // Los tracks de otra corrida también: si no, el mismo GPX sería un duplicado.
+  await query(
+    `UPDATE tracks_gpx SET eliminado_en = CURRENT_TIMESTAMP WHERE operativo_id = $1 AND eliminado_en IS NULL`, [op]);
   await query(
     `UPDATE poligonos SET eliminado_en = CURRENT_TIMESTAMP WHERE operativo_id = $1 AND eliminado_en IS NULL`, [op]);
 }
@@ -284,6 +311,7 @@ export async function preparar() {
     /** Estado del puesto de comando del operativo de pruebas. */
     mando: async () => (await api('GET', `/operativos/${op}/mando`, undefined, admin)).json,
     api: (m, ruta, body, token = admin) => api(m, ruta, body, token),
+    subir: (ruta, datos, token = admin) => subir(ruta, datos, token),
     /**
      * Acción de estado sobre un grupo (como coordinador). Desde el Módulo 5,
      * asignar es mandar el grupo a un polígono: `{ accion: 'asignar', zona: 'X' }`

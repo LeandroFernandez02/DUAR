@@ -21,6 +21,7 @@
  * vuelven a crear sus usuarios y su operativo, y hay que correr esto de nuevo.
  */
 import { pool } from '../config/db.js';
+import * as Storage from '../services/storage.service.js';
 
 const OPERATIVOS_DE_PRUEBA = [
   'PRUEBA Modulo 4 destino - borrar',
@@ -43,7 +44,8 @@ const PASOS = [
   ['tracks_gpx', `
     DELETE FROM tracks_gpx
      WHERE operativo_id IN (SELECT id FROM t_ops) OR agente_operativo_id IN (SELECT id FROM t_agentes)
-        OR cargado_por IN (SELECT id FROM t_usuarios)`],
+        OR cargado_por IN (SELECT id FROM t_usuarios)
+     RETURNING archivo_ruta`],
   ['marcador_fotos', `
     DELETE FROM marcador_fotos
      WHERE marcador_id IN (SELECT id FROM marcadores WHERE operativo_id IN (SELECT id FROM t_ops))
@@ -96,13 +98,24 @@ async function main() {
       `SELECT (SELECT count(*) FROM t_usuarios)::int AS usuarios, (SELECT count(*) FROM t_ops)::int AS operativos`);
     console.log(`${CONFIRMAR ? 'BORRANDO' : 'ENSAYO (no se borra nada)'}: ${n.usuarios} usuarios y ${n.operativos} operativos de prueba.\n`);
 
+    // Los .gpx originales de los tracks borrados (bucket privado) se borran
+    // después del COMMIT, para no perder un archivo si la base se descarta.
+    const archivosGpx = [];
     for (const [nombre, sql] of PASOS) {
       const r = await cliente.query(sql);
+      for (const f of r.rows ?? []) if (f.archivo_ruta) archivosGpx.push(f.archivo_ruta);
       console.log(`  ${nombre.padEnd(52)} ${r.rowCount}`);
     }
+    console.log(`  ${'archivos GPX en el almacenamiento'.padEnd(52)} ${archivosGpx.length}`);
 
     if (CONFIRMAR) {
       await cliente.query('COMMIT');
+      try {
+        await Storage.borrarGpx(archivosGpx);
+      } catch (err) {
+        console.error(`\nLa base quedó limpia, pero no se pudieron borrar ${archivosGpx.length} archivos GPX:`, err.message);
+        process.exitCode = 1;
+      }
       console.log('\nListo: los datos de prueba se borraron.');
     } else {
       await cliente.query('ROLLBACK');

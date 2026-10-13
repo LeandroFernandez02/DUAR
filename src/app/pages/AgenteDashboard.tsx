@@ -12,6 +12,7 @@ import {
 } from '../data/mockData';
 import { authApi, OperativoApi, ApiError } from '../services/api';
 import PanelTactico from '../components/portal/PanelTactico';
+import MisRecorridos from '../components/portal/MisRecorridos';
 import {
   validarNombre, validarApellido, validarTelefono, validarFechaNacimiento, fechaMaximaNacimiento,
   soloDigitos, formatearTelefono, formatearDni,
@@ -546,6 +547,8 @@ export default function AgenteDashboard() {
               <OperativoCard op={operativoActual} variant="current" />
               {/* Módulo 4: mi estado, mi grupo y, si soy el Líder, el estado del grupo */}
               <PanelTactico />
+              {/* Módulo 5 · CU-29: el GPX de lo que recorrió */}
+              <MisRecorridos />
             </div>
           ) : (
             <div
