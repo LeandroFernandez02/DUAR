@@ -2,7 +2,7 @@
 -- 012 · Grupos de rastrillaje y grupos especiales (26/09)
 -- ============================================================================
 -- Decisión del 26/09 ("opción 2"): un grupo es gente que sale, trabaja y vuelve
--- junta. Los recursos que trabajan a otro ritmo o en otro sector (drones,
+-- junta. Los recursos que trabajan a otro ritmo o en otro polígono (drones,
 -- canes, paramédicos, caballería, buzos) no van mezclados en la cuadrilla que
 -- camina el polígono: van en su propio grupo, y un polígono puede recibir
 -- varios grupos (Módulo 5).
@@ -27,7 +27,7 @@
 -- ── 1. Catálogo de especialidades ───────────────────────────────────────────
 -- Canes pasa a recurso especial: el 27/08 se lo había marcado "camina" porque
 -- el guía recorre el terreno, pero trabaja a su ritmo (el perro trabaja por
--- tandas) y en su sector. Se suman Caballería y Buzos. Los id son fijos para
+-- tandas) y en su polígono. Se suman Caballería y Buzos. Los id son fijos para
 -- que el espejo del frontend (mockData.ts#catEspecialidades) coincida siempre.
 UPDATE public.cat_especialidades SET es_recurso_critico = true WHERE nombre = 'Canes';
 

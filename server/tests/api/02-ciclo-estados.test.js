@@ -43,10 +43,10 @@ describe('Grupos: ciclo de estados y Regla 1 (CU-23, CU-17, CU-25)', () => {
   });
 
   test('CU-23 · asignar con zona → Asignado; los integrantes siguen Agrupados y sin tiempo en el terreno', async () => {
-    const r = await ctx.accion(G, { accion: 'asignar', zona: 'Quebrada norte, sector 2' });
+    const r = await ctx.accion(G, { accion: 'asignar', zona: 'Quebrada norte, polígono 2' });
     motivo(r, 200);
     assert.equal(r.json.grupo.estado, 'ASIGNADO');
-    assert.equal(r.json.grupo.zonaAsignada, 'Quebrada norte, sector 2');
+    assert.equal(r.json.grupo.zonaAsignada, 'Quebrada norte, polígono 2');
     assert.deepEqual(await estados(MIEMBROS), { alfa: 'AGRUPADO', bravo: 'AGRUPADO', golf: 'AGRUPADO' });
     assert.equal(await ctx.periodosAbiertos(G), 0);
   });

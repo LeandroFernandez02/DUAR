@@ -41,7 +41,6 @@ export const ESTADOS_GRUPO_EN_OPERACION: EstadoGrupo[] = ['desplegado', 'rastril
 export function grupoEnOperacion(estado: EstadoGrupo): boolean {
   return ESTADOS_GRUPO_EN_OPERACION.includes(estado);
 }
-export type EstadoSector = 'pendiente' | 'en_progreso' | 'completado';
 /**
  * Especialidad TÉCNICA: lo que el agente SABE HACER.
  * "Conductor" ya NO es una especialidad — pasó a ser un estado logístico
@@ -235,17 +234,8 @@ export interface GrupoRastrillaje {
   estado: EstadoGrupo;
   /** ISO. Baja lógica — se setea junto con estado='disuelto' (CU-25). */
   eliminadoEn?: string;
-  sectorAsignado?: string;
   color: string;
   kmRecorridos: number;
-}
-
-export interface Sector {
-  id: string;
-  nombre: string;
-  estado: EstadoSector;
-  grupoAsignado?: string;
-  area: number;
 }
 
 export interface PuntoInteres {
@@ -310,7 +300,6 @@ export interface Operativo {
   mandoPreview?: { nombre: string; apellido: string; vigente: boolean };
   agenteIds: string[];
   grupoIds: string[];
-  sectores: Sector[];
   puntos: PuntoInteres[];
   shapes?: MapShape[];
   historialPuestoComando?: HistorialPuestoCom[];
@@ -515,7 +504,6 @@ export const initialData: AppData = {
       lider: 'u3',
       agenteIds: ['u3', 'u4'],
       estado: 'rastrillando',
-      sectorAsignado: 's1',
       color: '#E54B4B',
       kmRecorridos: 4.2,
     },
@@ -525,7 +513,6 @@ export const initialData: AppData = {
       lider: 'u5',
       agenteIds: ['u5', 'u6'],
       estado: 'rastrillando',
-      sectorAsignado: 's7',
       color: '#FFA987',
       kmRecorridos: 3.1,
     },
@@ -535,7 +522,6 @@ export const initialData: AppData = {
       lider: 'u7',
       agenteIds: ['u7', 'u9'],
       estado: 'rastrillando',
-      sectorAsignado: 's9',
       color: '#444140',
       kmRecorridos: 2.7,
     },
@@ -580,12 +566,6 @@ export const initialData: AppData = {
       // u3, u4 — solo estos dos están activos aquí
       agenteIds: ['u3', 'u4'],
       grupoIds: ['g1'],
-      sectores: [
-        { id: 's1', nombre: 'Sector Norte', estado: 'en_progreso', grupoAsignado: 'g1', area: 12 },
-        { id: 's2', nombre: 'Sector Sur', estado: 'pendiente', area: 8 },
-        { id: 's3', nombre: 'Sector Este', estado: 'pendiente', area: 10 },
-        { id: 's4', nombre: 'Sector Oeste', estado: 'completado', area: 6 },
-      ],
       puntos: [
         { id: 'p1', nombre: 'Punto Cero', tipo: 'puntoCero', lat: -31.993, lng: -64.923, descripcion: 'Última ubicación conocida' },
         { id: 'p2', nombre: 'Puesto de Comando', tipo: 'puestoComando', lat: -31.985, lng: -64.911, descripcion: 'Base de operaciones' },
@@ -618,7 +598,6 @@ export const initialData: AppData = {
       // Sin agentes asignados aún (planificación)
       agenteIds: [],
       grupoIds: [],
-      sectores: [],
       puntos: [],
       shapes: [],
       kmRastrillados: 0,
@@ -647,10 +626,6 @@ export const initialData: AppData = {
       // Histórico: los agentes que participaron (ya finalizado)
       agenteIds: ['u3', 'u4', 'u5', 'u6'],
       grupoIds: [],
-      sectores: [
-        { id: 's5', nombre: 'Sector Lago', estado: 'completado', area: 15 },
-        { id: 's6', nombre: 'Sector Montaña', estado: 'completado', area: 12 },
-      ],
       puntos: [
         { id: 'p5', nombre: 'Punto Cero', tipo: 'puntoCero', lat: -31.988, lng: -64.549, descripcion: 'Última ubicación' },
       ],
@@ -668,7 +643,6 @@ export const initialData: AppData = {
       objetivo: 'Por determinar.',
       agenteIds: [],
       grupoIds: [],
-      sectores: [],
       puntos: [],
       shapes: [],
       kmRastrillados: 0,
@@ -681,7 +655,7 @@ export const initialData: AppData = {
       ubicacion: 'Río Cuarto, Córdoba',
       fiscal: 'Dra. Marta Gómez',
       fechaInicio: '2026-03-10T08:00',
-      descripcion: 'Búsqueda activa de menor de edad en zona periurbana. Equipos desplegados en cuatro sectores.',
+      descripcion: 'Búsqueda activa de menor de edad en zona periurbana. Equipos desplegados en cuatro polígonos.',
       objetivo: 'Persona: Sofía Torres, 14 años. Desaparecida desde el 09/03.',
       objetivoBusqueda: {
         tipo: 'persona',
@@ -704,10 +678,6 @@ export const initialData: AppData = {
       // u5, u6 — distintos a op1
       agenteIds: ['u5', 'u6'],
       grupoIds: ['g2'],
-      sectores: [
-        { id: 's7', nombre: 'Sector Urbano', estado: 'en_progreso', grupoAsignado: 'g2', area: 5 },
-        { id: 's8', nombre: 'Sector Periurbano', estado: 'pendiente', area: 9 },
-      ],
       puntos: [
         { id: 'p6', nombre: 'Punto Cero', tipo: 'puntoCero', lat: -33.125, lng: -64.347, descripcion: 'Último avistamiento' },
         { id: 'p7', nombre: 'Puesto de Comando', tipo: 'puestoComando', lat: -33.118, lng: -64.340, descripcion: 'Base principal' },
@@ -746,10 +716,6 @@ export const initialData: AppData = {
       // u7, u9, u10 — distintos a op1 y op5
       agenteIds: ['u7', 'u9', 'u10'],
       grupoIds: ['g3', 'g4'],
-      sectores: [
-        { id: 's9', nombre: 'Sendero Principal', estado: 'en_progreso', grupoAsignado: 'g3', area: 7 },
-        { id: 's10', nombre: 'Quebrada Baja', estado: 'pendiente', grupoAsignado: 'g4', area: 11 },
-      ],
       puntos: [
         { id: 'p8', nombre: 'Punto Cero', tipo: 'puntoCero', lat: -31.680, lng: -64.785, descripcion: 'Campamento base' },
         { id: 'p9', nombre: 'Puesto de Comando', tipo: 'puestoComando', lat: -31.672, lng: -64.778, descripcion: 'Centro coordinación' },

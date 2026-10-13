@@ -64,6 +64,7 @@ aplica al proyecto Supabase con el mismo nombre:
 | `015_indices_tablero.sql` | Índices en `agentes_operativo.grupo_id` y `grupos.lider_id` (se leen en cada refresco del tablero) |
 | `016_presencia_mando.sql` | Puesto de comando: `presencias_mando` (coordinadores presentes) y `mando_operativo` (quién está a cargo) |
 | `017_intentos_login.sql` | `intentos_login`: frena la prueba de contraseñas (5 fallos por correo o 30 por IP en 15 min bloquean 15 min) |
+| `019_mapa_operacional.sql` | Módulo 5 (CU-27..38): `poligonos` (sin estado; área y perímetro por trigger; nombre único vigente), `poligono_grupos` (un grupo en un solo polígono a la vez), `tracks_gpx`, `marcadores` (POI, hallazgo, instalación SCI; el hallazgo no se elimina ni cambia de clase), `marcador_fotos`, `radios_operativo`, `punto_cero_historial`, `poligono_eventos`. La 018 se descartó |
 
 ### PostGIS: diferencia con la instalación local
 
@@ -139,7 +140,7 @@ baseline histórico: en una instalación desde cero, las migraciones los corrige
 ### Grupos de rastrillaje y grupos especiales (migración `012`)
 
 Un grupo es gente que sale, trabaja y vuelve junta, y un polígono puede recibir
-varios grupos. Los recursos que trabajan a otro ritmo o en otro sector no van
+varios grupos. Los recursos que trabajan a otro ritmo o en otro polígono no van
 mezclados en la cuadrilla que camina: van en su propio grupo. `grupos.clase` se
 elige al crear y no cambia.
 

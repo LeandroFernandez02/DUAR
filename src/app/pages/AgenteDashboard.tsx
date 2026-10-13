@@ -42,7 +42,6 @@ function mapearOperativo(o: OperativoApi): Operativo {
     // endpoint — quedan sin datos hasta que se migren esos CU.
     agenteIds: Array.from({ length: o.cantidadAgentes }, (_, i) => `sin-migrar-${i}`),
     grupoIds: [],
-    sectores: [],
     puntos: [],
     kmRastrillados: 0,
     coordinadorId: o.coordinadorId,

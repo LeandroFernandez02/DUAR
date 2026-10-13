@@ -7,13 +7,15 @@ visual y de comportamiento contra la que se va a programar el Módulo 5.
 - Pantalla principal: `ui_kits/mapa/index.html` (componentes en `ui_kits/mapa/*.jsx`,
   datos de ejemplo en `ui_kits/mapa/data.js`).
 - Componentes del mapa: `components/map/`; base visual: `components/core/`, `tokens/`.
-- Los datos son inventados (sectores, grupos, tracks) y la elevación sale de una
+- Los datos son inventados (polígonos, grupos, tracks) y la elevación sale de una
   fórmula de prueba.
+- **Terminología:** el prototipo dice «sector»; el sistema, los CU y la base dicen
+  siempre **«polígono»** (decisión del 12/10).
 
 Las reglas de negocio NO salen de este prototipo sino de los CU del Módulo 5
 (documento "Casos de Uso — Módulo 5: Mapa Operacional"). Donde el prototipo y los
-CU no coinciden, mandan los CU: por ejemplo, los sectores no tienen estado, un
-sector admite un grupo de rastrillaje más grupos especiales, y eliminar es una
+CU no coinciden, mandan los CU: por ejemplo, los polígonos no tienen estado, un
+polígono admite un grupo de rastrillaje más grupos especiales, y eliminar es una
 baja con registro.
 
 Para verlo: el preview "Diseño del mapa" de `.claude/launch.json` (sirve esta

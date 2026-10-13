@@ -35,7 +35,6 @@ export function mapearOperativo(o: OperativoApi): Operativo {
     // de agentes de un operativo vive en `agentesOperativoApi.listar`.
     agenteIds: Array.from({ length: o.cantidadAgentes }, (_, i) => `sin-migrar-${i}`),
     grupoIds: [],
-    sectores: [],
     puntos: [],
     kmRastrillados: 0,
     coordinadorId: o.coordinadorId,

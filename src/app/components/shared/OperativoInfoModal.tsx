@@ -191,11 +191,6 @@ export default function OperativoInfoModal({ operativo, onClose }: Props) {
               </div>
             )}
 
-            {/* Sectores summary */}
-            {operativo.sectores.length > 0 && (
-              null
-            )}
-
             {/* Finalizar operativo */}
             {operativo.estado !== 'finalizado' && operativo.estado !== 'eliminado' && (
               <div

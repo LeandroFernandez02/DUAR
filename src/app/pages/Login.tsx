@@ -77,7 +77,7 @@ export default function Login() {
             {[
               'Gestión integral de operativos',
               'Coordinación de agentes y grupos',
-              'Mapeo y análisis de sectores',
+              'Mapeo y análisis de polígonos',
               'Informes automáticos PDF',
             ].map(item => (
               <div key={item} className="flex items-center gap-3">

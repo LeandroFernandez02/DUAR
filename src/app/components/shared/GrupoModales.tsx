@@ -394,7 +394,7 @@ export function AccionGrupoModal({ operativoId, grupo, accion, onClose, onHecho 
           <div>
             <Etiqueta htmlFor="accion-zona">Zona asignada *</Etiqueta>
             <input id="accion-zona" autoFocus value={zona} maxLength={TEXTO_MAX} onChange={e => setZona(e.target.value)}
-              placeholder="Ej: Margen norte del río, sector 3" className="w-full px-3 py-2 outline-none" style={estiloCampo} />
+              placeholder="Ej: Margen norte del río, polígono 3" className="w-full px-3 py-2 outline-none" style={estiloCampo} />
           </div>
         )}
 

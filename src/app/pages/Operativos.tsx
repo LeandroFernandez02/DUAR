@@ -1283,7 +1283,7 @@ export default function Operativos() {
                       value={finalizeNota}
                       maxLength={NOTA_FINAL_MAX}
                       onChange={e => setFinalizeNota(e.target.value.slice(0, NOTA_FINAL_MAX))}
-                      placeholder="Ej: Persona hallada con vida en sector norte. Se desactiva el operativo tras 48 hs de búsqueda…"
+                      placeholder="Ej: Persona hallada con vida en el polígono norte. Se desactiva el operativo tras 48 hs de búsqueda…"
                       className="w-full px-3 py-2.5 rounded-[var(--radius-input)] border outline-none resize-none"
                       style={{
                         background: 'var(--background)',
