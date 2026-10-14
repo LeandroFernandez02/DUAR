@@ -58,7 +58,7 @@ describe('Sesión, roles y cuentas (CU-01, CU-04 a CU-07)', () => {
 
   test('CU-06 · el coordinador no puede editar a un administrador ni cambiarle la clave → 404', async () => {
     assert.equal((await comoCoord('PUT', `/usuarios/${adminId}`, { nombre: 'Intruso' })).status, 404);
-    assert.equal((await comoCoord('PUT', `/usuarios/${adminId}`, { password: 'OtraClave123' })).status, 404);
+    assert.equal((await comoCoord('PUT', `/usuarios/${adminId}`, { password: 'OtraClave123!' })).status, 404);
   });
 
   test('CU-07 · el coordinador no puede eliminar a un administrador → 404', async () => {
@@ -68,7 +68,7 @@ describe('Sesión, roles y cuentas (CU-01, CU-04 a CU-07)', () => {
   test('CU-05 · el coordinador no puede crear un administrador → 403 rol_no_permitido', async () => {
     const r = await comoCoord('POST', '/usuarios', {
       dni: '98000999', nombre: 'Rechazado', apellido: 'Prueba Automatica',
-      email: 'auto.rechazado@prueba.duar', password: 'NoSeCrea123', rol: 'administrador',
+      email: 'auto.rechazado@prueba.duar', password: 'NoSeCrea123!', rol: 'administrador',
     });
     motivo(r, 403, 'rol_no_permitido');
     const lista = (await ctx.api('GET', '/usuarios')).json.usuarios;
@@ -78,7 +78,7 @@ describe('Sesión, roles y cuentas (CU-01, CU-04 a CU-07)', () => {
   // CU-07 (05/10): quien vuelve con el DNI de una cuenta eliminada recupera ESA cuenta.
   const REUSO = {
     dni: '98000998', nombre: 'Reuso', apellido: 'Prueba Automatica',
-    email: 'auto.reuso@prueba.duar', password: 'ClaveReuso123', rol: 'agente',
+    email: 'auto.reuso@prueba.duar', password: 'ClaveReuso123!', rol: 'agente',
   };
   /** Si una corrida anterior quedó a medias, su cuenta se da de baja primero. */
   const darDeBajaReuso = () => ctx.query(
@@ -106,7 +106,7 @@ describe('Sesión, roles y cuentas (CU-01, CU-04 a CU-07)', () => {
     assert.equal(ajeno.json.campo, 'email');
 
     const vuelta = await ctx.api('POST', '/usuarios', {
-      ...REUSO, nombre: 'Reusado', email: 'auto.reuso2@prueba.duar', password: 'ClaveNueva456',
+      ...REUSO, nombre: 'Reusado', email: 'auto.reuso2@prueba.duar', password: 'ClaveNueva456!',
     });
     motivo(vuelta, 201);
     assert.equal(vuelta.json.reactivado, true);
@@ -117,8 +117,8 @@ describe('Sesión, roles y cuentas (CU-01, CU-04 a CU-07)', () => {
     assert.equal(vuelta.json.usuario.emailConfirmado, false);
 
     // Vale sólo la clave nueva.
-    assert.equal((await loginReuso('auto.reuso2@prueba.duar', 'ClaveReuso123')).status, 401);
-    assert.equal((await loginReuso('auto.reuso2@prueba.duar', 'ClaveNueva456')).status, 200);
+    assert.equal((await loginReuso('auto.reuso2@prueba.duar', 'ClaveReuso123!')).status, 401);
+    assert.equal((await loginReuso('auto.reuso2@prueba.duar', 'ClaveNueva456!')).status, 200);
 
     const { rows } = await ctx.query(
       `SELECT accion FROM logs_auditoria WHERE entidad_afectada = 'usuarios' AND registro_id = $1 ORDER BY 1`, [id]);
@@ -135,7 +135,7 @@ describe('Sesión, roles y cuentas (CU-01, CU-04 a CU-07)', () => {
     const qr = (await ctx.api('GET', `/operativos/${ctx.op}/qr`)).json.qr.token;
     const r = await ctx.api('POST', '/auth/registro', {
       qrToken: qr, dni: REUSO.dni, nombre: 'Reuso', apellido: 'Por QR',
-      email: 'auto.reuso3@prueba.duar', password: 'ClaveQr789',
+      email: 'auto.reuso3@prueba.duar', password: 'ClaveQr789!',
     }, null);
     motivo(r, 201);
     assert.equal(r.json.reactivado, true);

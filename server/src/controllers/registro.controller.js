@@ -18,7 +18,7 @@ import * as Operativo from '../models/operativo.model.js';
 import * as TokenEmail from '../models/tokenEmail.model.js';
 import * as Auditoria from '../models/auditoria.model.js';
 import { enviarConfirmacion } from '../services/email.service.js';
-import { validarDatosPersonales } from '../utils/validaciones.js';
+import { validarDatosPersonales, normalizarDatosPersonales } from '../utils/validaciones.js';
 import { query } from '../config/db.js';
 
 const HORAS_SESION = Number(process.env.SESION_HORAS ?? 12);
@@ -53,7 +53,7 @@ async function abrirSesion(usuarioId, req) {
  */
 export async function registrar(req, res, next) {
   try {
-    const b = req.body ?? {};
+    const b = normalizarDatosPersonales(req.body ?? {});
 
     // Precondición del CU-02: haber escaneado el QR del operativo (CU-16).
     const acceso = await TokenOperativo.validar(b.qrToken ?? '');

@@ -19,6 +19,7 @@
  * Credenciales: server/.env (TEST_*), que no se sube al repositorio.
  */
 import { query, pool } from '../../src/config/db.js';
+import * as TokenEmail from '../../src/models/tokenEmail.model.js';
 
 const API = process.env.TEST_API_URL ?? 'http://localhost:3001/api';
 export const TITULO_OPERATIVO = 'PRUEBAS AUTOMÁTICAS - no tocar';
@@ -125,6 +126,14 @@ async function catalogos() {
   return { institucion: n => por(inst, n), especialidad: n => por(esp, n), dotacionDuar: dot[0]?.id ?? null };
 }
 
+/** Confirma el correo de una cuenta como si la persona abriera el enlace que le llegó. */
+export async function confirmarCorreo(usuarioId) {
+  const token = await TokenEmail.emitir(usuarioId, 'CONFIRMACION');
+  const r = await api('GET', `/auth/confirmar-email/${token}`);
+  if (r.status !== 200) throw new Error(`No se pudo confirmar el correo de ${usuarioId}: ${JSON.stringify(r.json)}`);
+  return r.json;
+}
+
 /** Crea los usuarios de prueba que falten y deja a todos activos, con su rol y su clave. */
 async function asegurarUsuarios(admin, cat) {
   const password = requerido('TEST_USUARIOS_PASSWORD');
@@ -144,9 +153,12 @@ async function asegurarUsuarios(admin, cat) {
       if (r.status !== 201) throw new Error(`No se pudo crear ${email(u.clave)}: ${r.status} ${JSON.stringify(r.json)}`);
       fila = r.json.usuario;
     }
-    // Creado por un administrador queda PENDIENTE (sin mail confirmado): lo activa el administrador.
+    // Creado por un administrador queda PENDIENTE: se confirma el correo como lo
+    // haría la persona, abriendo el enlace (una cuenta Pendiente no se activa a
+    // mano, Testeo 13/10, punto 4).
+    if (fila.estado === 'PENDIENTE') await confirmarCorreo(fila.id);
     const cambios = {};
-    if (fila.estado !== 'ACTIVO') cambios.estado = 'ACTIVO';
+    if (fila.estado === 'INACTIVO') cambios.estado = 'ACTIVO';
     if (fila.rol.toLowerCase() !== rol) cambios.rol = rol;
     if (Object.keys(cambios).length) {
       const r = await api('PUT', `/usuarios/${fila.id}`, cambios, admin);

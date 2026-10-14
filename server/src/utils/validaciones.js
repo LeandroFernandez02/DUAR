@@ -16,10 +16,44 @@ export const RE_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 export const EMAIL_MAX = 150;
 export const PASSWORD_MIN = 8;
 export const PASSWORD_MAX = 64;
+/** Nacidos antes de esto es un error de tipeo (un año con ceros), no una persona (Testeo 13/10, punto 10). */
+export const ANIO_NACIMIENTO_MIN = 1900;
+
+/**
+ * Contraseña (Testeo 13/10, punto 2): de 8 a 64 caracteres, con al menos una
+ * letra, un número y un carácter especial (cualquier cosa que no sea letra,
+ * número ni espacio). Sólo se exige al elegir una contraseña nueva: el login
+ * no la revisa, así las cuentas que ya existen siguen entrando.
+ */
+export function validarPassword(valor) {
+  const v = String(valor ?? '');
+  if (v.length < PASSWORD_MIN || v.length > PASSWORD_MAX
+      || !/\p{L}/u.test(v) || !/\p{N}/u.test(v) || !/[^\p{L}\p{N}\s]/u.test(v)) {
+    return `La contraseña debe tener entre ${PASSWORD_MIN} y ${PASSWORD_MAX} caracteres, con al menos una letra, un número y un carácter especial (por ejemplo ! ? # $ % . -).`;
+  }
+  return null;
+}
+
+/**
+ * Limpia lo que se escribe a mano (Testeo 13/10, punto 14): sin espacios al
+ * principio ni al final, y en nombre y apellido un solo espacio entre
+ * palabras. Devuelve una copia; los campos ausentes siguen ausentes.
+ */
+export function normalizarDatosPersonales(datos = {}) {
+  const limpio = { ...datos };
+  for (const clave of ['nombre', 'apellido']) {
+    if (typeof limpio[clave] === 'string') limpio[clave] = limpio[clave].trim().replace(/\s+/g, ' ');
+  }
+  for (const clave of ['email', 'dni', 'telefono']) {
+    if (typeof limpio[clave] === 'string') limpio[clave] = limpio[clave].trim();
+  }
+  return limpio;
+}
 
 /** Años cumplidos a día de hoy, dada una fecha de nacimiento ISO (YYYY-MM-DD). */
 function edadDesde(fechaIso) {
-  const nacimiento = new Date(fechaIso);
+  // Al mediodía local: «YYYY-MM-DD» solo se lee como UTC y en Argentina caería el día anterior.
+  const nacimiento = new Date(`${String(fechaIso).slice(0, 10)}T12:00:00`);
   const hoy = new Date();
   let edad = hoy.getFullYear() - nacimiento.getFullYear();
   const aunNoCumplio =
@@ -73,16 +107,17 @@ export function validarDatosPersonales(datos) {
 
   // Vacía = "no cambiar" en la edición de usuarios (CU-06): sólo se valida si viene algo.
   if (datos.password !== undefined && datos.password !== null && datos.password !== '') {
-    const v = String(datos.password);
-    if (v.length < PASSWORD_MIN) errores.password = `La contraseña debe tener al menos ${PASSWORD_MIN} caracteres.`;
-    else if (v.length > PASSWORD_MAX) errores.password = `La contraseña puede tener hasta ${PASSWORD_MAX} caracteres.`;
+    const error = validarPassword(datos.password);
+    if (error) errores.password = error;
   }
 
   if (datos.fechaNacimiento !== undefined && datos.fechaNacimiento !== null && datos.fechaNacimiento !== '') {
-    const fecha = new Date(datos.fechaNacimiento);
-    if (Number.isNaN(fecha.getTime())) {
+    const texto = String(datos.fechaNacimiento).slice(0, 10);
+    const fecha = new Date(`${texto}T12:00:00`);
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(texto) || Number.isNaN(fecha.getTime())
+        || Number(texto.slice(0, 4)) < ANIO_NACIMIENTO_MIN) {
       errores.fechaNacimiento = 'Fecha de nacimiento inválida.';
-    } else if (edadDesde(datos.fechaNacimiento) < EDAD_MINIMA) {
+    } else if (edadDesde(texto) < EDAD_MINIMA) {
       errores.fechaNacimiento = `El agente debe tener al menos ${EDAD_MINIMA} años.`;
     }
   }

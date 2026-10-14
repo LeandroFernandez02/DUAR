@@ -11,9 +11,17 @@ type EstadoAlta = 'ninguna' | 'uniendo' | 'unido' | 'conflicto' | 'error';
 
 export default function ConfirmarEmail() {
   const { token } = useParams<{ token: string }>();
-  const { isAuthenticated, usuario, refrescarUsuario } = useApp();
+  const { isAuthenticated, usuario, refrescarUsuario, logout } = useApp();
   const navigate = useNavigate();
   const [estado, setEstado] = useState<Estado>('verificando');
+  /** Correo de la cuenta que se confirmó (lo devuelve el servidor). */
+  const [emailConfirmado, setEmailConfirmado] = useState<string | null>(null);
+  /**
+   * En este navegador está abierta la sesión de OTRA persona (Testeo 13/10,
+   * punto 11): "Ir al sistema" la llevaba a la vista de esa otra cuenta.
+   */
+  const otraSesion = isAuthenticated && !!usuario && !!emailConfirmado
+    && usuario.email.toLowerCase() !== emailConfirmado.toLowerCase();
 
   const [altaPendiente, setAltaPendienteState] = useState<AltaPendiente | null>(null);
   const [estadoAlta, setEstadoAlta] = useState<EstadoAlta>('ninguna');
@@ -26,7 +34,11 @@ export default function ConfirmarEmail() {
     }
     let vigente = true;
     authApi.confirmarEmail(token)
-      .then(({ estado: r }) => { if (vigente) setEstado(r === 'ok' ? 'exitoso' : r); })
+      .then(({ estado: r, email }) => {
+        if (!vigente) return;
+        setEmailConfirmado(email ?? null);
+        setEstado(r === 'ok' ? 'exitoso' : r);
+      })
       // 410 = vencido/inexistente; cualquier otro fallo cae igual en
       // "inválido" — no hay una tercera pantalla útil que mostrar.
       .catch(() => { if (vigente) setEstado('invalido'); });
@@ -90,6 +102,9 @@ export default function ConfirmarEmail() {
 
   useEffect(() => {
     if (estado !== 'exitoso' && estado !== 'ya_confirmado') return;
+    // Con la sesión de otra persona abierta no se hace nada en su nombre: el
+    // alta al operativo se haría con la cuenta equivocada.
+    if (otraSesion) return;
     /* El `usuario` en memoria (AppContext) se cargó al montar la app, antes
      * de que este mismo efecto confirmara el mail contra el backend — sin
      * este refresh, "Confirmá tu correo" seguía pegado en el portal de
@@ -171,6 +186,32 @@ export default function ConfirmarEmail() {
     return null;
   };
 
+  /** Cierra la sesión de la otra persona y lleva al login para entrar con la cuenta confirmada. */
+  const handleEntrarConMiCuenta = async () => {
+    await logout();
+    navigate('/login');
+  };
+
+  /** Aviso cuando el navegador tiene abierta la sesión de otra cuenta. */
+  const renderOtraSesion = () => otraSesion && usuario && (
+    <div className="w-full flex flex-col gap-2.5 p-3.5 rounded-xl text-left" style={{ background: 'rgba(217,119,6,0.08)', border: '1px solid rgba(217,119,6,0.3)' }}>
+      <div className="flex items-start gap-3">
+        <AlertTriangle size={18} style={{ color: '#d97706', flexShrink: 0, marginTop: 1 }} />
+        <p style={{ color: 'var(--foreground)', fontSize: 'var(--text-label)', lineHeight: 1.5 }}>
+          En este navegador está abierta la sesión de <strong>{usuario.nombre} {usuario.apellido}</strong> ({usuario.rol}).
+          Para entrar con la cuenta que confirmaste (<strong>{emailConfirmado}</strong>), cerrá esa sesión.
+        </p>
+      </div>
+      <button
+        onClick={handleEntrarConMiCuenta}
+        className="py-2.5 rounded-lg"
+        style={{ background: '#d97706', color: '#fff', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)', fontFamily: 'var(--font-family-primary)', border: 'none', cursor: 'pointer' }}
+      >
+        Cerrar esa sesión e ingresar con mi cuenta
+      </button>
+    </div>
+  );
+
   const handleIrAlPanel = () => {
     if (isAuthenticated) {
       navigate(usuario?.rol === 'agente' ? '/agente' : '/dashboard');
@@ -249,18 +290,19 @@ export default function ConfirmarEmail() {
                 Tu correo electrónico fue verificado exitosamente. Ya tenés acceso completo al sistema DUAR.
               </p>
             </div>
+            {renderOtraSesion()}
             {renderEstadoAlta()}
             <button
               onClick={handleIrAlPanel}
               className="w-full py-3.5 rounded-xl text-white"
               style={{
-                background: 'var(--primary)',
+                background: otraSesion ? 'var(--muted-foreground)' : 'var(--primary)',
                 fontSize: 'var(--text-base)',
                 fontWeight: 'var(--font-weight-semibold)',
                 fontFamily: 'var(--font-family-primary)',
               }}
             >
-              Ir al sistema
+              {otraSesion && usuario ? `Seguir como ${usuario.nombre}` : 'Ir al sistema'}
             </button>
           </>
         )}
@@ -285,18 +327,19 @@ export default function ConfirmarEmail() {
                 Tu cuenta ya fue confirmada previamente. Podés ingresar al sistema con normalidad.
               </p>
             </div>
+            {renderOtraSesion()}
             {renderEstadoAlta()}
             <button
               onClick={handleIrAlPanel}
               className="w-full py-3.5 rounded-xl text-white"
               style={{
-                background: 'var(--primary)',
+                background: otraSesion ? 'var(--muted-foreground)' : 'var(--primary)',
                 fontSize: 'var(--text-base)',
                 fontWeight: 'var(--font-weight-semibold)',
                 fontFamily: 'var(--font-family-primary)',
               }}
             >
-              Ir al sistema
+              {otraSesion && usuario ? `Seguir como ${usuario.nombre}` : 'Ir al sistema'}
             </button>
           </>
         )}

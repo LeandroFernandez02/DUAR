@@ -81,6 +81,11 @@ function botonHtml(url, texto) {
  * al cliente.
  */
 async function enviar({ para, asunto, html }) {
+  // Las cuentas de las pruebas automáticas usan un dominio inventado: mandarles
+  // correo sólo generaría rebotes en la casilla del sistema.
+  if (String(para).toLowerCase().endsWith('@prueba.duar')) {
+    return { enviado: false, omitido: true };
+  }
   if (!transporte) {
     console.warn(`[email] GMAIL_USER/GMAIL_APP_PASSWORD sin configurar — no se envió "${asunto}" a ${para}`);
     return { enviado: false };

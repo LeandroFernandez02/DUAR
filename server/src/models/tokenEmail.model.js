@@ -44,6 +44,19 @@ export async function validar(token, tipo) {
 }
 
 /** Marca el token como usado. Un token de un solo uso, aunque no haya vencido. */
+/**
+ * Vence los enlaces de ese tipo que todavía servían. Se usa al cambiar el
+ * correo (Testeo 13/10, punto 8): un enlace mandado a la dirección vieja no
+ * puede confirmar la nueva.
+ */
+export async function anularPendientes(usuarioId, tipo) {
+  await query(
+    `UPDATE tokens_recuperacion SET expira_en = CURRENT_TIMESTAMP
+      WHERE usuario_id = $1 AND tipo = $2 AND NOT usado AND expira_en > CURRENT_TIMESTAMP`,
+    [usuarioId, tipo]
+  );
+}
+
 export async function marcarUsado(id) {
   await query(`UPDATE tokens_recuperacion SET usado = true WHERE id = $1`, [id]);
 }

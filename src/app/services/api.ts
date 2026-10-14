@@ -144,7 +144,8 @@ export const authApi = {
 
   /** CU-02 paso 7 — confirmar cuenta con el token que llega por correo. */
   confirmarEmail: (token: string) =>
-    api.get<{ estado: 'ok' | 'ya_confirmado' }>(`/auth/confirmar-email/${token}`),
+    // `email`: de quién es la cuenta confirmada, para avisar si en el navegador hay otra sesión abierta.
+    api.get<{ estado: 'ok' | 'ya_confirmado'; email: string | null }>(`/auth/confirmar-email/${token}`),
 
   /**
    * CU-03 paso 3-5. El backend SIEMPRE responde igual, exista o no ese email
@@ -383,9 +384,11 @@ export const operativosApi = {
 export const usuariosApi = {
   listar: () => api.get<{ usuarios: UsuarioApi[] }>('/usuarios'),
   crear: (datos: CrearUsuarioPayload) =>
-    api.post<{ usuario: UsuarioApi; reactivado: boolean }>('/usuarios', datos),
+    // `correoEnviado`: salió el correo de confirmación de la cuenta nueva (CU-05 paso 5).
+    api.post<{ usuario: UsuarioApi; reactivado: boolean; correoEnviado: boolean }>('/usuarios', datos),
+  /** CU-06. Si cambia el correo, la cuenta vuelve a Pendiente y se manda la confirmación a la dirección nueva. */
   actualizar: (id: string, datos: Partial<CrearUsuarioPayload>) =>
-    api.put<{ usuario: UsuarioApi }>(`/usuarios/${id}`, datos),
+    api.put<{ usuario: UsuarioApi; cambioEmail: boolean; correoEnviado: boolean }>(`/usuarios/${id}`, datos),
   eliminar: (id: string) => api.del<void>(`/usuarios/${id}`),
   auditoria: (id: string) =>
     api.get<{ eventos: unknown[] }>(`/usuarios/${id}/auditoria`),

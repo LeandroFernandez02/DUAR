@@ -161,7 +161,8 @@ export default function Login() {
                   type={showPwd ? 'text' : 'password'}
                   value={password}
                   onChange={e => setPassword(e.target.value)}
-                  placeholder="••••••••"
+                  // Sin puntitos de ejemplo: parecían caracteres escritos con el campo vacío (Testeo 13/10, punto 12).
+                  autoComplete="current-password"
                   className="w-full pl-9 pr-10 py-2.5 rounded-lg border outline-none transition-all"
                   style={{
                     background: 'var(--card)',

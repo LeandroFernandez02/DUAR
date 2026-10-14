@@ -13,7 +13,8 @@ import {
   validarNombre, validarApellido, validarDni, validarTelefono,
   validarFechaNacimiento, fechaMaximaNacimiento,
   validarEmail, validarPassword, filtrarEmail, PASSWORD_MAX,
-  soloDigitos, formatearDni, formatearTelefono,
+  soloDigitos, formatearDni, formatearTelefono, limpiarTexto,
+  AYUDA_PASSWORD, AYUDA_TELEFONO, PLACEHOLDER_TELEFONO, FECHA_NACIMIENTO_MIN,
 } from '../utils/validacionUsuario';
 import { guardarAltaPendiente, limpiarAltaPendiente } from '../utils/altaPendiente';
 
@@ -403,18 +404,23 @@ export default function Registro() {
 
   const handleRegistro = async () => {
     setError('');
-    if (!regForm.dni || !regForm.nombre || !regForm.apellido || !regForm.email || !regForm.password) {
+    // Sin espacios de más (Testeo 13/10, punto 14): lo que se valida es lo que se guarda.
+    const nombre = limpiarTexto(regForm.nombre);
+    const apellido = limpiarTexto(regForm.apellido);
+    const email = regForm.email.trim();
+    if (nombre !== regForm.nombre || apellido !== regForm.apellido || email !== regForm.email) setRegForm({ ...regForm, nombre, apellido, email });
+    if (!regForm.dni || !nombre || !apellido || !email || !regForm.password) {
       setError('Completá todos los campos obligatorios (*).');
       return;
     }
     if (!qrToken) { setError('Falta el código del QR.'); return; }
 
     const errores: Record<string, string> = {};
-    const errNombre = validarNombre(regForm.nombre); if (errNombre) errores.nombre = errNombre;
-    const errApellido = validarApellido(regForm.apellido); if (errApellido) errores.apellido = errApellido;
+    const errNombre = validarNombre(nombre); if (errNombre) errores.nombre = errNombre;
+    const errApellido = validarApellido(apellido); if (errApellido) errores.apellido = errApellido;
     const errDni = validarDni(regForm.dni); if (errDni) errores.dni = errDni;
     const errTelefono = validarTelefono(regForm.telefono); if (errTelefono) errores.telefono = errTelefono;
-    const errEmail = validarEmail(regForm.email); if (errEmail) errores.email = errEmail;
+    const errEmail = validarEmail(email); if (errEmail) errores.email = errEmail;
     const errPassword = validarPassword(regForm.password); if (errPassword) errores.password = errPassword;
     const errFechaNacimiento = validarFechaNacimiento(regForm.fechaNacimiento); if (errFechaNacimiento) errores.fechaNacimiento = errFechaNacimiento;
     setErroresCampos(errores);
@@ -431,9 +437,9 @@ export default function Registro() {
       const { token, reactivado } = await registroApi.registrar({
         qrToken,
         dni: regForm.dni,
-        nombre: regForm.nombre,
-        apellido: regForm.apellido,
-        email: regForm.email,
+        nombre,
+        apellido,
+        email,
         password: regForm.password,
         telefono: regForm.telefono || undefined,
         fechaNacimiento: regForm.fechaNacimiento || undefined,
@@ -776,16 +782,21 @@ export default function Registro() {
                 {
                   label: 'Nombre *', key: 'nombre', type: 'text', placeholder: 'Tu nombre',
                   filtro: (v: string) => v.replace(/[^A-Za-zÀ-ÖØ-öø-ÿ ]/g, '').slice(0, 35),
+                  limpiar: limpiarTexto,
                 },
                 {
                   label: 'Apellido *', key: 'apellido', type: 'text', placeholder: 'Tu apellido',
                   filtro: (v: string) => v.replace(/[^A-Za-zÀ-ÖØ-öø-ÿ'\- ]/g, '').slice(0, 35),
+                  limpiar: limpiarTexto,
                 },
                 { label: 'Correo electrónico *', key: 'email', type: 'email', placeholder: 'tu@email.com', filtro: filtrarEmail },
-                { label: 'Contraseña *', key: 'password', type: 'password', placeholder: 'Entre 8 y 64 caracteres', filtro: (v: string) => v.slice(0, PASSWORD_MAX) },
-                { label: 'Fecha de Nacimiento', key: 'fechaNacimiento', type: 'date', placeholder: '', max: fechaMaximaNacimiento() },
                 {
-                  label: 'Teléfono', key: 'telefono', type: 'tel', placeholder: 'Ej: 351-228-3143',
+                  label: 'Contraseña *', key: 'password', type: 'password', placeholder: '', ayuda: AYUDA_PASSWORD,
+                  autoComplete: 'new-password', filtro: (v: string) => v.slice(0, PASSWORD_MAX),
+                },
+                { label: 'Fecha de Nacimiento', key: 'fechaNacimiento', type: 'date', placeholder: '', min: FECHA_NACIMIENTO_MIN, max: fechaMaximaNacimiento() },
+                {
+                  label: 'Teléfono', key: 'telefono', type: 'tel', placeholder: PLACEHOLDER_TELEFONO, ayuda: AYUDA_TELEFONO,
                   inputMode: 'numeric' as const,
                   filtro: (v: string) => soloDigitos(v).slice(0, 10),
                   formato: formatearTelefono,
@@ -805,6 +816,8 @@ export default function Registro() {
                       type={f.type}
                       inputMode={f.inputMode}
                       placeholder={f.placeholder}
+                      autoComplete={(f as any).autoComplete}
+                      min={(f as any).min}
                       max={(f as any).max}
                       value={valorMostrado}
                       onChange={e => {
@@ -815,10 +828,16 @@ export default function Registro() {
                       className={inputCls}
                       style={{ ...inputStyle, border: erroresCampos[f.key] ? '1.5px solid #dc2626' : inputStyle.border }}
                       onFocus={e => (e.target.style.borderColor = erroresCampos[f.key] ? '#dc2626' : 'var(--primary)')}
-                      onBlur={e => (e.target.style.borderColor = erroresCampos[f.key] ? '#dc2626' : 'var(--border)')}
+                      onBlur={e => {
+                        e.target.style.borderColor = erroresCampos[f.key] ? '#dc2626' : 'var(--border)';
+                        const limpiar = (f as any).limpiar as ((v: string) => string) | undefined;
+                        if (limpiar) setRegForm(prev => ({ ...prev, [f.key]: limpiar((prev as any)[f.key]) }));
+                      }}
                     />
-                    {erroresCampos[f.key] && (
+                    {erroresCampos[f.key] ? (
                       <p style={{ color: '#dc2626', fontSize: '11px', marginTop: '4px' }}>{erroresCampos[f.key]}</p>
+                    ) : (f as any).ayuda && (
+                      <p style={{ color: 'var(--muted-foreground)', fontSize: '11px', marginTop: '4px', lineHeight: 1.4 }}>{(f as any).ayuda}</p>
                     )}
                   </div>
                 );

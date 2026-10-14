@@ -23,7 +23,7 @@ async function agenteNuevo(clave, dni) {
   await ctx.query(`UPDATE agentes_operativo SET fecha_egreso = now(), grupo_id = NULL
                     WHERE usuario_id IN (SELECT id FROM usuarios WHERE dni = $1) AND fecha_egreso IS NULL`, [dni]);
   const r = await ctx.api('POST', '/usuarios', {
-    dni, nombre: 'Baja', apellido: 'Prueba Automatica', email, password: 'ClaveBaja123', rol: 'agente',
+    dni, nombre: 'Baja', apellido: 'Prueba Automatica', email, password: 'ClaveBaja123!', rol: 'agente',
   });
   motivo(r, 201);
   const id = r.json.usuario.id;

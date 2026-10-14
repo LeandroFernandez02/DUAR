@@ -15,7 +15,8 @@ import PanelTactico from '../components/portal/PanelTactico';
 import MisRecorridos from '../components/portal/MisRecorridos';
 import {
   validarNombre, validarApellido, validarTelefono, validarFechaNacimiento, fechaMaximaNacimiento,
-  soloDigitos, formatearTelefono, formatearDni,
+  soloDigitos, formatearTelefono, formatearDni, limpiarTexto,
+  AYUDA_TELEFONO, PLACEHOLDER_TELEFONO, FECHA_NACIMIENTO_MIN,
 } from '../utils/validacionUsuario';
 
 /** Estados que representan que un agente está actualmente activo en un operativo */
@@ -60,7 +61,8 @@ const ESTADO_CONFIG: Record<string, { label: string; bg: string; color: string; 
 
 function calcAge(fechaNacimiento?: string): string {
   if (!fechaNacimiento) return '—';
-  const birth = new Date(fechaNacimiento);
+  // Al mediodía local: «YYYY-MM-DD» solo se lee como UTC y en Argentina caería el día anterior.
+  const birth = new Date(`${fechaNacimiento.slice(0, 10)}T12:00:00`);
   const today = new Date();
   let age = today.getFullYear() - birth.getFullYear();
   if (
@@ -287,7 +289,8 @@ export default function AgenteDashboard() {
     if (!usuario) return;
     setFormPerfil({
       nombre: usuario.nombre, apellido: usuario.apellido,
-      telefono: usuario.telefono ?? '', fechaNacimiento: usuario.fechaNacimiento ?? '',
+      // El campo de fecha sólo entiende «YYYY-MM-DD» (Testeo 13/10, punto 10).
+      telefono: usuario.telefono ?? '', fechaNacimiento: (usuario.fechaNacimiento ?? '').slice(0, 10),
       institucionId: usuario.institucionId ?? '', dotacionId: usuario.dotacionId ?? '',
       especialidadId: usuario.especialidadId ?? '', grupo_sanguineo: usuario.grupo_sanguineo ?? '',
       alergiaIds: usuario.alergiaIds ?? [],
@@ -298,9 +301,13 @@ export default function AgenteDashboard() {
   };
 
   const guardarPerfil = async () => {
+    // Sin espacios de más (Testeo 13/10, punto 14): lo que se valida es lo que se guarda.
+    const nombre = limpiarTexto(formPerfil.nombre);
+    const apellido = limpiarTexto(formPerfil.apellido);
+    if (nombre !== formPerfil.nombre || apellido !== formPerfil.apellido) setFormPerfil({ ...formPerfil, nombre, apellido });
     const errores: Record<string, string> = {};
-    const errNombre = validarNombre(formPerfil.nombre); if (errNombre) errores.nombre = errNombre;
-    const errApellido = validarApellido(formPerfil.apellido); if (errApellido) errores.apellido = errApellido;
+    const errNombre = validarNombre(nombre); if (errNombre) errores.nombre = errNombre;
+    const errApellido = validarApellido(apellido); if (errApellido) errores.apellido = errApellido;
     const errTelefono = validarTelefono(formPerfil.telefono); if (errTelefono) errores.telefono = errTelefono;
     const errFechaNacimiento = validarFechaNacimiento(formPerfil.fechaNacimiento); if (errFechaNacimiento) errores.fechaNacimiento = errFechaNacimiento;
     setErroresPerfil(errores);
@@ -312,8 +319,8 @@ export default function AgenteDashboard() {
     setGuardandoPerfil(true);
     setErrorPerfil('');
     const resultado = await actualizarPerfilPropio({
-      nombre: formPerfil.nombre,
-      apellido: formPerfil.apellido,
+      nombre,
+      apellido,
       telefono: formPerfil.telefono || undefined,
       fechaNacimiento: formPerfil.fechaNacimiento || undefined,
       institucionId: formPerfil.institucionId || undefined,
@@ -641,6 +648,7 @@ export default function AgenteDashboard() {
                       setFormPerfil({ ...formPerfil, [f.key]: f.filtro(e.target.value) });
                       if (erroresPerfil[f.key]) setErroresPerfil({ ...erroresPerfil, [f.key]: '' });
                     }}
+                    onBlur={() => setFormPerfil(prev => ({ ...prev, [f.key]: limpiarTexto((prev as any)[f.key]) }))}
                     className="w-full px-3 py-2 rounded-lg border outline-none"
                     style={{
                       background: 'var(--input-background)', color: 'var(--foreground)',
@@ -657,7 +665,7 @@ export default function AgenteDashboard() {
                 <input
                   type="tel"
                   inputMode="numeric"
-                  placeholder="Ej: 351-228-3143"
+                  placeholder={PLACEHOLDER_TELEFONO}
                   value={formatearTelefono(formPerfil.telefono)}
                   onChange={e => {
                     setFormPerfil({ ...formPerfil, telefono: soloDigitos(e.target.value).slice(0, 10) });
@@ -670,13 +678,16 @@ export default function AgenteDashboard() {
                     border: erroresPerfil.telefono ? '1px solid #dc2626' : '1px solid var(--border)',
                   }}
                 />
-                {erroresPerfil.telefono && <p style={{ color: '#dc2626', fontSize: '11px', marginTop: '4px' }}>{erroresPerfil.telefono}</p>}
+                {erroresPerfil.telefono
+                  ? <p style={{ color: '#dc2626', fontSize: '11px', marginTop: '4px' }}>{erroresPerfil.telefono}</p>
+                  : <p style={{ color: 'var(--muted-foreground)', fontSize: '11px', marginTop: '4px', lineHeight: 1.4 }}>{AYUDA_TELEFONO}</p>}
               </div>
 
               <div>
                 <label className="block mb-1" style={{ color: 'var(--foreground)', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)' }}>Fecha de Nacimiento</label>
                 <input
                   type="date"
+                  min={FECHA_NACIMIENTO_MIN}
                   max={fechaMaximaNacimiento()}
                   value={formPerfil.fechaNacimiento}
                   onChange={e => {

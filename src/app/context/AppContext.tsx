@@ -404,6 +404,23 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener('duar:sesion-expirada', alExpirar);
   }, []);
 
+  /**
+   * La sesión se comparte entre pestañas (vive en localStorage). Si en otra
+   * pestaña se cierra la sesión o se entra con otra cuenta, esta pestaña no
+   * puede seguir mostrando la vista del usuario anterior mientras sus pedidos
+   * ya viajan con el token del nuevo (Testeo 13/10, punto 11): sin sesión, va
+   * al login; con otra cuenta, se recarga y entra como esa cuenta, con su vista.
+   */
+  useEffect(() => {
+    const alCambiarEnOtraPestana = (e: StorageEvent) => {
+      if (e.key !== null && e.key !== 'duar-token') return;   // null = se vació el almacenamiento
+      if (!getToken()) { setUsuario(null); return; }
+      window.location.reload();
+    };
+    window.addEventListener('storage', alCambiarEnOtraPestana);
+    return () => window.removeEventListener('storage', alCambiarEnOtraPestana);
+  }, []);
+
   /* ── Operativos CRUD ── */
 
   const addOperativo = useCallback((op: Omit<Operativo, 'id'>): string => {

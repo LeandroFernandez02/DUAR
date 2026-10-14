@@ -18,13 +18,34 @@ import * as Auditoria from '../models/auditoria.model.js';
 import * as AgenteOperativo from '../models/agenteOperativo.model.js';
 import * as TokenEmail from '../models/tokenEmail.model.js';
 import { enviarConfirmacion } from '../services/email.service.js';
-import { validarDatosPersonales } from '../utils/validaciones.js';
+import { validarDatosPersonales, normalizarDatosPersonales } from '../utils/validaciones.js';
 import { query, withTransaction } from '../config/db.js';
 
 const ENTIDAD = 'usuarios';
 const FRONTEND_URL = process.env.FRONTEND_URL ?? 'http://localhost:5173';
 
 const ADMIN = 'administrador';
+
+/** Mensajes de duplicado (Testeo 13/10, punto 7): iguales al crear y al editar. */
+const DUPLICADO = {
+  dni: 'Ya existe un usuario registrado con el DNI ingresado. Verificá los datos e intentá nuevamente.',
+  email: 'Ya existe un usuario registrado con el correo ingresado. Verificá los datos e intentá nuevamente.',
+};
+
+/**
+ * Emite el enlace de confirmación y manda el correo. Se espera el envío antes
+ * de responder: en Vercel, lo que queda corriendo después de la respuesta se
+ * corta (así se perdían los correos). `enviarConfirmacion` nunca lanza.
+ */
+async function mandarConfirmacion(usuario) {
+  const tokenEmail = await TokenEmail.emitir(usuario.id, 'CONFIRMACION');
+  const { enviado } = await enviarConfirmacion({
+    para: usuario.email,
+    nombre: usuario.nombre,
+    url: `${FRONTEND_URL}/confirmar-email/${tokenEmail}`,
+  });
+  return enviado;
+}
 
 /** Rol del catálogo (id y nombre en minúsculas) a partir del nombre o del id; null si no existe. */
 async function resolverRol({ rolId, rol }) {
@@ -86,7 +107,7 @@ export async function obtener(req, res, next) {
  */
 export async function crear(req, res, next) {
   try {
-    const b = req.body ?? {};
+    const b = normalizarDatosPersonales(req.body ?? {});
     if (!b.dni || !b.nombre || !b.apellido || !b.email || !b.password) {
       return res.status(400).json({ error: 'DNI, nombre, apellido, email y contraseña son obligatorios.' });
     }
@@ -98,10 +119,8 @@ export async function crear(req, res, next) {
 
     const duplicado = await Usuario.existeDniOEmail(b.dni, b.email);
     if (duplicado.dni || duplicado.email) {
-      return res.status(409).json({
-        error: 'El usuario ya se encuentra registrado.',
-        campo: duplicado.dni ? 'dni' : 'email',
-      });
+      const campo = duplicado.dni ? 'dni' : 'email';
+      return res.status(409).json({ error: DUPLICADO[campo], campo, errores: { [campo]: DUPLICADO[campo] } });
     }
 
     const rol = await resolverRol(b);
@@ -129,7 +148,11 @@ export async function crear(req, res, next) {
       ip: req.ip,
     });
 
-    res.status(201).json({ usuario: creado, reactivado: !!eliminado });
+    // CU-05 paso 5: la cuenta nace Pendiente y recibe el correo de confirmación
+    // (Testeo 13/10, punto 5: antes sólo salía con el botón de reenviar).
+    const correoEnviado = creado.estado === 'PENDIENTE' ? await mandarConfirmacion(creado) : false;
+
+    res.status(201).json({ usuario: creado, reactivado: !!eliminado, correoEnviado });
   } catch (err) { next(err); }
 }
 
@@ -145,7 +168,7 @@ export async function actualizar(req, res, next) {
     const previo = await Usuario.buscarPorId(id);
     if (!previo || !visiblePara(req, previo)) return noEncontrado(res);
 
-    const b = req.body ?? {};
+    const b = normalizarDatosPersonales(req.body ?? {});
     const propio = id === req.usuario.id;
 
     const errores = validarDatosPersonales(b);
@@ -155,12 +178,13 @@ export async function actualizar(req, res, next) {
 
     // Cuentan también las cuentas eliminadas: su DNI y su correo quedan reservados
     // para su dueño, que los recupera reactivando su cuenta (CU-07, 05/10).
-    if (b.email && b.email.toLowerCase() !== previo.email.toLowerCase()) {
+    const cambiaEmail = !!b.email && b.email.toLowerCase() !== previo.email.toLowerCase();
+    if (cambiaEmail) {
       const { rows } = await query(
         `SELECT id FROM usuarios WHERE lower(email) = lower($1) AND id <> $2`,
         [b.email, id]
       );
-      if (rows.length) return res.status(409).json({ error: 'Ese email ya está en uso.', campo: 'email' });
+      if (rows.length) return res.status(409).json({ error: DUPLICADO.email, campo: 'email', errores: { email: DUPLICADO.email } });
     }
 
     if (b.dni && b.dni !== previo.dni) {
@@ -168,10 +192,11 @@ export async function actualizar(req, res, next) {
         `SELECT id FROM usuarios WHERE dni = $1 AND id <> $2`,
         [b.dni, id]
       );
-      if (rows.length) return res.status(409).json({ error: 'Ese DNI ya está en uso.', campo: 'dni' });
+      if (rows.length) return res.status(409).json({ error: DUPLICADO.dni, campo: 'dni', errores: { dni: DUPLICADO.dni } });
     }
 
     const campos = { ...b };
+    delete campos.emailConfirmado;   // sólo lo cambia el sistema (confirmación o cambio de correo)
 
     // Este PUT genérico NO es la vía para dar de baja a alguien: eso es CU-07
     // (DELETE), que valida autobloqueo y último administrador. Si se dejara
@@ -183,10 +208,24 @@ export async function actualizar(req, res, next) {
           error: 'Para dar de baja a un usuario usá la acción "Eliminar usuario" (CU-07), no la edición.',
         });
       }
-      if (!['ACTIVO', 'INACTIVO'].includes(estado)) {
+      // Una cuenta Pendiente pasa a Activo sólo cuando la persona confirma su
+      // correo (Testeo 13/10, puntos 3 y 4): su estado no se elige a mano, pero
+      // el resto de sus datos sí se edita.
+      if (previo.estado === 'PENDIENTE' || estado === 'PENDIENTE') {
+        if (estado !== previo.estado) {
+          return res.status(409).json({
+            error: previo.estado === 'PENDIENTE'
+              ? 'La cuenta está pendiente: pasa a Activo cuando la persona confirma su correo. Mientras tanto su estado no se cambia a mano.'
+              : 'Una cuenta queda Pendiente sólo al crearse o al cambiar su correo.',
+            motivo: 'estado_pendiente',
+          });
+        }
+        delete campos.estado;
+      } else if (!['ACTIVO', 'INACTIVO'].includes(estado)) {
         return res.status(400).json({ error: `Estado inválido: "${campos.estado}".` });
+      } else {
+        campos.estado = estado;
       }
-      campos.estado = estado;
     }
     const desactiva = campos.estado === 'INACTIVO' && previo.estado !== 'INACTIVO';
     if (desactiva && propio) {
@@ -215,6 +254,14 @@ export async function actualizar(req, res, next) {
     }
     if (rolNuevo) campos.rolId = rolNuevo.id;
 
+    // Correo nuevo = correo sin confirmar (Testeo 13/10, punto 8): la cuenta
+    // vuelve a Pendiente y la confirmación va a la dirección nueva. Una cuenta
+    // Inactiva sigue Inactiva (confirmar el correo no la reactiva).
+    if (cambiaEmail) {
+      campos.emailConfirmado = false;
+      if (previo.estado !== 'INACTIVO' && campos.estado !== 'INACTIVO') campos.estado = 'PENDIENTE';
+    }
+
     let actualizado = await Usuario.actualizar(id, campos);
 
     // Cambio de contraseña: se hashea aparte, nunca viaja ni se devuelve.
@@ -239,7 +286,13 @@ export async function actualizar(req, res, next) {
       ip: req.ip,
     });
 
-    res.json({ usuario: actualizado });
+    let correoEnviado = false;
+    if (cambiaEmail) {
+      await TokenEmail.anularPendientes(id, 'CONFIRMACION');
+      correoEnviado = await mandarConfirmacion(actualizado);
+    }
+
+    res.json({ usuario: actualizado, cambioEmail: cambiaEmail, correoEnviado });
   } catch (err) { next(err); }
 }
 

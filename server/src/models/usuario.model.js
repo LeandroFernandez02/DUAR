@@ -30,7 +30,7 @@ export const CAMPOS = `
   u.email,
   u.telefono,
   u.genero,
-  u.fecha_nacimiento   AS "fechaNacimiento",
+  to_char(u.fecha_nacimiento, 'YYYY-MM-DD') AS "fechaNacimiento",   -- texto: el campo de fecha no entiende un Date con hora
   u.rol_id             AS "rolId",
   r.nombre             AS "rol",
   u.institucion_id     AS "institucionId",
@@ -167,7 +167,7 @@ export async function actualizar(id, campos) {
     fechaNacimiento: 'fecha_nacimiento', genero: 'genero', rolId: 'rol_id',
     institucionId: 'institucion_id', dotacionId: 'dotacion_id',
     especialidadId: 'especialidad_id', grupoSanguineo: 'grupo_sanguineo',
-    estado: 'estado',
+    estado: 'estado', emailConfirmado: 'email_confirmado',
   };
 
   const sets = [];

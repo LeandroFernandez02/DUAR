@@ -9,7 +9,8 @@ import {
   validarNombre, validarApellido, validarDni, validarTelefono,
   validarFechaNacimiento, fechaMaximaNacimiento,
   validarEmail, validarPassword, filtrarEmail, PASSWORD_MAX,
-  soloDigitos, formatearDni, formatearTelefono,
+  soloDigitos, formatearDni, formatearTelefono, limpiarTexto,
+  AYUDA_PASSWORD, AYUDA_TELEFONO, PLACEHOLDER_TELEFONO, FECHA_NACIMIENTO_MIN,
 } from '../utils/validacionUsuario';
 
 /**
@@ -27,7 +28,8 @@ function mapearUsuario(u: UsuarioApi): Usuario {
     password: '',
     rol: u.rol.toLowerCase() as Rol,
     telefono: u.telefono ?? undefined,
-    fechaNacimiento: u.fechaNacimiento ?? undefined,
+    // El campo de fecha sólo entiende «YYYY-MM-DD» (Testeo 13/10, punto 10).
+    fechaNacimiento: u.fechaNacimiento ? u.fechaNacimiento.slice(0, 10) : undefined,
     institucionId: u.institucionId ?? undefined,
     dotacionId: u.dotacionId ?? undefined,
     especialidadId: u.especialidadId ?? undefined,
@@ -103,11 +105,14 @@ export default function Usuarios() {
   });
 
   const [erroresForm, setErroresForm] = useState<Record<string, string>>({});
+  /** Error del servidor al guardar: se muestra dentro del modal, no detrás (Testeo 13/10, punto 6). */
+  const [errorModal, setErrorModal] = useState('');
 
   const openCreate = () => {
     setForm(emptyForm);
     setSelected(null);
     setErroresForm({});
+    setErrorModal('');
     setModal('create');
   };
 
@@ -141,20 +146,40 @@ export default function Usuarios() {
       grupo_sanguineo: u.grupo_sanguineo || '', estado: u.estado,
     });
     setErroresForm({});
+    setErrorModal('');
     setModal('edit');
   };
 
+  /** Una cuenta Pendiente pasa a Activo sólo al confirmar su correo: su estado no se elige (Testeo 13/10, punto 4). */
+  const editandoPendiente = modal === 'edit' && selected?.estado === 'pendiente';
+  /** Al editar, cambiar el correo obliga a confirmarlo de nuevo (Testeo 13/10, punto 8). */
+  const cambiaEmail = modal === 'edit' && !!selected && form.email.trim().toLowerCase() !== selected.email.toLowerCase();
+
   /** CU-05 Crear / CU-06 Modificar — persisten contra PostgreSQL. */
   const handleSave = async () => {
-    if (!form.nombre || !form.apellido || !form.email || !form.dni) return;
-    setErrorApi('');
+    // Sin espacios de más (Testeo 13/10, punto 14): lo que se valida es lo que se guarda.
+    const nombre = limpiarTexto(form.nombre);
+    const apellido = limpiarTexto(form.apellido);
+    const email = form.email.trim();
+    if (nombre !== form.nombre || apellido !== form.apellido || email !== form.email) setForm({ ...form, nombre, apellido, email });
+    setErrorModal('');
+    const obligatorios: Record<string, string> = {};
+    if (!form.dni) obligatorios.dni = 'Completá el DNI.';
+    if (!nombre) obligatorios.nombre = 'Completá el nombre.';
+    if (!apellido) obligatorios.apellido = 'Completá el apellido.';
+    if (!email) obligatorios.email = 'Completá el correo.';
+    if (Object.keys(obligatorios).length > 0) {
+      setErroresForm(obligatorios);
+      setErrorModal('Completá los campos obligatorios (*).');
+      return;
+    }
 
     const errores: Record<string, string> = {};
-    const errNombre = validarNombre(form.nombre); if (errNombre) errores.nombre = errNombre;
-    const errApellido = validarApellido(form.apellido); if (errApellido) errores.apellido = errApellido;
+    const errNombre = validarNombre(nombre); if (errNombre) errores.nombre = errNombre;
+    const errApellido = validarApellido(apellido); if (errApellido) errores.apellido = errApellido;
     const errDni = validarDni(form.dni); if (errDni) errores.dni = errDni;
     const errTelefono = validarTelefono(form.telefono); if (errTelefono) errores.telefono = errTelefono;
-    const errEmail = validarEmail(form.email); if (errEmail) errores.email = errEmail;
+    const errEmail = validarEmail(email); if (errEmail) errores.email = errEmail;
     // Alta: la contraseña es obligatoria (antes se usaba '1234' por defecto,
     // que ni cumple el mínimo de 8). Edición: vacía = "no cambiarla" (CU-06 paso 5).
     if (modal === 'create' || form.password) {
@@ -163,15 +188,15 @@ export default function Usuarios() {
     const errFechaNacimiento = validarFechaNacimiento(form.fechaNacimiento); if (errFechaNacimiento) errores.fechaNacimiento = errFechaNacimiento;
     setErroresForm(errores);
     if (Object.keys(errores).length > 0) {
-      setErrorApi('Revisá los campos marcados en rojo.');
+      setErrorModal('Revisá los campos marcados en rojo.');
       return;
     }
 
     const datos = {
       dni: form.dni,
-      nombre: form.nombre,
-      apellido: form.apellido,
-      email: form.email,
+      nombre,
+      apellido,
+      email,
       rol: form.rol,
       telefono: form.telefono || undefined,
       fechaNacimiento: form.fechaNacimiento || undefined,
@@ -191,27 +216,40 @@ export default function Usuarios() {
     try {
       if (modal === 'create') {
         // El backend hashea con bcrypt (CU-05 paso 4); acá nunca se guarda en claro.
-        const { usuario: alta, reactivado } = await usuariosApi.crear({ ...datos, password: form.password });
+        const { usuario: alta, reactivado, correoEnviado } = await usuariosApi.crear({ ...datos, password: form.password });
         // CU-07 (05/10): el DNI era de una cuenta eliminada → se recuperó esa misma, con su historial.
         if (reactivado) {
           toast.success(`Se reactivó la cuenta de ${alta.nombre} ${alta.apellido}, que estaba eliminada: conserva su historial de operativos.`);
         }
+        avisarCorreo(alta.email, correoEnviado);
       } else if (selected) {
-        await usuariosApi.actualizar(selected.id, {
+        const r = await usuariosApi.actualizar(selected.id, {
           ...datos,
-          // CU-06 paso 5: la contraseña sólo se sobrescribe si se cargó una nueva.
+          // CU-06 paso 4: la contraseña sólo se sobrescribe si se cargó una nueva.
           ...(form.password ? { password: form.password } : {}),
-          // Otro campo que nunca se enviaba: el toggle Activo/Inactivo del
-          // formulario no hacía nada al guardar. La BD usa MAYÚSCULAS.
-          estado: form.estado.toUpperCase(),
+          // Pendiente no se elige a mano: no se manda (Testeo 13/10, puntos 3 y 4).
+          ...(editandoPendiente ? {} : { estado: form.estado.toUpperCase() }),
         });
+        if (r.cambioEmail) avisarCorreo(r.usuario.email, r.correoEnviado);
       }
       setModal(null);
       await cargarUsuarios();
     } catch (err) {
-      // Duplicado de DNI/email (CU-05 paso 3.1) u otro rechazo del servidor
-      setErrorApi(err instanceof ApiError ? err.message : 'No se pudo guardar el usuario.');
+      // Duplicado de DNI/correo (CU-05 3.1, CU-06 5.1) u otro rechazo del servidor: dentro del modal.
+      if (err instanceof ApiError) {
+        const campos = err.datos.errores as Record<string, string> | undefined;
+        if (campos) setErroresForm(prev => ({ ...prev, ...campos }));
+        setErrorModal(err.message);
+      } else {
+        setErrorModal('No se pudo guardar el usuario.');
+      }
     }
+  };
+
+  /** Resultado del correo de confirmación (Testeo 13/10, puntos 5 y 8). */
+  const avisarCorreo = (para: string, enviado?: boolean) => {
+    if (enviado) toast.success(`Se envió el correo de confirmación a ${para}. La cuenta queda Pendiente hasta que lo confirme.`);
+    else toast.warning(`La cuenta quedó Pendiente, pero el correo de confirmación a ${para} no salió. Reenvialo desde el listado.`);
   };
 
   /** CU-07 Eliminar — baja lógica + invalidación de sesiones, todo en el backend. */
@@ -282,8 +320,13 @@ export default function Usuarios() {
       <div className="flex gap-3 mb-5 flex-wrap">
         <div className="relative flex-1 min-w-[200px]">
           <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--muted-foreground)' }} />
+          {/* type="search" y autocompletar apagado: el navegador lo tomaba por un
+              campo de correo y lo llenaba con el del modal (Testeo 13/10, punto 13). */}
           <input
-            type="text"
+            type="search"
+            name="buscar-usuarios"
+            autoComplete="off"
+            aria-label="Buscar usuarios"
             placeholder="Buscar por nombre, email, DNI..."
             value={search}
             onChange={e => setSearch(e.target.value)}
@@ -549,24 +592,38 @@ export default function Usuarios() {
               {[
                 {
                   label: 'DNI *', key: 'dni', type: 'text', span: false,
-                  inputMode: 'numeric' as const,
+                  inputMode: 'numeric' as const, autoComplete: 'off',
                   filtro: (v: string) => soloDigitos(v).slice(0, 8),
                   formato: formatearDni,
                 },
                 {
-                  label: 'Nombre *', key: 'nombre', type: 'text', span: false,
+                  label: 'Nombre *', key: 'nombre', type: 'text', span: false, autoComplete: 'off',
                   filtro: (v: string) => v.replace(/[^A-Za-zÀ-ÖØ-öø-ÿ ]/g, '').slice(0, 35),
+                  limpiar: limpiarTexto,
                 },
                 {
-                  label: 'Apellido *', key: 'apellido', type: 'text', span: false,
+                  label: 'Apellido *', key: 'apellido', type: 'text', span: false, autoComplete: 'off',
                   filtro: (v: string) => v.replace(/[^A-Za-zÀ-ÖØ-öø-ÿ'\- ]/g, '').slice(0, 35),
+                  limpiar: limpiarTexto,
                 },
-                { label: 'Email *', key: 'email', type: 'email', span: true, filtro: filtrarEmail },
-                { label: modal === 'create' ? 'Contraseña *' : 'Contraseña (vacía = no cambiarla)', key: 'password', type: 'password', span: false, filtro: (v: string) => v.slice(0, PASSWORD_MAX) },
-                { label: 'Fecha de Nacimiento', key: 'fechaNacimiento', type: 'date', span: false, max: fechaMaximaNacimiento() },
+                {
+                  label: 'Email *', key: 'email', type: 'email', span: true, autoComplete: 'off', filtro: filtrarEmail,
+                  ayuda: cambiaEmail ? 'Al cambiar el correo, la cuenta vuelve a Pendiente y se envía un correo de confirmación a la dirección nueva.' : undefined,
+                },
+                {
+                  // La contraseña actual no se puede mostrar: se guarda cifrada y no
+                  // tiene vuelta atrás (Testeo 13/10, punto 9).
+                  label: modal === 'create' ? 'Contraseña *' : 'Contraseña nueva', key: 'password', type: 'password', span: true,
+                  autoComplete: 'new-password', filtro: (v: string) => v.slice(0, PASSWORD_MAX),
+                  placeholder: modal === 'create' ? '' : 'Sin cambios',
+                  ayuda: modal === 'create'
+                    ? AYUDA_PASSWORD
+                    : `La contraseña actual no se muestra porque se guarda cifrada. Escribí una sólo si querés cambiarla: ${AYUDA_PASSWORD.charAt(0).toLowerCase()}${AYUDA_PASSWORD.slice(1)}`,
+                },
+                { label: 'Fecha de Nacimiento', key: 'fechaNacimiento', type: 'date', span: false, autoComplete: 'off', min: FECHA_NACIMIENTO_MIN, max: fechaMaximaNacimiento() },
                 {
                   label: 'Teléfono', key: 'telefono', type: 'tel', span: false,
-                  inputMode: 'numeric' as const,
+                  inputMode: 'numeric' as const, autoComplete: 'off', placeholder: PLACEHOLDER_TELEFONO, ayuda: AYUDA_TELEFONO,
                   filtro: (v: string) => soloDigitos(v).slice(0, 10),
                   formato: formatearTelefono,
                 },
@@ -581,6 +638,10 @@ export default function Usuarios() {
                     <input
                       type={f.type}
                       inputMode={f.inputMode}
+                      name={`usuario-${f.key}`}
+                      autoComplete={f.autoComplete}
+                      placeholder={(f as any).placeholder}
+                      min={(f as any).min}
                       max={(f as any).max}
                       value={valorMostrado}
                       onChange={e => {
@@ -588,11 +649,14 @@ export default function Usuarios() {
                         setForm({ ...form, [f.key]: v });
                         if (erroresForm[f.key]) setErroresForm({ ...erroresForm, [f.key]: '' });
                       }}
+                      onBlur={(f as any).limpiar ? () => setForm(prev => ({ ...prev, [f.key]: (f as any).limpiar((prev as any)[f.key]) })) : undefined}
                       className="w-full px-3 py-2 rounded-lg border outline-none"
                       style={{ ...fieldStyle, border: erroresForm[f.key] ? '1px solid #dc2626' : fieldStyle.border }}
                     />
-                    {erroresForm[f.key] && (
+                    {erroresForm[f.key] ? (
                       <p style={{ color: '#dc2626', fontSize: '11px', marginTop: '4px' }}>{erroresForm[f.key]}</p>
+                    ) : (f as any).ayuda && (
+                      <p style={{ color: 'var(--muted-foreground)', fontSize: '11px', marginTop: '4px', lineHeight: 1.4 }}>{(f as any).ayuda}</p>
                     )}
                   </div>
                 );
@@ -716,7 +780,22 @@ export default function Usuarios() {
               </div>
 
               {/* Estado: solo visible al editar, nunca al crear */}
-              {modal === 'edit' && (
+              {modal === 'edit' && editandoPendiente && (
+                <div>
+                  <label className="block mb-1" style={{ color: 'var(--foreground)', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)' }}>Estado</label>
+                  <div
+                    className="w-full px-3 py-2 rounded-lg border"
+                    style={{ ...fieldStyle, opacity: 0.7, cursor: 'not-allowed' }}
+                    title="Pasa a Activo cuando la persona confirma su correo"
+                  >
+                    Pendiente
+                  </div>
+                  <p className="mt-1" style={{ fontSize: 11, color: 'var(--muted-foreground)', lineHeight: 1.4 }}>
+                    Pasa a Activo cuando la persona confirma su correo. Si no le llegó, reenvialo desde el listado.
+                  </p>
+                </div>
+              )}
+              {modal === 'edit' && !editandoPendiente && (
                 <div>
                   <label className="block mb-1" style={{ color: 'var(--foreground)', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)' }}>Estado</label>
                   <select
@@ -733,6 +812,17 @@ export default function Usuarios() {
                 </div>
               )}
             </div>
+
+            {errorModal && (
+              <div
+                role="alert"
+                className="flex items-start gap-2.5 p-3 rounded-lg mt-5"
+                style={{ background: '#fee2e2', border: '1px solid #fecaca', color: '#b91c1c', fontSize: 'var(--text-base)' }}
+              >
+                <AlertCircle size={16} style={{ marginTop: 1, flexShrink: 0 }} />
+                <span>{errorModal}</span>
+              </div>
+            )}
 
             <div className="flex justify-end gap-3 mt-5">
               <button onClick={() => setModal(null)} className="px-4 py-2 rounded-[var(--radius-button)] border" style={{ color: 'var(--foreground)', borderColor: 'var(--border)', background: 'transparent', fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-semibold)' }}>

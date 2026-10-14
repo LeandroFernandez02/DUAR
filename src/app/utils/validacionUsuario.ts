@@ -18,6 +18,13 @@ export const RE_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
 export const EMAIL_MAX = 150;      // usuarios.email es varchar(150)
 export const PASSWORD_MIN = 8;
 export const PASSWORD_MAX = 64;    // bcrypt sólo usa los primeros 72 bytes: más largo no suma seguridad
+/** Nacidos antes de esto es un año mal tipeado, no una persona (Testeo 13/10, punto 10). */
+export const FECHA_NACIMIENTO_MIN = '1900-01-01';
+
+/** Leyendas que acompañan a los campos (Testeo 13/10, puntos 1 y 2). */
+export const AYUDA_PASSWORD = 'Entre 8 y 64 caracteres, con al menos una letra, un número y un carácter especial (por ejemplo ! ? # $ % . -).';
+export const AYUDA_TELEFONO = '10 números: el código de área sin el 0 y el número sin el 15.';
+export const PLACEHOLDER_TELEFONO = 'Ej: 351-228-3143';
 
 export function validarNombre(v: string): string | null {
   const t = v.trim();
@@ -50,10 +57,19 @@ export function validarEmail(v: string): string | null {
   return null;
 }
 
+/** Misma regla que `validarPassword` del backend: largo, una letra, un número y un carácter especial. */
 export function validarPassword(v: string): string | null {
   if (v.length < PASSWORD_MIN) return `La contraseña debe tener al menos ${PASSWORD_MIN} caracteres.`;
   if (v.length > PASSWORD_MAX) return `La contraseña puede tener hasta ${PASSWORD_MAX} caracteres.`;
+  if (!/\p{L}/u.test(v)) return 'La contraseña tiene que tener al menos una letra.';
+  if (!/\p{N}/u.test(v)) return 'La contraseña tiene que tener al menos un número.';
+  if (!/[^\p{L}\p{N}\s]/u.test(v)) return 'La contraseña tiene que tener al menos un carácter especial (por ejemplo ! ? # $ % . -).';
   return null;
+}
+
+/** Sin espacios al principio ni al final y uno solo entre palabras (Testeo 13/10, punto 14). Para el `onBlur` y antes de guardar. */
+export function limpiarTexto(v: string): string {
+  return v.trim().replace(/\s+/g, ' ');
 }
 
 /** Sin espacios (ni pegados) y con el tope de la columna — para el `onChange` de campos de correo. */
@@ -64,8 +80,11 @@ export function filtrarEmail(v: string): string {
 /** La fecha de nacimiento es opcional: sólo se valida si el usuario cargó algo. */
 export function validarFechaNacimiento(v: string): string | null {
   if (!v) return null;
-  const nacimiento = new Date(v);
-  if (Number.isNaN(nacimiento.getTime())) return 'Fecha inválida.';
+  // Al mediodía local: «YYYY-MM-DD» solo se lee como UTC y en Argentina caería el día anterior.
+  const nacimiento = new Date(`${v.slice(0, 10)}T12:00:00`);
+  if (!/^\d{4}-\d{2}-\d{2}$/.test(v.slice(0, 10)) || Number.isNaN(nacimiento.getTime()) || v.slice(0, 10) < FECHA_NACIMIENTO_MIN) {
+    return 'Fecha inválida.';
+  }
   const hoy = new Date();
   let edad = hoy.getFullYear() - nacimiento.getFullYear();
   if (

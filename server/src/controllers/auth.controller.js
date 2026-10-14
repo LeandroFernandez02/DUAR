@@ -11,7 +11,7 @@ import * as TokenEmail from '../models/tokenEmail.model.js';
 import * as Auditoria from '../models/auditoria.model.js';
 import * as Intentos from '../models/intentosLogin.model.js';
 import { enviarRecuperacion, enviarConfirmacion } from '../services/email.service.js';
-import { validarDatosPersonales } from '../utils/validaciones.js';
+import { validarDatosPersonales, normalizarDatosPersonales, validarPassword } from '../utils/validaciones.js';
 import { query } from '../config/db.js';
 
 const HORAS_SESION = Number(process.env.SESION_HORAS ?? 12);
@@ -124,8 +124,11 @@ export async function confirmarEmail(req, res, next) {
     if (!acceso) {
       return res.status(410).json({ error: 'Enlace inválido o vencido.', motivo: 'token_invalido' });
     }
+    // Se devuelve de quién es la cuenta: si en ese navegador hay abierta la
+    // sesión de otra persona, la pantalla lo avisa (Testeo 13/10, punto 11).
+    const { rows: [cuenta] } = await query(`SELECT email FROM usuarios WHERE id = $1`, [acceso.usuarioId]);
     if (acceso.usado) {
-      return res.json({ estado: 'ya_confirmado' });
+      return res.json({ estado: 'ya_confirmado', email: cuenta?.email ?? null });
     }
 
     // PENDIENTE → ACTIVO acá. El CASE protege a alguien que un admin ya haya
@@ -149,7 +152,7 @@ export async function confirmarEmail(req, res, next) {
       ip: req.ip,
     });
 
-    res.json({ estado: 'ok' });
+    res.json({ estado: 'ok', email: cuenta?.email ?? null });
   } catch (err) { next(err); }
 }
 
@@ -213,10 +216,8 @@ export async function restablecerContrasena(req, res, next) {
     if (!token || !password) {
       return res.status(400).json({ error: 'Faltan datos.' });
     }
-    const largo = String(password).length;
-    if (largo < 8 || largo > 64) {
-      return res.status(400).json({ error: 'La contraseña debe tener entre 8 y 64 caracteres.' });
-    }
+    const errorPassword = validarPassword(password);   // misma regla que al crear la cuenta (Testeo 13/10, punto 2)
+    if (errorPassword) return res.status(400).json({ error: errorPassword });
 
     const acceso = await TokenEmail.validar(token, 'RECUPERACION');
     if (!acceso || acceso.usado) {
@@ -287,7 +288,7 @@ export async function reenviarConfirmacion(req, res, next) {
  */
 export async function actualizarMisDatos(req, res, next) {
   try {
-    const b = req.body ?? {};
+    const b = normalizarDatosPersonales(req.body ?? {});
     const campos = {};
     for (const clave of [
       'nombre', 'apellido', 'telefono', 'fechaNacimiento', 'genero',

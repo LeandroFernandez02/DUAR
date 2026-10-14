@@ -5,12 +5,12 @@ import {
   CheckCircle, ArrowLeft, XCircle, RefreshCw,
 } from 'lucide-react';
 import { authApi, ApiError } from '../services/api';
-import { PASSWORD_MIN, PASSWORD_MAX } from '../utils/validacionUsuario';
+import { validarPassword, AYUDA_PASSWORD, PASSWORD_MAX } from '../utils/validacionUsuario';
 
 type FormStep = 'form' | 'success';
 
 function isStrongEnough(pwd: string) {
-  return pwd.length >= PASSWORD_MIN && pwd.length <= PASSWORD_MAX;
+  return validarPassword(pwd) === null;   // misma regla que al crear la cuenta (Testeo 13/10, punto 2)
 }
 
 // ─── Shared layout wrapper ─────────────────────────────────────────────────
@@ -372,7 +372,7 @@ export default function RecuperarContrasena() {
           fontFamily: 'var(--font-family-primary)',
         }}
       >
-        Creá una contraseña nueva para tu cuenta. Debe tener al menos 8 caracteres.
+        Creá una contraseña nueva para tu cuenta. {AYUDA_PASSWORD}
       </p>
 
       <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
@@ -414,7 +414,7 @@ export default function RecuperarContrasena() {
               maxLength={PASSWORD_MAX}
               onChange={e => { setPwd(e.target.value); }}
               onBlur={() => setTouched(true)}
-              placeholder="Mínimo 8 caracteres"
+              placeholder=""
               className="w-full pl-9 pr-10 py-2.5 rounded-lg border outline-none transition-all"
               style={{
                 background: weakPwd ? 'rgba(220,38,38,0.04)' : 'var(--card)',
@@ -445,7 +445,7 @@ export default function RecuperarContrasena() {
               role="alert"
             >
               <AlertCircle size={13} style={{ flexShrink: 0 }} />
-              <span>La contraseña debe tener al menos 8 caracteres.</span>
+              <span>{validarPassword(pwd)}</span>
             </div>
           )}
         </div>
