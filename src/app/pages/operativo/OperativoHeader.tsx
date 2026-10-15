@@ -1,5 +1,4 @@
 import { useState } from 'react';
-import { useNavigate } from 'react-router';
 import { differenceInDays } from 'date-fns';
 import {
   MapPin, Calendar, Clock, Cloud, Target,
@@ -9,6 +8,7 @@ import StatusBadge from '../../components/shared/StatusBadge';
 import OperativoInfoModal from '../../components/shared/OperativoInfoModal';
 import ObjetivoModal from '../../components/shared/ObjetivoModal';
 import { QRModal } from '../../components/shared/QRModal';
+import InformeModal from '../../components/shared/InformeModal';
 import PuestoComando from '../../components/shared/PuestoComando';
 import { Operativo } from '../../data/mockData';
 import { climaMock } from '../../data/mockData';
@@ -31,6 +31,7 @@ export default function OperativoHeader({ operativo }: Props) {
   const [showInfoModal, setShowInfoModal] = useState(false);
   const [showObjetivoModal, setShowObjetivoModal] = useState(false);
   const [showQRModal, setShowQRModal] = useState(false);
+  const [showInformeModal, setShowInformeModal] = useState(false);
 
   // Los botones de la derecha se pueden achicar a puros íconos (02/10) y la
   // elección se recuerda en este navegador. Sin almacenamiento, arranca grande.
@@ -47,7 +48,6 @@ export default function OperativoHeader({ operativo }: Props) {
   const icono = compacto ? 15 : 13;
 
   const hasObjetivo = !!operativo.tieneObjetivoBuscado;
-  const navigate = useNavigate();
 
   return (
     <>
@@ -194,9 +194,10 @@ export default function OperativoHeader({ operativo }: Props) {
 
           {/* Informe (CU-41). Pasó del sidebar a botón según la Lista de Casos
               de Uso del 21/09, que además sacó el Portal de Familia (ex CU-44)
-              del alcance de la tesis: este lugar era el del botón "Familia". */}
+              del alcance de la tesis: este lugar era el del botón "Familia".
+              Desde el 15/10 abre un modal, para no sacar al coordinador de lo que estaba haciendo. */}
           <button
-            onClick={() => navigate(`/operativo/${operativo.id}/informe`)}
+            onClick={() => setShowInformeModal(true)}
             title="Generar el informe del operativo"
             className={`flex items-center gap-1.5 ${relleno} py-1.5 rounded-[var(--radius-button)] transition-all`}
             style={{
@@ -270,6 +271,9 @@ export default function OperativoHeader({ operativo }: Props) {
       )}
       {showQRModal && (
         <QRModal operativo={operativo} onClose={() => setShowQRModal(false)} />
+      )}
+      {showInformeModal && (
+        <InformeModal operativoId={operativo.id} onClose={() => setShowInformeModal(false)} />
       )}
     </>
   );

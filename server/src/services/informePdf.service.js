@@ -15,7 +15,7 @@ import { fileURLToPath } from 'url';
 import pdfmake from 'pdfmake';
 import sharp from 'sharp';
 import * as Storage from './storage.service.js';
-import { mapaSvg } from './informeMapa.js';
+import { mapaSvg, ATRIBUCION } from './informeMapa.js';
 import { coord, fmtDistancia, codigoOperativo } from '../models/informe.model.js';
 import { ETIQUETA_GRUPO } from '../models/estados.js';
 
@@ -317,13 +317,13 @@ export async function generarPdf(d, meta) {
 
   /* 5 · Mapa */
   const anteriores = d.puntoCero.filter(h => h.desdeLat != null).map(h => ({ lat: h.desdeLat, lng: h.desdeLng }));
-  const mapa = mapaSvg({
+  const mapa = await mapaSvg({
     poligonos: d.poligonos, tracks: d.tracks, marcadores: d.marcadores.filter(m => m.clase !== 'HALLAZGO'),
     hallazgos: d.hallazgos, radios: d.radios,
     puntoCero: op.puntoCeroLat != null ? { lat: op.puntoCeroLat, lng: op.puntoCeroLng } : null,
     puntoCeroAnteriores: anteriores,
   });
-  add(seccion('Mapa del operativo', 'Elementos vigentes al corte, sin mapa de fondo. Las coordenadas de cada hallazgo permiten ubicarlo en cualquier mapa.'));
+  add(seccion('Mapa del operativo', 'Elementos vigentes al corte sobre imagen satelital, con al menos 1 km alrededor del Punto Cero. Las coordenadas de cada hallazgo permiten ubicarlo en cualquier mapa.'));
   if (mapa) {
     // Muestras dibujadas en SVG: las fuentes no traen ■ ● ▲.
     const muestra = (forma, texto) => ({ width: 'auto', columns: [{ width: 9, svg: `<svg xmlns="http://www.w3.org/2000/svg" width="9" height="9">${forma}</svg>` }, { width: 'auto', text: texto }], columnGap: 3 });
@@ -331,7 +331,7 @@ export async function generarPdf(d, meta) {
     const punto = (c, hueco = false) => `<circle cx="3.5" cy="4.5" r="3" fill="${hueco ? '#ffffff' : c}" stroke="${c}" stroke-width="0.9"/>`;
     const leyenda = [
       ...d.grupos.filter(g => g.color && d.poligonos.some(p => p.color === g.color)).map(g => muestra(cuadro(g.color), g.nombre)),
-      ...(d.poligonos.some(p => !p.color) ? [muestra(cuadro('#8a8380'), 'Sin grupo')] : []),
+      ...(d.poligonos.some(p => !p.color) ? [muestra(`<rect x="0.5" y="1.5" width="6" height="6" fill="#ffffff" stroke="#6f6866" stroke-width="0.8" stroke-dasharray="1.5 1"/>`, 'Sin grupo')] : []),
       muestra(punto(C.duarOscuro), 'Punto Cero vigente'),
       ...(anteriores.length ? [muestra(punto('#8a8380', true), 'Punto Cero anterior')] : []),
       muestra(punto(C.duar), 'Hallazgo'),
@@ -341,7 +341,10 @@ export async function generarPdf(d, meta) {
       ...(d.radios.length ? [muestra(`<line x1="0" y1="4.5" x2="8" y2="4.5" stroke="${C.duarOscuro}" stroke-width="0.8" stroke-dasharray="2 1.5"/>`, 'Radios desde el Punto Cero')] : []),
     ];
     add({
-      table: { widths: ['*'], body: [[{ svg: mapa.svg, width: ANCHO - 2 }], [{ stack: Array.from({ length: Math.ceil(leyenda.length / 5) }, (_, i) => ({ columns: leyenda.slice(i * 5, i * 5 + 5), columnGap: 12, margin: [0, i ? 3 : 0, 0, 0] })), fontSize: 7, color: C.tenue, margin: [6, 0, 6, 0] }]] },
+      table: { widths: ['*'], body: [[{ svg: mapa.svg, width: ANCHO - 2 }], [{ stack: [
+        ...Array.from({ length: Math.ceil(leyenda.length / 5) }, (_, i) => ({ columns: leyenda.slice(i * 5, i * 5 + 5), columnGap: 12, margin: [0, i ? 3 : 0, 0, 0] })),
+        { text: mapa.conImagen ? ATRIBUCION : 'No se pudo obtener la imagen satelital: el mapa sale sobre fondo liso.', fontSize: 6.2, margin: [0, 4, 0, 0] },
+      ], fontSize: 7, color: C.tenue, margin: [6, 0, 6, 0] }]] },
       layout: { hLineColor: () => C.linea, vLineColor: () => C.linea, hLineWidth: () => 0.6, vLineWidth: () => 0.6, paddingLeft: () => 0, paddingRight: () => 0, paddingTop: i => (i ? 4 : 0), paddingBottom: i => (i ? 4 : 0) },
     });
   } else {

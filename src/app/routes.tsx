@@ -104,8 +104,9 @@ export const router = createBrowserRouter([
                 lazy: cargar(() => import('./pages/operativo/Mapa')),
               },
               {
+                // El informe (CU-41) es un modal del encabezado desde el 15/10; la dirección vieja lleva al panel.
                 path: 'informe',
-                lazy: cargar(() => import('./pages/operativo/Informe')),
+                loader: ({ params }) => redirect(`/operativo/${params.id}/dashboard`),
               },
               {
                 path: 'objetivo',

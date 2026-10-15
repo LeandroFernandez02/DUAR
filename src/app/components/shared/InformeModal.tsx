@@ -1,12 +1,12 @@
 import { useCallback, useEffect, useState } from 'react';
-import { useOutletContext } from 'react-router';
-import { FileText, Download, Loader2, ShieldCheck, AlertCircle, Clock, Lock } from 'lucide-react';
+import { createPortal } from 'react-dom';
+import { FileText, Download, Loader2, ShieldCheck, AlertCircle, Clock, Lock, X } from 'lucide-react';
 import { toast } from 'sonner';
-import { OperativoOutletContext } from './OperativoLayout';
 import { informesApi, InformeApi, TipoInformeApi, DescargaInformeApi } from '../../services/api';
 
 /**
- * Informe del operativo (CU-41). El botón «Informe» del encabezado trae acá:
+ * Informe del operativo (CU-41), en un modal: el botón «Informe» del encabezado
+ * lo abre sobre la pantalla en la que esté el coordinador, sin sacarlo de ahí.
  *   · paso 2: qué se va a emitir (parcial con corte ahora, o el final) y los ya emitidos;
  *   · pasos 3-7: «Generar y descargar» arma el PDF en el servidor, lo guarda con su
  *     código y huella, y lo descarga;
@@ -27,8 +27,7 @@ function bajar({ url }: DescargaInformeApi) {
   a.remove();
 }
 
-export default function Informe() {
-  const { operativo } = useOutletContext<OperativoOutletContext>();
+export default function InformeModal({ operativoId, onClose }: { operativoId: string; onClose: () => void }) {
   const [proximo, setProximo] = useState<{ tipo: TipoInformeApi; yaEmitido: boolean } | null>(null);
   const [informes, setInformes] = useState<InformeApi[]>([]);
   const [error, setError] = useState('');
@@ -38,14 +37,14 @@ export default function Informe() {
 
   const cargar = useCallback(async () => {
     try {
-      const r = await informesApi.listar(operativo.id);
+      const r = await informesApi.listar(operativoId);
       setProximo(r.proximo);
       setInformes(r.informes);
       setError('');
     } catch (e) {
       setError(e instanceof Error ? e.message : 'No se pudieron cargar los informes.');
     }
-  }, [operativo.id]);
+  }, [operativoId]);
 
   useEffect(() => { cargar(); }, [cargar]);
   useEffect(() => { const t = setInterval(() => setAhora(new Date()), 30_000); return () => clearInterval(t); }, []);
@@ -53,7 +52,7 @@ export default function Informe() {
   async function generar() {
     setGenerando(true);
     try {
-      const r = await informesApi.generar(operativo.id);
+      const r = await informesApi.generar(operativoId);
       bajar(r);
       toast.success(r.nuevo === false ? `Se descargó el informe final ${r.informe.codigo}.` : `Informe ${r.informe.codigo} generado y guardado.`);
       await cargar();
@@ -67,7 +66,7 @@ export default function Informe() {
   async function descargar(inf: InformeApi) {
     setBajando(inf.id);
     try {
-      bajar(await informesApi.descargar(operativo.id, inf.id));
+      bajar(await informesApi.descargar(operativoId, inf.id));
     } catch (e) {
       toast.error(e instanceof Error ? e.message : 'No se pudo descargar el informe.');
     } finally {
@@ -78,17 +77,53 @@ export default function Informe() {
   const final = proximo?.tipo === 'FINAL';
   const etiqueta = { fontSize: 'var(--text-label)', color: 'var(--muted-foreground)' } as const;
 
-  return (
-    <div className="p-4 md:p-6 flex flex-col gap-5" style={{ fontFamily: 'var(--font-family-primary)', maxWidth: 920 }}>
-      <div className="flex items-center gap-3">
-        <div className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'var(--muted)' }}>
-          <FileText size={18} style={{ color: 'var(--primary)' }} />
+  useEffect(() => {
+    const tecla = (e: KeyboardEvent) => { if (e.key === 'Escape' && !generando) onClose(); };
+    window.addEventListener('keydown', tecla);
+    return () => window.removeEventListener('keydown', tecla);
+  }, [onClose, generando]);
+
+  // En un portal: dentro del encabezado, un ancestro con transform/filtro hace que
+  // `fixed` se mida contra él y no contra la ventana.
+  return createPortal(
+    <div
+      className="fixed inset-0 flex items-center justify-center p-4"
+      // Por encima del mapa: los paneles y controles de Leaflet usan z-index de 400 a 1000.
+      style={{ zIndex: 2000, background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(3px)', fontFamily: 'var(--font-family-primary)' }}
+      onClick={() => { if (!generando) onClose(); }}
+    >
+      <div
+        role="dialog"
+        aria-modal="true"
+        aria-labelledby="titulo-informe"
+        className="w-full rounded-[var(--radius-card)] overflow-hidden flex flex-col"
+        style={{ maxWidth: 760, background: 'var(--card)', boxShadow: 'var(--elevation-md)', maxHeight: '92vh' }}
+        onClick={e => e.stopPropagation()}
+      >
+      <div className="flex items-center justify-between gap-3 px-5 py-4 flex-shrink-0" style={{ borderBottom: '1px solid var(--border)' }}>
+        <div className="flex items-center gap-3">
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(229,75,75,0.1)' }}>
+            <FileText size={17} style={{ color: 'var(--primary)' }} />
+          </div>
+          <div>
+            <p id="titulo-informe" style={{ color: 'var(--foreground)', fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-semibold)' }}>Informe del operativo</p>
+            <p style={etiqueta}>Un PDF con todo lo que pasó en el operativo, pensado para la Fiscalía.</p>
+          </div>
         </div>
-        <div>
-          <h1 style={{ fontSize: 'var(--text-h2)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--foreground)' }}>Informe del operativo</h1>
-          <p style={etiqueta}>Un PDF con todo lo que pasó en el operativo, pensado para la Fiscalía.</p>
-        </div>
+        <button
+          onClick={onClose}
+          disabled={generando}
+          aria-label="Cerrar"
+          className="p-1.5 rounded-lg flex-shrink-0"
+          style={{ color: 'var(--muted-foreground)', opacity: generando ? 0.4 : 1 }}
+          onMouseEnter={e => (e.currentTarget.style.background = 'var(--muted)')}
+          onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}
+        >
+          <X size={18} />
+        </button>
       </div>
+
+      <div className="p-5 flex flex-col gap-5 overflow-y-auto">
 
       {error && (
         <div className="flex items-center gap-2 px-4 py-3 rounded-lg" style={{ background: 'rgba(229,75,75,0.08)', color: 'var(--primary)', fontSize: 'var(--text-base)' }}>
@@ -97,7 +132,7 @@ export default function Informe() {
       )}
 
       {/* Paso 2: qué se va a emitir */}
-      <section className="rounded-xl p-5 flex flex-col gap-4" style={{ background: 'var(--card)', border: '1px solid var(--border)' }}>
+      <section className="rounded-xl p-4 flex flex-col gap-4" style={{ background: 'var(--background)', border: '1px solid var(--border)' }}>
         <div className="flex flex-wrap items-start justify-between gap-4">
           <div className="flex flex-col gap-1.5" style={{ minWidth: 0, flex: '1 1 320px' }}>
             <span
@@ -182,6 +217,9 @@ export default function Informe() {
           </div>
         )}
       </section>
-    </div>
+      </div>
+      </div>
+    </div>,
+    document.body,
   );
 }
