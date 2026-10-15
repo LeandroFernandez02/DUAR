@@ -17,6 +17,7 @@ import * as poligonos from '../controllers/poligono.controller.js';
 import * as tracks from '../controllers/track.controller.js';
 import * as marcadores from '../controllers/marcador.controller.js';
 import * as puntoCero from '../controllers/puntoCero.controller.js';
+import * as informes from '../controllers/informe.controller.js';
 import { requiereSesion, requiereRol } from '../middleware/auth.middleware.js';
 import { subirFotosMiddleware, subirGpxMiddleware } from '../middleware/upload.middleware.js';
 
@@ -109,6 +110,11 @@ router.get(   '/:id/radios',           requiereSesion, gestores, puntoCero.lista
 router.post(  '/:id/radios',           requiereSesion, gestores, puntoCero.crearRadio);
 router.put(   '/:id/radios/:radioId',  requiereSesion, gestores, puntoCero.actualizarRadio);
 router.delete('/:id/radios/:radioId',  requiereSesion, gestores, puntoCero.eliminarRadio);
+
+// Módulo 6 · Informe por operativo (CU-41): qué se emite, generar y descargar copias guardadas.
+router.get( '/:id/informes',                     requiereSesion, gestores, informes.listar);
+router.post('/:id/informes',                     requiereSesion, gestores, informes.generar);
+router.get( '/:id/informes/:informeId/descarga', requiereSesion, gestores, informes.descargar);
 
 // Línea de tiempo del terreno (eventos_estado, migración 010).
 router.get('/:id/grupos/:grupoId/linea-tiempo',            requiereSesion, gestores, grupos.lineaTiempoGrupo);

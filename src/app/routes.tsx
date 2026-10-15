@@ -54,6 +54,11 @@ export const router = createBrowserRouter([
         lazy: cargar(() => import('./pages/RecuperarContrasena')),
       },
       {
+        // CU-41 N1: verificar un informe. Pública: la usa la Fiscalía con el QR del PDF.
+        path: 'verificar/:codigo?',
+        lazy: cargar(() => import('./pages/VerificarInforme')),
+      },
+      {
         // Portal dedicado para agentes (sin sidebar)
         path: 'agente',
         lazy: cargar(() => import('./pages/AgenteDashboard')),

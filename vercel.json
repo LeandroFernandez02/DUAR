@@ -9,7 +9,8 @@
   "regions": ["gru1"],
   "functions": {
     "api/index.js": {
-      "maxDuration": 15
+      "maxDuration": 30,
+      "includeFiles": "{server/assets/**,node_modules/pdfkit/js/data/**}"
     }
   }
 }

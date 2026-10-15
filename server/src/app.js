@@ -26,6 +26,7 @@ import usuarioRoutes from './routes/usuario.routes.js';
 import operativoRoutes from './routes/operativo.routes.js';
 import qrRoutes from './routes/qr.routes.js';
 import agenteRoutes from './routes/agente.routes.js';
+import * as informes from './controllers/informe.controller.js';
 
 const app = express();
 
@@ -57,6 +58,8 @@ app.use('/api/auth', authRoutes);
 app.use('/api/catalogos', catalogoRoutes);
 app.use('/api/usuarios', usuarioRoutes);
 app.use('/api/operativos', operativoRoutes);
+// CU-41 N1: verificar un informe no pide sesión (lo usa la Fiscalía con el QR del PDF).
+app.get('/api/informes/verificar/:codigo', informes.verificar);
 app.use('/api/qr', qrRoutes);
 app.use('/api', agenteRoutes);
 

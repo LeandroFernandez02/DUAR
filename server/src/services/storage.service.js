@@ -115,6 +115,77 @@ export async function urlFirmadaGpx(path, ttlSegundos = 600) {
   } catch { return null; }
 }
 
+/**
+ * Bytes de una foto del bucket privado (para meterla en el Informe, CU-41).
+ * Nunca lanza: una foto que falta no debe impedir el informe (va un aviso en su lugar).
+ */
+export async function descargarFoto(path) {
+  if (!cliente || !path) return null;
+  try {
+    const { data, error } = await cliente.storage.from(BUCKET).download(path);
+    return error ? null : Buffer.from(await data.arrayBuffer());
+  } catch { return null; }
+}
+
+/* ── Informes del operativo (CU-41) ───────────────────────────────────────
+ * Bucket PRIVADO: la copia idéntica de cada PDF emitido. La huella SHA-256
+ * guardada en la base se calcula sobre estos bytes; por eso se suben sin
+ * `upsert` (un informe nunca se reemplaza).
+ */
+const BUCKET_INFORMES = process.env.SUPABASE_BUCKET_INFORMES ?? 'informes';
+let bucketInformesListo = false;
+
+async function asegurarBucketInformes() {
+  if (bucketInformesListo) return;
+  const { data } = await cliente.storage.getBucket(BUCKET_INFORMES);
+  if (!data) {
+    const { error } = await cliente.storage.createBucket(BUCKET_INFORMES, {
+      public: false, fileSizeLimit: 50 * 1024 * 1024, allowedMimeTypes: ['application/pdf'],
+    });
+    if (error && !/already exists/i.test(error.message)) throw new Error(`No se pudo crear el bucket de informes: ${error.message}`);
+  }
+  bucketInformesListo = true;
+}
+
+/** Guarda el PDF en `{operativoId}/{codigo}.pdf`. Lanza si falla. */
+export async function subirInforme(operativoId, codigo, buffer) {
+  if (!cliente) throw new Error('El almacenamiento de archivos no está configurado.');
+  await asegurarBucketInformes();
+  const path = `${operativoId}/${codigo}.pdf`;
+  const { error } = await cliente.storage.from(BUCKET_INFORMES).upload(path, buffer, {
+    contentType: 'application/pdf', upsert: false,
+  });
+  if (error) throw new Error(`No se pudo guardar el informe: ${error.message}`);
+  return path;
+}
+
+/** Bytes de un informe guardado (o null). */
+export async function descargarInforme(path) {
+  if (!cliente || !path) return null;
+  try {
+    const { data, error } = await cliente.storage.from(BUCKET_INFORMES).download(path);
+    return error ? null : Buffer.from(await data.arrayBuffer());
+  } catch { return null; }
+}
+
+/** URL firmada que descarga el informe con su nombre de archivo. */
+export async function urlFirmadaInforme(path, nombreArchivo, ttlSegundos = 300) {
+  if (!cliente || !path) return null;
+  try {
+    const { data, error } = await cliente.storage.from(BUCKET_INFORMES)
+      .createSignedUrl(path, ttlSegundos, { download: nombreArchivo });
+    return error ? null : data.signedUrl;
+  } catch { return null; }
+}
+
+/** Sólo para el script de limpieza de datos de prueba: borra informes. */
+export async function borrarInformes(paths) {
+  if (!cliente || !paths.length) return 0;
+  const { data, error } = await cliente.storage.from(BUCKET_INFORMES).remove(paths);
+  if (error) throw new Error(`No se pudieron borrar los informes de prueba: ${error.message}`);
+  return data?.length ?? 0;
+}
+
 /** Sólo para el script de limpieza de datos de prueba: borra fotos (marcadores de prueba). */
 export async function borrarFotos(paths) {
   if (!cliente || !paths.length) return 0;

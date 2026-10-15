@@ -66,6 +66,7 @@ aplica al proyecto Supabase con el mismo nombre:
 | `017_intentos_login.sql` | `intentos_login`: frena la prueba de contraseñas (5 fallos por correo o 30 por IP en 15 min bloquean 15 min) |
 | `019_mapa_operacional.sql` | Módulo 5 (CU-28..40): `poligonos` (sin estado; área y perímetro por trigger; nombre único vigente), `poligono_grupos` (un grupo en un solo polígono a la vez), `tracks_gpx`, `marcadores` (POI, hallazgo, instalación SCI; el hallazgo no se elimina ni cambia de clase), `marcador_fotos`, `radios_operativo`, `punto_cero_historial`, `poligono_eventos`. La 018 se descartó |
 | `020_funciones_search_path.sql` | `search_path` fijo en las dos funciones de trigger de la 019 (asesor de seguridad de Supabase, lint 0011) |
+| `021_informes_operativo.sql` | Informe por operativo (CU-41): `informes_operativo` (código INF-año-número, tipo PARCIAL/FINAL, hora de corte, huella SHA-256 del PDF guardado en Storage); un solo final por operativo; un trigger impide modificar o borrar un informe emitido |
 
 **Numeración de los CU.** Desde el 13/10/2026 los CU van del 01 al 44: se sumó
 el CU-15 «Registrar Presencia de Mando» y «Extraer Agente de Grupo» quedó como

@@ -1010,3 +1010,46 @@ export const objetivoApi = {
   eliminarFoto: (operativoId: string, fotoId: string) =>
     api.del<void>(`/operativos/${operativoId}/objetivo/fotos/${fotoId}`),
 };
+
+/* ── Módulo 6 · Informe por operativo (CU-41) ─────────────────────────── */
+
+export type TipoInformeApi = 'PARCIAL' | 'FINAL';
+
+/** Un informe emitido. La copia del PDF queda guardada y no cambia. */
+export interface InformeApi {
+  id: string;
+  codigo: string;              // INF-2026-0003
+  numeroEnOperativo: number;
+  tipo: TipoInformeApi;
+  corteEn: string;             // hasta cuándo cubre
+  generadoEn: string;
+  generadoPor: string;
+  sha256: string;
+  tamanoBytes: number;
+}
+
+export interface DescargaInformeApi { informe: InformeApi; url: string; nombreArchivo: string; nuevo?: boolean; }
+
+/** Lo que muestra la verificación pública: nada personal ni del contenido. */
+export interface InformeVerificableApi {
+  codigo: string; tipo: TipoInformeApi; corteEn: string; generadoEn: string;
+  sha256: string; tamanoBytes: number; operativoCodigo: string;
+}
+
+export const informesApi = {
+  /** Paso 2: qué se va a emitir y los ya emitidos. */
+  listar: (operativoId: string) =>
+    api.get<{ proximo: { tipo: TipoInformeApi; yaEmitido: boolean }; informes: InformeApi[] }>(`/operativos/${operativoId}/informes`),
+  /** Pasos 3-7: genera y guarda; con el operativo finalizado devuelve el final. */
+  generar: (operativoId: string) => api.post<DescargaInformeApi>(`/operativos/${operativoId}/informes`),
+  /** N2: la copia guardada de un informe ya emitido. */
+  descargar: (operativoId: string, informeId: string) =>
+    api.get<DescargaInformeApi>(`/operativos/${operativoId}/informes/${informeId}/descarga`),
+  /** N1: pública, sin sesión. */
+  verificar: async (codigo: string) => {
+    const res = await fetch(`/api/informes/verificar/${encodeURIComponent(codigo.trim())}`);
+    const cuerpo = await res.json().catch(() => ({}));
+    if (!res.ok) throw new ApiError(cuerpo.error ?? `Error ${res.status}`, res.status, cuerpo.motivo, cuerpo);
+    return cuerpo as { informe: InformeVerificableApi };
+  },
+};

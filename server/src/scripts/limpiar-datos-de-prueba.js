@@ -28,11 +28,17 @@ const OPERATIVOS_DE_PRUEBA = [
   'PRUEBA Modulo 4 UI - borrar',
   'PRUEBAS AUTOMÁTICAS - no tocar',
 ];
-// Los que crea cada corrida de las pruebas del Punto Cero (uno por corrida: el título no se repite en 24 h).
-const PREFIJO_OPERATIVOS_DE_PRUEBA = 'PRUEBAS AUTOMÁTICAS - Punto Cero ';
+// Los que crea cada corrida de las pruebas del Punto Cero y del Informe (uno por corrida: el título no se repite en 24 h).
+const PREFIJOS_OPERATIVOS_DE_PRUEBA = ['PRUEBAS AUTOMÁTICAS - Punto Cero %', 'PRUEBAS AUTOMÁTICAS - Informe %'];
 const CONFIRMAR = process.argv.includes('--confirmar');
 
 const PASOS = [
+  // Informes (CU-41, migración 021): la base no deja borrarlos salvo en esta
+  // transacción, que lo habilita con SET LOCAL duar.limpieza_pruebas.
+  ['informes_operativo', `
+    DELETE FROM informes_operativo
+     WHERE operativo_id IN (SELECT id FROM t_ops) OR generado_por IN (SELECT id FROM t_usuarios)
+     RETURNING archivo_ruta AS informe_ruta`],
   // Módulo 5 (migración 019): antes que grupos, agentes y operativos, que estas tablas referencian.
   ['poligono_eventos', `
     DELETE FROM poligono_eventos
@@ -104,7 +110,7 @@ async function main() {
     await cliente.query('BEGIN');
     await cliente.query(`CREATE TEMP TABLE t_usuarios ON COMMIT DROP AS SELECT id FROM usuarios WHERE email ILIKE '%@prueba.duar'`);
     await cliente.query(`CREATE TEMP TABLE t_ops ON COMMIT DROP AS SELECT id FROM operativos
-      WHERE titulo = ANY($1::text[]) OR titulo LIKE $2`, [OPERATIVOS_DE_PRUEBA, `${PREFIJO_OPERATIVOS_DE_PRUEBA}%`]);
+      WHERE titulo = ANY($1::text[]) OR titulo LIKE ANY($2::text[])`, [OPERATIVOS_DE_PRUEBA, PREFIJOS_OPERATIVOS_DE_PRUEBA]);
     await cliente.query(`CREATE TEMP TABLE t_agentes ON COMMIT DROP AS
       SELECT id FROM agentes_operativo WHERE operativo_id IN (SELECT id FROM t_ops) OR usuario_id IN (SELECT id FROM t_usuarios)`);
     await cliente.query(`CREATE TEMP TABLE t_grupos ON COMMIT DROP AS SELECT id FROM grupos WHERE operativo_id IN (SELECT id FROM t_ops)`);
@@ -118,22 +124,27 @@ async function main() {
     // archivo si la base se descarta.
     const archivosGpx = [];
     const fotos = [];
+    const informes = [];
+    await cliente.query(`SET LOCAL duar.limpieza_pruebas = 'si'`);
     for (const [nombre, sql] of PASOS) {
       const r = await cliente.query(sql);
       for (const f of r.rows ?? []) {
         if (f.archivo_ruta) archivosGpx.push(f.archivo_ruta);
         if (f.url_foto) fotos.push(f.url_foto);
+        if (f.informe_ruta) informes.push(f.informe_ruta);
       }
       console.log(`  ${nombre.padEnd(52)} ${r.rowCount}`);
     }
     console.log(`  ${'archivos GPX en el almacenamiento'.padEnd(52)} ${archivosGpx.length}`);
     console.log(`  ${'fotos de marcadores en el almacenamiento'.padEnd(52)} ${fotos.length}`);
+    console.log(`  ${'informes PDF en el almacenamiento'.padEnd(52)} ${informes.length}`);
 
     if (CONFIRMAR) {
       await cliente.query('COMMIT');
       try {
         await Storage.borrarGpx(archivosGpx);
         await Storage.borrarFotos(fotos);
+        await Storage.borrarInformes(informes);
       } catch (err) {
         console.error('\nLa base quedó limpia, pero no se pudieron borrar algunos archivos del almacenamiento:', err.message);
         process.exitCode = 1;

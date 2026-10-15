@@ -6,6 +6,7 @@ import * as Operativo from '../models/operativo.model.js';
 import * as Auditoria from '../models/auditoria.model.js';
 import { validarDatosOperativo } from '../utils/validaciones.js';
 import { conZonaArgentina } from '../utils/fechas.js';
+import * as Informes from '../services/informe.service.js';
 
 const ENTIDAD = 'operativos';
 const MOTIVO_PUNTO_CERO_MAX = 500;
@@ -194,7 +195,23 @@ export async function finalizar(req, res, next) {
       ip: req.ip,
     });
 
-    res.json({ operativo: finalizado });
+    // CU-10 paso 6: el informe final, fuera de la transacción. Si falla, el
+    // operativo queda finalizado igual y el final se emite la próxima vez que
+    // se toque «Informe» (6.1). Se espera: en Vercel lo que queda corriendo
+    // después de responder se corta.
+    let informeFinal = null;
+    try {
+      const inf = await Informes.emitir(id, 'FINAL', req.usuario.id);
+      informeFinal = { id: inf.id, codigo: inf.codigo };
+      await Auditoria.registrar({
+        usuarioId: req.usuario.id, accion: Auditoria.ACCION.CREAR, entidad: 'informes_operativo', registroId: inf.id,
+        valoresNuevos: { codigo: inf.codigo, tipo: inf.tipo, sha256: inf.sha256, operativoId: id, motivo: 'Informe final al finalizar (CU-10 paso 6)' }, ip: req.ip,
+      });
+    } catch (err) {
+      console.error('[informe] No se pudo emitir el informe final al finalizar:', err);
+    }
+
+    res.json({ operativo: finalizado, informeFinal });
   } catch (err) { next(err); }
 }
 
