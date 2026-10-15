@@ -83,8 +83,17 @@ export function QRModal({ operativo, onClose }: Props) {
 
   const progress = tokenInfo ? getExpiryProgress(tokenInfo.generatedAt, tokenInfo.expiresAt) : 0;
   const timeLeft = tokenInfo ? formatTimeRemaining(tokenInfo.expiresAt) : '—';
-  const expiryColor = getExpiryColor(progress);
   const isExpiringSoon = progress >= 0.9;
+  // Sin código (operativo finalizado u otro error) no hay QR que mostrar, descargar ni copiar:
+  // el estado no puede decir «activo» (Testeo 15/10).
+  const disponible = !!tokenInfo && !errorQR;
+  const finalizado = operativo.estado === 'finalizado';
+  const NO_DISPONIBLE = { color: '#6b6461', bg: 'var(--muted)', border: 'var(--border)' };
+  const expiryColor = disponible ? getExpiryColor(progress) : NO_DISPONIBLE;
+  const etiquetaEstado = errorQR
+    ? (finalizado ? 'Operativo finalizado: sin QR' : 'QR no disponible')
+    : !tokenInfo ? 'Generando QR…'
+    : isExpiringSoon ? '¡Próximo a expirar!' : 'QR activo';
 
   /** "Control de Puerta" (CU-16 Observaciones): invalida el QR filtrado. */
   const handleRegenerate = useCallback(async () => {
@@ -188,7 +197,7 @@ export function QRModal({ operativo, onClose }: Props) {
           <div
             style={{
               height: '100%',
-              width: `${(1 - progress) * 100}%`,
+              width: disponible ? `${(1 - progress) * 100}%` : '0%',
               background: isExpiringSoon
                 ? progress >= 0.95 ? '#dc2626' : '#ca8a04'
                 : '#15803d',
@@ -206,7 +215,7 @@ export function QRModal({ operativo, onClose }: Props) {
             style={{ background: expiryColor.bg, border: `1px solid ${expiryColor.border}` }}
           >
             <div className="flex items-center gap-2">
-              {isExpiringSoon
+              {disponible && isExpiringSoon
                 ? <AlertTriangle size={13} style={{ color: expiryColor.color, flexShrink: 0 }} />
                 : <ShieldAlert size={13} style={{ color: expiryColor.color, flexShrink: 0 }} />
               }
@@ -214,10 +223,10 @@ export function QRModal({ operativo, onClose }: Props) {
                 color: expiryColor.color, fontSize: 'var(--text-label)',
                 fontWeight: 'var(--font-weight-semibold)', fontFamily: 'var(--font-family-primary)',
               }}>
-                {isExpiringSoon ? '¡Próximo a expirar!' : 'QR activo'}
+                {etiquetaEstado}
               </span>
             </div>
-            <div className="flex items-center gap-1.5">
+            {disponible && <div className="flex items-center gap-1.5">
               <Clock size={11} style={{ color: expiryColor.color }} />
               <span style={{
                 color: expiryColor.color, fontSize: 'var(--text-label)',
@@ -226,7 +235,7 @@ export function QRModal({ operativo, onClose }: Props) {
               }}>
                 {timeLeft}
               </span>
-            </div>
+            </div>}
           </div>
 
           {/* QR Card */}
@@ -339,8 +348,8 @@ export function QRModal({ operativo, onClose }: Props) {
             </div>
           )}
 
-          {/* Action buttons */}
-          <div className="flex gap-2">
+          {/* Action buttons: sólo con un QR vigente */}
+          {disponible && <div className="flex gap-2">
             <button
               onClick={handleDownload}
               disabled={regenerating}
@@ -370,10 +379,10 @@ export function QRModal({ operativo, onClose }: Props) {
               {copied ? <Check size={14} /> : <Copy size={14} />}
               {copied ? '¡Copiado!' : 'Copiar URL'}
             </button>
-          </div>
+          </div>}
 
           {/* Regenerate button (coordinador/admin only) */}
-          {canRegenerate && !showConfirmRegen && (
+          {canRegenerate && disponible && !showConfirmRegen && (
             <button
               onClick={() => setShowConfirmRegen(true)}
               disabled={regenerating}
