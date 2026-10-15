@@ -1,7 +1,7 @@
 import { useState } from 'react';
 import { differenceInDays } from 'date-fns';
 import {
-  MapPin, Calendar, Clock, Cloud, Target,
+  MapPin, Calendar, Clock, Target,
   QrCode, FileText, ChevronLeft,
 } from 'lucide-react';
 import StatusBadge from '../../components/shared/StatusBadge';
@@ -244,20 +244,16 @@ export default function OperativoHeader({ operativo }: Props) {
           {/* Widget de clima: es sólo el chip. La pantalla de Clima no se presenta
               en la tesis y se quitó. OJO: los datos todavía son fijos (climaMock),
               no vienen de ningún servicio. */}
+          {/* Sólo el ícono del tiempo y la temperatura (15/10); la descripción queda al pasar el mouse. */}
           <div
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg"
             style={{ background: 'var(--muted)' }}
+            title={actual.descripcion}
           >
-            <Cloud size={compacto ? 14 : 12} style={{ color: 'var(--muted-foreground)' }} />
             <span style={{ fontSize: 'var(--text-base)', fontFamily: 'var(--font-family-primary)' }}>{actual.icono}</span>
             <span style={{ color: 'var(--foreground)', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)', fontFamily: 'var(--font-family-primary)' }}>
               {actual.temperatura}°C
             </span>
-            {!compacto && (
-              <span style={{ color: 'var(--muted-foreground)', fontSize: '11px', fontFamily: 'var(--font-family-primary)' }}>
-                {actual.descripcion}
-              </span>
-            )}
           </div>
         </div>
       </div>
