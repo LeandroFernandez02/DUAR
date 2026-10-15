@@ -23,7 +23,7 @@ const hostVerificacion = () => `${FRONTEND_URL.replace(/^https?:\/\//, '')}/veri
 
 /**
  * Nombre con que se descarga, fácil de distinguir entre varios archivos:
- * «Informe parcial - Búsqueda de … - 2026-10-15 12h03 - INF-2026-0003.pdf».
+ * «Informe parcial - Búsqueda de … - 2026-10-15 12h03.pdf».
  * La fecha es la hora de corte en Argentina, año primero para que se ordenen
  * solos; «h» en lugar de «:», que Windows no acepta en un nombre de archivo.
  */
@@ -33,7 +33,8 @@ export function nombreArchivo(informe, titulo) {
     timeZone: 'America/Argentina/Cordoba', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
   }).formatToParts(new Date(informe.corteEn)).map(x => [x.type, x.value]));
   const tipo = informe.tipo === 'FINAL' ? 'Informe final' : 'Informe parcial';
-  return [tipo, limpio, `${p.year}-${p.month}-${p.day} ${p.hour}h${p.minute}`, informe.codigo].filter(Boolean).join(' - ') + '.pdf';
+  // Sin el código: va impreso en el PDF y en su QR, que es por donde se verifica.
+  return [tipo, limpio, `${p.year}-${p.month}-${p.day} ${p.hour}h${p.minute}`].filter(Boolean).join(' - ') + '.pdf';
 }
 
 /**
