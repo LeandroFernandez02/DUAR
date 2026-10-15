@@ -232,7 +232,7 @@ export default function OperativoHeader({ operativo }: Props) {
             <Clock size={compacto ? 14 : 12} style={{ color: 'var(--primary)' }} />
             <span style={{ color: 'var(--primary)', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)', fontFamily: 'var(--font-family-primary)' }}
               title={compacto ? `Día ${diasOperativo + 1} del operativo` : undefined}>
-              {compacto ? diasOperativo + 1 : `Día ${diasOperativo + 1}`}
+              {`Día ${diasOperativo + 1}`}
             </span>
             {!compacto && (
               <span style={{ color: 'var(--muted-foreground)', fontSize: '11px', fontFamily: 'var(--font-family-primary)' }}>
