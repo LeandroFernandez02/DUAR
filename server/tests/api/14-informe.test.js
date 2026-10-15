@@ -42,7 +42,7 @@ describe('Módulo 6 · Informe por operativo (CU-41)', () => {
     assert.match(primero.codigo, /^INF-\d{4}-\d{4,}$/);
     assert.equal(primero.tipo, 'PARCIAL');
     assert.equal(r.json.archivoRuta, undefined, 'la ruta interna del archivo no sale de la API');
-    assert.match(r.json.nombreArchivo, new RegExp(`^Informe ${primero.codigo} - PRUEBAS AUTOMÁTICAS`));
+    assert.match(r.json.nombreArchivo, new RegExp(`^Informe parcial - PRUEBAS AUTOMÁTICAS - no tocar - \\d{4}-\\d{2}-\\d{2} \\d{2}h\\d{2} - ${primero.codigo}\\.pdf$`));
 
     const pdf = await bajar(r.json.url);
     assert.equal(pdf.subarray(0, 5).toString(), '%PDF-');

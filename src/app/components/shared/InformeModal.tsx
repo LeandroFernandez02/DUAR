@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
-import { FileText, Download, Loader2, ShieldCheck, AlertCircle, Clock, Lock, X } from 'lucide-react';
+import { FileText, Download, Loader2, AlertCircle, Clock, Lock, X } from 'lucide-react';
 import { toast } from 'sonner';
 import { informesApi, InformeApi, TipoInformeApi, DescargaInformeApi } from '../../services/api';
 
@@ -153,10 +153,6 @@ export default function InformeModal({ operativoId, onClose }: { operativoId: st
                 (<b>{fecha(ahora.toISOString())}</b>); lo que pase después no va a figurar. Al finalizar el operativo se emite el informe final.
               </p>
             )}
-            <p className="flex items-start gap-1.5" style={{ ...etiqueta, lineHeight: 1.45 }}>
-              <ShieldCheck size={14} className="flex-shrink-0 mt-0.5" />
-              El sistema guarda una copia idéntica de cada informe con un código. Con ese código, en /verificar, cualquiera puede comprobar que el archivo no fue modificado.
-            </p>
           </div>
           <button
             onClick={generar}

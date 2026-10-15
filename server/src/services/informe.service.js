@@ -21,10 +21,19 @@ const FRONTEND_URL = (process.env.FRONTEND_URL ?? 'http://localhost:5173').repla
 export const urlVerificacion = codigo => `${FRONTEND_URL}/verificar/${codigo}`;
 const hostVerificacion = () => `${FRONTEND_URL.replace(/^https?:\/\//, '')}/verificar`;
 
-/** Nombre con que se descarga: «Informe INF-2026-0003 - Búsqueda de ….pdf». */
+/**
+ * Nombre con que se descarga, fácil de distinguir entre varios archivos:
+ * «Informe parcial - Búsqueda de … - 2026-10-15 12h03 - INF-2026-0003.pdf».
+ * La fecha es la hora de corte en Argentina, año primero para que se ordenen
+ * solos; «h» en lugar de «:», que Windows no acepta en un nombre de archivo.
+ */
 export function nombreArchivo(informe, titulo) {
   const limpio = String(titulo ?? '').replace(/[\\/:*?"<>|]+/g, ' ').replace(/\s+/g, ' ').trim().slice(0, 80);
-  return `Informe ${informe.codigo}${limpio ? ` - ${limpio}` : ''}.pdf`;
+  const p = Object.fromEntries(new Intl.DateTimeFormat('es-AR', {
+    timeZone: 'America/Argentina/Cordoba', year: 'numeric', month: '2-digit', day: '2-digit', hour: '2-digit', minute: '2-digit', hourCycle: 'h23',
+  }).formatToParts(new Date(informe.corteEn)).map(x => [x.type, x.value]));
+  const tipo = informe.tipo === 'FINAL' ? 'Informe final' : 'Informe parcial';
+  return [tipo, limpio, `${p.year}-${p.month}-${p.day} ${p.hour}h${p.minute}`, informe.codigo].filter(Boolean).join(' - ') + '.pdf';
 }
 
 /**

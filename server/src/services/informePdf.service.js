@@ -57,7 +57,7 @@ const ANCHO = 515;   // A4 (595 pt) menos 40 pt de margen a cada lado
 /* ── Formatos ──────────────────────────────────────────────────────────── */
 
 const partesFecha = d => Object.fromEntries(new Intl.DateTimeFormat('es-AR', {
-  timeZone: ZONA, day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hour12: false, weekday: 'long',
+  timeZone: ZONA, day: '2-digit', month: '2-digit', year: 'numeric', hour: '2-digit', minute: '2-digit', hourCycle: 'h23', weekday: 'long',
 }).formatToParts(new Date(d)).map(p => [p.type, p.value]));
 
 export const fechaHora = d => { if (!d) return '—'; const p = partesFecha(d); return `${p.day}/${p.month}/${p.year} ${p.hour}:${p.minute}`; };
