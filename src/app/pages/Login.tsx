@@ -132,7 +132,7 @@ export default function Login() {
                   value={email}
                   maxLength={EMAIL_MAX}
                   onChange={e => setEmail(filtrarEmail(e.target.value))}
-                  placeholder="usuario@duar.cba.gob.ar"
+                  autoComplete="username"
                   className="w-full pl-9 pr-4 py-2.5 rounded-lg border outline-none transition-all"
                   style={{
                     background: 'var(--card)',
