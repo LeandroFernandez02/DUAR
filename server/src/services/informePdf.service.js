@@ -223,7 +223,7 @@ export async function generarPdf(d, meta) {
     ['Estado', { text: ESTADO[op.estado] ?? op.estado, font: 'InterMedia' }],
     ['Localidad', op.localidad],
     ['Inicio', fechaHora(op.fechaHoraInicio ?? op.creadoEn)],
-    ['Fiscal de instrucción', op.fiscalInstruccion],
+    ['Fiscal de instrucción', op.fiscalInstruccion || 'Sin asignar'],
     [final ? 'Fin' : 'Duración al corte', final ? fechaHora(op.fechaHoraFin) : duracion(op.fechaHoraInicio ?? op.creadoEn, d.corteEn)],
     ['Creado por', op.creadoPor],
     [final ? 'A cargo al cierre' : 'A cargo al corte', aCargo?.nombre ?? 'Nadie registrado'],

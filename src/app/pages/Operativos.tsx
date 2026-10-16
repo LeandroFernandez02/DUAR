@@ -282,7 +282,6 @@ export default function Operativos() {
     const errors = new Set<string>();
     if (!form.nombre.trim())      errors.add('nombre');
     if (!form.ubicacion.trim())   errors.add('ubicacion');
-    if (!form.fiscal.trim())      errors.add('fiscal');
     if (!form.punto0lat.trim())   errors.add('punto0lat');
     if (!form.punto0lng.trim())   errors.add('punto0lng');
     if (!form.fechaInicio.trim()) errors.add('fechaInicio');
@@ -303,7 +302,7 @@ export default function Operativos() {
       await operativosApi.crear({
         titulo: form.nombre.trim(),
         localidad: form.ubicacion.trim(),
-        fiscalInstruccion: form.fiscal.trim(),
+        fiscalInstruccion: form.fiscal.trim() || null,
         descripcion: form.descripcion || undefined,
         puntoCeroLat: lat,
         puntoCeroLng: lng,
@@ -322,7 +321,6 @@ export default function Operativos() {
     const errors = new Set<string>();
     if (!form.nombre.trim())      errors.add('nombre');
     if (!form.ubicacion.trim())   errors.add('ubicacion');
-    if (!form.fiscal.trim())      errors.add('fiscal');
     if (!form.punto0lat.trim())   errors.add('punto0lat');
     if (!form.punto0lng.trim())   errors.add('punto0lng');
     if (errors.size > 0) {
@@ -350,7 +348,7 @@ export default function Operativos() {
       await operativosApi.actualizar(selected.id, {
         titulo: form.nombre.trim(),
         localidad: form.ubicacion.trim(),
-        fiscalInstruccion: form.fiscal.trim(),
+        fiscalInstruccion: form.fiscal.trim() || null,   // vacío lo deja sin fiscal
         descripcion: form.descripcion || undefined,
         // El Punto 0 sólo viaja si se movió (CU-36: cada movimiento queda en su historial).
         ...(puntoCeroMovido ? {
@@ -1041,7 +1039,7 @@ export default function Operativos() {
 
                     {/* Fiscal de Instrucción */}
                     <div>
-                      <label style={labelStyle()}>Fiscal de Instrucción *</label>
+                      <label style={labelStyle()}>Fiscal de Instrucción</label>
                       <input
                         type="text"
                         value={form.fiscal}

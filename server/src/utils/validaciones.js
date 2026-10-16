@@ -152,7 +152,8 @@ export function validarDatosOperativo(datos) {
     else if (v.length > LOCALIDAD_MAX) errores.localidad = `La localidad puede tener hasta ${LOCALIDAD_MAX} caracteres.`;
   }
 
-  if (datos.fiscalInstruccion !== undefined) {
+  // Opcional (15/10): vacío o ausente es válido; sólo se revisa lo que se escribió.
+  if (datos.fiscalInstruccion !== undefined && datos.fiscalInstruccion !== null && String(datos.fiscalInstruccion).trim() !== '') {
     if (!RE_FISCAL.test(String(datos.fiscalInstruccion).trim())) {
       errores.fiscalInstruccion = 'El fiscal debe tener entre 2 y 100 letras (se permiten puntos, guiones y apóstrofes).';
     }

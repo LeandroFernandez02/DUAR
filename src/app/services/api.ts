@@ -318,7 +318,7 @@ export interface OperativoApi {
   id: string;
   titulo: string;
   localidad: string;
-  fiscalInstruccion: string;
+  fiscalInstruccion: string | null;   // opcional: sin fiscal asignado todavía
   descripcion: string | null;
   estado: string;
   fechaHoraInicio: string;
@@ -350,7 +350,7 @@ export interface OperativoApi {
 export interface CrearOperativoPayload {
   titulo: string;
   localidad: string;
-  fiscalInstruccion: string;
+  fiscalInstruccion?: string | null;  // opcional
   descripcion?: string;
   puntoCeroLat: number;
   puntoCeroLng: number;

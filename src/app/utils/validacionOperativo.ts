@@ -17,7 +17,9 @@ export function validarTitulo(v: string): string | null {
   return null;
 }
 
+/** El fiscal es opcional (15/10): vacío es válido; sólo se revisa lo que se escribió. */
 export function validarFiscal(v: string): string | null {
+  if (!v.trim()) return null;
   if (!RE_FISCAL.test(v.trim())) return 'Entre 2 y 100 letras (se permiten puntos, guiones y apóstrofes).';
   return null;
 }

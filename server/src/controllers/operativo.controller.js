@@ -36,7 +36,7 @@ export async function obtener(req, res, next) {
 export async function crear(req, res, next) {
   try {
     const b = req.body ?? {};
-    const faltantes = ['titulo', 'localidad', 'fiscalInstruccion', 'fechaHoraInicio']
+    const faltantes = ['titulo', 'localidad', 'fechaHoraInicio']
       .filter(campo => !String(b[campo] ?? '').trim());
     if (faltantes.length || b.puntoCeroLat === undefined || b.puntoCeroLng === undefined) {
       return res.status(400).json({ error: 'Faltan campos obligatorios.', campos: faltantes });
@@ -66,7 +66,7 @@ export async function crear(req, res, next) {
     const creado = await Operativo.crear({
       titulo: b.titulo.trim(),
       localidad: b.localidad.trim(),
-      fiscalInstruccion: b.fiscalInstruccion.trim(),
+      fiscalInstruccion: String(b.fiscalInstruccion ?? '').trim() || null,   // opcional
       descripcion: b.descripcion || null,
       puntoCeroLat: lat,
       puntoCeroLng: lng,
@@ -132,7 +132,9 @@ export async function actualizar(req, res, next) {
       motivoPuntoCero = b.motivoPuntoCero.trim() || null;
     }
 
-    const datos = b.fechaHoraInicio ? { ...b, fechaHoraInicio: conZonaArgentina(b.fechaHoraInicio) } : b;
+    let datos = b.fechaHoraInicio ? { ...b, fechaHoraInicio: conZonaArgentina(b.fechaHoraInicio) } : b;
+    // Fiscal opcional: borrarlo lo deja en NULL, no en texto vacío.
+    if (datos.fiscalInstruccion !== undefined) datos = { ...datos, fiscalInstruccion: String(datos.fiscalInstruccion ?? '').trim() || null };
     const actualizado = await Operativo.actualizar(id, datos, { usuarioId: req.usuario.id, motivoPuntoCero });
 
     // Paso 6: valores previos y nuevos, para poder reconstruir la evolución

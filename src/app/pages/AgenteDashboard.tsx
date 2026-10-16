@@ -35,7 +35,7 @@ function mapearOperativo(o: OperativoApi): Operativo {
     nombre: o.titulo,
     estado: ESTADO_API_A_MOCK[o.estado] ?? 'nuevo',
     ubicacion: o.localidad,
-    fiscal: o.fiscalInstruccion,
+    fiscal: o.fiscalInstruccion ?? undefined,
     punto0: { lat: o.puntoCeroLat, lng: o.puntoCeroLng },
     fechaInicio: o.fechaHoraInicio,
     fechaFin: o.fechaHoraFin ?? undefined,

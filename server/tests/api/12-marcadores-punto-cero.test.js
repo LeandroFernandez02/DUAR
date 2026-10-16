@@ -192,6 +192,32 @@ describe('Módulo 5 · Marcadores, Punto Cero y radios (CU-34, 35, 36, 38)', () 
     assert.deepEqual(h.map(x => x.motivo), ['Testigo lo vio más al sur', null, null]);
   });
 
+  test('CU-08 / CU-09 · el fiscal de instrucción es opcional: se crea sin fiscal, se asigna después y se puede quitar', async () => {
+    const base = {
+      titulo: `PRUEBAS AUTOMÁTICAS - Punto Cero fiscal ${Date.now()}`, localidad: 'Córdoba',
+      puntoCeroLat: -31.5, puntoCeroLng: -64.5, fechaHoraInicio: new Date().toISOString(),
+    };
+    // Sin el campo, o con espacios: nace sin fiscal (NULL, no texto vacío).
+    const c = await ctx.api('POST', '/operativos', base);
+    motivo(c, 201);
+    const id = c.json.operativo.id;
+    assert.equal(c.json.operativo.fiscalInstruccion, null);
+    const c2 = await ctx.api('POST', '/operativos', { ...base, titulo: `${base.titulo} b`, fiscalInstruccion: '   ' });
+    motivo(c2, 201);
+    assert.equal(c2.json.operativo.fiscalInstruccion, null);
+    // Si se escribe, se sigue validando.
+    motivo(await ctx.api('POST', '/operativos', { ...base, titulo: `${base.titulo} c`, fiscalInstruccion: 'Fiscal 123' }), 400);
+    // Se asigna después, y borrarlo lo deja otra vez sin fiscal.
+    const a = await ctx.api('PUT', `/operativos/${id}`, { fiscalInstruccion: '  Dra. Laura Medina ' });
+    motivo(a, 200);
+    assert.equal(a.json.operativo.fiscalInstruccion, 'Dra. Laura Medina');
+    const q = await ctx.api('PUT', `/operativos/${id}`, { fiscalInstruccion: '' });
+    motivo(q, 200);
+    assert.equal(q.json.operativo.fiscalInstruccion, null);
+    // Lo que sigue siendo obligatorio, sigue siéndolo.
+    motivo(await ctx.api('POST', '/operativos', { ...base, titulo: `${base.titulo} d`, localidad: '' }), 400);
+  });
+
   test('CU-36 / CU-38 · con el operativo finalizado el mapa es de sólo lectura', async () => {
     motivo(await ctx.api('POST', `/operativos/${opNuevo}/finalizar`, {}), 200);
     motivo(await ctx.api('PUT', `/operativos/${opNuevo}/punto-cero`, { lat: -31.6, lng: -64.5, motivo: 'x' }), 409, 'operativo_cerrado');
