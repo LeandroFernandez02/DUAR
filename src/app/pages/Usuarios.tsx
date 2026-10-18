@@ -928,7 +928,7 @@ export default function Usuarios() {
                     <li>El usuario desaparece del sistema visualmente.</li>
                     <li>Se desvincula de todos los operativos y grupos.</li>
                     <li>Su registro queda como auditoría interna (soft-delete).</li>
-                    <li>Si la persona vuelve a registrarse con el mismo DNI, se reactiva esta cuenta con su historial. Su correo queda reservado para ella.</li>
+                    <li>Si la persona vuelve a registrarse con el mismo DNI, se reactiva esta cuenta con su historial. Su correo queda libre para crear otra cuenta.</li>
                   </ul>
                 </div>
                 <div className="flex justify-end gap-3">

@@ -179,15 +179,15 @@ export async function actualizar(req, res, next) {
       return res.status(400).json({ error: 'Datos inválidos.', errores });
     }
 
-    // Cuentan también las cuentas eliminadas: su DNI y su correo quedan reservados
-    // para su dueño, que los recupera reactivando su cuenta (CU-07, 05/10).
+    // El correo choca sólo con cuentas vigentes: el de una eliminada queda libre (CU-07, 18/10).
+    // El DNI cuenta también las eliminadas: es de esa persona, que lo recupera reactivando su cuenta.
     const cambiaEmail = !!b.email && b.email.toLowerCase() !== previo.email.toLowerCase();
     if (cambiaEmail) {
       if (!(await dominioDelCorreoExiste(b.email))) {
         return res.status(400).json({ error: MENSAJE_DOMINIO_INEXISTENTE, errores: { email: MENSAJE_DOMINIO_INEXISTENTE } });
       }
       const { rows } = await query(
-        `SELECT id FROM usuarios WHERE lower(email) = lower($1) AND id <> $2`,
+        `SELECT id FROM usuarios WHERE lower(email) = lower($1) AND id <> $2 AND eliminado_en IS NULL`,
         [b.email, id]
       );
       if (rows.length) return res.status(409).json({ error: DUPLICADO.email, campo: 'email', errores: { email: DUPLICADO.email } });

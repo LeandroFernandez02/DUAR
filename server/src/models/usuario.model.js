@@ -111,19 +111,18 @@ export async function buscarPorEmailConHash(email) {
  *
  *  - DNI: lo ocupa una cuenta VIGENTE. Si sólo hay una eliminada con ese DNI,
  *    no es duplicado: es la misma persona que vuelve y se reactiva su cuenta.
- *  - Correo: lo ocupa cualquier cuenta de OTRA persona, vigente o eliminada
- *    (decisión del 05/10): el correo de una cuenta dada de baja queda
- *    reservado para su dueño, que lo recupera al volver con su DNI.
+ *  - Correo: lo ocupa una cuenta VIGENTE. El de una cuenta eliminada queda
+ *    libre para una cuenta nueva (decisión del 18/10, migración 023).
  */
 export async function existeDniOEmail(dni, email) {
   const { rows } = await query(
-    `SELECT dni, email, eliminado_en IS NOT NULL AS eliminado FROM usuarios
-      WHERE dni = $1 OR lower(email) = lower($2)`,
+    `SELECT dni, email FROM usuarios
+      WHERE (dni = $1 OR lower(email) = lower($2)) AND eliminado_en IS NULL`,
     [dni, email]
   );
   return {
-    dni:   rows.some(r => r.dni === dni && !r.eliminado),
-    email: rows.some(r => r.email.toLowerCase() === email.toLowerCase() && r.dni !== dni),
+    dni:   rows.some(r => r.dni === dni),
+    email: rows.some(r => r.email.toLowerCase() === email.toLowerCase()),
   };
 }
 

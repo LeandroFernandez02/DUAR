@@ -68,6 +68,7 @@ aplica al proyecto Supabase con el mismo nombre:
 | `020_funciones_search_path.sql` | `search_path` fijo en las dos funciones de trigger de la 019 (asesor de seguridad de Supabase, lint 0011) |
 | `021_informes_operativo.sql` | Informe por operativo (CU-41): `informes_operativo` (código INF-año-número, tipo PARCIAL/FINAL, hora de corte, huella SHA-256 del PDF guardado en Storage); un solo final por operativo; un trigger impide modificar o borrar un informe emitido |
 | `022_fiscal_opcional.sql` | `operativos.fiscal_instruccion` deja de ser obligatoria (CU-08/09): sin fiscal asignado queda en NULL |
+| `023_correo_libre_al_eliminar.sql` | El correo de una cuenta eliminada queda libre para una cuenta nueva (CU-07, Testeo punto 29): `usuarios_email_key` → índice único parcial `usuarios_email_vigente_key` sobre `lower(email)` de las cuentas vigentes |
 
 **Numeración de los CU.** Desde el 13/10/2026 los CU van del 01 al 44: se sumó
 el CU-15 «Registrar Presencia de Mando» y «Extraer Agente de Grupo» quedó como
@@ -223,9 +224,11 @@ No son optimizaciones: si se caen, se cae la regla.
   depende de la capa de aplicación. Se puede blindar con un trigger.
 - ~~**DNI/email de usuarios ELIMINADOS**~~ — resuelto el 05/10 sin tocar la
   base: quien vuelve con el DNI de una cuenta eliminada **reactiva esa misma
-  cuenta** (mismo id, historial unido; `usuario.model.js#reactivar`). El DNI y
-  el correo de una cuenta eliminada quedan reservados para su dueño, así que
-  `usuarios_dni_key` y `usuarios_email_key` siguen siendo UNIQUE plenas.
+  cuenta** (mismo id, historial unido; `usuario.model.js#reactivar`), así que
+  `usuarios_dni_key` sigue siendo UNIQUE pleno. El correo, en cambio, desde el
+  18/10 (migración `023`) queda **libre** al eliminar la cuenta: el UNIQUE
+  pleno `usuarios_email_key` se reemplazó por `usuarios_email_vigente_key`
+  (`lower(email)`, sólo cuentas con `eliminado_en IS NULL`).
 
 ### Presencia de mando: el puesto de comando (migración `016`)
 
