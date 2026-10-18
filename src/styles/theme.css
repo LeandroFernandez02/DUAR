@@ -296,3 +296,6 @@ html {
   margin: 0;
   line-height: 1.5;
 }
+
+/* Chips de estado en modo oscuro: el texto oscuro de los de fondo translúcido no se veía (Testeo 15/10, punto 25). */
+.dark .status-badge { --badge-fg: var(--badge-fg-dark) !important; }

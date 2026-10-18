@@ -78,6 +78,11 @@ function estadosDesdeUrl(valor: string | null): EstadoOperativo[] {
 const sonVigentes = (sel: EstadoOperativo[]) => sel.length === VIGENTES.length && VIGENTES.every(v => sel.includes(v));
 
 /* ── form base ── */
+/** Cómo se llama cada estado de agente en el aviso previo al cierre (CU-10 5.1). */
+const ETIQUETA_ESTADO_AGENTE: Record<string, string> = {
+  AGRUPADO: 'Agrupado', DESPLEGADO: 'Desplegado', RASTRILLANDO: 'Rastrillando', REPLEGADO: 'Replegado',
+};
+
 const emptyForm = {
   nombre: '',
   estado: 'nuevo' as EstadoOperativo,
@@ -175,7 +180,10 @@ export default function Operativos() {
 
   /* ── finalize state ── */
   const [finalizeNota, setFinalizeNota] = useState('');
-  const [finalizeStep, setFinalizeStep] = useState<'confirm' | 'gpx_warning'>('confirm');
+  const [finalizeStep, setFinalizeStep] = useState<'confirm' | 'revision'>('confirm');
+  /** Lo que conviene revisar antes de cerrar (CU-10 5.1): sin tracks GPX o con agentes todavía en actividad. */
+  const [revision, setRevision] = useState<{ tracksCargados: number; agentesEnActividad: { nombre: string; apellido: string; estado: string }[] } | null>(null);
+  const [revisando, setRevisando] = useState(false);
 
   /* ── open/close helpers ── */
   const openCreate = () => {
@@ -222,27 +230,33 @@ export default function Operativos() {
   };
 
   /* ── finalize helpers ──
-   * El aviso de "GPX sin sincronizar" (CU-10 paso 5.1) necesita el subsistema
-   * de tracking real (Módulo 5, todavía no construido) para saber si hay algo
-   * pendiente de verdad. Con el conteo de agentes como aproximación se
-   * mostraría la advertencia con datos inventados; se desactiva hasta que
-   * exista una fuente real que consultar. */
-  const hasGpxPending = (_op: Operativo) => false;
-
+   * CU-10 paso 5.1 (Testeo 15/10, punto 17): antes de cerrar se consulta al servidor si hay algún
+   * track GPX cargado y si algún agente sigue en actividad (cualquier estado que no sea En espera,
+   * Disponible o No disponible). Si falta algo se avisa; «Forzar cierre» finaliza igual. */
   const openFinalize = (op: Operativo) => {
     setSelected(op);
     setFinalizeNota('');
     setFinalizeStep('confirm');
+    setRevision(null);
     setModal('finalize');
   };
 
-  const handleFinalizeConfirm = () => {
+  const handleFinalizeConfirm = async () => {
     if (!selected) return;
-    if (hasGpxPending(selected)) {
-      setFinalizeStep('gpx_warning');
-    } else {
-      handleFinalizeExec();
+    setRevisando(true);
+    try {
+      const r = await operativosApi.revisionFinalizar(selected.id);
+      if (r.tracksCargados === 0 || r.agentesEnActividad.length > 0) {
+        setRevision(r);
+        setFinalizeStep('revision');
+        return;
+      }
+    } catch {
+      // Si la revisión no se puede consultar no se bloquea el cierre: el servidor igual valida todo.
+    } finally {
+      setRevisando(false);
     }
+    handleFinalizeExec();
   };
 
   const handleFinalizeExec = async () => {
@@ -1273,7 +1287,7 @@ export default function Operativos() {
                 )}
                 <div>
                   <h2 style={{ color: 'var(--foreground)', fontSize: 'var(--text-h3)', fontWeight: 'var(--font-weight-semibold)', fontFamily: 'var(--font-family-primary)' }}>
-                    {finalizeStep === 'confirm' ? 'Finalizar Operativo' : 'Sincronización GPX pendiente'}
+                    {finalizeStep === 'confirm' ? 'Finalizar Operativo' : 'Revisá antes de finalizar'}
                   </h2>
                   <p className="truncate max-w-[240px]" style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-label)', fontFamily: 'var(--font-family-primary)', marginTop: 1 }}>
                     {selected.nombre}
@@ -1361,6 +1375,7 @@ export default function Operativos() {
                   </button>
                   <button
                     onClick={handleFinalizeConfirm}
+                    disabled={revisando}
                     className="flex items-center gap-2 px-4 py-2 rounded-[var(--radius-button)]"
                     style={{
                       background: '#b45309',
@@ -1375,14 +1390,14 @@ export default function Operativos() {
                     onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = '#b45309'}
                   >
                     <CheckCircle2 size={15} />
-                    Confirmar Finalización
+                    {revisando ? 'Revisando…' : 'Confirmar Finalización'}
                   </button>
                 </div>
               </>
             )}
 
-            {/* ─────────── STEP: gpx_warning ─────────── */}
-            {finalizeStep === 'gpx_warning' && (
+            {/* ─────────── STEP: revision (CU-10 5.1) ─────────── */}
+            {finalizeStep === 'revision' && revision && (
               <>
                 <div className="px-5 py-5 flex flex-col gap-4">
                   {/* Alert bloqueante */}
@@ -1393,43 +1408,44 @@ export default function Operativos() {
                     <AlertCircle size={18} style={{ color: 'var(--primary)', flexShrink: 0, marginTop: 1 }} />
                     <div>
                       <p style={{ color: 'var(--foreground)', fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-semibold)', fontFamily: 'var(--font-family-primary)' }}>
-                        Atención: Existen tracks GPX en proceso de sincronización activa.
+                        Atención: hay cosas sin resolver en este operativo.
                       </p>
                       <p style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-label)', fontFamily: 'var(--font-family-primary)', marginTop: 5, lineHeight: 1.55 }}>
-                        {selected.agenteIds.length} agente{selected.agenteIds.length !== 1 ? 's' : ''} aún están subiendo datos de rastrillaje. Forzar el cierre puede ocasionar <strong>pérdida de registros GPS</strong> no sincronizados.
+                        Una vez finalizado no se puede cargar ni corregir nada. Si forzás el cierre, lo que falte <strong>queda sin registrar</strong>.
                       </p>
                     </div>
                   </div>
 
-                  {/* Indicador visual de agentes sincronizando */}
+                  {/* Qué es lo que falta */}
                   <div
-                    className="rounded-[var(--radius-input)] px-4 py-3"
+                    className="rounded-[var(--radius-input)] px-4 py-3 flex flex-col gap-3"
                     style={{ background: 'var(--muted)', border: '1px solid var(--border)' }}
                   >
-                    <div className="flex items-center gap-2 mb-2">
-                      <Clock size={12} style={{ color: 'var(--muted-foreground)' }} />
-                      <span style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-label)', fontFamily: 'var(--font-family-primary)', fontWeight: 'var(--font-weight-semibold)' }}>
-                        Sincronización en curso
-                      </span>
-                    </div>
-                    <div className="flex flex-col gap-1.5">
-                      {selected.agenteIds.slice(0, 3).map((id, i) => (
-                        <div key={id} className="flex items-center gap-2">
-                          <div
-                            className="w-1.5 h-1.5 rounded-full"
-                            style={{ background: i % 2 === 0 ? '#f59e0b' : '#fcd34d', animation: 'pulse 1.5s ease-in-out infinite' }}
-                          />
-                          <span style={{ color: 'var(--muted-foreground)', fontSize: '11px', fontFamily: 'var(--font-family-primary)' }}>
-                            Agente {id} — subiendo track GPX…
-                          </span>
-                        </div>
-                      ))}
-                      {selected.agenteIds.length > 3 && (
-                        <span style={{ color: 'var(--muted-foreground)', fontSize: '11px', fontFamily: 'var(--font-family-primary)', paddingLeft: 14 }}>
-                          +{selected.agenteIds.length - 3} más…
+                    {revision.tracksCargados === 0 && (
+                      <div className="flex items-start gap-2">
+                        <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: '#f59e0b', marginTop: 6 }} />
+                        <span style={{ color: 'var(--foreground)', fontSize: 'var(--text-label)', fontFamily: 'var(--font-family-primary)', lineHeight: 1.5 }}>
+                          <strong>No hay ningún track GPX cargado.</strong> No va a quedar registro de lo recorrido en el terreno.
                         </span>
-                      )}
-                    </div>
+                      </div>
+                    )}
+                    {revision.agentesEnActividad.length > 0 && (
+                      <div className="flex items-start gap-2">
+                        <div className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: '#f59e0b', marginTop: 6 }} />
+                        <div style={{ fontFamily: 'var(--font-family-primary)', fontSize: 'var(--text-label)', lineHeight: 1.5, color: 'var(--foreground)' }}>
+                          <strong>
+                            {revision.agentesEnActividad.length === 1 ? '1 agente sigue en actividad' : `${revision.agentesEnActividad.length} agentes siguen en actividad`}
+                          </strong>{' '}
+                          (no está En espera, Disponible ni No disponible):
+                          <ul style={{ margin: '4px 0 0', paddingLeft: 16, color: 'var(--muted-foreground)', fontSize: '11px' }}>
+                            {revision.agentesEnActividad.slice(0, 5).map((a, i) => (
+                              <li key={i}>{a.nombre} {a.apellido} · {ETIQUETA_ESTADO_AGENTE[a.estado] ?? a.estado}</li>
+                            ))}
+                            {revision.agentesEnActividad.length > 5 && <li>+{revision.agentesEnActividad.length - 5} más…</li>}
+                          </ul>
+                        </div>
+                      </div>
+                    )}
                   </div>
                 </div>
 

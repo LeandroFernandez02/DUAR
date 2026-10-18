@@ -4,7 +4,7 @@ import {
 } from 'lucide-react';
 import { TipoObjetivo } from '../../data/mockData';
 import { listarPaises } from '../../services/geoService';
-import { soloDigitos, formatearDni, validarNombre, validarApellido, validarDni } from '../../utils/validacionUsuario';
+import { soloDigitos, formatearDni, validarNombre, validarApellido, validarDni, digitosAntesDelCursor, reponerCursor } from '../../utils/validacionUsuario';
 
 /* ─────────────────────────────────────────────────
    Validación compartida (modal de alta/edición y modal de acceso rápido).
@@ -242,7 +242,12 @@ function Inp({ value, onChange, placeholder, type = 'text', readOnly, maxLength,
       value={value}
       readOnly={readOnly}
       placeholder={readOnly ? undefined : placeholder}
-      onChange={!readOnly ? e => onChange?.(e.target.value) : undefined}
+      onChange={!readOnly ? e => {
+        const el = e.target;
+        const digitos = digitosAntesDelCursor(el);   // el DNI se reformatea con puntos: sin esto el cursor salta al final (Testeo 15/10, punto 22)
+        onChange?.(el.value);
+        if (inputMode === 'numeric') reponerCursor(el, digitos);
+      } : undefined}
       style={readOnly ? inputRO() : { ...inputSt(), ...(hasError ? { borderColor: 'var(--primary)' } : {}) }}
       onFocus={!readOnly ? e => { e.currentTarget.style.borderColor = 'var(--primary)'; } : undefined}
       onBlur={!readOnly ? e => { e.currentTarget.style.borderColor = hasError ? 'var(--primary)' : 'var(--border)'; } : undefined}

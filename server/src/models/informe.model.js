@@ -235,6 +235,8 @@ export async function reunirDatos(operativoId, corteEn) {
     grupos: grupos.map(g => ({ ...g, periodos: periodosEnTerreno(eventosGrupo.filter(e => e.grupoId === g.id)) })),
     personal, mandos, presencias, bajas,
     retiros: eventosAgente.filter(e => e.accion === 'retiro'),
+    // «Baja de personal» (15/10): los retiros del grupo y quienes dejaron el operativo antes del cierre.
+    bajasPersonal: eventosAgente.filter(e => e.accion === 'retiro' || (e.accion === 'baja' && e.motivo !== 'Operativo finalizado')),
     cronologia: armarCronologia({
       operativo, objetivo: objetivo[0], hallazgos, puntoCero, grupos, eventosGrupo, eventosAgente,
       mandos, presencias, eventosPoligono, otrosMarcadores, bajas, auditoriaOperativo, informesPrevios,

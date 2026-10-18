@@ -165,6 +165,15 @@ export async function activar(req, res, next) {
   } catch (err) { next(err); }
 }
 
+/** GET /api/operativos/:id/finalizar/revision — CU-10 5.1: lo que conviene mirar antes de cerrar. */
+export async function revisionFinalizar(req, res, next) {
+  try {
+    const previo = await Operativo.buscarPorId(req.params.id);
+    if (!previo) return res.status(404).json({ error: 'Operativo no encontrado.' });
+    res.json(await Operativo.revisionAntesDeFinalizar(previo.id));
+  } catch (err) { next(err); }
+}
+
 /**
  * POST /api/operativos/:id/finalizar — CU-10
  * Precondición: ACTIVO, EN_PLANIFICACION o EN_PROCESO.

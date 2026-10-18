@@ -18,7 +18,8 @@ import * as Operativo from '../models/operativo.model.js';
 import * as TokenEmail from '../models/tokenEmail.model.js';
 import * as Auditoria from '../models/auditoria.model.js';
 import { enviarConfirmacion } from '../services/email.service.js';
-import { validarDatosPersonales, normalizarDatosPersonales } from '../utils/validaciones.js';
+import { validarDatosPersonales, normalizarDatosPersonales, exigirFechaNacimiento } from '../utils/validaciones.js';
+import { dominioDelCorreoExiste, MENSAJE_DOMINIO_INEXISTENTE } from '../utils/dominioCorreo.js';
 import { query } from '../config/db.js';
 
 const HORAS_SESION = Number(process.env.SESION_HORAS ?? 12);
@@ -73,9 +74,11 @@ export async function registrar(req, res, next) {
       return res.status(400).json({ error: 'La contraseña debe tener al menos 8 caracteres.' });
     }
 
-    const errores = validarDatosPersonales(b);
+    // La fecha de nacimiento es obligatoria (Testeo 15/10, punto 24) y el dominio del correo tiene que existir (punto 23).
+    const errores = { ...validarDatosPersonales(b), ...exigirFechaNacimiento(b) };
+    if (!errores.email && !(await dominioDelCorreoExiste(b.email))) errores.email = MENSAJE_DOMINIO_INEXISTENTE;
     if (Object.keys(errores).length) {
-      return res.status(400).json({ error: 'Datos inválidos.', errores });
+      return res.status(400).json({ error: Object.values(errores)[0], errores });
     }
 
     // CU-02 paso 4.1 — si ya está registrado, se bloquea la creación.

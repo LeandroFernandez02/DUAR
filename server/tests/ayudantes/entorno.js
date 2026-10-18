@@ -145,7 +145,7 @@ async function asegurarUsuarios(admin, cat) {
     if (!fila) {
       const r = await api('POST', '/usuarios', {
         dni: String(98000001 + i), nombre: nombre(u.clave), apellido: 'Prueba Automatica',
-        email: email(u.clave), password, rol,
+        email: email(u.clave), password, rol, fechaNacimiento: '1990-05-15',
         institucionId: cat.institucion(u.institucion),
         dotacionId: u.institucion === 'DUAR' ? cat.dotacionDuar : null,
         especialidadId: u.especialidad ? cat.especialidad(u.especialidad) : null,

@@ -5,12 +5,15 @@ import { useApp } from '../context/AppContext';
 import { Usuario, Rol, EstadoUsuario, catInstituciones, catEspecialidades, catAlergias, dotacionesDe, institucionLabel, especialidadNombrePorId } from '../data/mockData';
 import { usuariosApi, ApiError, UsuarioApi } from '../services/api';
 import StatusBadge from '../components/shared/StatusBadge';
+import CampoPassword from '../components/shared/CampoPassword';
+import CampoFecha from '../components/shared/CampoFecha';
 import {
   validarNombre, validarApellido, validarDni, validarTelefono,
-  validarFechaNacimiento, fechaMaximaNacimiento,
+  validarFechaNacimiento,
   validarEmail, validarPassword, filtrarEmail, PASSWORD_MAX,
   soloDigitos, formatearDni, formatearTelefono, limpiarTexto,
-  AYUDA_PASSWORD, AYUDA_TELEFONO, PLACEHOLDER_TELEFONO, FECHA_NACIMIENTO_MIN,
+  digitosAntesDelCursor, reponerCursor,
+  AYUDA_PASSWORD, AYUDA_TELEFONO, PLACEHOLDER_TELEFONO,
 } from '../utils/validacionUsuario';
 
 /**
@@ -56,7 +59,7 @@ const rolColor = (rol: Rol) => {
 };
 
 const emptyForm = {
-  dni: '', nombre: '', apellido: '', email: '', password: '',
+  dni: '', nombre: '', apellido: '', email: '', password: '', passwordConfirm: '',
   rol: 'agente' as Rol, fechaNacimiento: '', telefono: '',
   alergiaIds: [] as string[],
   institucionId: '', dotacionId: '', especialidadId: '', grupo_sanguineo: '',
@@ -139,7 +142,7 @@ export default function Usuarios() {
     setSelected(u);
     setForm({
       dni: u.dni, nombre: u.nombre, apellido: u.apellido,
-      email: u.email, password: u.password,
+      email: u.email, password: u.password, passwordConfirm: '',
       rol: u.rol, fechaNacimiento: u.fechaNacimiento || '',
       telefono: u.telefono || '', alergiaIds: u.alergiaIds || [],
       institucionId: u.institucionId || '', dotacionId: u.dotacionId || '', especialidadId: u.especialidadId || '',
@@ -184,8 +187,12 @@ export default function Usuarios() {
     // que ni cumple el mínimo de 8). Edición: vacía = "no cambiarla" (CU-06 paso 5).
     if (modal === 'create' || form.password) {
       const errPassword = validarPassword(form.password); if (errPassword) errores.password = errPassword;
+      // Doble validación (Testeo 15/10, punto 21): se escribe dos veces para no guardar una con error de tipeo.
+      else if (form.password !== form.passwordConfirm) errores.passwordConfirm = 'Las contraseñas no coinciden.';
     }
-    const errFechaNacimiento = validarFechaNacimiento(form.fechaNacimiento); if (errFechaNacimiento) errores.fechaNacimiento = errFechaNacimiento;
+    // La fecha de nacimiento es obligatoria al crear (Testeo 15/10, punto 24); al modificar, sólo si la cuenta ya la tenía.
+    const errFechaNacimiento = validarFechaNacimiento(form.fechaNacimiento, modal === 'create' || !!selected?.fechaNacimiento);
+    if (errFechaNacimiento) errores.fechaNacimiento = errFechaNacimiento;
     setErroresForm(errores);
     if (Object.keys(errores).length > 0) {
       setErrorModal('Revisá los campos marcados en rojo.');
@@ -574,9 +581,11 @@ export default function Usuarios() {
 
       {/* Create / Edit Modal */}
       {(modal === 'create' || modal === 'edit') && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto" style={{ background: 'rgba(0,0,0,0.5)' }}>
+        // `m-auto` en el hijo (y no `items-center`) centra cuando entra y deja que se desplace desde
+        // arriba cuando no: con `items-center` el borde superior quedaba cortado (Testeo 15/10, punto 20).
+        <div className="fixed inset-0 z-50 flex p-4 overflow-y-auto" style={{ background: 'rgba(0,0,0,0.5)' }}>
           <div
-            className="w-full max-w-[540px] rounded-[var(--radius-card)] p-6 my-4"
+            className="w-full max-w-[540px] rounded-[var(--radius-card)] p-4 sm:p-6 m-auto"
             style={{ background: 'var(--card)', boxShadow: 'var(--elevation-md)' }}
           >
             <div className="flex items-center justify-between mb-5">
@@ -588,7 +597,7 @@ export default function Usuarios() {
               </button>
             </div>
 
-            <div className="grid grid-cols-2 gap-3">
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {[
                 {
                   label: 'DNI *', key: 'dni', type: 'text', span: false,
@@ -620,7 +629,14 @@ export default function Usuarios() {
                     ? AYUDA_PASSWORD
                     : `La contraseña actual no se muestra porque se guarda cifrada. Escribí una sólo si querés cambiarla: ${AYUDA_PASSWORD.charAt(0).toLowerCase()}${AYUDA_PASSWORD.slice(1)}`,
                 },
-                { label: 'Fecha de Nacimiento', key: 'fechaNacimiento', type: 'date', span: false, autoComplete: 'off', min: FECHA_NACIMIENTO_MIN, max: fechaMaximaNacimiento() },
+                // Se pide dos veces: al crear siempre, al modificar sólo si se escribió una nueva.
+                ...((modal === 'create' || form.password) ? [{
+                  label: modal === 'create' ? 'Repetir contraseña *' : 'Repetir contraseña nueva', key: 'passwordConfirm', type: 'password', span: true,
+                  autoComplete: 'new-password', filtro: (v: string) => v.slice(0, PASSWORD_MAX),
+                }] : []),
+                {
+                  label: modal === 'create' ? 'Fecha de Nacimiento *' : 'Fecha de Nacimiento', key: 'fechaNacimiento', type: 'date', span: false, autoComplete: 'off',
+                },
                 {
                   label: 'Teléfono', key: 'telefono', type: 'tel', span: false,
                   inputMode: 'numeric' as const, autoComplete: 'off', placeholder: PLACEHOLDER_TELEFONO, ayuda: AYUDA_TELEFONO,
@@ -631,28 +647,54 @@ export default function Usuarios() {
                 const raw = (form as any)[f.key] as string;
                 const valorMostrado = f.formato ? f.formato(raw) : raw;
                 return (
-                  <div key={f.key} className={f.span ? 'col-span-2' : ''}>
+                  <div key={f.key} className={f.span ? 'sm:col-span-2' : ''}>
                     <label className="block mb-1" style={{ color: 'var(--foreground)', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)' }}>
                       {f.label}
                     </label>
-                    <input
-                      type={f.type}
-                      inputMode={f.inputMode}
-                      name={`usuario-${f.key}`}
-                      autoComplete={f.autoComplete}
-                      placeholder={(f as any).placeholder}
-                      min={(f as any).min}
-                      max={(f as any).max}
-                      value={valorMostrado}
-                      onChange={e => {
-                        const v = f.filtro ? f.filtro(e.target.value) : e.target.value;
-                        setForm({ ...form, [f.key]: v });
-                        if (erroresForm[f.key]) setErroresForm({ ...erroresForm, [f.key]: '' });
-                      }}
-                      onBlur={(f as any).limpiar ? () => setForm(prev => ({ ...prev, [f.key]: (f as any).limpiar((prev as any)[f.key]) })) : undefined}
-                      className="w-full px-3 py-2 rounded-lg border outline-none"
-                      style={{ ...fieldStyle, border: erroresForm[f.key] ? '1px solid #dc2626' : fieldStyle.border }}
-                    />
+                    {f.type === 'password' ? (
+                      <CampoPassword
+                        name={`usuario-${f.key}`}
+                        autoComplete={f.autoComplete}
+                        placeholder={(f as any).placeholder}
+                        value={valorMostrado}
+                        onChange={e => {
+                          setForm({ ...form, [f.key]: f.filtro ? f.filtro(e.target.value) : e.target.value });
+                          if (erroresForm[f.key]) setErroresForm({ ...erroresForm, [f.key]: '' });
+                        }}
+                        className="w-full px-3 py-2 rounded-lg border outline-none"
+                        style={{ ...fieldStyle, border: erroresForm[f.key] ? '1px solid #dc2626' : fieldStyle.border }}
+                      />
+                    ) : f.type === 'date' ? (
+                      <CampoFecha
+                        value={valorMostrado}
+                        onChange={v => {
+                          setForm({ ...form, [f.key]: v });
+                          if (erroresForm[f.key]) setErroresForm({ ...erroresForm, [f.key]: '' });
+                        }}
+                        className="w-full px-3 py-2 rounded-lg border outline-none"
+                        style={{ ...fieldStyle, border: erroresForm[f.key] ? '1px solid #dc2626' : fieldStyle.border }}
+                      />
+                    ) : (
+                      <input
+                        type={f.type}
+                        inputMode={f.inputMode}
+                        name={`usuario-${f.key}`}
+                        autoComplete={f.autoComplete}
+                        placeholder={(f as any).placeholder}
+                        value={valorMostrado}
+                        onChange={e => {
+                          const el = e.target;
+                          const digitos = digitosAntesDelCursor(el);   // para no perder el lugar al reformatear (punto 22)
+                          const v = f.filtro ? f.filtro(el.value) : el.value;
+                          setForm({ ...form, [f.key]: v });
+                          if (erroresForm[f.key]) setErroresForm({ ...erroresForm, [f.key]: '' });
+                          if (f.formato) reponerCursor(el, digitos);
+                        }}
+                        onBlur={(f as any).limpiar ? () => setForm(prev => ({ ...prev, [f.key]: (f as any).limpiar((prev as any)[f.key]) })) : undefined}
+                        className="w-full px-3 py-2 rounded-lg border outline-none"
+                        style={{ ...fieldStyle, border: erroresForm[f.key] ? '1px solid #dc2626' : fieldStyle.border }}
+                      />
+                    )}
                     {erroresForm[f.key] ? (
                       <p style={{ color: '#dc2626', fontSize: '11px', marginTop: '4px' }}>{erroresForm[f.key]}</p>
                     ) : (f as any).ayuda && (
@@ -751,14 +793,14 @@ export default function Usuarios() {
                 </select>
               </div>
 
-              <div className="col-span-2">
+              <div className="sm:col-span-2">
                 <label className="block mb-1" style={{ color: 'var(--foreground)', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)' }}>
                   Alergias {form.alergiaIds.length > 0 && `(${form.alergiaIds.length} seleccionadas)`}
                 </label>
                 {/* N:M real contra cat_alergias: un agente puede tener más de
                     una, por eso es un grupo de checkboxes y no un <select>. */}
                 <div
-                  className="grid grid-cols-2 gap-x-3 gap-y-2 p-3 rounded-lg border"
+                  className="grid grid-cols-1 sm:grid-cols-2 gap-x-3 gap-y-2 p-3 rounded-lg border"
                   style={{ background: 'var(--input-background)', borderColor: 'var(--border)' }}
                 >
                   {catAlergias.map(a => (
@@ -886,7 +928,7 @@ export default function Usuarios() {
                     <li>El usuario desaparece del sistema visualmente.</li>
                     <li>Se desvincula de todos los operativos y grupos.</li>
                     <li>Su registro queda como auditoría interna (soft-delete).</li>
-                    <li>Se puede crear un nuevo usuario con el mismo DNI o email.</li>
+                    <li>Si la persona vuelve a registrarse con el mismo DNI, se reactiva esta cuenta con su historial. Su correo queda reservado para ella.</li>
                   </ul>
                 </div>
                 <div className="flex justify-end gap-3">

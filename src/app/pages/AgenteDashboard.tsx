@@ -13,10 +13,12 @@ import {
 import { authApi, OperativoApi, ApiError } from '../services/api';
 import PanelTactico from '../components/portal/PanelTactico';
 import MisRecorridos from '../components/portal/MisRecorridos';
+import CampoFecha from '../components/shared/CampoFecha';
 import {
-  validarNombre, validarApellido, validarTelefono, validarFechaNacimiento, fechaMaximaNacimiento,
+  validarNombre, validarApellido, validarTelefono, validarFechaNacimiento,
   soloDigitos, formatearTelefono, formatearDni, limpiarTexto,
-  AYUDA_TELEFONO, PLACEHOLDER_TELEFONO, FECHA_NACIMIENTO_MIN,
+  digitosAntesDelCursor, reponerCursor,
+  AYUDA_TELEFONO, PLACEHOLDER_TELEFONO,
 } from '../utils/validacionUsuario';
 
 /** Estados que representan que un agente está actualmente activo en un operativo */
@@ -309,7 +311,7 @@ export default function AgenteDashboard() {
     const errNombre = validarNombre(nombre); if (errNombre) errores.nombre = errNombre;
     const errApellido = validarApellido(apellido); if (errApellido) errores.apellido = errApellido;
     const errTelefono = validarTelefono(formPerfil.telefono); if (errTelefono) errores.telefono = errTelefono;
-    const errFechaNacimiento = validarFechaNacimiento(formPerfil.fechaNacimiento); if (errFechaNacimiento) errores.fechaNacimiento = errFechaNacimiento;
+    const errFechaNacimiento = validarFechaNacimiento(formPerfil.fechaNacimiento, !!usuario.fechaNacimiento); if (errFechaNacimiento) errores.fechaNacimiento = errFechaNacimiento;
     setErroresPerfil(errores);
     if (Object.keys(errores).length > 0) {
       setErrorPerfil('Revisá los campos marcados en rojo.');
@@ -668,8 +670,11 @@ export default function AgenteDashboard() {
                   placeholder={PLACEHOLDER_TELEFONO}
                   value={formatearTelefono(formPerfil.telefono)}
                   onChange={e => {
-                    setFormPerfil({ ...formPerfil, telefono: soloDigitos(e.target.value).slice(0, 10) });
+                    const el = e.target;
+                    const digitos = digitosAntesDelCursor(el);   // para no perder el lugar al reformatear (Testeo 15/10, punto 22)
+                    setFormPerfil({ ...formPerfil, telefono: soloDigitos(el.value).slice(0, 10) });
                     if (erroresPerfil.telefono) setErroresPerfil({ ...erroresPerfil, telefono: '' });
+                    reponerCursor(el, digitos);
                   }}
                   className="w-full px-3 py-2 rounded-lg border outline-none"
                   style={{
@@ -685,13 +690,10 @@ export default function AgenteDashboard() {
 
               <div>
                 <label className="block mb-1" style={{ color: 'var(--foreground)', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)' }}>Fecha de Nacimiento</label>
-                <input
-                  type="date"
-                  min={FECHA_NACIMIENTO_MIN}
-                  max={fechaMaximaNacimiento()}
+                <CampoFecha
                   value={formPerfil.fechaNacimiento}
-                  onChange={e => {
-                    setFormPerfil({ ...formPerfil, fechaNacimiento: e.target.value });
+                  onChange={v => {
+                    setFormPerfil({ ...formPerfil, fechaNacimiento: v });
                     if (erroresPerfil.fechaNacimiento) setErroresPerfil({ ...erroresPerfil, fechaNacimiento: '' });
                   }}
                   className="w-full px-3 py-2 rounded-lg border outline-none"

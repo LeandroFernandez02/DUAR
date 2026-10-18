@@ -18,7 +18,8 @@ import * as Auditoria from '../models/auditoria.model.js';
 import * as AgenteOperativo from '../models/agenteOperativo.model.js';
 import * as TokenEmail from '../models/tokenEmail.model.js';
 import { enviarConfirmacion } from '../services/email.service.js';
-import { validarDatosPersonales, normalizarDatosPersonales } from '../utils/validaciones.js';
+import { validarDatosPersonales, normalizarDatosPersonales, exigirFechaNacimiento } from '../utils/validaciones.js';
+import { dominioDelCorreoExiste, MENSAJE_DOMINIO_INEXISTENTE } from '../utils/dominioCorreo.js';
 import { query, withTransaction } from '../config/db.js';
 
 const ENTIDAD = 'usuarios';
@@ -112,9 +113,11 @@ export async function crear(req, res, next) {
       return res.status(400).json({ error: 'DNI, nombre, apellido, email y contraseña son obligatorios.' });
     }
 
-    const errores = validarDatosPersonales(b);
+    // La fecha de nacimiento es obligatoria al crear (Testeo 15/10, punto 24) y el dominio del correo tiene que existir (punto 23).
+    const errores = { ...validarDatosPersonales(b), ...exigirFechaNacimiento(b) };
+    if (!errores.email && !(await dominioDelCorreoExiste(b.email))) errores.email = MENSAJE_DOMINIO_INEXISTENTE;
     if (Object.keys(errores).length) {
-      return res.status(400).json({ error: 'Datos inválidos.', errores });
+      return res.status(400).json({ error: Object.values(errores)[0], errores });
     }
 
     const duplicado = await Usuario.existeDniOEmail(b.dni, b.email);
@@ -180,6 +183,9 @@ export async function actualizar(req, res, next) {
     // para su dueño, que los recupera reactivando su cuenta (CU-07, 05/10).
     const cambiaEmail = !!b.email && b.email.toLowerCase() !== previo.email.toLowerCase();
     if (cambiaEmail) {
+      if (!(await dominioDelCorreoExiste(b.email))) {
+        return res.status(400).json({ error: MENSAJE_DOMINIO_INEXISTENTE, errores: { email: MENSAJE_DOMINIO_INEXISTENTE } });
+      }
       const { rows } = await query(
         `SELECT id FROM usuarios WHERE lower(email) = lower($1) AND id <> $2`,
         [b.email, id]

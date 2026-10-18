@@ -12,7 +12,12 @@ export const RE_APELLIDO = /^[A-Za-zÀ-ÖØ-öø-ÿ'\- ]{2,35}$/;
 export const RE_DNI = /^\d{7,8}$/;
 export const RE_TELEFONO = /^\d{10}$/;
 export const EDAD_MINIMA = 16;
-export const RE_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+/**
+ * Correo con forma de correo (Testeo 15/10, punto 23): parte local de letras, números y . _ % + -,
+ * dominio con etiquetas válidas y una terminación de sólo letras (no «.45» ni «.9a»). Espejo del
+ * frontend. Que el dominio exista se comprueba aparte (`dominioDelCorreoExiste`).
+ */
+export const RE_EMAIL = /^[A-Za-z0-9](?:[A-Za-z0-9._%+-]{0,62}[A-Za-z0-9])?@(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,24}$/;
 export const EMAIL_MAX = 150;
 export const PASSWORD_MIN = 8;
 export const PASSWORD_MAX = 64;
@@ -102,7 +107,7 @@ export function validarDatosPersonales(datos) {
   if (datos.email !== undefined) {
     const v = String(datos.email).trim();
     if (v.length > EMAIL_MAX) errores.email = `El correo puede tener hasta ${EMAIL_MAX} caracteres.`;
-    else if (!RE_EMAIL.test(v)) errores.email = 'Ingresá un correo válido (ej: nombre@dominio.com).';
+    else if (!RE_EMAIL.test(v) || v.includes('..')) errores.email = 'Ingresá un correo válido (ej: nombre@dominio.com).';
   }
 
   // Vacía = "no cambiar" en la edición de usuarios (CU-06): sólo se valida si viene algo.
@@ -114,15 +119,28 @@ export function validarDatosPersonales(datos) {
   if (datos.fechaNacimiento !== undefined && datos.fechaNacimiento !== null && datos.fechaNacimiento !== '') {
     const texto = String(datos.fechaNacimiento).slice(0, 10);
     const fecha = new Date(`${texto}T12:00:00`);
-    if (!/^\d{4}-\d{2}-\d{2}$/.test(texto) || Number.isNaN(fecha.getTime())
+    // Que exista de verdad: «31/02» no da error en Date, se corre solo al 2 de marzo (Testeo 15/10, punto 15).
+    const existe = !Number.isNaN(fecha.getTime())
+      && fecha.getMonth() + 1 === Number(texto.slice(5, 7)) && fecha.getDate() === Number(texto.slice(8, 10));
+    if (!/^\d{4}-\d{2}-\d{2}$/.test(texto) || !existe
         || Number(texto.slice(0, 4)) < ANIO_NACIMIENTO_MIN) {
       errores.fechaNacimiento = 'Fecha de nacimiento inválida.';
     } else if (edadDesde(texto) < EDAD_MINIMA) {
-      errores.fechaNacimiento = `El agente debe tener al menos ${EDAD_MINIMA} años.`;
+      errores.fechaNacimiento = `La edad mínima para registrarse es de ${EDAD_MINIMA} años.`;
     }
   }
 
   return errores;
+}
+
+/**
+ * La fecha de nacimiento es obligatoria al crear una cuenta (Testeo 15/10, punto 24): sin ella no
+ * se puede comprobar la edad mínima. Al modificar sigue siendo opcional, para las cuentas
+ * anteriores que nunca la cargaron. Devuelve `{ fechaNacimiento: mensaje }` o `{}`.
+ */
+export function exigirFechaNacimiento(datos) {
+  const v = datos.fechaNacimiento;
+  return v === undefined || v === null || String(v).trim() === '' ? { fechaNacimiento: 'Ingresá la fecha de nacimiento.' } : {};
 }
 
 /* ── Operativos (CU-08 / CU-09 / CU-10) ─────────────────────────────────── */

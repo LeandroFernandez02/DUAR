@@ -202,6 +202,25 @@ export async function activarSiEsNuevo(id) {
  * participaciones activas en `agentes_operativo`, igual patrón que el
  * traslado de la Regla de Ubicuidad en `agenteOperativo.model.js`.
  */
+/** Estados de un agente que no impiden cerrar el operativo: ya volvió a la base o no está disponible. */
+const ESTADOS_AGENTE_QUE_NO_IMPIDEN_CERRAR = ['EN_ESPERA', 'DISPONIBLE', 'NO_DISPONIBLE'];
+
+/**
+ * CU-10 paso 5.1 (Testeo 15/10, punto 17): qué conviene revisar antes de finalizar. Devuelve cuántos
+ * tracks GPX hay cargados y qué agentes siguen en actividad (cualquier estado que no sea En espera,
+ * Disponible o No disponible). No bloquea nada: el coordinador decide si espera o fuerza el cierre.
+ */
+export async function revisionAntesDeFinalizar(id) {
+  const { rows: [t] } = await query(
+    `SELECT count(*)::int AS n FROM tracks_gpx WHERE operativo_id = $1 AND eliminado_en IS NULL`, [id]);
+  const { rows: agentes } = await query(
+    `SELECT u.nombre, u.apellido, ao.estado::text AS estado
+       FROM agentes_operativo ao JOIN usuarios u ON u.id = ao.usuario_id
+      WHERE ao.operativo_id = $1 AND ao.fecha_egreso IS NULL AND NOT (ao.estado::text = ANY($2::text[]))
+      ORDER BY u.apellido, u.nombre`, [id, ESTADOS_AGENTE_QUE_NO_IMPIDEN_CERRAR]);
+  return { tracksCargados: t.n, agentesEnActividad: agentes };
+}
+
 export async function finalizar(id, { notaFinal = null, usuarioId = null } = {}) {
   return withTransaction(async (client) => {
     await client.query(

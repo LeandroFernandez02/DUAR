@@ -68,7 +68,7 @@ describe('Sesión, roles y cuentas (CU-01, CU-04 a CU-07)', () => {
   test('CU-05 · el coordinador no puede crear un administrador → 403 rol_no_permitido', async () => {
     const r = await comoCoord('POST', '/usuarios', {
       dni: '98000999', nombre: 'Rechazado', apellido: 'Prueba Automatica',
-      email: 'auto.rechazado@prueba.duar', password: 'NoSeCrea123!', rol: 'administrador',
+      email: 'auto.rechazado@prueba.duar', password: 'NoSeCrea123!', rol: 'administrador', fechaNacimiento: '1990-05-15',
     });
     motivo(r, 403, 'rol_no_permitido');
     const lista = (await ctx.api('GET', '/usuarios')).json.usuarios;
@@ -78,7 +78,7 @@ describe('Sesión, roles y cuentas (CU-01, CU-04 a CU-07)', () => {
   // CU-07 (05/10): quien vuelve con el DNI de una cuenta eliminada recupera ESA cuenta.
   const REUSO = {
     dni: '98000998', nombre: 'Reuso', apellido: 'Prueba Automatica',
-    email: 'auto.reuso@prueba.duar', password: 'ClaveReuso123!', rol: 'agente',
+    email: 'auto.reuso@prueba.duar', password: 'ClaveReuso123!', rol: 'agente', fechaNacimiento: '1990-05-15',
   };
   /** Si una corrida anterior quedó a medias, su cuenta se da de baja primero. */
   const darDeBajaReuso = () => ctx.query(
@@ -135,7 +135,7 @@ describe('Sesión, roles y cuentas (CU-01, CU-04 a CU-07)', () => {
     const qr = (await ctx.api('GET', `/operativos/${ctx.op}/qr`)).json.qr.token;
     const r = await ctx.api('POST', '/auth/registro', {
       qrToken: qr, dni: REUSO.dni, nombre: 'Reuso', apellido: 'Por QR',
-      email: 'auto.reuso3@prueba.duar', password: 'ClaveQr789!',
+      email: 'auto.reuso3@prueba.duar', password: 'ClaveQr789!', fechaNacimiento: '1991-02-20',
     }, null);
     motivo(r, 201);
     assert.equal(r.json.reactivado, true);

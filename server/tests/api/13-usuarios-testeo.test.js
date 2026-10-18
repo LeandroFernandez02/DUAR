@@ -30,7 +30,7 @@ async function liberar(dni, email) {
 async function crear(clave, dni, extra = {}) {
   const email = `auto.${clave}@prueba.duar`;
   await liberar(dni, email);
-  return ctx.api('POST', '/usuarios', { dni, nombre: 'Testeo', apellido: 'Prueba Automatica', email, password: CLAVE, rol: 'agente', ...extra });
+  return ctx.api('POST', '/usuarios', { dni, nombre: 'Testeo', apellido: 'Prueba Automatica', email, password: CLAVE, rol: 'agente', fechaNacimiento: '1990-05-15', ...extra });
 }
 
 /** Enlaces de confirmación que todavía sirven, y cuántos de ellos se emitieron recién. */
@@ -62,7 +62,7 @@ describe('Usuarios: arreglos del Testeo del 13/10 (CU-02, CU-03, CU-05, CU-06)',
 
   test('CU-05 3.1 · DNI repetido → «Ya existe un usuario registrado con el DNI ingresado…»', async () => {
     const r = await ctx.api('POST', '/usuarios', {
-      dni: '98000970', nombre: 'Otra', apellido: 'Persona', email: 'auto.testeo-otro@prueba.duar', password: CLAVE, rol: 'agente',
+      dni: '98000970', nombre: 'Otra', apellido: 'Persona', email: 'auto.testeo-otro@prueba.duar', password: CLAVE, rol: 'agente', fechaNacimiento: '1990-05-15',
     });
     motivo(r, 409);
     assert.equal(r.json.error, 'Ya existe un usuario registrado con el DNI ingresado. Verificá los datos e intentá nuevamente.');

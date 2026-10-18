@@ -4,20 +4,28 @@
  * Único lugar del frontend que sabe cómo se habla con el backend: si mañana
  * cambia la URL base o el esquema de autenticación, se toca sólo este archivo.
  *
- * El token de sesión se guarda en localStorage y viaja en cada request como
+ * El token de sesión se guarda en sessionStorage y viaja en cada request como
  * `Authorization: Bearer`. Es un token OPACO: el servidor lo valida contra la
  * tabla `sesiones_activas` (Decisión E), así que puede revocarse al instante.
+ *
+ * sessionStorage (y no localStorage) para que la sesión se cierre sola al cerrar el
+ * navegador o la pestaña (Testeo 15/10, punto 19). Cada pestaña tiene su propia sesión.
  */
 
 const TOKEN_KEY = 'duar-token';
 
+// Las sesiones que quedaron guardadas en localStorage antes de este cambio no se reutilizan.
+try { localStorage.removeItem(TOKEN_KEY); localStorage.removeItem('duar-user'); } catch { /* sin almacenamiento */ }
+
 export function getToken(): string | null {
-  return localStorage.getItem(TOKEN_KEY);
+  try { return sessionStorage.getItem(TOKEN_KEY); } catch { return null; }
 }
 
 export function setToken(token: string | null): void {
-  if (token) localStorage.setItem(TOKEN_KEY, token);
-  else localStorage.removeItem(TOKEN_KEY);
+  try {
+    if (token) sessionStorage.setItem(TOKEN_KEY, token);
+    else sessionStorage.removeItem(TOKEN_KEY);
+  } catch { /* sin almacenamiento: la sesión vale sólo mientras no se recargue */ }
 }
 
 /**
@@ -374,6 +382,9 @@ export const operativosApi = {
     api.put<{ operativo: OperativoApi }>(`/operativos/${id}`, datos),
   /** CU-08 paso 8: transición NUEVO → ACTIVO al entrar. Idempotente. */
   activar: (id: string) => api.post<{ operativo: OperativoApi }>(`/operativos/${id}/activar`),
+  /** CU-10 5.1: tracks cargados y agentes que siguen en actividad, para avisar antes de cerrar. */
+  revisionFinalizar: (id: string) =>
+    api.get<{ tracksCargados: number; agentesEnActividad: { nombre: string; apellido: string; estado: string }[] }>(`/operativos/${id}/finalizar/revision`),
   /** CU-10: cierra el operativo y libera a todo el personal asignado. */
   finalizar: (id: string, notaFinal?: string) =>
     api.post<{ operativo: OperativoApi }>(`/operativos/${id}/finalizar`, { notaFinal }),

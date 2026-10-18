@@ -8,13 +8,15 @@ import {
 import { useApp } from '../context/AppContext';
 import { RecuperarContrasenaModal } from '../components/auth/RecuperarContrasenaModal';
 import { catInstituciones, catEspecialidades, catAlergias, dotacionesDe } from '../data/mockData';
+import CampoPassword from '../components/shared/CampoPassword';
+import CampoFecha from '../components/shared/CampoFecha';
 import { qrApi, registroApi, authApi, setToken, ApiError, OperativoQRApi } from '../services/api';
 import {
   validarNombre, validarApellido, validarDni, validarTelefono,
-  validarFechaNacimiento, fechaMaximaNacimiento,
+  validarFechaNacimiento, digitosAntesDelCursor, reponerCursor,
   validarEmail, validarPassword, filtrarEmail, PASSWORD_MAX,
   soloDigitos, formatearDni, formatearTelefono, limpiarTexto,
-  AYUDA_PASSWORD, AYUDA_TELEFONO, PLACEHOLDER_TELEFONO, FECHA_NACIMIENTO_MIN,
+  AYUDA_PASSWORD, AYUDA_TELEFONO, PLACEHOLDER_TELEFONO,
 } from '../utils/validacionUsuario';
 import { guardarAltaPendiente, limpiarAltaPendiente } from '../utils/altaPendiente';
 
@@ -422,7 +424,7 @@ export default function Registro() {
     const errTelefono = validarTelefono(regForm.telefono); if (errTelefono) errores.telefono = errTelefono;
     const errEmail = validarEmail(email); if (errEmail) errores.email = errEmail;
     const errPassword = validarPassword(regForm.password); if (errPassword) errores.password = errPassword;
-    const errFechaNacimiento = validarFechaNacimiento(regForm.fechaNacimiento); if (errFechaNacimiento) errores.fechaNacimiento = errFechaNacimiento;
+    const errFechaNacimiento = validarFechaNacimiento(regForm.fechaNacimiento, true); if (errFechaNacimiento) errores.fechaNacimiento = errFechaNacimiento;
     setErroresCampos(errores);
     if (Object.keys(errores).length > 0) {
       setError('Revisá los campos marcados en rojo.');
@@ -794,7 +796,8 @@ export default function Registro() {
                   label: 'Contraseña *', key: 'password', type: 'password', placeholder: '', ayuda: AYUDA_PASSWORD,
                   autoComplete: 'new-password', filtro: (v: string) => v.slice(0, PASSWORD_MAX),
                 },
-                { label: 'Fecha de Nacimiento', key: 'fechaNacimiento', type: 'date', placeholder: '', min: FECHA_NACIMIENTO_MIN, max: fechaMaximaNacimiento() },
+                // Obligatoria (Testeo 15/10, punto 24): sin ella no se puede comprobar la edad mínima de 16 años.
+                { label: 'Fecha de Nacimiento *', key: 'fechaNacimiento', type: 'date', placeholder: '' },
                 {
                   label: 'Teléfono', key: 'telefono', type: 'tel', placeholder: PLACEHOLDER_TELEFONO, ayuda: AYUDA_TELEFONO,
                   inputMode: 'numeric' as const,
@@ -812,28 +815,56 @@ export default function Registro() {
                     >
                       {f.label}
                     </label>
-                    <input
-                      type={f.type}
-                      inputMode={f.inputMode}
-                      placeholder={f.placeholder}
-                      autoComplete={(f as any).autoComplete}
-                      min={(f as any).min}
-                      max={(f as any).max}
-                      value={valorMostrado}
-                      onChange={e => {
-                        const v = f.filtro ? f.filtro(e.target.value) : e.target.value;
-                        setRegForm({ ...regForm, [f.key]: v });
-                        if (erroresCampos[f.key]) setErroresCampos({ ...erroresCampos, [f.key]: '' });
-                      }}
-                      className={inputCls}
-                      style={{ ...inputStyle, border: erroresCampos[f.key] ? '1.5px solid #dc2626' : inputStyle.border }}
-                      onFocus={e => (e.target.style.borderColor = erroresCampos[f.key] ? '#dc2626' : 'var(--primary)')}
-                      onBlur={e => {
-                        e.target.style.borderColor = erroresCampos[f.key] ? '#dc2626' : 'var(--border)';
-                        const limpiar = (f as any).limpiar as ((v: string) => string) | undefined;
-                        if (limpiar) setRegForm(prev => ({ ...prev, [f.key]: limpiar((prev as any)[f.key]) }));
-                      }}
-                    />
+                    {f.type === 'password' ? (
+                      // Con el ojito para ver lo que se escribe (Testeo 15/10, punto 26).
+                      <CampoPassword
+                        placeholder={f.placeholder}
+                        autoComplete={(f as any).autoComplete}
+                        value={valorMostrado}
+                        onChange={e => {
+                          setRegForm({ ...regForm, [f.key]: f.filtro ? f.filtro(e.target.value) : e.target.value });
+                          if (erroresCampos[f.key]) setErroresCampos({ ...erroresCampos, [f.key]: '' });
+                        }}
+                        className={inputCls}
+                        style={{ ...inputStyle, border: erroresCampos[f.key] ? '1.5px solid #dc2626' : inputStyle.border }}
+                        onFocus={e => (e.target.style.borderColor = erroresCampos[f.key] ? '#dc2626' : 'var(--primary)')}
+                        onBlur={e => (e.target.style.borderColor = erroresCampos[f.key] ? '#dc2626' : 'var(--border)')}
+                      />
+                    ) : f.type === 'date' ? (
+                      <CampoFecha
+                        value={valorMostrado}
+                        onChange={v => {
+                          setRegForm({ ...regForm, [f.key]: v });
+                          if (erroresCampos[f.key]) setErroresCampos({ ...erroresCampos, [f.key]: '' });
+                        }}
+                        className={inputCls}
+                        style={{ ...inputStyle, border: erroresCampos[f.key] ? '1.5px solid #dc2626' : inputStyle.border }}
+                      />
+                    ) : (
+                      <input
+                        type={f.type}
+                        inputMode={f.inputMode}
+                        placeholder={f.placeholder}
+                        autoComplete={(f as any).autoComplete}
+                        value={valorMostrado}
+                        onChange={e => {
+                          const el = e.target;
+                          const digitos = digitosAntesDelCursor(el);   // para no perder el lugar al reformatear (punto 22)
+                          const v = f.filtro ? f.filtro(el.value) : el.value;
+                          setRegForm({ ...regForm, [f.key]: v });
+                          if (erroresCampos[f.key]) setErroresCampos({ ...erroresCampos, [f.key]: '' });
+                          if (f.formato) reponerCursor(el, digitos);
+                        }}
+                        className={inputCls}
+                        style={{ ...inputStyle, border: erroresCampos[f.key] ? '1.5px solid #dc2626' : inputStyle.border }}
+                        onFocus={e => (e.target.style.borderColor = erroresCampos[f.key] ? '#dc2626' : 'var(--primary)')}
+                        onBlur={e => {
+                          e.target.style.borderColor = erroresCampos[f.key] ? '#dc2626' : 'var(--border)';
+                          const limpiar = (f as any).limpiar as ((v: string) => string) | undefined;
+                          if (limpiar) setRegForm(prev => ({ ...prev, [f.key]: limpiar((prev as any)[f.key]) }));
+                        }}
+                      />
+                    )}
                     {erroresCampos[f.key] ? (
                       <p style={{ color: '#dc2626', fontSize: '11px', marginTop: '4px' }}>{erroresCampos[f.key]}</p>
                     ) : (f as any).ayuda && (

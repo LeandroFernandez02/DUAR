@@ -404,15 +404,23 @@ export async function generarPdf(d, meta) {
     columnGap: 16,
   });
 
-  /* 10 · Novedades del personal y bajas */
-  const novedades = [
-    ...d.retiros.map(r => ({ en: r.ocurridoEn, que: `${r.agente} retirado del grupo ${r.grupo ?? ''}`.trim(), motivo: r.motivo, quien: r.registradoPor })),
-    ...d.bajas.map(b => ({ en: b.eliminadoEn, que: `${b.clase} «${b.nombre}» dado de baja`, motivo: b.motivo, quien: b.eliminadoPor })),
-  ].sort((a, b) => new Date(a.en) - new Date(b.en));
-  add(seccion('Novedades del personal y bajas de elementos'));
-  add(novedades.length
-    ? tabla(['Hora', 'Qué pasó', 'Motivo', 'Registró'], novedades.map(n => [mono(fechaCorta(n.en)), n.que, n.motivo || '—', n.quien ?? '—']), [58, '*', 150, 90])
-    : vacio('No hubo retiros de agentes ni elementos dados de baja.'));
+  /* 10 · Baja de personal (Testeo 15/10, punto 18: antes «Novedades del personal y bajas de elementos») */
+  add(seccion('Baja de personal', 'Agentes retirados de su grupo en el terreno y personas que dejaron el operativo antes de su cierre.'));
+  add(d.bajasPersonal.length
+    ? tabla(['Hora', 'Agente', 'Qué pasó', 'Motivo', 'Registró'], d.bajasPersonal.map(b => [
+      mono(fechaCorta(b.ocurridoEn)), b.agente,
+      b.accion === 'retiro' ? `Retirado del grupo ${b.grupo ?? ''}`.trim() + ' y vuelve a la base' : 'Deja el operativo',
+      b.motivo || '—', b.registradoPor ?? '—',
+    ]), [58, 100, '*', 130, 80])
+    : vacio('No hubo bajas de personal.'));
+
+  /* 11 · Elementos del mapa dados de baja: una baja es un registro, nada se borra de verdad */
+  add(seccion('Elementos dados de baja', 'Polígonos, tracks, puntos de interés e instalaciones que se quitaron del mapa. Quedan registrados con quién los quitó y cuándo.'));
+  add(d.bajas.length
+    ? tabla(['Hora', 'Elemento', 'Motivo', 'Registró'], d.bajas.map(b => [
+      mono(fechaCorta(b.eliminadoEn)), `${b.clase} «${b.nombre}»`, b.motivo || '—', b.eliminadoPor ?? '—',
+    ]), [58, '*', 150, 90])
+    : vacio('No se dio de baja ningún elemento del mapa.'));
 
   /* 11 · Cronología */
   add(seccion('Cronología', 'Hora del hecho. Cuando el dato llegó más tarde (por radio o desde un celular sin señal) se aclara debajo. Resaltados: hallazgos y cambios del Punto Cero.'));

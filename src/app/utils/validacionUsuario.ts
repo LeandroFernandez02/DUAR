@@ -14,7 +14,12 @@ export const RE_APELLIDO = /^[A-Za-zÀ-ÖØ-öø-ÿ'\- ]{2,35}$/;
 export const RE_DNI = /^\d{7,8}$/;
 export const RE_TELEFONO = /^\d{10}$/;
 export const EDAD_MINIMA = 16;
-export const RE_EMAIL = /^[^\s@]+@[^\s@]+\.[^\s@]{2,}$/;
+/**
+ * Correo con forma de correo (Testeo 15/10, punto 23): parte local de letras, números y . _ % + -,
+ * dominio con etiquetas válidas y una terminación de sólo letras (no «.45» ni «.9a»).
+ * El servidor además comprueba que el dominio exista.
+ */
+export const RE_EMAIL = /^[A-Za-z0-9](?:[A-Za-z0-9._%+-]{0,62}[A-Za-z0-9])?@(?:[A-Za-z0-9](?:[A-Za-z0-9-]{0,61}[A-Za-z0-9])?\.)+[A-Za-z]{2,24}$/;
 export const EMAIL_MAX = 150;      // usuarios.email es varchar(150)
 export const PASSWORD_MIN = 8;
 export const PASSWORD_MAX = 64;    // bcrypt sólo usa los primeros 72 bytes: más largo no suma seguridad
@@ -53,7 +58,7 @@ export function validarTelefono(v: string): string | null {
 export function validarEmail(v: string): string | null {
   const t = v.trim();
   if (t.length > EMAIL_MAX) return `El correo puede tener hasta ${EMAIL_MAX} caracteres.`;
-  if (!RE_EMAIL.test(t)) return 'Ingresá un correo válido (ej: nombre@dominio.com).';
+  if (!RE_EMAIL.test(t) || t.includes('..')) return 'Ingresá un correo válido (ej: nombre@dominio.com).';
   return null;
 }
 
@@ -77,29 +82,86 @@ export function filtrarEmail(v: string): string {
   return v.replace(/\s/g, '').slice(0, EMAIL_MAX);
 }
 
-/** La fecha de nacimiento es opcional: sólo se valida si el usuario cargó algo. */
-export function validarFechaNacimiento(v: string): string | null {
-  if (!v) return null;
-  // Al mediodía local: «YYYY-MM-DD» solo se lee como UTC y en Argentina caería el día anterior.
-  const nacimiento = new Date(`${v.slice(0, 10)}T12:00:00`);
-  if (!/^\d{4}-\d{2}-\d{2}$/.test(v.slice(0, 10)) || Number.isNaN(nacimiento.getTime()) || v.slice(0, 10) < FECHA_NACIMIENTO_MIN) {
-    return 'Fecha inválida.';
+const RE_ISO = /^\d{4}-\d{2}-\d{2}$/;
+
+/**
+ * Fecha de nacimiento (Testeo 15/10, puntos 15, 24, 27 y 28). El valor del formulario es
+ * «AAAA-MM-DD» cuando la fecha está completa y existe; si no, son los dígitos que se llevan
+ * escritos, para que el campo los siga mostrando y esta validación diga qué falta.
+ * Es obligatoria al crear una cuenta; al modificar una que nunca la tuvo, no.
+ */
+export function validarFechaNacimiento(v: string, obligatoria = false): string | null {
+  if (!v) return obligatoria ? 'Ingresá la fecha de nacimiento.' : null;
+  const iso = v.slice(0, 10);
+  if (!RE_ISO.test(iso)) {
+    return soloDigitos(v).length === 8
+      ? 'Esa fecha no existe: revisá el día y el mes.'
+      : 'Escribí la fecha completa: día, mes y año (DD/MM/AAAA).';
   }
+  // Al mediodía local: «YYYY-MM-DD» solo se lee como UTC y en Argentina caería el día anterior.
+  const nacimiento = new Date(`${iso}T12:00:00`);
+  const existe = !Number.isNaN(nacimiento.getTime())
+    && nacimiento.getMonth() + 1 === Number(iso.slice(5, 7)) && nacimiento.getDate() === Number(iso.slice(8, 10));
+  if (!existe) return 'Esa fecha no existe: revisá el día y el mes.';
+  if (iso < FECHA_NACIMIENTO_MIN) return 'Ingresá una fecha de nacimiento válida.';
   const hoy = new Date();
+  if (nacimiento > hoy) return 'La fecha de nacimiento no puede ser futura.';
   let edad = hoy.getFullYear() - nacimiento.getFullYear();
   if (
     hoy.getMonth() < nacimiento.getMonth() ||
     (hoy.getMonth() === nacimiento.getMonth() && hoy.getDate() < nacimiento.getDate())
   ) edad--;
-  if (edad < EDAD_MINIMA) return `El agente debe tener al menos ${EDAD_MINIMA} años.`;
+  if (edad < EDAD_MINIMA) return `La edad mínima para registrarse es de ${EDAD_MINIMA} años.`;
   return null;
 }
 
-/** Fecha máxima seleccionable en un input de nacimiento (hoy menos EDAD_MINIMA años), para el atributo `max`. */
-export function fechaMaximaNacimiento(): string {
-  const d = new Date();
-  d.setFullYear(d.getFullYear() - EDAD_MINIMA);
-  return d.toISOString().slice(0, 10);
+/** «27102010» → «27/10/2010». Se escribe sólo con números; las barras las pone el campo. */
+export function formatearFechaTexto(v: string): string {
+  const d = soloDigitos(v).slice(0, 8);
+  if (d.length <= 2) return d;
+  if (d.length <= 4) return `${d.slice(0, 2)}/${d.slice(2)}`;
+  return `${d.slice(0, 2)}/${d.slice(2, 4)}/${d.slice(4)}`;
+}
+
+/** Valor del formulario → lo que se ve en el campo de fecha. */
+export function fechaParaMostrar(v: string): string {
+  const iso = v.slice(0, 10);
+  if (RE_ISO.test(iso)) return `${iso.slice(8, 10)}/${iso.slice(5, 7)}/${iso.slice(0, 4)}`;
+  return formatearFechaTexto(v);
+}
+
+/** Lo escrito en el campo → valor del formulario: «AAAA-MM-DD» si son 8 dígitos y la fecha existe; si no, los dígitos. */
+export function fechaDesdeTexto(texto: string): string {
+  const d = soloDigitos(texto).slice(0, 8);
+  if (d.length === 8) {
+    const dia = Number(d.slice(0, 2)), mes = Number(d.slice(2, 4)), anio = Number(d.slice(4));
+    const f = new Date(anio, mes - 1, dia, 12);
+    if (f.getFullYear() === anio && f.getMonth() === mes - 1 && f.getDate() === dia) return `${d.slice(4)}-${d.slice(2, 4)}-${d.slice(0, 2)}`;
+  }
+  return d;
+}
+
+/**
+ * Cuántos dígitos hay antes del cursor. Los campos que reformatean mientras se escribe (DNI con
+ * puntos, teléfono con guiones, fecha con barras) mandan el cursor al final y no dejan corregir
+ * en el medio (Testeo 15/10, punto 22): se cuenta antes de reformatear y se repone después.
+ */
+export function digitosAntesDelCursor(el: HTMLInputElement): number {
+  return soloDigitos(el.value.slice(0, el.selectionStart ?? el.value.length)).length;
+}
+
+/** Vuelve a poner el cursor después del mismo dígito, ya con el texto reformateado. */
+export function reponerCursor(el: HTMLInputElement, digitos: number) {
+  requestAnimationFrame(() => {
+    if (document.activeElement !== el) return;
+    let cuenta = 0;
+    let pos = 0;
+    while (pos < el.value.length && cuenta < digitos) {
+      if (/\d/.test(el.value[pos])) cuenta++;
+      pos++;
+    }
+    el.setSelectionRange(pos, pos);
+  });
 }
 
 /** Saca todo lo que no sea dígito — es lo que efectivamente se guarda/envía. */

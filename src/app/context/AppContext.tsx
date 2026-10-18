@@ -241,7 +241,8 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
   });
 
   const [usuario, setUsuario] = useState<Usuario | null>(() => {
-    const saved = localStorage.getItem('duar-user');
+    // En sessionStorage, igual que el token: se va con el navegador (Testeo 15/10, punto 19).
+    const saved = sessionStorage.getItem('duar-user');
     if (saved) {
       try { return JSON.parse(saved); } catch { return null; }
     }
@@ -279,12 +280,12 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     localStorage.setItem('duar-data', JSON.stringify(data));
   }, [data]);
 
-  // Persist user session to localStorage
+  // Persist user session (sólo mientras dure el navegador)
   useEffect(() => {
     if (usuario) {
-      localStorage.setItem('duar-user', JSON.stringify(usuario));
+      sessionStorage.setItem('duar-user', JSON.stringify(usuario));
     } else {
-      localStorage.removeItem('duar-user');
+      sessionStorage.removeItem('duar-user');
     }
   }, [usuario]);
 
@@ -404,22 +405,9 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
     return () => window.removeEventListener('duar:sesion-expirada', alExpirar);
   }, []);
 
-  /**
-   * La sesión se comparte entre pestañas (vive en localStorage). Si en otra
-   * pestaña se cierra la sesión o se entra con otra cuenta, esta pestaña no
-   * puede seguir mostrando la vista del usuario anterior mientras sus pedidos
-   * ya viajan con el token del nuevo (Testeo 13/10, punto 11): sin sesión, va
-   * al login; con otra cuenta, se recarga y entra como esa cuenta, con su vista.
-   */
-  useEffect(() => {
-    const alCambiarEnOtraPestana = (e: StorageEvent) => {
-      if (e.key !== null && e.key !== 'duar-token') return;   // null = se vació el almacenamiento
-      if (!getToken()) { setUsuario(null); return; }
-      window.location.reload();
-    };
-    window.addEventListener('storage', alCambiarEnOtraPestana);
-    return () => window.removeEventListener('storage', alCambiarEnOtraPestana);
-  }, []);
+  // Cada pestaña tiene su propia sesión (vive en sessionStorage, Testeo 15/10, punto 19): lo
+  // que antes sincronizaba un listener de `storage` entre pestañas (Testeo 13/10, punto 11)
+  // ya no puede pasar, porque entrar con otra cuenta en una pestaña no toca a las demás.
 
   /* ── Operativos CRUD ── */
 
