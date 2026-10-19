@@ -176,7 +176,14 @@ export async function mapaSvg({ poligonos, tracks, marcadores, hallazgos, radios
     const a = anillos(p.geom)[0];
     if (!a?.length) continue;
     const xy = a.slice(0, -1).map(([lng, lat]) => P(lng, lat));
-    const cx = xy.reduce((s, v) => s + v[0], 0) / xy.length, cy = xy.reduce((s, v) => s + v[1], 0) / xy.length;
+    const cx = xy.reduce((s, v) => s + v[0], 0) / xy.length;
+    let cy = xy.reduce((s, v) => s + v[1], 0) / xy.length;
+    // Si el centro del polígono cae sobre el Punto Cero, el nombre se corre abajo del punto: si no,
+    // se pisaban «Punto Cero» y el nombre (recorrido del 19/10).
+    if (puntoCero) {
+      const [px, py] = P(puntoCero.lng, puntoCero.lat);
+      if (Math.abs(cx - px) < 45 && Math.abs(cy - py) < 14) cy = py + 18;
+    }
     const nombre = p.nombre.length > 26 ? p.nombre.slice(0, 25) + '…' : p.nombre;
     partes.push(rotulo(cx, cy, nombre, { tam: 8, ancla: 'middle', relleno: p.color ? color(p.color) : TINTA }));
   }

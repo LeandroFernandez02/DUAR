@@ -189,25 +189,27 @@ export async function altaEnOperativo(req, res, next) {
       });
     }
 
+    // El agente debe confirmar su correo (CU-02 paso 7) antes de quedar
+    // registrado en un operativo. Sin este freno, alguien podía escanear el
+    // QR, tipear cualquier email ajeno y quedar visible para el coordinador
+    // sin que ese canal de contacto sea real. `estado` es la fuente de verdad
+    // (PENDIENTE → ACTIVO al confirmar); `emailConfirmado` queda como dato
+    // histórico aparte. Va ANTES del chequeo de cuenta activa: si no, una
+    // cuenta Pendiente recibía «no está activa, contactá al administrador»
+    // (recorrido del 19/10) en vez de «confirmá tu correo».
+    if (req.usuario.estado === 'PENDIENTE') {
+      return res.status(403).json({
+        error: 'Confirmá tu cuenta desde el correo que te enviamos antes de unirte al operativo.',
+        motivo: 'email_no_confirmado',
+      });
+    }
+
     // CU-16 paso 6.1 — cuenta suspendida: se bloquea el acceso.
     // (El middleware ya corta las INACTIVO, pero queda explícito por el CU.)
     if (req.usuario.estado !== 'ACTIVO') {
       return res.status(403).json({
         error: 'Tu cuenta no está activa. Contactá al administrador.',
         motivo: 'cuenta_inactiva',
-      });
-    }
-
-    // El agente debe confirmar su correo (CU-02 paso 7) antes de quedar
-    // registrado en un operativo. Sin este freno, alguien podía escanear el
-    // QR, tipear cualquier email ajeno y quedar visible para el coordinador
-    // sin que ese canal de contacto sea real. `estado` es la fuente de verdad
-    // (PENDIENTE → ACTIVO al confirmar); `emailConfirmado` queda como dato
-    // histórico aparte.
-    if (req.usuario.estado === 'PENDIENTE') {
-      return res.status(403).json({
-        error: 'Confirmá tu cuenta desde el correo que te enviamos antes de unirte al operativo.',
-        motivo: 'email_no_confirmado',
       });
     }
 

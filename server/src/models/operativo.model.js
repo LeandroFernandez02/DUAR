@@ -17,6 +17,7 @@ const CAMPOS = `
   o.localidad,
   o.fiscal_instruccion  AS "fiscalInstruccion",
   o.descripcion,
+  o.nota_final          AS "notaFinal",
   o.estado::text        AS estado,
   o.fecha_hora_inicio   AS "fechaHoraInicio",
   o.fecha_hora_fin      AS "fechaHoraFin",
@@ -226,7 +227,7 @@ export async function finalizar(id, { notaFinal = null, usuarioId = null } = {})
     await client.query(
       `UPDATE operativos
           SET estado = 'FINALIZADO', fecha_hora_fin = CURRENT_TIMESTAMP,
-              descripcion = COALESCE($2, descripcion), actualizado_en = CURRENT_TIMESTAMP
+              nota_final = $2, actualizado_en = CURRENT_TIMESTAMP
         WHERE id = $1`,
       [id, notaFinal]
     );

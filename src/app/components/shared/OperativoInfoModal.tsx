@@ -191,6 +191,24 @@ export default function OperativoInfoModal({ operativo, onClose }: Props) {
               </div>
             )}
 
+            {/* Reseña de cierre (CU-10): su propio campo, ya no pisa la descripción (migración 024). */}
+            {operativo.notaFinal && (
+              <div className="flex flex-col gap-2">
+                <h3 style={{
+                  color: 'var(--foreground)', fontSize: 'var(--text-h3)',
+                  fontWeight: 'var(--font-weight-semibold)', fontFamily: 'var(--font-family-primary)',
+                }}>
+                  Reseña de cierre
+                </h3>
+                <p className="leading-relaxed" style={{
+                  color: 'var(--muted-foreground)', fontSize: 'var(--text-base)',
+                  fontFamily: 'var(--font-family-primary)',
+                }}>
+                  {operativo.notaFinal}
+                </p>
+              </div>
+            )}
+
             {/* Finalizar operativo */}
             {operativo.estado !== 'finalizado' && operativo.estado !== 'eliminado' && (
               <div

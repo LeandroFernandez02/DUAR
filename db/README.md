@@ -69,6 +69,7 @@ aplica al proyecto Supabase con el mismo nombre:
 | `021_informes_operativo.sql` | Informe por operativo (CU-41): `informes_operativo` (código INF-año-número, tipo PARCIAL/FINAL, hora de corte, huella SHA-256 del PDF guardado en Storage); un solo final por operativo; un trigger impide modificar o borrar un informe emitido |
 | `022_fiscal_opcional.sql` | `operativos.fiscal_instruccion` deja de ser obligatoria (CU-08/09): sin fiscal asignado queda en NULL |
 | `023_correo_libre_al_eliminar.sql` | El correo de una cuenta eliminada queda libre para una cuenta nueva (CU-07, Testeo punto 29): `usuarios_email_key` → índice único parcial `usuarios_email_vigente_key` sobre `lower(email)` de las cuentas vigentes |
+| `024_nota_final_operativo.sql` | La reseña que se escribe al finalizar (CU-10) va en `operativos.nota_final` en vez de pisar `descripcion`; repone la descripción original desde la auditoría donde ya se había pisado |
 
 **Numeración de los CU.** Desde el 13/10/2026 los CU van del 01 al 44: se sumó
 el CU-15 «Registrar Presencia de Mando» y «Extraer Agente de Grupo» quedó como

@@ -7,7 +7,7 @@ import { leerAltaPendiente, limpiarAltaPendiente, AltaPendiente } from '../utils
 
 type Estado = 'verificando' | 'exitoso' | 'invalido' | 'ya_confirmado';
 /** Estado del alta automática al operativo que quedó pendiente (ver utils/altaPendiente.ts). */
-type EstadoAlta = 'ninguna' | 'uniendo' | 'unido' | 'conflicto' | 'error';
+type EstadoAlta = 'ninguna' | 'uniendo' | 'unido' | 'conflicto' | 'sin_sesion' | 'error';
 
 export default function ConfirmarEmail() {
   const { token } = useParams<{ token: string }>();
@@ -56,6 +56,12 @@ export default function ConfirmarEmail() {
     const pendiente = leerAltaPendiente();
     if (!pendiente) return;
     setAltaPendienteState(pendiente);
+    // La sesión vive en la pestaña donde la persona se registró (sessionStorage, Testeo 15/10 punto 19):
+    // el enlace del correo abre otra pestaña sin sesión. No es un error, es el paso que sigue.
+    if (!isAuthenticated) {
+      setEstadoAlta('sin_sesion');
+      return;
+    }
     setEstadoAlta('uniendo');
     registroApi.altaEnOperativo(pendiente.operativoId, pendiente.qrToken)
       .then(() => {
@@ -157,6 +163,27 @@ export default function ConfirmarEmail() {
             style={{ background: '#d97706', color: '#fff', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)', fontFamily: 'var(--font-family-primary)' }}
           >
             Ver operativo y decidir
+          </Link>
+        </div>
+      );
+    }
+
+    if (estadoAlta === 'sin_sesion' && altaPendiente) {
+      return (
+        <div className="w-full flex flex-col gap-2.5 p-3.5 rounded-xl text-left" style={{ background: 'rgba(37,99,235,0.06)', border: '1px solid rgba(37,99,235,0.2)' }}>
+          <div className="flex items-start gap-3">
+            <Users size={18} style={{ color: '#2563eb', flexShrink: 0, marginTop: 1 }} />
+            <p style={{ color: 'var(--foreground)', fontSize: 'var(--text-label)', lineHeight: 1.5 }}>
+              Falta un paso para sumarte a <strong>{altaPendiente.operativoNombre}</strong>: volvé a la pantalla donde te
+              registraste y tocá <strong>«Ya confirmé mi correo»</strong>, o iniciá sesión acá.
+            </p>
+          </div>
+          <Link
+            to={`/registro/${altaPendiente.operativoId}?qr=${altaPendiente.qrToken}`}
+            className="text-center py-2.5 rounded-lg"
+            style={{ background: '#2563eb', color: '#fff', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)', fontFamily: 'var(--font-family-primary)' }}
+          >
+            Iniciar sesión y unirme
           </Link>
         </div>
       );

@@ -13,6 +13,14 @@ import * as Auditoria from '../models/auditoria.model.js';
 
 const ENTIDAD = 'tokens_operativo';
 
+/** Por qué no hay QR, dicho en castellano (antes: «el operativo está nuevo»). */
+function sinQr(res, operativo) {
+  const error = operativo.estado === 'NUEVO'
+    ? 'El operativo todavía no está activo: entrá a su panel para activarlo y después generá el QR.'
+    : `No se puede generar un QR: el operativo está ${operativo.estado.toLowerCase().replace(/_/g, ' ')}.`;
+  return res.status(409).json({ error, motivo: 'operativo_cerrado' });
+}
+
 /**
  * GET /api/operativos/:id/qr — CU-16 pasos 1-2
  * Devuelve el token vigente; si venció (24 h) emite uno nuevo automáticamente.
@@ -22,12 +30,7 @@ export async function obtener(req, res, next) {
     const operativo = await Operativo.buscarPorId(req.params.id);
     if (!operativo) return res.status(404).json({ error: 'Operativo no encontrado.' });
 
-    if (!Operativo.admiteIngresos(operativo)) {
-      return res.status(409).json({
-        error: `No se puede generar un QR: el operativo está ${operativo.estado.toLowerCase()}.`,
-        motivo: 'operativo_cerrado',
-      });
-    }
+    if (!Operativo.admiteIngresos(operativo)) return sinQr(res, operativo);
 
     const token = await TokenOperativo.obtenerOEmitir(operativo.id, req.usuario.id);
     res.json({ qr: token, operativo: { id: operativo.id, titulo: operativo.titulo } });
@@ -46,12 +49,7 @@ export async function refrescar(req, res, next) {
     const operativo = await Operativo.buscarPorId(req.params.id);
     if (!operativo) return res.status(404).json({ error: 'Operativo no encontrado.' });
 
-    if (!Operativo.admiteIngresos(operativo)) {
-      return res.status(409).json({
-        error: `No se puede generar un QR: el operativo está ${operativo.estado.toLowerCase()}.`,
-        motivo: 'operativo_cerrado',
-      });
-    }
+    if (!Operativo.admiteIngresos(operativo)) return sinQr(res, operativo);
 
     const token = await TokenOperativo.emitirNuevo(operativo.id, req.usuario.id);
 

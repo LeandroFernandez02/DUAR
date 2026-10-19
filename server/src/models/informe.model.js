@@ -101,7 +101,7 @@ export async function reunirDatos(operativoId, corteEn) {
   const q = (sql, p = [operativoId]) => query(sql, p).then(r => r.rows);
 
   const [operativo] = await q(
-    `SELECT o.id, o.titulo, o.localidad, o.fiscal_instruccion AS "fiscalInstruccion", o.descripcion,
+    `SELECT o.id, o.titulo, o.localidad, o.fiscal_instruccion AS "fiscalInstruccion", o.descripcion, o.nota_final AS "notaFinal",
             o.estado::text AS estado, o.fecha_hora_inicio AS "fechaHoraInicio", o.fecha_hora_fin AS "fechaHoraFin",
             o.creado_en AS "creadoEn", ST_Y(o.punto_cero) AS "puntoCeroLat", ST_X(o.punto_cero) AS "puntoCeroLng",
             ${nombre('u')} AS "creadoPor"
@@ -150,6 +150,10 @@ export async function reunirDatos(operativoId, corteEn) {
         WHERE h.operativo_id = $1 ORDER BY h.registrado_en, h.id`),
     q(`SELECT g.id, g.nombre, g.clase::text AS clase, g.color, g.estado::text AS estado, g.creado_en AS "creadoEn",
               g.eliminado_en AS "eliminadoEn", ${nombre('ul')} AS lider,
+              -- grupos no guarda quién lo creó: lo dice el alta en la auditoría (recorrido del 19/10).
+              (SELECT ${nombre('uc')} FROM logs_auditoria la JOIN usuarios uc ON uc.id = la.usuario_id
+                WHERE la.entidad_afectada = 'grupos' AND la.registro_id = g.id AND la.accion = 'CREAR'
+                ORDER BY la.creado_en LIMIT 1) AS "creadoPor",
               (SELECT count(DISTINCT x.id)::int FROM (
                   SELECT e.agente_operativo_id AS id FROM eventos_estado e
                    WHERE e.grupo_id = g.id AND e.entidad = 'AGENTE' AND e.agente_operativo_id IS NOT NULL
@@ -263,14 +267,26 @@ export function periodosEnTerreno(eventos) {
 
 /* ── Cronología ────────────────────────────────────────────────────────── */
 
+/**
+ * «el grupo Alfa» / «el Grupo Alfa»: si el nombre ya empieza con la palabra, no se repite
+ * (recorrido del 19/10: salía «Se forma el grupo Grupo Alfa», «el polígono Polígono 1»).
+ */
+function elDe(palabra, nombre) {
+  const n = String(nombre ?? '').trim();
+  const sinTilde = s => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
+  return sinTilde(n).startsWith(`${sinTilde(palabra)} `) ? `el ${n}` : `el ${palabra} ${n}`;
+}
+
+const mayuscula = s => s.charAt(0).toUpperCase() + s.slice(1);
+
 const TEXTO_ACCION_GRUPO = {
-  confirmar: g => `Se confirma el grupo ${g}.`,
-  reabrir: g => `Se reabre el grupo ${g} para cambiar su composición.`,
+  confirmar: g => `Se confirma ${elDe('grupo', g)}.`,
+  reabrir: g => `Se reabre ${elDe('grupo', g)} para cambiar su composición.`,
   salir: g => `${g} sale hacia su polígono.`,
   llegar_poligono: g => `${g} llega al polígono y empieza a rastrillar.`,
   volver: g => `${g} emprende el regreso.`,
   llegar_base: g => `${g} vuelve a la base.`,
-  disolver: g => `Se disuelve el grupo ${g}.`,
+  disolver: g => `Se disuelve ${elDe('grupo', g)}.`,
   corregir: (g, e) => `Se corrige el estado de ${g} a «${ETIQUETA_GRUPO[e.estadoNuevo] ?? e.estadoNuevo}».`,
 };
 
@@ -338,13 +354,13 @@ export function armarCronologia(d) {
     add(a.desde, 'Personal', `${a.n === 1 ? 'Ingresa 1 agente' : `Ingresan ${a.n} agentes`}${como}${rango} (detalle en «Personal interviniente»).`, a.fuente === 'QR' ? 'QR' : a.quien);
   }
   for (const e of d.eventosAgente.filter(x => x.accion === 'retiro')) {
-    add(e.ocurridoEn, 'Personal', `${e.agente} se retira del grupo ${e.grupo ?? ''} y vuelve a la base.`.replace('  ', ' '), e.registradoPor, e.motivo ? { nota: `Motivo: ${e.motivo}` } : {});
+    add(e.ocurridoEn, 'Personal', `${e.agente} se retira ${e.grupo ? `d${elDe('grupo', e.grupo)}` : 'de su grupo'} y vuelve a la base.`, e.registradoPor, e.motivo ? { nota: `Motivo: ${e.motivo}` } : {});
   }
   for (const e of d.eventosAgente.filter(x => x.accion === 'baja' && x.motivo !== 'Operativo finalizado')) {
     add(e.ocurridoEn, 'Personal', `${e.agente} deja el operativo.`, e.registradoPor, e.motivo ? { nota: `Motivo: ${e.motivo}` } : {});
   }
 
-  for (const g of d.grupos) add(g.creadoEn, 'Grupos', `Se forma el grupo ${g.nombre}${g.clase === 'ESPECIAL' ? ' (especial)' : ''}.`, null);
+  for (const g of d.grupos) add(g.creadoEn, 'Grupos', `Se forma ${elDe('grupo', g.nombre)}${g.clase === 'ESPECIAL' ? ' (especial)' : ''}.`, g.creadoPor);
   for (const e of d.eventosGrupo) {
     const texto = TEXTO_ACCION_GRUPO[e.accion];
     if (!texto) continue;   // asignar/desasignar: los cuenta el historial del polígono
@@ -363,16 +379,16 @@ export function armarCronologia(d) {
   });
 
   const TEXTO_POLIGONO = {
-    CREADO: e => `Se dibuja el polígono ${e.poligono}.`,
-    GEOMETRIA: e => `Se modifica la forma del polígono ${e.poligono}.`,
-    ELIMINADO: e => `Se da de baja el polígono ${e.poligono}.`,
-    GRUPO_ASIGNADO: e => `Se asigna el grupo ${e.grupo ?? e.detalle?.grupo} al polígono ${e.poligono}.`,
+    CREADO: e => `Se dibuja ${elDe('polígono', e.poligono)}.`,
+    GEOMETRIA: e => `Se modifica la forma d${elDe('polígono', e.poligono)}.`,
+    ELIMINADO: e => `Se da de baja ${elDe('polígono', e.poligono)}.`,
+    GRUPO_ASIGNADO: e => `Se asigna ${elDe('grupo', e.grupo ?? e.detalle?.grupo)} a${elDe('polígono', e.poligono).slice(1)}.`,
     TRACK_CARGADO: e => `Se carga el track «${e.track}» en ${e.poligono}.`,
     TRACK_ELIMINADO: e => `Se da de baja el track «${e.track}» de ${e.poligono}.`,
   };
   for (const e of d.eventosPoligono) {
     const t = TEXTO_POLIGONO[e.tipo] ?? (e.tipo.startsWith('GRUPO_') && e.tipo !== 'GRUPO_ASIGNADO'
-      ? (x => `El grupo ${x.grupo ?? x.detalle?.grupo} deja el polígono ${x.poligono}.`) : null);
+      ? (x => `${mayuscula(elDe('grupo', x.grupo ?? x.detalle?.grupo))} deja ${elDe('polígono', x.poligono)}.`) : null);
     if (t) add(e.registradoEn, 'Mapa', t(e), e.registradoPor);
   }
   for (const m of d.otrosMarcadores) {

@@ -150,7 +150,7 @@ function OperativoCard({
           </div>
           <div className="flex items-center gap-1.5" style={{ color: 'var(--muted-foreground)' }}>
             <Users size={12} />
-            <span style={{ fontSize: 'var(--text-label)' }}>{op.agenteIds.length} agentes</span>
+            <span style={{ fontSize: 'var(--text-label)' }}>{op.agenteIds.length} {op.agenteIds.length === 1 ? 'agente' : 'agentes'}</span>
           </div>
         </div>
       </div>

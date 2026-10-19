@@ -121,6 +121,7 @@ export default function Usuarios() {
 
   /** id del usuario cuyo reenvío está en curso — deshabilita ese botón puntual. */
   const [reenviando, setReenviando] = useState<string | null>(null);
+  const [guardando, setGuardando] = useState(false);
 
   /** Reenvía el correo de confirmación a un usuario PENDIENTE, a pedido del coordinador. */
   const handleReenviarConfirmacion = async (u: Usuario) => {
@@ -220,6 +221,9 @@ export default function Usuarios() {
       // operativo, no al crear el usuario global (Decisión A/C).
     };
 
+    // Mientras el servidor guarda y manda el correo (unos segundos con Gmail) el botón no se puede volver a tocar.
+    if (guardando) return;
+    setGuardando(true);
     try {
       if (modal === 'create') {
         // El backend hashea con bcrypt (CU-05 paso 4); acá nunca se guarda en claro.
@@ -250,6 +254,8 @@ export default function Usuarios() {
       } else {
         setErrorModal('No se pudo guardar el usuario.');
       }
+    } finally {
+      setGuardando(false);
     }
   };
 
@@ -870,8 +876,10 @@ export default function Usuarios() {
               <button onClick={() => setModal(null)} className="px-4 py-2 rounded-[var(--radius-button)] border" style={{ color: 'var(--foreground)', borderColor: 'var(--border)', background: 'transparent', fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-semibold)' }}>
                 Cancelar
               </button>
-              <button onClick={handleSave} className="px-4 py-2 rounded-[var(--radius-button)] text-white" style={{ background: 'var(--primary)', fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-semibold)' }}>
-                {modal === 'create' ? 'Crear Usuario' : 'Guardar Cambios'}
+              <button onClick={handleSave} disabled={guardando} className="px-4 py-2 rounded-[var(--radius-button)] text-white disabled:cursor-wait" style={{ background: 'var(--primary)', fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-semibold)', opacity: guardando ? 0.7 : 1 }}>
+                {guardando
+                  ? (modal === 'create' ? 'Creando…' : 'Guardando…')
+                  : (modal === 'create' ? 'Crear Usuario' : 'Guardar Cambios')}
               </button>
             </div>
           </div>

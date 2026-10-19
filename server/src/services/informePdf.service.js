@@ -229,6 +229,8 @@ export async function generarPdf(d, meta) {
     [final ? 'A cargo al cierre' : 'A cargo al corte', aCargo?.nombre ?? 'Nadie registrado'],
     ['Punto Cero vigente', { text: [mono(coords(op.puntoCeroLat, op.puntoCeroLng)), tenue(pcVigente?.registradoEn ? `  ·  desde ${fechaCorta(pcVigente.registradoEn)}` : '')] }, true],
     ['Descripción', { text: op.descripcion || '—' }, true],
+    // La reseña del cierre (CU-10) en su propia fila: antes pisaba la descripción (migración 024).
+    ...(final && op.notaFinal ? [['Reseña de cierre', { text: op.notaFinal }, true]] : []),
   ]));
 
   /* 2 · Resumen */
@@ -454,14 +456,17 @@ export async function generarPdf(d, meta) {
   add(seccion('Personal interviniente', 'Todas las personas que ingresaron al operativo, incluidas las que ya se retiraron. No se incluyen teléfonos, correos ni datos de salud.'));
   add(d.personal.length
     ? tabla(['Apellido y nombre', 'DNI', 'Institución', 'Especialidad', 'Grupo', 'Ingreso', 'Egreso'], d.personal.map(p => {
-      const rol = [p.especialidad, p.fueLider ? 'Líder' : null, p.esConductor ? 'Conductor' : null].filter(Boolean).join(' · ');
+      // El rol (Líder, Conductor) va con el grupo, no en «Especialidad» (recorrido del 19/10: a quien
+      // no tenía especialidad le figuraba «Líder» como si lo fuera).
+      const rol = [p.fueLider ? 'Líder' : null, p.esConductor ? 'Conductor' : null].filter(Boolean).join(' · ');
+      const grupos = [p.grupos.join(', '), rol].filter(Boolean).join(' · ');
       const color = p.egreso && !final ? C.tenue : C.tinta;
       return [
         { text: `${p.apellido}, ${p.nombre}`, color }, mono(formatoDni(p.dni), { color }), { text: p.institucion ?? '—', color },
-        { text: rol || '—', color }, { text: p.grupos.length ? p.grupos.join(', ') : '—', color },
+        { text: p.especialidad || '—', color }, { text: grupos || '—', color },
         mono(fechaCorta(p.ingreso), { color, fontSize: 6.8 }), p.egreso ? mono(fechaCorta(p.egreso), { color, fontSize: 6.8 }) : '—',
       ];
-    }), ['*', 48, 80, 76, 48, 54, 54], { fontSize: 7.3 })
+    }), ['*', 48, 72, 62, 70, 54, 54], { fontSize: 7.3 })
     : vacio('No ingresó personal al operativo.'));
 
   /* 13 · Constancia */

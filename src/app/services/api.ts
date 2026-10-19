@@ -49,6 +49,12 @@ export class ApiError extends Error {
   }
 }
 
+/** Rechazo sin mensaje del servidor (se cortó la conexión, se reinició): algo legible en vez de «Error 500». */
+function mensajeSinDetalle(status: number): string {
+  if (status >= 500) return 'El servidor no pudo completar la operación. Probá de nuevo en unos segundos.';
+  return `No se pudo completar la operación (error ${status}).`;
+}
+
 /** Común a `request` y `requestFormData`: 204/error/401, nunca duplicado entre las dos. */
 async function manejarRespuesta<T>(res: Response): Promise<T> {
   if (res.status === 204) return undefined as T;
@@ -64,7 +70,7 @@ async function manejarRespuesta<T>(res: Response): Promise<T> {
       setToken(null);
       window.dispatchEvent(new Event('duar:sesion-expirada'));
     }
-    throw new ApiError(cuerpo.error ?? `Error ${res.status}`, res.status, cuerpo.motivo, cuerpo);
+    throw new ApiError(cuerpo.error ?? mensajeSinDetalle(res.status), res.status, cuerpo.motivo, cuerpo);
   }
 
   return cuerpo as T;
@@ -328,6 +334,8 @@ export interface OperativoApi {
   localidad: string;
   fiscalInstruccion: string | null;   // opcional: sin fiscal asignado todavía
   descripcion: string | null;
+  /** Reseña que se escribe al finalizar (CU-10); antes pisaba la descripción (migración 024). */
+  notaFinal?: string | null;
   estado: string;
   fechaHoraInicio: string;
   fechaHoraFin: string | null;
