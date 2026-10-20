@@ -31,6 +31,13 @@ const BOLSA = ZONAS.flatMap(z => Array(z.peso).fill(z));
 
 const INSTITUCIONES = ['DUAR', 'Bomberos Voluntarios', 'Policía de Córdoba', 'Defensa Civil', 'ETAC', 'Otra'];
 const ESPECIALIDADES = ['Paramédico', 'Canes', 'Dron', 'Bombero', 'Caballería', 'Buzos', 'Policía', 'Defensa Civil'];
+const COORDINADORES = ['Laura Medina', 'Martín Ferreyra', 'Sofía Quiroga', 'Diego Bustos'];
+const OBJETIVOS: { tipo: 'persona' | 'objeto'; descripcion: string }[] = [
+  { tipo: 'persona', descripcion: 'Varón de 34 años, campera roja, mochila gris' },
+  { tipo: 'persona', descripcion: 'Niña de 9 años, remera amarilla' },
+  { tipo: 'persona', descripcion: 'Mujer de 71 años, desorientada' },
+  { tipo: 'objeto', descripcion: 'Mochila con documentación' },
+];
 const TIPOS = ['Excursionista extraviado', 'Turista desaparecido', 'Menor extraviado', 'Adulto mayor desorientado', 'Ciclista no regresó', 'Búsqueda de objeto'];
 
 const RESULTADOS: ResultadoOperativo[] = ['HALLADA_CON_VIDA', 'HALLADA_CON_VIDA', 'HALLADA_CON_VIDA', 'HALLADA_CON_VIDA',
@@ -83,6 +90,10 @@ function generar(): OperativoPanel[] {
       instituciones,
       especialidades,
       areas: Array.from({ length: nAreas }, () => area(lat + entre(-0.02, 0.02), lng + entre(-0.02, 0.02), entre(0.6, 2.2))),
+      puntoCero: [lat, lng],
+      coordinador: null,
+      objetivo: elegir(OBJETIVOS),
+      grupos: { total: 0, enTerreno: 0 },
     });
   }
   // Tres en curso ahora (uno sin coordinador a cargo) y uno nuevo sin activar.
@@ -97,6 +108,10 @@ function generar(): OperativoPanel[] {
       instituciones: ['DUAR', 'Bomberos Voluntarios', ...(r() > 0.5 ? ['Policía de Córdoba'] : [])],
       especialidades: ['Canes', 'Paramédico', ...(r() > 0.5 ? ['Dron'] : [])],
       areas: enCurso ? [area(zz.lat, zz.lng, 1.5), area(zz.lat - 0.015, zz.lng + 0.01, 1.1)] : [],
+      puntoCero: [zz.lat + 0.004, zz.lng - 0.006],
+      coordinador: conCoord ? COORDINADORES[zi % COORDINADORES.length] : null,
+      objetivo: OBJETIVOS[zi % 3],
+      grupos: enCurso ? { total: 2 + (zi % 4), enTerreno: 1 + (zi % 3) } : { total: 0, enTerreno: 0 },
     });
   }
   // Uno abierto hace más de 30 días, para que se vea la alerta.
@@ -107,6 +122,9 @@ function generar(): OperativoPanel[] {
     conCoordinador: false, agentes: { terreno: 3, base: 4, noDisponible: 1 },
     instituciones: ['DUAR', 'Policía de Córdoba'], especialidades: ['Canes', 'Dron'],
     areas: [area(z.lat, z.lng, 2.5), area(z.lat + 0.02, z.lng - 0.02, 1.8)],
+    puntoCero: [z.lat + 0.01, z.lng - 0.01], coordinador: null,
+    objetivo: { tipo: 'persona', descripcion: 'Turista extranjero, 28 años, campera azul' },
+    grupos: { total: 2, enTerreno: 1 },
   });
   return ops.sort((a, b) => a.inicio.localeCompare(b.inicio));
 }

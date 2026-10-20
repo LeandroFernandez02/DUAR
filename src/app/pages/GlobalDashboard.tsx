@@ -1,13 +1,15 @@
 import { useMemo, useState, type ReactNode } from 'react';
+import { useSearchParams } from 'react-router';
 import { LayoutDashboard, Radio, AlertTriangle, Clock, Flag, Building2, Stethoscope, Map as MapaIcono, CalendarRange, FlaskConical } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { OPERATIVOS_PANEL_MOCK } from '../data/panelGeneralMock';
 import {
   calcularPanel, agruparPorciones, formatoDuracion, opcionesDe, ETIQUETA_RESULTADO, ETIQUETA_ESTADO, DIAS_LARGO,
-  type FiltrosPanel, type EstadoOperativoPanel,
+  type FiltrosPanel, type EstadoOperativoPanel, type DatosPanel,
 } from '../utils/panelGeneral';
 import { Torta, BarrasHorizontales, OperativosPorMes, SERIES_CLARO, SERIES_OSCURO } from './panel/Graficos';
 import MapaCalor from './panel/MapaCalor';
+import MapaProvincia from './panel/MapaProvincia';
 
 /**
  * Panel general (CU-42): estadísticas de todos los operativos, para el
@@ -57,9 +59,89 @@ function Cifra({ valor, etiqueta, detalle }: { valor: ReactNode; etiqueta: strin
   );
 }
 
+
+/** Cifras de la situación actual: operativos activos y agentes por fase. Las usan las dos versiones. */
+function CifrasActuales({ d, series }: { d: DatosPanel; series: string[] }) {
+  const { terreno, base, noDisponible } = d.actual.agentes;
+  const totalAgentes = terreno + base + noDisponible;
+  return (
+    <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
+      <Cifra valor={d.actual.activos} etiqueta="Operativos activos"
+        detalle={d.actual.sinActivar ? `${d.actual.sinActivar} más sin activar (nuevos o en planificación)` : 'Ninguno sin activar'} />
+      <div className="sm:col-span-1 xl:col-span-3 rounded-[var(--radius-card)] p-4" style={{ background: 'var(--muted)' }}>
+        <div className="flex items-baseline gap-2 flex-wrap">
+          <p className="tabular-nums" style={{ fontSize: 30, lineHeight: 1.1, fontWeight: 700, color: 'var(--foreground)' }}>{totalAgentes}</p>
+          <p style={{ fontSize: 'var(--text-label)', color: 'var(--foreground)', fontWeight: 'var(--font-weight-semibold)' }}>agentes en los operativos activos</p>
+        </div>
+        {/* Una barra apilada: cuántos en el terreno, en la base y no disponibles. */}
+        <div className="flex gap-0.5 mt-3 h-3 rounded-full overflow-hidden" role="img"
+          aria-label={`En el terreno ${terreno}, en la base ${base}, no disponibles ${noDisponible}`}>
+          {[{ n: terreno, c: series[0] }, { n: base, c: series[2] }, { n: noDisponible, c: 'var(--muted-foreground)' }].map((s, i) => s.n > 0 && (
+            <div key={i} style={{ flexGrow: s.n, background: s.c }} />
+          ))}
+        </div>
+        <div className="grid grid-cols-3 gap-3 mt-3">
+          {[
+            { n: terreno, t: 'En el terreno', s: 'desplegados, rastrillando o replegando', c: series[0] },
+            { n: base, t: 'En la base', s: 'disponibles, agrupados o en espera', c: series[2] },
+            { n: noDisponible, t: 'No disponibles', s: '', c: 'var(--muted-foreground)' },
+          ].map(x => (
+            <div key={x.t} className="flex gap-2">
+              <span style={{ width: 10, height: 10, borderRadius: 3, background: x.c, marginTop: 5, flexShrink: 0 }} />
+              <div>
+                <p style={{ fontSize: 'var(--text-label)', color: 'var(--foreground)' }}><strong className="tabular-nums">{x.n}</strong> {x.t}</p>
+                {x.s && <p style={{ fontSize: 11, color: 'var(--muted-foreground)' }}>{x.s}</p>}
+              </div>
+            </div>
+          ))}
+        </div>
+      </div>
+    </div>
+  );
+}
+
 const ESTADOS_FILTRO: EstadoOperativoPanel[] = ['ACTIVO', 'EN_PROCESO', 'FINALIZADO', 'NUEVO', 'EN_PLANIFICACION', 'INACTIVO'];
 
+/**
+ * Dos versiones del panel para compararlas con el equipo de tesis (20/10). La 2 saca las
+ * alertas, los filtros, la duración y el resultado, y cambia el mapa por una ilustración
+ * de la provincia con dos vistas (calor y operativos en curso). Se elige con ?v=1 / ?v=2.
+ */
 export default function GlobalDashboard() {
+  const { isDark } = useApp();
+  const [params, setParams] = useSearchParams();
+  const version = params.get('v') === '1' ? '1' : '2';
+  return (
+    <div className="p-6 md:p-8 flex flex-col gap-6" style={{ fontFamily: 'var(--font-family-primary)' }}>
+      <div className="flex items-start gap-3 flex-wrap">
+        <div>
+          <h1 className="mb-1" style={{ color: 'var(--foreground)', fontSize: 'var(--text-h2)', fontWeight: 'var(--font-weight-bold)' }}>Panel de Control</h1>
+          <p style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-base)' }}>Estadísticas de todos los operativos</p>
+        </div>
+        <div className="ml-auto flex items-center gap-3 flex-wrap">
+          <div className="inline-flex p-1 rounded-[var(--radius-button)]" style={{ background: 'var(--muted)' }} role="tablist" aria-label="Versión del panel">
+            {(['1', '2'] as const).map(v => (
+              <button key={v} role="tab" aria-selected={version === v} onClick={() => setParams({ v }, { replace: true })}
+                className="px-3 py-1.5 rounded-[var(--radius-button)]"
+                style={{ background: version === v ? 'var(--card)' : 'transparent', boxShadow: version === v ? 'var(--elevation-sm)' : 'none',
+                  color: version === v ? 'var(--foreground)' : 'var(--muted-foreground)', fontSize: 'var(--text-label)', fontWeight: 600, border: 'none', cursor: 'pointer' }}>
+                Versión {v}
+              </button>
+            ))}
+          </div>
+        <span className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full"
+          title="Las cifras son de ejemplo, para acordar la pantalla. Todavía no salen de la base."
+          style={{ background: 'rgba(217,119,6,0.12)', color: isDark ? '#fbbf24' : '#92400e', fontSize: 'var(--text-label)', fontWeight: 600 }}>
+          <FlaskConical size={14} /> Datos de ejemplo
+        </span>
+        </div>
+      </div>
+      {version === '1' ? <PanelV1 /> : <PanelV2 />}
+    </div>
+  );
+}
+
+function PanelV1() {
   const { isDark } = useApp();
   const series = isDark ? SERIES_OSCURO : SERIES_CLARO;
   const todos = OPERATIVOS_PANEL_MOCK;
@@ -68,57 +150,12 @@ export default function GlobalDashboard() {
   const opciones = useMemo(() => opcionesDe(todos), [todos]);
   const hayFiltros = f.estado || f.localidad || f.institucion || JSON.stringify(f) !== JSON.stringify(filtrosIniciales());
   const fechaCorta = (s: string) => new Date(s).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' });
-  const { terreno, base, noDisponible } = d.actual.agentes;
-  const totalAgentes = terreno + base + noDisponible;
 
   return (
-    <div className="p-6 md:p-8 flex flex-col gap-6" style={{ fontFamily: 'var(--font-family-primary)' }}>
-      <div className="flex items-start gap-3 flex-wrap">
-        <div>
-          <h1 className="mb-1" style={{ color: 'var(--foreground)', fontSize: 'var(--text-h2)', fontWeight: 'var(--font-weight-bold)' }}>Panel de Control</h1>
-          <p style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-base)' }}>Estadísticas de todos los operativos</p>
-        </div>
-        <span className="ml-auto inline-flex items-center gap-1.5 px-3 py-1.5 rounded-full"
-          title="Las cifras son de ejemplo, para acordar la pantalla. Todavía no salen de la base."
-          style={{ background: 'rgba(217,119,6,0.12)', color: isDark ? '#fbbf24' : '#92400e', fontSize: 'var(--text-label)', fontWeight: 600 }}>
-          <FlaskConical size={14} /> Datos de ejemplo
-        </span>
-      </div>
-
+    <div className="flex flex-col gap-6">
       {/* ── 1 · Situación actual: siempre ahora y de todos los operativos ── */}
       <Seccion titulo="Situación actual" icono={Radio} aclaracion="Ahora, en todos los operativos (no usa los filtros)">
-        <div className="grid grid-cols-1 sm:grid-cols-2 xl:grid-cols-4 gap-3">
-          <Cifra valor={d.actual.activos} etiqueta="Operativos activos"
-            detalle={d.actual.sinActivar ? `${d.actual.sinActivar} más sin activar (nuevos o en planificación)` : 'Ninguno sin activar'} />
-          <div className="sm:col-span-1 xl:col-span-3 rounded-[var(--radius-card)] p-4" style={{ background: 'var(--muted)' }}>
-            <div className="flex items-baseline gap-2 flex-wrap">
-              <p className="tabular-nums" style={{ fontSize: 30, lineHeight: 1.1, fontWeight: 700, color: 'var(--foreground)' }}>{totalAgentes}</p>
-              <p style={{ fontSize: 'var(--text-label)', color: 'var(--foreground)', fontWeight: 'var(--font-weight-semibold)' }}>agentes en los operativos activos</p>
-            </div>
-            {/* Una barra apilada: cuántos en el terreno, en la base y no disponibles. */}
-            <div className="flex gap-0.5 mt-3 h-3 rounded-full overflow-hidden" role="img"
-              aria-label={`En el terreno ${terreno}, en la base ${base}, no disponibles ${noDisponible}`}>
-              {[{ n: terreno, c: series[0] }, { n: base, c: series[2] }, { n: noDisponible, c: 'var(--muted-foreground)' }].map((s, i) => s.n > 0 && (
-                <div key={i} style={{ flexGrow: s.n, background: s.c }} />
-              ))}
-            </div>
-            <div className="grid grid-cols-3 gap-3 mt-3">
-              {[
-                { n: terreno, t: 'En el terreno', s: 'desplegados, rastrillando o replegando', c: series[0] },
-                { n: base, t: 'En la base', s: 'disponibles, agrupados o en espera', c: series[2] },
-                { n: noDisponible, t: 'No disponibles', s: '', c: 'var(--muted-foreground)' },
-              ].map(x => (
-                <div key={x.t} className="flex gap-2">
-                  <span style={{ width: 10, height: 10, borderRadius: 3, background: x.c, marginTop: 5, flexShrink: 0 }} />
-                  <div>
-                    <p style={{ fontSize: 'var(--text-label)', color: 'var(--foreground)' }}><strong className="tabular-nums">{x.n}</strong> {x.t}</p>
-                    {x.s && <p style={{ fontSize: 11, color: 'var(--muted-foreground)' }}>{x.s}</p>}
-                  </div>
-                </div>
-              ))}
-            </div>
-          </div>
-        </div>
+        <CifrasActuales d={d} series={series} />
 
         {(d.actual.sinCoordinador.length > 0 || d.actual.largos.length > 0) && (
           <div className="grid grid-cols-1 lg:grid-cols-2 gap-3 mt-3">
@@ -211,6 +248,43 @@ export default function GlobalDashboard() {
       {/* ── 6 · Evolución ── */}
       <Seccion titulo="Operativos por mes" icono={CalendarRange}>
         <OperativosPorMes meses={d.meses} colorBarras={series[0]} colorLinea={series[1]} />
+      </Seccion>
+    </div>
+  );
+}
+
+/** Versión 2 (20/10): situación actual sin alertas, mapa ilustrado de la provincia, participación y evolución, sin filtros. */
+function PanelV2() {
+  const { isDark } = useApp();
+  const series = isDark ? SERIES_OSCURO : SERIES_CLARO;
+  const todos = OPERATIVOS_PANEL_MOCK;
+  const historico = useMemo(() => {
+    const desde = todos.reduce((m, o) => (o.inicio < m ? o.inicio : m), new Date().toISOString()).slice(0, 10);
+    return calcularPanel(todos, { ...filtrosIniciales(), desde });
+  }, [todos]);
+  const ultimoAnio = useMemo(() => calcularPanel(todos, filtrosIniciales()), [todos]);
+
+  return (
+    <div className="flex flex-col gap-6">
+      <Seccion titulo="Situación actual" icono={Radio} aclaracion="Ahora, en todos los operativos">
+        <CifrasActuales d={historico} series={series} />
+      </Seccion>
+
+      <Seccion titulo="Mapa de la provincia" icono={MapaIcono}>
+        <MapaProvincia historial={historico.filtrados} todos={todos} isDark={isDark} />
+      </Seccion>
+
+      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
+        <Seccion titulo="Participación por institución" icono={Building2} aclaracion="En cuántos operativos intervino cada una (historial)">
+          <Torta datos={agruparPorciones(historico.instituciones)} colores={series} unidad="participaciones" />
+        </Seccion>
+        <Seccion titulo="Participación por especialidad" icono={Stethoscope} aclaracion="En cuántos operativos intervino cada una (historial)">
+          <Torta datos={agruparPorciones(historico.especialidades)} colores={series} unidad="participaciones" />
+        </Seccion>
+      </div>
+
+      <Seccion titulo="Operativos por mes" icono={CalendarRange} aclaracion="Últimos 12 meses">
+        <OperativosPorMes meses={ultimoAnio.meses} colorBarras={series[0]} colorLinea={series[1]} />
       </Seccion>
     </div>
   );

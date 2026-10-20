@@ -40,6 +40,14 @@ export interface OperativoPanel {
   especialidades: string[];
   /** Polígonos de búsqueda: anillos [lat, lng]. */
   areas: [number, number][][];
+  /** Punto Cero vigente [lat, lng]. */
+  puntoCero: [number, number];
+  /** Coordinador a cargo del puesto de comando ahora (null = nadie). */
+  coordinador: string | null;
+  /** Qué se busca (ficha del objetivo), si se cargó. */
+  objetivo: { tipo: 'persona' | 'objeto'; descripcion: string } | null;
+  /** Grupos vigentes y cuántos están en el terreno ahora. */
+  grupos: { total: number; enTerreno: number };
 }
 
 export interface FiltrosPanel {
