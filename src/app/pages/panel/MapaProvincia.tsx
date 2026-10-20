@@ -22,8 +22,8 @@ const MIN_LAT = Math.min(...lats), MAX_LAT = Math.max(...lats);
 const K = Math.cos(((MIN_LAT + MAX_LAT) / 2) * Math.PI / 180);
 const ESCALA = 112;          // px por grado de latitud
 const PAD = 14;
-const W = (MAX_LON - MIN_LON) * K * ESCALA + PAD * 2;
-const H = (MAX_LAT - MIN_LAT) * ESCALA + PAD * 2;
+const W = Math.round((MAX_LON - MIN_LON) * K * ESCALA + PAD * 2);
+const H = Math.round((MAX_LAT - MIN_LAT) * ESCALA + PAD * 2);
 const xy = (lat: number, lon: number): [number, number] => [PAD + (lon - MIN_LON) * K * ESCALA, PAD + (MAX_LAT - lat) * ESCALA];
 const CONTORNO = CONTORNO_CORDOBA.map(([lon, lat], i) => `${i ? 'L' : 'M'}${xy(lat, lon).map(n => n.toFixed(1)).join(' ')}`).join(' ') + ' Z';
 
@@ -40,7 +40,7 @@ const CIUDADES: { nombre: string; lat: number; lon: number; ancla?: 'start' | 'e
 type Vista = 'calor' | 'curso';
 const EN_CURSO = ['ACTIVO', 'EN_PROCESO'];
 
-export default function MapaProvincia({ historial, todos, isDark }: { historial: OperativoPanel[]; todos: OperativoPanel[]; isDark: boolean }) {
+export default function MapaProvincia({ historial, todos, isDark, encabezado }: { historial: OperativoPanel[]; todos: OperativoPanel[]; isDark: boolean; encabezado?: React.ReactNode }) {
   const [vista, setVista] = useState<Vista>('curso');
   const enCurso = useMemo(() => todos.filter(o => EN_CURSO.includes(o.estado)), [todos]);
   const [elegidoId, setElegidoId] = useState<string | null>(null);
@@ -53,22 +53,39 @@ export default function MapaProvincia({ historial, todos, isDark }: { historial:
   const textoCiudad = isDark ? 'rgba(247,235,232,0.6)' : 'rgba(68,65,64,0.6)';
 
   return (
-    <div>
-      {/* Selector de vista */}
-      <div className="inline-flex p-1 rounded-[var(--radius-button)] mb-4" style={{ background: 'var(--muted)' }} role="tablist">
-        {([['curso', 'Operativos en curso', Radio], ['calor', 'Mapa de calor', Flame]] as const).map(([v, t, I]) => (
-          <button key={v} role="tab" aria-selected={vista === v} onClick={() => setVista(v)}
-            className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[var(--radius-button)]"
-            style={{ background: vista === v ? 'var(--card)' : 'transparent', boxShadow: vista === v ? 'var(--elevation-sm)' : 'none',
-              color: vista === v ? 'var(--foreground)' : 'var(--muted-foreground)', fontSize: 'var(--text-label)', fontWeight: 600, border: 'none', cursor: 'pointer' }}>
-            <I size={14} /> {t}
-          </button>
-        ))}
+    <div className="flex flex-col lg:h-full min-h-0">
+      {/* Selector de vista y leyenda en una sola línea, para dejarle la altura al mapa */}
+      <div className="flex items-center gap-x-3 gap-y-2 flex-wrap mb-3">
+        {encabezado}
+        <div className="inline-flex p-1 rounded-[var(--radius-button)]" style={{ background: 'var(--muted)' }} role="tablist">
+          {([['curso', 'Operativos en curso', Radio], ['calor', 'Mapa de calor', Flame]] as const).map(([v, t, I]) => (
+            <button key={v} role="tab" aria-selected={vista === v} onClick={() => setVista(v)}
+              className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[var(--radius-button)]"
+              style={{ background: vista === v ? 'var(--card)' : 'transparent', boxShadow: vista === v ? 'var(--elevation-sm)' : 'none',
+                color: vista === v ? 'var(--foreground)' : 'var(--muted-foreground)', fontSize: 'var(--text-label)', fontWeight: 600, border: 'none', cursor: 'pointer' }}>
+              <I size={14} /> {t}
+            </button>
+          ))}
+        </div>
+        <div className="flex flex-wrap items-center gap-x-3 gap-y-1" style={{ fontSize: 11, color: 'var(--muted-foreground)' }}>
+          {vista === 'calor' ? (
+            <span className="inline-flex items-center gap-1.5">
+              <span style={{ width: 44, height: 7, borderRadius: 4, background: `linear-gradient(90deg, ${rojo}22, ${rojo})` }} />
+              menos → más operativos ({historial.length} en el historial)
+            </span>
+          ) : (
+            <>
+              <span className="inline-flex items-center gap-1.5"><span style={{ width: 9, height: 9, borderRadius: 5, background: rojo }} />Punto Cero</span>
+              <span className="inline-flex items-center gap-1.5"><span style={{ width: 7, height: 7, borderRadius: 4, background: '#d97706' }} />sin coordinador a cargo</span>
+            </>
+          )}
+        </div>
       </div>
 
-      <div className="flex flex-col lg:flex-row gap-5">
-        <div className="relative mx-auto lg:mx-0 shrink-0 w-full" style={{ maxWidth: 440 }}>
-          <svg viewBox={`0 0 ${W.toFixed(0)} ${H.toFixed(0)}`} className="w-full h-auto" role="img"
+      <div className="flex flex-col md:flex-row gap-4 lg:flex-1 min-h-0">
+        {/* El mapa toma toda la altura disponible y su ancho sale de la proporción de la provincia */}
+        <div className="relative mx-auto md:mx-0 shrink-0 w-full md:w-[46%] lg:w-auto lg:h-full" style={{ aspectRatio: `${W} / ${H}`, maxWidth: '100%' }}>
+          <svg viewBox={`0 0 ${W.toFixed(0)} ${H.toFixed(0)}`} className="w-full h-full" role="img"
             aria-label={vista === 'calor' ? `Mapa de calor de ${historial.length} operativos en la provincia de Córdoba` : `${enCurso.length} operativos en curso en la provincia de Córdoba`}>
             <defs>
               <clipPath id="recorte-cordoba"><path d={CONTORNO} /></clipPath>
@@ -116,33 +133,15 @@ export default function MapaProvincia({ historial, todos, isDark }: { historial:
 
           {sobre && (
             <div className="absolute pointer-events-none px-2.5 py-1.5 rounded-lg whitespace-nowrap"
-              style={{ left: `${(sobre.x / W) * 100}%`, top: `${(sobre.y / H) * 100}%`, transform: 'translate(-50%, calc(-100% - 12px))',
+              style={{ left: `${(sobre.x / W) * 100}%`, top: `${(sobre.y / H) * 100}%`, transform: 'translate(-50%, calc(-100% - 12px))', zIndex: 5,
                 background: 'var(--card)', border: '1px solid var(--border)', boxShadow: 'var(--elevation-md)', fontSize: 12, color: 'var(--foreground)' }}>
               <strong>{sobre.o.titulo}</strong><br />{sobre.o.localidad}
             </div>
           )}
-
-          {/* Leyenda */}
-          <div className="flex flex-wrap items-center gap-x-4 gap-y-1 mt-2" style={{ fontSize: 12, color: 'var(--muted-foreground)' }}>
-            {vista === 'calor' ? (
-              <>
-                <span className="inline-flex items-center gap-1.5">
-                  <span style={{ width: 54, height: 8, borderRadius: 4, background: `linear-gradient(90deg, ${rojo}22, ${rojo})` }} />
-                  menos → más operativos en la zona
-                </span>
-                <span>{historial.length} operativos del historial</span>
-              </>
-            ) : (
-              <>
-                <span className="inline-flex items-center gap-1.5"><span style={{ width: 10, height: 10, borderRadius: 5, background: rojo }} />Punto Cero de un operativo en curso</span>
-                <span className="inline-flex items-center gap-1.5"><span style={{ width: 7, height: 7, borderRadius: 4, background: '#d97706' }} />sin coordinador a cargo</span>
-              </>
-            )}
-          </div>
         </div>
 
-        {/* Detalle del operativo elegido (vista «en curso») o lectura del calor */}
-        <div className="flex-1 min-w-0">
+        {/* «Datos»: la ficha del operativo elegido (en curso) o dónde más se busca (calor). Si no entra, scrollea sola. */}
+        <div className="flex-1 min-w-0 min-h-0 overflow-y-auto">
           {vista === 'curso'
             ? (elegido ? <Ficha o={elegido} /> : <p style={{ fontSize: 'var(--text-label)', color: 'var(--muted-foreground)' }}>No hay operativos en curso.</p>)
             : <ZonasCalientes historial={historial} />}

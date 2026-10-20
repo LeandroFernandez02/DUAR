@@ -65,6 +65,8 @@ export interface DatosPanel {
   actual: {
     activos: number;
     sinActivar: number;
+    /** Cuántos operativos hay en cada estado (todos, sin filtros). */
+    porEstado: Record<EstadoOperativoPanel, number>;
     agentes: { terreno: number; base: number; noDisponible: number };
     sinCoordinador: OperativoPanel[];
     largos: { op: OperativoPanel; dias: number }[];
@@ -122,6 +124,8 @@ export function calcularPanel(todos: OperativoPanel[], f: FiltrosPanel): DatosPa
   const actual = {
     activos: enCurso.length,
     sinActivar: todos.filter(o => SIN_ACTIVAR.includes(o.estado)).length,
+    porEstado: (Object.keys(ETIQUETA_ESTADO) as EstadoOperativoPanel[])
+      .reduce((m, e) => ({ ...m, [e]: todos.filter(o => o.estado === e).length }), {} as Record<EstadoOperativoPanel, number>),
     agentes: enCurso.reduce((s, o) => ({ terreno: s.terreno + o.agentes.terreno, base: s.base + o.agentes.base, noDisponible: s.noDisponible + o.agentes.noDisponible }), { terreno: 0, base: 0, noDisponible: 0 }),
     sinCoordinador: enCurso.filter(o => !o.conCoordinador),
     largos: enCurso.map(op => ({ op, dias: Math.floor((ahora - new Date(op.inicio).getTime()) / DIA) }))

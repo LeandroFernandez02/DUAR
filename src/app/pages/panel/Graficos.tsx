@@ -23,7 +23,7 @@ function Globo({ x, y, children }: { x: number | string; y: number | string; chi
 }
 
 /** Torta (anillo) con leyenda a la derecha: nombre, valor y porcentaje de cada porción. */
-export function Torta({ datos, colores, unidad }: { datos: Porcion[]; colores: string[]; unidad: string }) {
+export function Torta({ datos, colores, unidad, diametro = 160, compacta = false }: { datos: Porcion[]; colores: string[]; unidad: string; diametro?: number; compacta?: boolean }) {
   const [sobre, setSobre] = useState<number | null>(null);
   const total = datos.reduce((s, d) => s + d.valor, 0);
   if (!total) return <p style={tinta}>Sin datos para los filtros elegidos.</p>;
@@ -46,9 +46,9 @@ export function Torta({ datos, colores, unidad }: { datos: Porcion[]; colores: s
   const pct = (v: number) => `${Math.round((v / total) * 100)} %`;
 
   return (
-    <div className="flex flex-col sm:flex-row items-center gap-5">
-      <div className="relative shrink-0" style={{ width: 160, height: 160 }}>
-        <svg viewBox="0 0 160 160" width="160" height="160" role="img" aria-label={datos.map(d => `${d.nombre}: ${d.valor}`).join(', ')}>
+    <div className={`flex flex-col sm:flex-row items-center ${compacta ? 'gap-4' : 'gap-5'}`}>
+      <div className="relative shrink-0" style={{ width: diametro, height: diametro }}>
+        <svg viewBox="0 0 160 160" width={diametro} height={diametro} role="img" aria-label={datos.map(d => `${d.nombre}: ${d.valor}`).join(', ')}>
           {arcos.map(a => (
             <path key={a.i} d={a.d} fill={a.color} opacity={sobre === null || sobre === a.i ? 1 : 0.35}
               onMouseEnter={() => setSobre(a.i)} onMouseLeave={() => setSobre(null)} style={{ cursor: 'default', transition: 'opacity .15s' }} />
@@ -57,20 +57,21 @@ export function Torta({ datos, colores, unidad }: { datos: Porcion[]; colores: s
           <text x="80" y="96" textAnchor="middle" style={{ fontSize: 10, fill: 'var(--muted-foreground)' }}>{unidad}</text>
         </svg>
         {sobre !== null && (
-          <Globo x={arcos[sobre].cx} y={arcos[sobre].cy}>
+          <Globo x={arcos[sobre].cx * diametro / 160} y={arcos[sobre].cy * diametro / 160}>
             <strong>{datos[sobre].nombre}</strong> · {datos[sobre].valor} ({pct(datos[sobre].valor)})
           </Globo>
         )}
       </div>
-      <ul className="flex flex-col gap-1.5 w-full min-w-0">
+      {/* Compacta: filas más bajas; con 5 porciones la leyenda mide lo mismo que la torta. */}
+      <ul className={`flex flex-col ${compacta ? 'gap-0' : 'gap-1.5'} w-full min-w-0`}>
         {datos.map((d, i) => (
-          <li key={d.nombre} className="flex items-center gap-2 px-1.5 py-0.5 rounded"
+          <li key={d.nombre} className={`flex items-center gap-2 px-1.5 rounded ${compacta ? 'py-0' : 'py-0.5'}`}
             onMouseEnter={() => setSobre(i)} onMouseLeave={() => setSobre(null)}
-            style={{ background: sobre === i ? 'var(--muted)' : 'transparent', fontSize: 'var(--text-label)' }}>
+            style={{ background: sobre === i ? 'var(--muted)' : 'transparent', fontSize: compacta ? 12 : 'var(--text-label)', lineHeight: compacta ? '18px' : undefined }}>
             <span style={{ width: 10, height: 10, borderRadius: 3, background: colores[i % colores.length], flexShrink: 0 }} />
             <span className="truncate" style={{ color: 'var(--foreground)' }}>{d.nombre}</span>
             <span className="ml-auto tabular-nums" style={{ color: 'var(--foreground)', fontWeight: 600 }}>{d.valor}</span>
-            <span className="tabular-nums w-10 text-right" style={{ color: 'var(--muted-foreground)' }}>{pct(d.valor)}</span>
+            <span className={`tabular-nums whitespace-nowrap ${compacta ? 'w-9' : 'w-10'} text-right`} style={{ color: 'var(--muted-foreground)' }}>{pct(d.valor)}</span>
           </li>
         ))}
       </ul>

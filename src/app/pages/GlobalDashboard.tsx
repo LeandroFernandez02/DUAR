@@ -1,6 +1,6 @@
-import { useMemo, useState, type ReactNode } from 'react';
+import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
-import { LayoutDashboard, Radio, AlertTriangle, Clock, Flag, Building2, Stethoscope, Map as MapaIcono, CalendarRange, FlaskConical } from 'lucide-react';
+import { LayoutDashboard, Radio, AlertTriangle, Users, UserX, Clock, Flag, Building2, Stethoscope, Map as MapaIcono, CalendarRange, FlaskConical } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { OPERATIVOS_PANEL_MOCK } from '../data/panelGeneralMock';
 import {
@@ -253,7 +253,13 @@ function PanelV1() {
   );
 }
 
-/** Versión 2 (20/10): situación actual sin alertas, mapa ilustrado de la provincia, participación y evolución, sin filtros. */
+/**
+ * Versión 2 (20/10, boceto del usuario del 21/10). Al entrar se ve todo hasta el mapa y las
+ * dos tortas sin scrollear: arriba los operativos por estado; abajo, a la izquierda, el mapa
+ * de la provincia con los datos del operativo elegido y, a la derecha, los agentes y las
+ * tortas. «Operativos por mes» queda debajo y se llega scrolleando. En pantallas angostas
+ * todo se apila en una columna.
+ */
 function PanelV2() {
   const { isDark } = useApp();
   const series = isDark ? SERIES_OSCURO : SERIES_CLARO;
@@ -263,29 +269,86 @@ function PanelV2() {
     return calcularPanel(todos, { ...filtrosIniciales(), desde });
   }, [todos]);
   const ultimoAnio = useMemo(() => calcularPanel(todos, filtrosIniciales()), [todos]);
+  const { porEstado, agentes } = historico.actual;
+  // Las tortas crecen con la altura de la pantalla: en una notebook entran chicas, en un monitor grande no quedan perdidas.
+  const [alto, setAlto] = useState(() => window.innerHeight);
+  useEffect(() => {
+    const f = () => setAlto(window.innerHeight);
+    window.addEventListener('resize', f);
+    return () => window.removeEventListener('resize', f);
+  }, []);
+  const diametro = alto >= 1000 ? 150 : alto >= 860 ? 124 : 92;
 
   return (
-    <div className="flex flex-col gap-6">
-      <Seccion titulo="Situación actual" icono={Radio} aclaracion="Ahora, en todos los operativos">
-        <CifrasActuales d={historico} series={series} />
-      </Seccion>
-
-      <Seccion titulo="Mapa de la provincia" icono={MapaIcono}>
-        <MapaProvincia historial={historico.filtrados} todos={todos} isDark={isDark} />
-      </Seccion>
-
-      <div className="grid grid-cols-1 xl:grid-cols-2 gap-6">
-        <Seccion titulo="Participación por institución" icono={Building2} aclaracion="En cuántos operativos intervino cada una (historial)">
-          <Torta datos={agruparPorciones(historico.instituciones)} colores={series} unidad="participaciones" />
-        </Seccion>
-        <Seccion titulo="Participación por especialidad" icono={Stethoscope} aclaracion="En cuántos operativos intervino cada una (historial)">
-          <Torta datos={agruparPorciones(historico.especialidades)} colores={series} unidad="participaciones" />
-        </Seccion>
+    <div className="flex flex-col gap-4">
+      {/* Operativos por estado */}
+      <div className="grid grid-cols-2 lg:grid-cols-4 gap-4">
+        <Indicador valor={porEstado.ACTIVO} etiqueta="Operativos activos" icono={Radio} />
+        <Indicador valor={porEstado.NUEVO + porEstado.EN_PLANIFICACION} etiqueta="Operativos nuevos" detalle="Todavía sin activar" icono={FlaskConical} />
+        <Indicador valor={porEstado.EN_PROCESO} etiqueta="Operativos en proceso" icono={CalendarRange} />
+        <Indicador valor={porEstado.FINALIZADO} etiqueta="Operativos finalizados" detalle="En todo el historial" icono={Flag} />
       </div>
 
+      {/* Mapa + datos | agentes y tortas: en escritorio ocupa el resto de la pantalla */}
+      <div className="grid grid-cols-1 lg:grid-cols-[minmax(0,1.2fr)_minmax(0,1fr)] gap-4 lg:h-[calc(100dvh-14rem)] lg:min-h-[380px]">
+        <section className="rounded-[var(--radius-card)] p-4 flex flex-col min-h-0" style={estiloTarjeta}>
+          <div className="lg:flex-1 lg:min-h-0">
+            <MapaProvincia historial={historico.filtrados} todos={todos} isDark={isDark}
+              encabezado={<div className="mr-auto -mb-2"><TituloTarjeta icono={MapaIcono} titulo="Mapa de la provincia" /></div>} />
+          </div>
+        </section>
+
+        <div className="flex flex-col gap-4 min-h-0">
+          <div className="grid grid-cols-2 gap-4">
+            <Indicador valor={agentes.terreno + agentes.base} etiqueta="Agentes trabajando"
+              detalle={`${agentes.terreno} en el terreno · ${agentes.base} en la base`} icono={Users} />
+            <Indicador valor={agentes.noDisponible} etiqueta="Agentes no disponibles" icono={UserX} />
+          </div>
+          <section className="rounded-[var(--radius-card)] px-4 py-3 flex flex-col flex-1 min-h-0" style={estiloTarjeta}>
+            <TituloTarjeta icono={Building2} titulo="Participación por institución" aclaracion="en cuántos operativos" />
+            <div className="flex-1 min-h-0 flex items-center overflow-y-auto">
+              <Torta datos={agruparPorciones(historico.instituciones, 5)} colores={series} unidad="participaciones" diametro={diametro} compacta />
+            </div>
+          </section>
+          <section className="rounded-[var(--radius-card)] px-4 py-3 flex flex-col flex-1 min-h-0" style={estiloTarjeta}>
+            <TituloTarjeta icono={Stethoscope} titulo="Participación por especialidad" aclaracion="en cuántos operativos" />
+            <div className="flex-1 min-h-0 flex items-center overflow-y-auto">
+              <Torta datos={agruparPorciones(historico.especialidades, 5)} colores={series} unidad="participaciones" diametro={diametro} compacta />
+            </div>
+          </section>
+        </div>
+      </div>
+
+      {/* Debajo de la primera pantalla: se llega scrolleando */}
       <Seccion titulo="Operativos por mes" icono={CalendarRange} aclaracion="Últimos 12 meses">
         <OperativosPorMes meses={ultimoAnio.meses} colorBarras={series[0]} colorLinea={series[1]} />
       </Seccion>
+    </div>
+  );
+}
+
+function TituloTarjeta({ icono: I, titulo, aclaracion }: { icono: typeof Radio; titulo: string; aclaracion?: string }) {
+  return (
+    <div className="flex items-baseline gap-2 mb-2 flex-wrap">
+      <I size={15} style={{ color: 'var(--primary)', alignSelf: 'center' }} />
+      <h2 style={{ fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--foreground)' }}>{titulo}</h2>
+      {aclaracion && <span style={{ fontSize: 12, color: 'var(--muted-foreground)' }}>{aclaracion}</span>}
+    </div>
+  );
+}
+
+/** Tarjeta chica con una cifra (fila de estados y agentes de la versión 2). */
+function Indicador({ valor, etiqueta, detalle, icono: I }: { valor: number; etiqueta: string; detalle?: string; icono: typeof Radio }) {
+  return (
+    <div className="rounded-[var(--radius-card)] px-4 py-2.5 flex items-center gap-3" style={estiloTarjeta}>
+      <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'rgba(229,75,75,0.1)' }}>
+        <I size={17} style={{ color: 'var(--primary)' }} />
+      </div>
+      <div className="min-w-0">
+        <p className="tabular-nums" style={{ fontSize: 22, lineHeight: 1.1, fontWeight: 700, color: 'var(--foreground)' }}>{valor}</p>
+        <p className="leading-tight" style={{ fontSize: 'var(--text-label)', color: 'var(--foreground)', fontWeight: 'var(--font-weight-semibold)' }}>{etiqueta}</p>
+        {detalle && <p className="leading-tight" style={{ fontSize: 11, color: 'var(--muted-foreground)' }}>{detalle}</p>}
+      </div>
     </div>
   );
 }
