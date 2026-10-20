@@ -114,6 +114,16 @@ function generar(): OperativoPanel[] {
       grupos: enCurso ? { total: 2 + (zi % 4), enTerreno: 1 + (zi % 3) } : { total: 0, enTerreno: 0 },
     });
   }
+  // Uno finalizado hoy (la tarjeta «Operativos finalizados» muestra los de hoy).
+  const zf = ZONAS[2];
+  ops.push({
+    id: 'mock-fin-hoy', titulo: `Excursionista extraviado — ${zf.localidad}`, localidad: `${zf.localidad}, Córdoba`,
+    estado: 'FINALIZADO', inicio: new Date(ahora - 30 * 3_600_000).toISOString(), fin: new Date(ahora - 2 * 3_600_000).toISOString(),
+    resultado: 'HALLADA_CON_VIDA', conCoordinador: true, agentes: { terreno: 0, base: 0, noDisponible: 0 },
+    instituciones: ['DUAR', 'Defensa Civil'], especialidades: ['Canes', 'Paramédico'],
+    areas: [area(zf.lat, zf.lng, 1.6)], puntoCero: [zf.lat, zf.lng], coordinador: null,
+    objetivo: OBJETIVOS[0], grupos: { total: 0, enTerreno: 0 },
+  });
   // Uno abierto hace más de 30 días, para que se vea la alerta.
   const z = ZONAS[3];
   ops.push({

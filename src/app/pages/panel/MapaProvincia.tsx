@@ -1,5 +1,5 @@
 import { useMemo, useState } from 'react';
-import { Flame, Radio, Users, UserCheck, CalendarDays, Target, Building2, AlertTriangle, MapPin } from 'lucide-react';
+import { Flame, Radio, Users, UserCheck, CalendarDays, Target, AlertTriangle, MapPin } from 'lucide-react';
 import { CONTORNO_CORDOBA } from '../../data/contornoCordoba';
 import type { OperativoPanel } from '../../utils/panelGeneral';
 import { ETIQUETA_ESTADO } from '../../utils/panelGeneral';
@@ -71,7 +71,7 @@ export default function MapaProvincia({ historial, todos, isDark, encabezado }: 
           {vista === 'calor' ? (
             <span className="inline-flex items-center gap-1.5">
               <span style={{ width: 44, height: 7, borderRadius: 4, background: `linear-gradient(90deg, ${rojo}22, ${rojo})` }} />
-              menos → más operativos ({historial.length} en el historial)
+              menos → más operativos ({historial.length} hoy)
             </span>
           ) : (
             <>
@@ -192,9 +192,6 @@ function Ficha({ o }: { o: OperativoPanel }) {
         <Dato icono={Target} etiqueta={o.objetivo?.tipo === 'objeto' ? 'Objeto buscado' : 'Persona buscada'}>
           {o.objetivo?.descripcion ?? <span style={{ color: 'var(--muted-foreground)' }}>Sin ficha cargada</span>}
         </Dato>
-        <Dato icono={Building2} etiqueta="Instituciones">
-          {o.instituciones.join(', ')}
-        </Dato>
       </div>
       <p style={{ fontSize: 11, color: 'var(--muted-foreground)' }}>Con datos reales, desde acá se va a poder entrar al panel del operativo.</p>
     </div>
@@ -210,7 +207,7 @@ function ZonasCalientes({ historial }: { historial: OperativoPanel[] }) {
   return (
     <div className="rounded-[var(--radius-card)] p-4" style={{ background: 'var(--muted)' }}>
       <p style={{ fontSize: 'var(--text-base)', fontWeight: 600, color: 'var(--foreground)' }}>Dónde más se busca</p>
-      <p className="mb-3" style={{ fontSize: 12, color: 'var(--muted-foreground)' }}>Localidades con más operativos en el historial</p>
+      <p className="mb-3" style={{ fontSize: 12, color: 'var(--muted-foreground)' }}>Localidades con más operativos hoy</p>
       <ul className="flex flex-col gap-2.5">
         {top.map(([loc, n]) => (
           <li key={loc}>
