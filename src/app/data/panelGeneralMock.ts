@@ -34,7 +34,7 @@ const ESPECIALIDADES = ['Paramédico', 'Canes', 'Dron', 'Bombero', 'Caballería'
 const TIPOS = ['Excursionista extraviado', 'Turista desaparecido', 'Menor extraviado', 'Adulto mayor desorientado', 'Ciclista no regresó', 'Búsqueda de objeto'];
 
 const RESULTADOS: ResultadoOperativo[] = ['HALLADA_CON_VIDA', 'HALLADA_CON_VIDA', 'HALLADA_CON_VIDA', 'HALLADA_CON_VIDA',
-  'HALLADA_SIN_VIDA', 'NO_HALLADA', 'NO_HALLADA', 'SUSPENDIDA', 'OBJETO_HALLADO'];
+  'HALLADA_SIN_VIDA', 'SIN_HALLAZGO', 'SIN_HALLAZGO', 'SUSPENDIDA', 'OBJETO_HALLADO'];
 
 /** Un polígono aproximado (cuadrilátero torcido) alrededor de un punto. */
 function area(lat: number, lng: number, km: number): [number, number][] {

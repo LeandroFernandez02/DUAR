@@ -1,3 +1,4 @@
+import type { ResultadoOperativo } from '../utils/resultadoOperativo';
 export type Rol = 'administrador' | 'coordinador' | 'agente';
 export type EstadoUsuario = 'activo' | 'inactivo' | 'eliminado' | 'pendiente';
 export type EstadoOperativo = 'activo' | 'planificación' | 'inactivo' | 'nuevo' | 'finalizado' | 'eliminado' | 'en_proceso';
@@ -306,6 +307,7 @@ export interface Operativo {
   kmRastrillados: number;
   coordinadorId: string;
   notaFinal?: string;       // reseña/conclusión al cerrar el operativo
+  resultado?: ResultadoOperativo; // elegido al finalizar (CU-10, migración 025)
 }
 
 export interface AppData {

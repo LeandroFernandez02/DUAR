@@ -98,7 +98,7 @@ describe('Módulo 6 · Informe por operativo (CU-41)', () => {
     motivo(c, 201);
     opFinal = c.json.operativo.id;
     await ctx.api('POST', `/operativos/${opFinal}/activar`, {});
-    const f = await ctx.api('POST', `/operativos/${opFinal}/finalizar`, {});
+    const f = await ctx.api('POST', `/operativos/${opFinal}/finalizar`, { resultado: 'HALLADA_CON_VIDA' });
     motivo(f, 200);
     assert.match(f.json.informeFinal?.codigo ?? '', /^INF-/, 'la finalización devuelve el código del informe final');
 

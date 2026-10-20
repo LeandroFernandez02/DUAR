@@ -18,6 +18,7 @@ const CAMPOS = `
   o.fiscal_instruccion  AS "fiscalInstruccion",
   o.descripcion,
   o.nota_final          AS "notaFinal",
+  o.resultado::text     AS resultado,
   o.estado::text        AS estado,
   o.fecha_hora_inicio   AS "fechaHoraInicio",
   o.fecha_hora_fin      AS "fechaHoraFin",
@@ -222,14 +223,14 @@ export async function revisionAntesDeFinalizar(id) {
   return { tracksCargados: t.n, agentesEnActividad: agentes };
 }
 
-export async function finalizar(id, { notaFinal = null, usuarioId = null } = {}) {
+export async function finalizar(id, { notaFinal = null, resultado = null, usuarioId = null } = {}) {
   return withTransaction(async (client) => {
     await client.query(
       `UPDATE operativos
           SET estado = 'FINALIZADO', fecha_hora_fin = CURRENT_TIMESTAMP,
-              nota_final = $2, actualizado_en = CURRENT_TIMESTAMP
+              nota_final = $2, resultado = $3::resultado_operativo, actualizado_en = CURRENT_TIMESTAMP
         WHERE id = $1`,
-      [id, notaFinal]
+      [id, notaFinal, resultado]
     );
     // Línea de tiempo (eventos_estado, migración 010): cada grupo que se
     // disuelve y cada persona que queda liberada, con su último estado. Va

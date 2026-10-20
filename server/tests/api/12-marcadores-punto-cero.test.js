@@ -219,7 +219,7 @@ describe('Módulo 5 · Marcadores, Punto Cero y radios (CU-34, 35, 36, 38)', () 
   });
 
   test('CU-36 / CU-38 · con el operativo finalizado el mapa es de sólo lectura', async () => {
-    motivo(await ctx.api('POST', `/operativos/${opNuevo}/finalizar`, {}), 200);
+    motivo(await ctx.api('POST', `/operativos/${opNuevo}/finalizar`, { resultado: 'SIN_HALLAZGO' }), 200);
     motivo(await ctx.api('PUT', `/operativos/${opNuevo}/punto-cero`, { lat: -31.6, lng: -64.5, motivo: 'x' }), 409, 'operativo_cerrado');
     motivo(await ctx.api('POST', `/operativos/${opNuevo}/radios`, { radioM: 1000, color: '#000000' }), 409, 'operativo_cerrado');
     motivo(await ctx.api('POST', `/operativos/${opNuevo}/marcadores`, { clase: 'POI', nombre: 'X', lat: -31.5, lng: -64.5 }), 409, 'operativo_cerrado');

@@ -11,6 +11,7 @@
  * sessionStorage (y no localStorage) para que la sesión se cierre sola al cerrar el
  * navegador o la pestaña (Testeo 15/10, punto 19). Cada pestaña tiene su propia sesión.
  */
+import type { ResultadoOperativo } from '../utils/resultadoOperativo';
 
 const TOKEN_KEY = 'duar-token';
 
@@ -336,6 +337,8 @@ export interface OperativoApi {
   descripcion: string | null;
   /** Reseña que se escribe al finalizar (CU-10); antes pisaba la descripción (migración 024). */
   notaFinal?: string | null;
+  /** Resultado elegido al finalizar (CU-10, migración 025); null si no está finalizado o se cerró antes. */
+  resultado?: ResultadoOperativo | null;
   estado: string;
   fechaHoraInicio: string;
   fechaHoraFin: string | null;
@@ -394,8 +397,8 @@ export const operativosApi = {
   revisionFinalizar: (id: string) =>
     api.get<{ tracksCargados: number; agentesEnActividad: { nombre: string; apellido: string; estado: string }[] }>(`/operativos/${id}/finalizar/revision`),
   /** CU-10: cierra el operativo y libera a todo el personal asignado. */
-  finalizar: (id: string, notaFinal?: string) =>
-    api.post<{ operativo: OperativoApi }>(`/operativos/${id}/finalizar`, { notaFinal }),
+  finalizar: (id: string, resultado: ResultadoOperativo, notaFinal?: string) =>
+    api.post<{ operativo: OperativoApi }>(`/operativos/${id}/finalizar`, { resultado, notaFinal }),
   /** Baja lógica — el backend sólo la permite si sigue en estado NUEVO. */
   eliminar: (id: string) => api.del<void>(`/operativos/${id}`),
 };

@@ -70,6 +70,7 @@ aplica al proyecto Supabase con el mismo nombre:
 | `022_fiscal_opcional.sql` | `operativos.fiscal_instruccion` deja de ser obligatoria (CU-08/09): sin fiscal asignado queda en NULL |
 | `023_correo_libre_al_eliminar.sql` | El correo de una cuenta eliminada queda libre para una cuenta nueva (CU-07, Testeo punto 29): `usuarios_email_key` → índice único parcial `usuarios_email_vigente_key` sobre `lower(email)` de las cuentas vigentes |
 | `024_nota_final_operativo.sql` | La reseña que se escribe al finalizar (CU-10) va en `operativos.nota_final` en vez de pisar `descripcion`; repone la descripción original desde la auditoría donde ya se había pisado |
+| `025_resultado_operativo.sql` | Resultado del operativo al finalizar (CU-10, para el panel general CU-42): ENUM `resultado_operativo` (con vida, sin vida, objeto hallado, sin hallazgo, suspendida) y `operativos.resultado`; sólo un operativo finalizado lo tiene. Los finalizados antes quedan en NULL |
 
 **Numeración de los CU.** Desde el 13/10/2026 los CU van del 01 al 44: se sumó
 el CU-15 «Registrar Presencia de Mando» y «Extraer Agente de Grupo» quedó como

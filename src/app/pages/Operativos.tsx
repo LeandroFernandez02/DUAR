@@ -13,6 +13,7 @@ import { useApp } from '../context/AppContext';
 import { Operativo, EstadoOperativo } from '../data/mockData';
 import { operativosApi, ApiError } from '../services/api';
 import { mapearOperativo } from '../utils/mapearOperativo';
+import { ETIQUETA_RESULTADO, opcionesResultado, type ResultadoOperativo } from '../utils/resultadoOperativo';
 import { ahoraEnArgentina, campoDesdeIso, fechaHoraArgentina } from '../utils/fechaArgentina';
 import SelectorLocalidad from '../components/shared/SelectorLocalidad';
 import FiltroDesplegable from '../components/shared/FiltroDesplegable';
@@ -172,7 +173,7 @@ export default function Operativos() {
   const [formErrorMsg, setFormErrorMsg] = useState('');
 
   /* ── view / filter state ── */
-  const [searchParams] = useSearchParams();
+  const [searchParams, setSearchParams] = useSearchParams();
   const [viewMode, setViewMode] = useState<ViewMode>('card');
   const [searchQuery, setSearchQuery] = useState('');
   // Estados elegidos (selección múltiple, 02/10). Vacío = todos.
@@ -180,6 +181,9 @@ export default function Operativos() {
 
   /* ── finalize state ── */
   const [finalizeNota, setFinalizeNota] = useState('');
+  /** Resultado del operativo (CU-10, migración 025): obligatorio para finalizar. */
+  const [finalizeResultado, setFinalizeResultado] = useState<ResultadoOperativo | ''>('');
+  const [finalizeSinResultado, setFinalizeSinResultado] = useState(false);
   const [finalizeStep, setFinalizeStep] = useState<'confirm' | 'revision'>('confirm');
   /** Lo que conviene revisar antes de cerrar (CU-10 5.1): sin tracks GPX o con agentes todavía en actividad. */
   const [revision, setRevision] = useState<{ tracksCargados: number; agentesEnActividad: { nombre: string; apellido: string; estado: string }[] } | null>(null);
@@ -236,13 +240,29 @@ export default function Operativos() {
   const openFinalize = (op: Operativo) => {
     setSelected(op);
     setFinalizeNota('');
+    setFinalizeResultado('');
+    setFinalizeSinResultado(false);
     setFinalizeStep('confirm');
     setRevision(null);
     setModal('finalize');
   };
 
+  // «Finalizar operativo» desde la ficha del panel (OperativoInfoModal) llega como ?finalizar=<id>:
+  // se abre esta misma ventana, la única que finaliza de verdad (revisión, resultado y reseña).
+  const finalizarDesdeUrl = searchParams.get('finalizar');
+  useEffect(() => {
+    if (!finalizarDesdeUrl || cargando) return;
+    const op = operativos.find(o => o.id === finalizarDesdeUrl);
+    if (op && op.estado !== 'finalizado' && op.estado !== 'eliminado') openFinalize(op);
+    const resto = new URLSearchParams(searchParams);
+    resto.delete('finalizar');
+    setSearchParams(resto, { replace: true });
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [finalizarDesdeUrl, cargando, operativos]);
+
   const handleFinalizeConfirm = async () => {
     if (!selected) return;
+    if (!finalizeResultado) { setFinalizeSinResultado(true); return; }
     setRevisando(true);
     try {
       const r = await operativosApi.revisionFinalizar(selected.id);
@@ -264,7 +284,8 @@ export default function Operativos() {
     try {
       // CU-10 paso 7: el backend libera a TODO el personal asignado en la
       // misma operación — no es sólo cambiar el estado del operativo.
-      await operativosApi.finalizar(selected.id, finalizeNota.trim() || undefined);
+      if (!finalizeResultado) return;
+      await operativosApi.finalizar(selected.id, finalizeResultado, finalizeNota.trim() || undefined);
       setModal(null);
       await cargarOperativos();
       toast.success('Operativo finalizado correctamente. Personal liberado.', {
@@ -1320,6 +1341,32 @@ export default function Operativos() {
                       <strong>Finalizado</strong> y todos los datos quedarán en <strong>modo solo lectura</strong>. El personal asignado será liberado.
                     </p>
                   </div>
+
+                  {/* Resultado (obligatorio, CU-10 · migración 025): lo cuenta el panel general. */}
+                  <fieldset>
+                    <legend style={{ color: 'var(--foreground)', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-medium)', fontFamily: 'var(--font-family-primary)', marginBottom: 6 }}>
+                      Resultado del operativo <span style={{ color: 'var(--primary)' }}>*</span>
+                    </legend>
+                    <div className="flex flex-col gap-1.5">
+                      {opcionesResultado(selected.objetivoPreview?.tipo).map(op => {
+                        const elegido = finalizeResultado === op;
+                        return (
+                          <label key={op} className="flex items-center gap-2.5 px-3 py-2 rounded-[var(--radius-input)] cursor-pointer"
+                            style={{ border: elegido ? '1.5px solid var(--primary)' : '1px solid var(--border)', background: elegido ? 'rgba(229,75,75,0.06)' : 'var(--background)',
+                              color: 'var(--foreground)', fontSize: 'var(--text-base)', fontFamily: 'var(--font-family-primary)' }}>
+                            <input type="radio" name="resultado-operativo" value={op} checked={elegido}
+                              onChange={() => { setFinalizeResultado(op); setFinalizeSinResultado(false); }} style={{ accentColor: 'var(--primary)' }} />
+                            {ETIQUETA_RESULTADO[op]}
+                          </label>
+                        );
+                      })}
+                    </div>
+                    {finalizeSinResultado && (
+                      <p style={{ color: '#dc2626', fontSize: 'var(--text-label)', fontFamily: 'var(--font-family-primary)', marginTop: 6 }}>
+                        Elegí el resultado del operativo para poder finalizarlo.
+                      </p>
+                    )}
+                  </fieldset>
 
                   {/* Textarea opcional */}
                   <div>

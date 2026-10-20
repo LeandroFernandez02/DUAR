@@ -151,6 +151,15 @@ export const LOCALIDAD_MAX = 200;   // operativos.localidad es varchar(200)
 export const DESCRIPCION_MAX = 2000;
 export const NOTA_FINAL_MAX = 1000;
 
+/** Resultado que se elige al finalizar (CU-10, migración 025), con su leyenda. */
+export const RESULTADOS_OPERATIVO = {
+  HALLADA_CON_VIDA: 'Persona hallada con vida',
+  HALLADA_SIN_VIDA: 'Persona hallada sin vida',
+  OBJETO_HALLADO: 'Objeto hallado',
+  SIN_HALLAZGO: 'Sin hallazgo',
+  SUSPENDIDA: 'Búsqueda suspendida',
+};
+
 /**
  * Igual criterio que validarDatosPersonales: sólo valida los campos presentes
  * (undefined = "no se está tocando"). Devuelve `{ campo: mensaje }`.

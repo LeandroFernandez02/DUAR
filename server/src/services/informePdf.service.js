@@ -18,6 +18,7 @@ import * as Storage from './storage.service.js';
 import { mapaSvg, ATRIBUCION } from './informeMapa.js';
 import { coord, fmtDistancia, codigoOperativo } from '../models/informe.model.js';
 import { ETIQUETA_GRUPO } from '../models/estados.js';
+import { RESULTADOS_OPERATIVO } from '../utils/validaciones.js';
 
 const FUENTES = path.resolve(path.dirname(fileURLToPath(import.meta.url)), '../../assets/fuentes');
 const F = archivo => path.join(FUENTES, archivo);
@@ -230,6 +231,7 @@ export async function generarPdf(d, meta) {
     ['Punto Cero vigente', { text: [mono(coords(op.puntoCeroLat, op.puntoCeroLng)), tenue(pcVigente?.registradoEn ? `  ·  desde ${fechaCorta(pcVigente.registradoEn)}` : '')] }, true],
     ['Descripción', { text: op.descripcion || '—' }, true],
     // La reseña del cierre (CU-10) en su propia fila: antes pisaba la descripción (migración 024).
+    ...(final && op.resultado ? [['Resultado', { text: RESULTADOS_OPERATIVO[op.resultado] ?? op.resultado, font: 'InterMedia' }, true]] : []),
     ...(final && op.notaFinal ? [['Reseña de cierre', { text: op.notaFinal }, true]] : []),
   ]));
 

@@ -29,6 +29,7 @@ export function mapearOperativo(o: OperativoApi): Operativo {
     fechaFin: o.fechaHoraFin ?? undefined,
     descripcion: o.descripcion ?? undefined,
     notaFinal: o.notaFinal ?? undefined,
+    resultado: o.resultado ?? undefined,
     // El backend hoy sólo da la CANTIDAD (CU-11 paso 6), no los IDs reales —
     // Módulo 4 (agentes/grupos) todavía no está migrado del todo. Se arma un
     // array del tamaño correcto sólo para que sigan andando los `.length` que

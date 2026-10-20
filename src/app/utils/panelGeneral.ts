@@ -13,18 +13,8 @@
 
 export type EstadoOperativoPanel = 'NUEVO' | 'EN_PLANIFICACION' | 'ACTIVO' | 'EN_PROCESO' | 'INACTIVO' | 'FINALIZADO';
 
-/** Resultado que se elige al finalizar (dato nuevo, CU-10). */
-export type ResultadoOperativo = 'HALLADA_CON_VIDA' | 'HALLADA_SIN_VIDA' | 'OBJETO_HALLADO' | 'NO_HALLADA' | 'SUSPENDIDA';
-
-export const ETIQUETA_RESULTADO: Record<ResultadoOperativo, string> = {
-  HALLADA_CON_VIDA: 'Persona hallada con vida',
-  HALLADA_SIN_VIDA: 'Persona hallada sin vida',
-  OBJETO_HALLADO: 'Objeto hallado',
-  NO_HALLADA: 'No hallada',
-  SUSPENDIDA: 'Búsqueda suspendida',
-};
-/** Los que cuentan como «resuelto» para la tasa de resolución. */
-const RESUELTOS: ResultadoOperativo[] = ['HALLADA_CON_VIDA', 'HALLADA_SIN_VIDA', 'OBJETO_HALLADO'];
+import { ETIQUETA_RESULTADO, RESULTADOS_RESUELTOS as RESUELTOS, type ResultadoOperativo } from './resultadoOperativo';
+export { ETIQUETA_RESULTADO, type ResultadoOperativo };
 
 export const ETIQUETA_ESTADO: Record<EstadoOperativoPanel, string> = {
   NUEVO: 'Nuevo', EN_PLANIFICACION: 'En planificación', ACTIVO: 'Activo', EN_PROCESO: 'En proceso',

@@ -4,7 +4,7 @@
  */
 import * as Operativo from '../models/operativo.model.js';
 import * as Auditoria from '../models/auditoria.model.js';
-import { validarDatosOperativo } from '../utils/validaciones.js';
+import { validarDatosOperativo, RESULTADOS_OPERATIVO } from '../utils/validaciones.js';
 import { conZonaArgentina } from '../utils/fechas.js';
 import * as Informes from '../services/informe.service.js';
 
@@ -194,7 +194,17 @@ export async function finalizar(req, res, next) {
     const erroresNota = validarDatosOperativo({ notaFinal: req.body?.notaFinal });
     if (erroresNota.notaFinal) return res.status(400).json({ error: erroresNota.notaFinal });
 
-    const finalizado = await Operativo.finalizar(id, { notaFinal: req.body?.notaFinal ?? null, usuarioId: req.usuario.id });
+    // El resultado es obligatorio (decisión del 19/10): sin él el panel general no puede contar
+    // cuántas búsquedas se resolvieron. La reseña sigue siendo opcional.
+    const resultado = req.body?.resultado;
+    if (!Object.hasOwn(RESULTADOS_OPERATIVO, resultado ?? '')) {
+      return res.status(400).json({
+        error: 'Elegí el resultado del operativo.', motivo: 'resultado_requerido',
+        errores: { resultado: 'Elegí el resultado del operativo.' },
+      });
+    }
+
+    const finalizado = await Operativo.finalizar(id, { notaFinal: req.body?.notaFinal ?? null, resultado, usuarioId: req.usuario.id });
 
     await Auditoria.registrar({
       usuarioId: req.usuario.id,

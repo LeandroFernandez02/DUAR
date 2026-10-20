@@ -13,6 +13,7 @@
  * corte "ahora" y el final la hora de fin del operativo, cuando ya nada
  * puede cambiar (CU-10, inmutabilidad).
  */
+import { RESULTADOS_OPERATIVO } from '../utils/validaciones.js';
 import { query } from '../config/db.js';
 import { ETIQUETA_GRUPO, EN_OPERACION } from './estados.js';
 
@@ -101,7 +102,7 @@ export async function reunirDatos(operativoId, corteEn) {
   const q = (sql, p = [operativoId]) => query(sql, p).then(r => r.rows);
 
   const [operativo] = await q(
-    `SELECT o.id, o.titulo, o.localidad, o.fiscal_instruccion AS "fiscalInstruccion", o.descripcion, o.nota_final AS "notaFinal",
+    `SELECT o.id, o.titulo, o.localidad, o.fiscal_instruccion AS "fiscalInstruccion", o.descripcion, o.nota_final AS "notaFinal", o.resultado::text AS resultado,
             o.estado::text AS estado, o.fecha_hora_inicio AS "fechaHoraInicio", o.fecha_hora_fin AS "fechaHoraFin",
             o.creado_en AS "creadoEn", ST_Y(o.punto_cero) AS "puntoCeroLat", ST_X(o.punto_cero) AS "puntoCeroLng",
             ${nombre('u')} AS "creadoPor"
@@ -331,7 +332,8 @@ export function armarCronologia(d) {
   }
   if (d.operativo.fechaHoraFin) {
     const fin = d.auditoriaOperativo.find(a => a.estadoNuevo === 'FINALIZADO');
-    add(d.operativo.fechaHoraFin, 'Operativo', 'Se finaliza el operativo: se libera al personal y se disuelven los grupos.', fin?.registradoPor);
+    add(d.operativo.fechaHoraFin, 'Operativo', 'Se finaliza el operativo: se libera al personal y se disuelven los grupos.', fin?.registradoPor,
+      d.operativo.resultado ? { nota: `Resultado: ${RESULTADOS_OPERATIVO[d.operativo.resultado] ?? d.operativo.resultado}.` } : {});
   }
   if (d.objetivo) add(d.objetivo.creado_en, 'Operativo', `Se carga la ficha ${d.objetivo.tipo === 'OBJETO' ? 'del objeto' : 'de la persona'} buscada.`, null);
 
