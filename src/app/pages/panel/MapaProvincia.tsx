@@ -1,7 +1,8 @@
-import { useState } from 'react';
+import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { Flame, Radio, Users, Calendar, MapPin, RadioTower, ArrowRight } from 'lucide-react';
+import { Flame, Radio, Users, Calendar, MapPin, RadioTower, ArrowRight, Plus, Minus, Maximize2 } from 'lucide-react';
 import { CONTORNO_CORDOBA } from '../../data/contornoCordoba';
+import { DEPARTAMENTOS_CORDOBA, LOCALIDADES_CORDOBA } from '../../data/divisionesCordoba';
 import type { OperativoPanel, EstadoOperativoPanel } from '../../utils/panelGeneral';
 import { ESTADO_BADGE, ETIQUETA_ESTADO } from '../../utils/panelGeneral';
 import StatusBadge, { colorDeEstado } from '../../components/shared/StatusBadge';
@@ -13,7 +14,9 @@ const colorEstado = (e: EstadoOperativoPanel) => colorDeEstado(ESTADO_BADGE[e]);
 /**
  * Mapa ilustrado de la provincia de Córdoba (panel general, versión 2). No usa mapa
  * de fondo: es el contorno de la provincia (IGN) dibujado en SVG, con algunas ciudades
- * de referencia, y dos vistas:
+ * de referencia, los 26 departamentos y, al acercarse, los radios de cada localidad
+ * (municipios y comunas, IGN). Se acerca con la rueda del mouse, doble click o + / −,
+ * y se mueve arrastrando. Dos vistas:
  *  · Mapa de calor: cada operativo del historial suma un halo rojo en su zona; donde
  *    se repiten búsquedas el color se intensifica (un solo tono, escala secuencial).
  *  · Operativos en curso: el Punto Cero de cada operativo, del color de su estado; al
@@ -31,7 +34,24 @@ const PAD = 14;
 const W = Math.round((MAX_LON - MIN_LON) * K * ESCALA + PAD * 2);
 const H = Math.round((MAX_LAT - MIN_LAT) * ESCALA + PAD * 2);
 const xy = (lat: number, lon: number): [number, number] => [PAD + (lon - MIN_LON) * K * ESCALA, PAD + (MAX_LAT - lat) * ESCALA];
-const CONTORNO = CONTORNO_CORDOBA.map(([lon, lat], i) => `${i ? 'L' : 'M'}${xy(lat, lon).map(n => n.toFixed(1)).join(' ')}`).join(' ') + ' Z';
+const trazo = (anillo: [number, number][]) => anillo.map(([lon, lat], i) => `${i ? 'L' : 'M'}${xy(lat, lon).map(n => n.toFixed(2)).join(' ')}`).join(' ') + ' Z';
+const CONTORNO = trazo(CONTORNO_CORDOBA as [number, number][]);
+const DEPARTAMENTOS = DEPARTAMENTOS_CORDOBA.map(d => ({ nombre: d.nombre, d: d.anillos.map(trazo).join(' ') }));
+const LOCALIDADES = LOCALIDADES_CORDOBA.map(l => ({ ...l, d: l.anillos.map(trazo).join(' '), xy: xy(l.centro[1], l.centro[0]) }));
+
+/** Zoom: de 1 (provincia entera) a 16. Desde 3,5 se leen los nombres de los municipios; desde 7, también los de las comunas. */
+const ZOOM_MAX = 16;
+const ZOOM_MUNICIPIOS = 3.5, ZOOM_COMUNAS = 7;
+type Encuadre = { k: number; x: number; y: number };
+const ENTERO: Encuadre = { k: 1, x: 0, y: 0 };
+/** Acerca o aleja `factor` veces dejando quieto el punto (px, py) del mapa, sin que la provincia se salga del recuadro. */
+function acercar(e: Encuadre, factor: number, px = W / 2, py = H / 2): Encuadre {
+  const k = Math.min(ZOOM_MAX, Math.max(1, e.k * factor));
+  return encuadrar({ k, x: px - (px - e.x) * (k / e.k), y: py - (py - e.y) * (k / e.k) });
+}
+function encuadrar(e: Encuadre): Encuadre {
+  return { k: e.k, x: Math.min(0, Math.max(W * (1 - e.k), e.x)), y: Math.min(0, Math.max(H * (1 - e.k), e.y)) };
+}
 
 const CIUDADES: { nombre: string; lat: number; lon: number; ancla?: 'start' | 'end' }[] = [
   { nombre: 'Córdoba', lat: -31.417, lon: -64.183 },
@@ -58,6 +78,59 @@ export default function MapaProvincia({ historial, puntos, etiquetaPuntos, isDar
   const [elegidoId, setElegidoId] = useState<string | null>(null);
   const [sobre, setSobre] = useState<{ o: OperativoPanel; x: number; y: number } | null>(null);
   const elegido = enCurso.find(o => o.id === elegidoId) ?? enCurso[0] ?? null;
+
+  // Zoom y desplazamiento (en unidades del SVG). La rueda necesita un listener no pasivo para no scrollear la página.
+  const [enc, setEnc] = useState<Encuadre>(ENTERO);
+  const [arrastrando, setArrastrando] = useState(false);
+  const svgRef = useRef<SVGSVGElement>(null);
+  const arrastre = useRef<{ cx: number; cy: number; e: Encuadre; movio: boolean } | null>(null);
+  const aSvg = (clientX: number, clientY: number) => {
+    const r = svgRef.current!.getBoundingClientRect();
+    return { x: ((clientX - r.left) / r.width) * W, y: ((clientY - r.top) / r.height) * H };
+  };
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!svg) return;
+    const rueda = (ev: WheelEvent) => {
+      ev.preventDefault();
+      const p = aSvg(ev.clientX, ev.clientY);
+      setEnc(e => acercar(e, ev.deltaY < 0 ? 1.25 : 0.8, p.x, p.y));
+    };
+    svg.addEventListener('wheel', rueda, { passive: false });
+    return () => svg.removeEventListener('wheel', rueda);
+  }, []);
+  const empezarArrastre = (ev: React.PointerEvent) => {
+    if (enc.k === 1) return;
+    arrastre.current = { cx: ev.clientX, cy: ev.clientY, e: enc, movio: false };
+    setArrastrando(true);
+    const mover = (m: PointerEvent) => {
+      const a = arrastre.current; if (!a || !svgRef.current) return;
+      const escala = W / svgRef.current.getBoundingClientRect().width;
+      const dx = (m.clientX - a.cx) * escala, dy = (m.clientY - a.cy) * escala;
+      if (Math.abs(dx) + Math.abs(dy) > 3) a.movio = true;
+      setEnc(encuadrar({ k: a.e.k, x: a.e.x + dx, y: a.e.y + dy }));
+    };
+    const soltar = () => {
+      window.removeEventListener('pointermove', mover); window.removeEventListener('pointerup', soltar);
+      setArrastrando(false);
+      // El click que llega después de arrastrar no elige un operativo.
+      setTimeout(() => { arrastre.current = null; }, 0);
+    };
+    window.addEventListener('pointermove', mover); window.addEventListener('pointerup', soltar);
+  };
+  const recienArrastro = () => !!arrastre.current?.movio;
+  // Píxeles de pantalla por unidad del SVG, para que los nombres de las localidades se lean igual en cualquier pantalla.
+  const [pxUnidad, setPxUnidad] = useState(1);
+  useEffect(() => {
+    const svg = svgRef.current;
+    if (!svg) return;
+    const medir = () => setPxUnidad(svg.getBoundingClientRect().width / W || 1);
+    medir();
+    const ro = new ResizeObserver(medir); ro.observe(svg);
+    return () => ro.disconnect();
+  }, []);
+  const k = enc.k;
+  const conNombres = k >= ZOOM_MUNICIPIOS;
 
   const rojo = isDark ? '#ff6b6b' : '#d63a3a';
   const tierra = isDark ? '#2f2b29' : '#f6f1ef';
@@ -92,7 +165,9 @@ export default function MapaProvincia({ historial, puntos, etiquetaPuntos, isDar
       <div className="flex flex-col md:flex-row gap-4 lg:flex-1 min-h-0">
         {/* El mapa toma toda la altura disponible y su ancho sale de la proporción de la provincia */}
         <div className="relative mx-auto md:mx-0 shrink-0 w-full md:w-[46%] lg:w-auto lg:h-full" style={{ aspectRatio: `${W} / ${H}`, maxWidth: '100%' }}>
-          <svg viewBox={`0 0 ${W.toFixed(0)} ${H.toFixed(0)}`} className="w-full h-full" role="img"
+          <svg ref={svgRef} viewBox={`0 0 ${W.toFixed(0)} ${H.toFixed(0)}`} className="w-full h-full select-none" role="img"
+            onPointerDown={empezarArrastre} onDoubleClick={ev => { const p = aSvg(ev.clientX, ev.clientY); setEnc(e => acercar(e, 2, p.x, p.y)); }}
+            style={{ cursor: k > 1 ? (arrastrando ? 'grabbing' : 'grab') : 'zoom-in', touchAction: k > 1 ? 'none' : 'auto' }}
             aria-label={vista === 'calor' ? `Mapa de calor de ${historial.length} operativos en la provincia de Córdoba` : `${enCurso.length} operativos (${etiquetaPuntos.toLowerCase()}) en la provincia de Córdoba`}>
             <defs>
               <clipPath id="recorte-cordoba"><path d={CONTORNO} /></clipPath>
@@ -101,7 +176,21 @@ export default function MapaProvincia({ historial, puntos, etiquetaPuntos, isDar
                 <stop offset="100%" stopColor={rojo} stopOpacity={0} />
               </radialGradient>
             </defs>
-            <path d={CONTORNO} fill={tierra} stroke={borde} strokeWidth={1.4} strokeLinejoin="round" />
+            <g transform={`translate(${enc.x} ${enc.y}) scale(${k})`}>
+            <path d={CONTORNO} fill={tierra} stroke="none" />
+
+            {/* Localidades (radios de municipios y comunas) y departamentos; los trazos no engordan con el zoom */}
+            <g fill={isDark ? 'rgba(247,235,232,0.07)' : 'rgba(68,65,64,0.07)'} stroke={isDark ? 'rgba(247,235,232,0.3)' : 'rgba(68,65,64,0.3)'} strokeWidth={0.6}>
+              {LOCALIDADES.map(l => (
+                <path key={l.nombre + l.centro.join()} d={l.d} vectorEffect="non-scaling-stroke">
+                  <title>{`${l.nombre} (${l.tipo.toLowerCase()})`}</title>
+                </path>
+              ))}
+            </g>
+            <g fill="none" stroke={isDark ? 'rgba(247,235,232,0.25)' : 'rgba(68,65,64,0.25)'} strokeWidth={0.8} strokeDasharray="3 2" pointerEvents="none">
+              {DEPARTAMENTOS.map(d => <path key={d.nombre} d={d.d} vectorEffect="non-scaling-stroke" />)}
+            </g>
+            <path d={CONTORNO} fill="none" stroke={borde} strokeWidth={1.4} strokeLinejoin="round" vectorEffect="non-scaling-stroke" pointerEvents="none" />
 
             {vista === 'calor' && (
               <g clipPath="url(#recorte-cordoba)" style={{ mixBlendMode: isDark ? 'screen' : 'multiply' }}>
@@ -112,13 +201,21 @@ export default function MapaProvincia({ historial, puntos, etiquetaPuntos, isDar
               </g>
             )}
 
-            {CIUDADES.map(c => {
+            {/* Nombres de las localidades al acercarse (los tamaños se dividen por el zoom para verse siempre iguales) */}
+            {conNombres && LOCALIDADES.filter(l => l.tipo === 'Municipio' || k >= ZOOM_COMUNAS).map(l => (
+              <text key={'n' + l.nombre + l.centro.join()} x={l.xy[0]} y={l.xy[1]} textAnchor="middle" dominantBaseline="middle" pointerEvents="none"
+                style={{ fontSize: (l.tipo === 'Municipio' ? 11 : 10) / (k * pxUnidad), fill: textoCiudad, fontFamily: 'var(--font-family-primary)', fontWeight: l.tipo === 'Municipio' ? 600 : 400 }}>
+                {l.nombre}
+              </text>
+            ))}
+
+            {!conNombres && CIUDADES.map(c => {
               const [x, y] = xy(c.lat, c.lon);
               return (
                 <g key={c.nombre}>
-                  <circle cx={x} cy={y} r={2.2} fill={textoCiudad} />
-                  <text x={c.ancla === 'end' ? x - 5 : x + 5} y={y + 3.5} textAnchor={c.ancla ?? 'start'}
-                    style={{ fontSize: 10, fill: textoCiudad, fontFamily: 'var(--font-family-primary)' }}>{c.nombre}</text>
+                  <circle cx={x} cy={y} r={2.2 / k} fill={textoCiudad} pointerEvents="none" />
+                  <text x={c.ancla === 'end' ? x - 5 / k : x + 5 / k} y={y + 3.5 / k} textAnchor={c.ancla ?? 'start'} pointerEvents="none"
+                    style={{ fontSize: 10 / k, fill: textoCiudad, fontFamily: 'var(--font-family-primary)' }}>{c.nombre}</text>
                 </g>
               );
             })}
@@ -127,19 +224,33 @@ export default function MapaProvincia({ historial, puntos, etiquetaPuntos, isDar
               const [x, y] = xy(o.puntoCero[0], o.puntoCero[1]);
               const activo = elegido?.id === o.id;
               return (
-                <g key={o.id} style={{ cursor: 'pointer' }} onClick={() => setElegidoId(o.id)}
+                <g key={o.id} style={{ cursor: 'pointer' }} onClick={() => { if (!recienArrastro()) setElegidoId(o.id); }}
+                  onDoubleClick={ev => ev.stopPropagation()}
                   onMouseEnter={() => setSobre({ o, x, y })} onMouseLeave={() => setSobre(null)}>
-                  <circle cx={x} cy={y} r={14} fill="transparent" />
-                  {activo && <circle cx={x} cy={y} r={11} fill={colorEstado(o.estado)} opacity={0.22} />}
-                  <circle cx={x} cy={y} r={activo ? 7 : 5.5} fill={colorEstado(o.estado)} stroke={isDark ? '#1c1917' : '#fff'} strokeWidth={2} />
+                  <circle cx={x} cy={y} r={14 / k} fill="transparent" />
+                  {activo && <circle cx={x} cy={y} r={11 / k} fill={colorEstado(o.estado)} opacity={0.22} />}
+                  <circle cx={x} cy={y} r={(activo ? 7 : 5.5) / k} fill={colorEstado(o.estado)} stroke={isDark ? '#1c1917' : '#fff'} strokeWidth={2 / k} />
                 </g>
               );
             })}
+            </g>
           </svg>
+
+          {/* Controles de zoom */}
+          <div className="absolute top-1 right-1 flex flex-col rounded-lg overflow-hidden" style={{ background: 'var(--card)', border: '1px solid var(--border)', boxShadow: 'var(--elevation-sm)', zIndex: 4 }}>
+            {([[Plus, 'Acercar', () => setEnc(e => acercar(e, 1.6)), k >= ZOOM_MAX],
+               [Minus, 'Alejar', () => setEnc(e => acercar(e, 1 / 1.6)), k <= 1],
+               [Maximize2, 'Ver la provincia entera', () => setEnc(ENTERO), k <= 1]] as const).map(([I, t, f, off], i) => (
+              <button key={t} onClick={f} disabled={off} aria-label={t} title={t} className="p-1.5 disabled:opacity-35"
+                style={{ background: 'none', border: 'none', borderTop: i ? '1px solid var(--border)' : 'none', cursor: off ? 'default' : 'pointer', color: 'var(--foreground)' }}>
+                <I size={14} />
+              </button>
+            ))}
+          </div>
 
           {sobre && (
             <div className="absolute pointer-events-none px-2.5 py-1.5 rounded-lg whitespace-nowrap"
-              style={{ left: `${(sobre.x / W) * 100}%`, top: `${(sobre.y / H) * 100}%`, transform: 'translate(-50%, calc(-100% - 12px))', zIndex: 5,
+              style={{ left: `${((sobre.x * k + enc.x) / W) * 100}%`, top: `${((sobre.y * k + enc.y) / H) * 100}%`, transform: 'translate(-50%, calc(-100% - 12px))', zIndex: 5,
                 background: 'var(--card)', border: '1px solid var(--border)', boxShadow: 'var(--elevation-md)', fontSize: 12, color: 'var(--foreground)' }}>
               <strong>{sobre.o.titulo}</strong><br />{sobre.o.localidad}
             </div>
