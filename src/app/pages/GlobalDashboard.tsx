@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { useSearchParams } from 'react-router';
-import { LayoutDashboard, Radio, AlertTriangle, Users, UserX, Clock, Flag, Building2, Stethoscope, Map as MapaIcono, CalendarRange, FlaskConical } from 'lucide-react';
+import { LayoutDashboard, Radio, AlertTriangle, Users, UserCheck, Clock, Flag, Building2, Stethoscope, Map as MapaIcono, CalendarRange, FlaskConical } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { OPERATIVOS_PANEL_MOCK } from '../data/panelGeneralMock';
+import { OPERATIVOS_PANEL_MOCK, USUARIOS_EN_LINEA_MOCK } from '../data/panelGeneralMock';
 import {
   calcularPanel, agruparPorciones, formatoDuracion, opcionesDe, ETIQUETA_RESULTADO, ETIQUETA_ESTADO, DIAS_LARGO,
   type FiltrosPanel, type EstadoOperativoPanel, type DatosPanel,
@@ -303,7 +303,8 @@ function PanelV2() {
 
         <Indicador valor={agentes.terreno + agentes.base} etiqueta="Agentes trabajando"
           detalle={`${agentes.terreno} en el terreno · ${agentes.base} en la base`} icono={Users} />
-        <Indicador valor={agentes.noDisponible} etiqueta="Agentes no disponibles" icono={UserX} />
+        <Indicador valor={USUARIOS_EN_LINEA_MOCK.total} etiqueta="Usuarios activos en la aplicación"
+          detalle={`${USUARIOS_EN_LINEA_MOCK.agentes} agentes · ${USUARIOS_EN_LINEA_MOCK.coordinadores} coordinadores`} icono={UserCheck} />
 
         <section className="lg:col-span-2 rounded-[var(--radius-card)] px-4 py-3 flex flex-col min-h-0" style={estiloTarjeta}>
           <TituloTarjeta icono={Building2} titulo="Participación por institución" aclaracion="en los operativos de hoy" />

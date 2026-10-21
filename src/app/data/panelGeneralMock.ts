@@ -140,3 +140,6 @@ function generar(): OperativoPanel[] {
 }
 
 export const OPERATIVOS_PANEL_MOCK: OperativoPanel[] = generar();
+
+/** Usuarios con sesión abierta ahora en la aplicación (ejemplo). Con datos reales sale de las sesiones vigentes. */
+export const USUARIOS_EN_LINEA_MOCK = { total: 23, coordinadores: 4, agentes: 18, administradores: 1 };
