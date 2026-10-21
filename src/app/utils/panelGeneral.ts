@@ -48,7 +48,12 @@ export interface OperativoPanel {
   objetivo: { tipo: 'persona' | 'objeto'; descripcion: string } | null;
   /** Grupos vigentes y cuántos están en el terreno ahora. */
   grupos: { total: number; enTerreno: number };
+  /** Agentes con especialidad de recurso crítico (cat_especialidades.es_recurso_critico) trabajando ahora, por especialidad. */
+  recursosCriticos?: Record<string, number>;
 }
+
+/** Las especialidades marcadas como recurso crítico en cat_especialidades. */
+export const RECURSOS_CRITICOS = ['Canes', 'Dron', 'Paramédico', 'Buzos', 'Caballería'];
 
 export interface FiltrosPanel {
   desde: string;             // AAAA-MM-DD

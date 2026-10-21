@@ -46,7 +46,7 @@ export function Torta({ datos, colores, unidad, diametro = 160, compacta = false
   const pct = (v: number) => `${Math.round((v / total) * 100)} %`;
 
   return (
-    <div className={`flex flex-col sm:flex-row items-center ${compacta ? 'gap-4' : 'gap-5'}`}>
+    <div className={`flex flex-col sm:flex-row items-center w-full min-w-0 ${compacta ? 'gap-3' : 'gap-5'}`}>
       <div className="relative shrink-0" style={{ width: diametro, height: diametro }}>
         <svg viewBox="0 0 160 160" width={diametro} height={diametro} role="img" aria-label={datos.map(d => `${d.nombre}: ${d.valor}`).join(', ')}>
           {arcos.map(a => (

@@ -112,6 +112,7 @@ function generar(): OperativoPanel[] {
       coordinador: conCoord ? COORDINADORES[zi % COORDINADORES.length] : null,
       objetivo: OBJETIVOS[zi % 3],
       grupos: enCurso ? { total: 2 + (zi % 4), enTerreno: 1 + (zi % 3) } : { total: 0, enTerreno: 0 },
+      recursosCriticos: enCurso ? { Canes: 2 + (zi % 3), Dron: 1 + (zi % 2), 'Paramédico': 2, ...(zi % 2 ? { Caballería: 3 } : {}), ...(zi === 6 ? { Buzos: 2 } : {}) } : {},
     });
   }
   // Uno finalizado hoy (la tarjeta «Operativos finalizados» muestra los de hoy).
@@ -135,6 +136,7 @@ function generar(): OperativoPanel[] {
     puntoCero: [z.lat + 0.01, z.lng - 0.01], coordinador: null,
     objetivo: { tipo: 'persona', descripcion: 'Turista extranjero, 28 años, campera azul' },
     grupos: { total: 2, enTerreno: 1 },
+    recursosCriticos: { Canes: 2, Dron: 1 },
   });
   return ops.sort((a, b) => a.inicio.localeCompare(b.inicio));
 }
@@ -143,3 +145,6 @@ export const OPERATIVOS_PANEL_MOCK: OperativoPanel[] = generar();
 
 /** Usuarios con sesión abierta ahora en la aplicación (ejemplo). Con datos reales sale de las sesiones vigentes. */
 export const USUARIOS_EN_LINEA_MOCK = { total: 23, coordinadores: 4, agentes: 18, administradores: 1 };
+
+/** Cuentas de agente activas en el sistema (ejemplo). Las que no están en ningún operativo son las disponibles para convocar. */
+export const AGENTES_REGISTRADOS_MOCK = 140;

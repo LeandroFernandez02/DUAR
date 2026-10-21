@@ -1,8 +1,8 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { Radio, Users, UserCheck, Flag, Building2, Map as MapaIcono, CalendarRange, FilePlus2 } from 'lucide-react';
+import { Radio, Users, UserCheck, UserPlus, Footprints, ShieldAlert, Flag, Building2, Map as MapaIcono, CalendarRange, FilePlus2 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { OPERATIVOS_PANEL_MOCK, USUARIOS_EN_LINEA_MOCK } from '../data/panelGeneralMock';
-import { calcularPanel, agruparPorciones, rangoDe, type Periodo, type FiltrosPanel } from '../utils/panelGeneral';
+import { OPERATIVOS_PANEL_MOCK, USUARIOS_EN_LINEA_MOCK, AGENTES_REGISTRADOS_MOCK } from '../data/panelGeneralMock';
+import { calcularPanel, agruparPorciones, rangoDe, RECURSOS_CRITICOS, type Periodo, type FiltrosPanel } from '../utils/panelGeneral';
 import { Torta, OperativosPorMes, SERIES_CLARO, SERIES_OSCURO } from './panel/Graficos';
 import MapaProvincia from './panel/MapaProvincia';
 import LineaTiempo from './panel/LineaTiempo';
@@ -56,6 +56,10 @@ export default function GlobalDashboard() {
     && isoDia(new Date(o.fin)) >= rango.desde && isoDia(new Date(o.fin)) <= rango.hasta).length;
   const { agentes } = d.actual;
   const enCurso = useMemo(() => todos.filter(o => o.estado === 'ACTIVO' || o.estado === 'EN_PROCESO'), [todos]);
+  // Recursos críticos (Canes, Dron, Paramédico, Buzos, Caballería) trabajando ahora en todos los operativos en curso.
+  const recursosCriticos = useMemo(() => RECURSOS_CRITICOS
+    .map(nombre => ({ nombre, valor: enCurso.reduce((s, o) => s + (o.recursosCriticos?.[nombre] ?? 0), 0) }))
+    .filter(x => x.valor > 0).sort((a, b) => b.valor - a.valor), [enCurso]);
 
   // Las tortas crecen con la altura de la pantalla: en una notebook entran chicas, en un monitor grande no quedan perdidas.
   const [alto, setAlto] = useState(() => window.innerHeight);
@@ -64,7 +68,7 @@ export default function GlobalDashboard() {
     window.addEventListener('resize', f);
     return () => window.removeEventListener('resize', f);
   }, []);
-  const diametro = alto >= 1000 ? 150 : alto >= 860 ? 124 : 92;
+  const diametro = alto >= 1000 ? 132 : alto >= 860 ? 108 : alto >= 740 ? 88 : 70;
   const enElPeriodo = esHoy ? 'en los operativos de hoy' : `en los operativos de ${periodo.tipo === 'mes' ? rango.etiqueta.toLowerCase() : rango.etiqueta}`;
   const detalleEstado = esHoy ? 'Ahora' : rango.etiqueta;
 
@@ -87,9 +91,20 @@ export default function GlobalDashboard() {
         <Indicador valor={finalizados} etiqueta="Operativos finalizados" detalle={esHoy ? 'Hoy' : rango.etiqueta} icono={Flag} />
       </div>
 
-      {/* Mapa + datos | agentes, usuarios y tortas: en escritorio ocupa el resto de la pantalla */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 lg:grid-rows-[auto_minmax(0,1fr)_minmax(0,1fr)] gap-4 lg:flex-1 lg:min-h-0">
-        <section className="md:col-span-2 lg:row-span-3 rounded-[var(--radius-card)] p-4 flex flex-col min-h-0" style={estiloTarjeta}>
+      {/* Agentes y usuarios: siempre de ahora (no hay registro de cuántos trabajaban o estaban conectados en otra fecha). */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+        <Indicador valor={agentes.terreno + agentes.base} etiqueta="Agentes trabajando"
+          detalle={`Ahora · en ${enCurso.length} ${enCurso.length === 1 ? 'operativo' : 'operativos'}`} icono={Users} />
+        <Indicador valor={agentes.terreno} etiqueta="Agentes en el terreno" detalle="Ahora · fuera de la base" icono={Footprints} />
+        <Indicador valor={Math.max(0, AGENTES_REGISTRADOS_MOCK - (agentes.terreno + agentes.base + agentes.noDisponible))} etiqueta="Agentes para convocar"
+          detalle={`Sin operativo · de ${AGENTES_REGISTRADOS_MOCK} activos`} icono={UserPlus} />
+        <Indicador valor={USUARIOS_EN_LINEA_MOCK.total} etiqueta="Usuarios conectados"
+          detalle={`Ahora · ${USUARIOS_EN_LINEA_MOCK.agentes} agentes`} icono={UserCheck} />
+      </div>
+
+      {/* Mapa + datos | tortas y operativos por mes: en escritorio ocupa el resto de la pantalla, sin scroll */}
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 lg:grid-rows-[minmax(0,1fr)_minmax(0,1fr)] gap-4 lg:flex-1 lg:min-h-0">
+        <section className="md:col-span-2 lg:row-span-2 rounded-[var(--radius-card)] p-4 flex flex-col min-h-0" style={estiloTarjeta}>
           <div className="lg:flex-1 lg:min-h-0">
             <MapaProvincia historial={enPeriodo} isDark={isDark}
               puntos={esHoy ? enCurso : enPeriodo} etiquetaPuntos={esHoy ? 'Operativos en curso' : 'Operativos del período'}
@@ -97,20 +112,24 @@ export default function GlobalDashboard() {
           </div>
         </section>
 
-        {/* Estas dos son siempre de ahora: no hay registro de cuántos trabajaban o estaban conectados en otra fecha. */}
-        <Indicador valor={agentes.terreno + agentes.base} etiqueta="Agentes trabajando"
-          detalle={`Ahora · ${agentes.terreno} en terreno · ${agentes.base} en base`} icono={Users} />
-        <Indicador valor={USUARIOS_EN_LINEA_MOCK.total} etiqueta="Usuarios en la aplicación"
-          detalle={`Conectados ahora · ${USUARIOS_EN_LINEA_MOCK.agentes} agentes`} icono={UserCheck} />
-
-        <section className="lg:col-span-2 rounded-[var(--radius-card)] px-4 py-3 flex flex-col min-h-0" style={estiloTarjeta}>
-          <TituloTarjeta icono={Building2} titulo="Participación por institución" aclaracion={enElPeriodo} />
-          <div className="flex-1 min-h-0 flex items-center overflow-y-auto">
-            <Torta datos={agruparPorciones(d.instituciones, 5)} colores={series} unidad="operativos" diametro={diametro} compacta />
+        {/* Dos tortas en una tarjeta: instituciones del período y recursos críticos trabajando ahora */}
+        <section className="md:col-span-2 rounded-[var(--radius-card)] px-4 py-3 grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-3 min-h-0" style={estiloTarjeta}>
+          <div className="flex flex-col min-h-0 min-w-0">
+            <TituloTarjeta icono={Building2} titulo="Instituciones" aclaracion={enElPeriodo} unaLinea />
+            <div className="flex-1 min-h-0 flex items-center overflow-y-auto">
+              <Torta datos={agruparPorciones(d.instituciones, 5)} colores={series} unidad="operativos" diametro={diametro} compacta />
+            </div>
+          </div>
+          <div className="flex flex-col min-h-0 min-w-0">
+            <TituloTarjeta icono={ShieldAlert} titulo="Recursos críticos" aclaracion="trabajando ahora" unaLinea />
+            <div className="flex-1 min-h-0 flex items-center overflow-y-auto">
+              <Torta datos={recursosCriticos} colores={series} unidad="agentes" diametro={diametro} compacta />
+            </div>
           </div>
         </section>
+
         {/* Operativos por mes en lugar de la torta de especialidad (22/10): el panel entra entero, sin scroll. */}
-        <section className="lg:col-span-2 rounded-[var(--radius-card)] px-4 py-3 flex flex-col min-h-0" style={estiloTarjeta}>
+        <section className="md:col-span-2 rounded-[var(--radius-card)] px-4 py-3 flex flex-col min-h-0" style={estiloTarjeta}>
           <TituloTarjeta icono={CalendarRange} titulo="Operativos por mes" aclaracion={esHoy ? 'últimos 12 meses' : `año ${anioElegido}`} />
           <div className="flex-1 min-h-0">
             <OperativosPorMes meses={meses} colorBarras={series[0]} colorLinea={series[1]} compacto />
@@ -135,12 +154,12 @@ function Seccion({ titulo, icono: Icono, aclaracion, children }: { titulo: strin
   );
 }
 
-function TituloTarjeta({ icono: I, titulo, aclaracion }: { icono: typeof Radio; titulo: string; aclaracion?: string }) {
+function TituloTarjeta({ icono: I, titulo, aclaracion, unaLinea = false }: { icono: typeof Radio; titulo: string; aclaracion?: string; unaLinea?: boolean }) {
   return (
-    <div className="flex items-baseline gap-2 mb-2 flex-wrap">
+    <div className={`flex items-baseline gap-2 mb-2 min-w-0 ${unaLinea ? 'whitespace-nowrap overflow-hidden' : 'flex-wrap'}`} title={aclaracion ? `${titulo} · ${aclaracion}` : undefined}>
       <I size={15} style={{ color: 'var(--primary)', alignSelf: 'center' }} />
       <h2 style={{ fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--foreground)' }}>{titulo}</h2>
-      {aclaracion && <span style={{ fontSize: 12, color: 'var(--muted-foreground)' }}>{aclaracion}</span>}
+      {aclaracion && <span className={unaLinea ? 'truncate' : ''} style={{ fontSize: 12, color: 'var(--muted-foreground)' }}>{aclaracion}</span>}
     </div>
   );
 }
