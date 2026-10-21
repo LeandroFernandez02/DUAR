@@ -78,18 +78,14 @@ export default function MapaProvincia({ historial, puntos, etiquetaPuntos, isDar
             </button>
           ))}
         </div>
-        <div className="flex flex-wrap items-center gap-x-3 gap-y-1" style={{ fontSize: 11, color: 'var(--muted-foreground)' }}>
-          {vista === 'calor' ? (
+        {vista === 'calor' && (
+          <div className="flex flex-wrap items-center gap-x-3 gap-y-1" style={{ fontSize: 11, color: 'var(--muted-foreground)' }}>
             <span className="inline-flex items-center gap-1.5">
               <span style={{ width: 44, height: 7, borderRadius: 4, background: `linear-gradient(90deg, ${rojo}22, ${rojo})` }} />
               menos → más operativos ({historial.length} en el período)
             </span>
-          ) : (
-            [...new Set(enCurso.map(o => o.estado))].map(e => (
-              <span key={e} className="inline-flex items-center gap-1.5"><span style={{ width: 9, height: 9, borderRadius: 5, background: colorEstado(e) }} />{ETIQUETA_ESTADO[e]}</span>
-            ))
-          )}
-        </div>
+          </div>
+        )}
       </div>
 
       <div className="flex flex-col md:flex-row gap-4 lg:flex-1 min-h-0">
