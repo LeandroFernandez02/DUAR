@@ -1,7 +1,7 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { Radio, Users, UserCheck, UserPlus, Footprints, ShieldAlert, Flag, Building2, Map as MapaIcono, CalendarRange, FilePlus2 } from 'lucide-react';
+import { Radio, Users, UserCheck, ShieldAlert, Flag, Building2, Map as MapaIcono, CalendarRange, FilePlus2 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { OPERATIVOS_PANEL_MOCK, USUARIOS_EN_LINEA_MOCK, AGENTES_REGISTRADOS_MOCK } from '../data/panelGeneralMock';
+import { OPERATIVOS_PANEL_MOCK, USUARIOS_ACTIVOS_MOCK } from '../data/panelGeneralMock';
 import { calcularPanel, agruparPorciones, rangoDe, RECURSOS_CRITICOS, type Periodo, type FiltrosPanel } from '../utils/panelGeneral';
 import { Torta, OperativosPorMes, SERIES_CLARO, SERIES_OSCURO } from './panel/Graficos';
 import MapaProvincia from './panel/MapaProvincia';
@@ -91,26 +91,21 @@ export default function GlobalDashboard() {
         <Indicador valor={finalizados} etiqueta="Operativos finalizados" detalle={esHoy ? 'Hoy' : rango.etiqueta} icono={Flag} />
       </div>
 
-      {/* Agentes y usuarios: siempre de ahora (no hay registro de cuántos trabajaban o estaban conectados en otra fecha). */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Indicador valor={agentes.terreno + agentes.base} etiqueta="Agentes trabajando"
-          detalle={`Ahora · en ${enCurso.length} ${enCurso.length === 1 ? 'operativo' : 'operativos'}`} icono={Users} />
-        <Indicador valor={agentes.terreno} etiqueta="Agentes en el terreno" detalle="Ahora · fuera de la base" icono={Footprints} />
-        <Indicador valor={Math.max(0, AGENTES_REGISTRADOS_MOCK - (agentes.terreno + agentes.base + agentes.noDisponible))} etiqueta="Agentes para convocar"
-          detalle={`Sin operativo · de ${AGENTES_REGISTRADOS_MOCK} activos`} icono={UserPlus} />
-        <Indicador valor={USUARIOS_EN_LINEA_MOCK.total} etiqueta="Usuarios conectados"
-          detalle={`Ahora · ${USUARIOS_EN_LINEA_MOCK.agentes} agentes`} icono={UserCheck} />
-      </div>
-
       {/* Mapa + datos | tortas y operativos por mes: en escritorio ocupa el resto de la pantalla, sin scroll */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 lg:grid-rows-[minmax(0,1fr)_minmax(0,1fr)] gap-4 lg:flex-1 lg:min-h-0">
-        <section className="md:col-span-2 lg:row-span-2 rounded-[var(--radius-card)] p-4 flex flex-col min-h-0" style={estiloTarjeta}>
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 lg:grid-rows-[auto_minmax(0,1fr)_minmax(0,1fr)] gap-4 lg:flex-1 lg:min-h-0">
+        <section className="md:col-span-2 lg:row-span-3 rounded-[var(--radius-card)] p-4 flex flex-col min-h-0" style={estiloTarjeta}>
           <div className="lg:flex-1 lg:min-h-0">
             <MapaProvincia historial={enPeriodo} isDark={isDark}
               puntos={esHoy ? enCurso : enPeriodo} etiquetaPuntos={esHoy ? 'Operativos en curso' : 'Operativos del período'}
               encabezado={<div className="mr-auto -mb-2"><TituloTarjeta icono={MapaIcono} titulo="Mapa de la provincia" /></div>} />
           </div>
         </section>
+
+        {/* Agentes y usuarios (23/10): sólo dos, siempre de ahora */}
+        <Indicador valor={agentes.terreno + agentes.base + agentes.noDisponible} etiqueta="Agentes en operativos"
+          detalle={`Ahora · en ${enCurso.length} ${enCurso.length === 1 ? 'operativo' : 'operativos'} en curso`} icono={Users} />
+        <Indicador valor={USUARIOS_ACTIVOS_MOCK.total} etiqueta="Usuarios activos"
+          detalle={`Cuentas activas · ${USUARIOS_ACTIVOS_MOCK.agentes} agentes`} icono={UserCheck} />
 
         {/* Cada torta en su tarjeta (una columna cada una): instituciones del período y recursos críticos trabajando ahora */}
         <section className="rounded-[var(--radius-card)] px-4 py-3 flex flex-col min-h-0 min-w-0" style={estiloTarjeta}>
