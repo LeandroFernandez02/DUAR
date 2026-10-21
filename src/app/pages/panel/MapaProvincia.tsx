@@ -1,5 +1,6 @@
 import { useState } from 'react';
-import { Flame, Radio, Users, Calendar, MapPin, RadioTower } from 'lucide-react';
+import { useNavigate } from 'react-router';
+import { Flame, Radio, Users, Calendar, MapPin, RadioTower, ArrowRight } from 'lucide-react';
 import { CONTORNO_CORDOBA } from '../../data/contornoCordoba';
 import type { OperativoPanel, EstadoOperativoPanel } from '../../utils/panelGeneral';
 import { ESTADO_BADGE, ETIQUETA_ESTADO } from '../../utils/panelGeneral';
@@ -161,6 +162,9 @@ export default function MapaProvincia({ historial, puntos, etiquetaPuntos, isDar
  * (estado, localidad, inicio, agentes asignados y coordinador a cargo).
  */
 function Ficha({ o }: { o: OperativoPanel }) {
+  const navigate = useNavigate();
+  // Los datos de ejemplo no existen en la base: el botón queda visible pero sin entrar hasta tener la API del panel.
+  const deEjemplo = o.id.startsWith('mock-');
   // Igual que mandoDe() en Operativos.tsx: en ámbar sólo si está activo y nadie está a cargo.
   const alerta = !o.coordinador && o.estado === 'ACTIVO';
   const fila = (I: typeof Users, texto: React.ReactNode, color = 'var(--muted-foreground)') => (
@@ -183,6 +187,16 @@ function Ficha({ o }: { o: OperativoPanel }) {
           {fila(Users, `${o.agentesAsignados} agente${o.agentesAsignados !== 1 ? 's' : ''} asignado${o.agentesAsignados !== 1 ? 's' : ''}`)}
           {fila(RadioTower, o.coordinador ?? 'Sin coordinador a cargo', alerta ? '#b45309' : 'var(--muted-foreground)')}
         </div>
+      </div>
+      {/* Acceder al panel del operativo, igual que en su tarjeta de la sección Operativos */}
+      <div className="flex justify-end px-4 py-2.5" style={{ borderTop: '1px solid var(--border)', background: 'var(--muted)' }}>
+        <button onClick={() => navigate(`/operativo/${o.id}/dashboard`)} disabled={deEjemplo}
+          title={deEjemplo ? 'Operativo de ejemplo: se va a poder entrar cuando el panel use los datos reales' : 'Acceder al panel del operativo'}
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg disabled:opacity-60"
+          style={{ color: 'var(--primary)', background: 'rgba(229,75,75,0.08)', border: '1px solid rgba(229,75,75,0.18)',
+            fontFamily: 'var(--font-family-primary)', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)', cursor: deEjemplo ? 'not-allowed' : 'pointer' }}>
+          Panel <ArrowRight size={13} />
+        </button>
       </div>
     </div>
   );
