@@ -184,3 +184,24 @@ export function opcionesDe(todos: OperativoPanel[]) {
     instituciones: [...new Set(todos.flatMap(o => o.instituciones))].sort((a, b) => a.localeCompare(b)),
   };
 }
+
+/* ── Período del panel (línea de tiempo, 22/10) ─────────────────────────── */
+
+/** Qué se está mirando: hoy (por defecto), un año entero o un mes de un año. */
+export type Periodo = { tipo: 'hoy' } | { tipo: 'anio'; anio: number } | { tipo: 'mes'; anio: number; mes: number };
+
+export const NOMBRE_MES = ['Enero', 'Febrero', 'Marzo', 'Abril', 'Mayo', 'Junio', 'Julio', 'Agosto', 'Septiembre', 'Octubre', 'Noviembre', 'Diciembre'];
+
+const isoDia = (d: Date) => `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+
+/** Desde/hasta (AAAA-MM-DD) del período; nunca pasa de hoy. */
+export function rangoDe(p: Periodo): { desde: string; hasta: string; etiqueta: string } {
+  const hoy = new Date();
+  const tope = (d: Date) => (d > hoy ? hoy : d);
+  if (p.tipo === 'hoy') return { desde: isoDia(hoy), hasta: isoDia(hoy), etiqueta: 'Hoy' };
+  if (p.tipo === 'anio') return { desde: `${p.anio}-01-01`, hasta: isoDia(tope(new Date(p.anio, 11, 31))), etiqueta: String(p.anio) };
+  return {
+    desde: isoDia(new Date(p.anio, p.mes, 1)), hasta: isoDia(tope(new Date(p.anio, p.mes + 1, 0))),
+    etiqueta: `${NOMBRE_MES[p.mes]} ${p.anio}`,
+  };
+}

@@ -1,8 +1,8 @@
-import { useMemo, useState } from 'react';
-import { Flame, Radio, Users, UserCheck, CalendarDays, Target, AlertTriangle, MapPin } from 'lucide-react';
+import { useState } from 'react';
+import { Flame, Radio, Users, UserCheck, CalendarDays, Target, AlertTriangle, MapPin, Flag, Clock } from 'lucide-react';
 import { CONTORNO_CORDOBA } from '../../data/contornoCordoba';
 import type { OperativoPanel } from '../../utils/panelGeneral';
-import { ETIQUETA_ESTADO } from '../../utils/panelGeneral';
+import { ETIQUETA_ESTADO, ETIQUETA_RESULTADO, formatoDuracion } from '../../utils/panelGeneral';
 
 /**
  * Mapa ilustrado de la provincia de Córdoba (panel general, versión 2). No usa mapa
@@ -38,11 +38,17 @@ const CIUDADES: { nombre: string; lat: number; lon: number; ancla?: 'start' | 'e
 ];
 
 type Vista = 'calor' | 'curso';
-const EN_CURSO = ['ACTIVO', 'EN_PROCESO'];
 
-export default function MapaProvincia({ historial, todos, isDark, encabezado }: { historial: OperativoPanel[]; todos: OperativoPanel[]; isDark: boolean; encabezado?: React.ReactNode }) {
+/**
+ * `puntos`: los operativos que se marcan con su Punto Cero (los en curso si se mira hoy; los del
+ * período si se mira un año o un mes). `historial`: los que suman calor. Los elige el panel según
+ * la línea de tiempo.
+ */
+export default function MapaProvincia({ historial, puntos, etiquetaPuntos, isDark, encabezado }: {
+  historial: OperativoPanel[]; puntos: OperativoPanel[]; etiquetaPuntos: string; isDark: boolean; encabezado?: React.ReactNode;
+}) {
   const [vista, setVista] = useState<Vista>('curso');
-  const enCurso = useMemo(() => todos.filter(o => EN_CURSO.includes(o.estado)), [todos]);
+  const enCurso = puntos;
   const [elegidoId, setElegidoId] = useState<string | null>(null);
   const [sobre, setSobre] = useState<{ o: OperativoPanel; x: number; y: number } | null>(null);
   const elegido = enCurso.find(o => o.id === elegidoId) ?? enCurso[0] ?? null;
@@ -58,7 +64,7 @@ export default function MapaProvincia({ historial, todos, isDark, encabezado }: 
       <div className="flex items-center gap-x-3 gap-y-2 flex-wrap mb-3">
         {encabezado}
         <div className="inline-flex p-1 rounded-[var(--radius-button)]" style={{ background: 'var(--muted)' }} role="tablist">
-          {([['curso', 'Operativos en curso', Radio], ['calor', 'Mapa de calor', Flame]] as const).map(([v, t, I]) => (
+          {([['curso', etiquetaPuntos, Radio], ['calor', 'Mapa de calor', Flame]] as const).map(([v, t, I]) => (
             <button key={v} role="tab" aria-selected={vista === v} onClick={() => setVista(v)}
               className="inline-flex items-center gap-1.5 px-3 py-1.5 rounded-[var(--radius-button)]"
               style={{ background: vista === v ? 'var(--card)' : 'transparent', boxShadow: vista === v ? 'var(--elevation-sm)' : 'none',
@@ -71,7 +77,7 @@ export default function MapaProvincia({ historial, todos, isDark, encabezado }: 
           {vista === 'calor' ? (
             <span className="inline-flex items-center gap-1.5">
               <span style={{ width: 44, height: 7, borderRadius: 4, background: `linear-gradient(90deg, ${rojo}22, ${rojo})` }} />
-              menos → más operativos ({historial.length} hoy)
+              menos → más operativos ({historial.length} en el período)
             </span>
           ) : (
             <>
@@ -86,7 +92,7 @@ export default function MapaProvincia({ historial, todos, isDark, encabezado }: 
         {/* El mapa toma toda la altura disponible y su ancho sale de la proporción de la provincia */}
         <div className="relative mx-auto md:mx-0 shrink-0 w-full md:w-[46%] lg:w-auto lg:h-full" style={{ aspectRatio: `${W} / ${H}`, maxWidth: '100%' }}>
           <svg viewBox={`0 0 ${W.toFixed(0)} ${H.toFixed(0)}`} className="w-full h-full" role="img"
-            aria-label={vista === 'calor' ? `Mapa de calor de ${historial.length} operativos en la provincia de Córdoba` : `${enCurso.length} operativos en curso en la provincia de Córdoba`}>
+            aria-label={vista === 'calor' ? `Mapa de calor de ${historial.length} operativos en la provincia de Córdoba` : `${enCurso.length} operativos (${etiquetaPuntos.toLowerCase()}) en la provincia de Córdoba`}>
             <defs>
               <clipPath id="recorte-cordoba"><path d={CONTORNO} /></clipPath>
               <radialGradient id="calor">
@@ -125,7 +131,7 @@ export default function MapaProvincia({ historial, todos, isDark, encabezado }: 
                   <circle cx={x} cy={y} r={14} fill="transparent" />
                   {activo && <circle cx={x} cy={y} r={11} fill={rojo} opacity={0.18} />}
                   <circle cx={x} cy={y} r={activo ? 7 : 5.5} fill={rojo} stroke={isDark ? '#1c1917' : '#fff'} strokeWidth={2} />
-                  {!o.coordinador && <circle cx={x + 6} cy={y - 6} r={3} fill="#d97706" stroke={isDark ? '#1c1917' : '#fff'} strokeWidth={1.2} />}
+                  {!o.coordinador && o.estado !== 'FINALIZADO' && <circle cx={x + 6} cy={y - 6} r={3} fill="#d97706" stroke={isDark ? '#1c1917' : '#fff'} strokeWidth={1.2} />}
                 </g>
               );
             })}
@@ -143,7 +149,7 @@ export default function MapaProvincia({ historial, todos, isDark, encabezado }: 
         {/* «Datos»: la ficha del operativo elegido (en curso) o dónde más se busca (calor). Si no entra, scrollea sola. */}
         <div className="flex-1 min-w-0 min-h-0 overflow-y-auto">
           {vista === 'curso'
-            ? (elegido ? <Ficha o={elegido} /> : <p style={{ fontSize: 'var(--text-label)', color: 'var(--muted-foreground)' }}>No hay operativos en curso.</p>)
+            ? (elegido ? <Ficha o={elegido} /> : <p style={{ fontSize: 'var(--text-label)', color: 'var(--muted-foreground)' }}>No hay operativos en este período.</p>)
             : <ZonasCalientes historial={historial} />}
         </div>
       </div>
@@ -167,6 +173,29 @@ function Ficha({ o }: { o: OperativoPanel }) {
   const inicio = new Date(o.inicio);
   const dia = Math.floor((Date.now() - inicio.getTime()) / 86_400_000) + 1;
   const total = o.agentes.terreno + o.agentes.base + o.agentes.noDisponible;
+  const fecha = (d: Date) => `${d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' })}, ${d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false })}`;
+  if (o.estado === 'FINALIZADO' && o.fin) {
+    const fin = new Date(o.fin);
+    return (
+      <div className="rounded-[var(--radius-card)] p-4 flex flex-col gap-3.5" style={{ background: 'var(--muted)' }}>
+        <div>
+          <p style={{ fontSize: 'var(--text-h4)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--foreground)' }}>{o.titulo}</p>
+          <p className="flex items-center gap-1 mt-0.5" style={{ fontSize: 'var(--text-label)', color: 'var(--muted-foreground)' }}>
+            <MapPin size={12} /> {o.localidad} · Finalizado
+          </p>
+        </div>
+        <div className="grid grid-cols-1 2xl:grid-cols-2 gap-3.5">
+          <Dato icono={Flag} etiqueta="Resultado">{o.resultado ? ETIQUETA_RESULTADO[o.resultado] : 'Sin dato'}</Dato>
+          <Dato icono={CalendarDays} etiqueta="Inicio">{fecha(inicio)}</Dato>
+          <Dato icono={CalendarDays} etiqueta="Fin">{fecha(fin)}</Dato>
+          <Dato icono={Clock} etiqueta="Duración">{formatoDuracion((fin.getTime() - inicio.getTime()) / 3_600_000)}</Dato>
+          <Dato icono={Target} etiqueta={o.objetivo?.tipo === 'objeto' ? 'Objeto buscado' : 'Persona buscada'}>
+            {o.objetivo?.descripcion ?? <span style={{ color: 'var(--muted-foreground)' }}>Sin ficha cargada</span>}
+          </Dato>
+        </div>
+      </div>
+    );
+  }
   return (
     <div className="rounded-[var(--radius-card)] p-4 flex flex-col gap-3.5" style={{ background: 'var(--muted)' }}>
       <div>
@@ -180,7 +209,7 @@ function Ficha({ o }: { o: OperativoPanel }) {
           {o.coordinador ?? <span className="inline-flex items-center gap-1" style={{ color: '#b45309' }}><AlertTriangle size={13} /> Sin coordinador a cargo</span>}
         </Dato>
         <Dato icono={CalendarDays} etiqueta="Inicio">
-          {inicio.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' })}, {inicio.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false })}
+          {fecha(inicio)}
         </Dato>
         <Dato icono={Users} etiqueta="Agentes en el operativo">
           <strong>{total}</strong>
@@ -207,7 +236,7 @@ function ZonasCalientes({ historial }: { historial: OperativoPanel[] }) {
   return (
     <div className="rounded-[var(--radius-card)] p-4" style={{ background: 'var(--muted)' }}>
       <p style={{ fontSize: 'var(--text-base)', fontWeight: 600, color: 'var(--foreground)' }}>Dónde más se busca</p>
-      <p className="mb-3" style={{ fontSize: 12, color: 'var(--muted-foreground)' }}>Localidades con más operativos hoy</p>
+      <p className="mb-3" style={{ fontSize: 12, color: 'var(--muted-foreground)' }}>Localidades con más operativos en el período</p>
       <ul className="flex flex-col gap-2.5">
         {top.map(([loc, n]) => (
           <li key={loc}>

@@ -79,26 +79,6 @@ export function Torta({ datos, colores, unidad, diametro = 160, compacta = false
   );
 }
 
-/** Barras horizontales de una sola medida (un solo color: las categorías no se distinguen por color). */
-export function BarrasHorizontales({ datos, color }: { datos: { nombre: string; valor: number }[]; color: string }) {
-  const max = Math.max(1, ...datos.map(d => d.valor));
-  return (
-    <ul className="flex flex-col gap-2.5">
-      {datos.map(d => (
-        <li key={d.nombre} title={`${d.nombre}: ${d.valor}`}>
-          <div className="flex justify-between mb-1" style={{ fontSize: 'var(--text-label)' }}>
-            <span style={{ color: 'var(--foreground)' }}>{d.nombre}</span>
-            <span className="tabular-nums" style={{ color: 'var(--foreground)', fontWeight: 600 }}>{d.valor}</span>
-          </div>
-          <div style={{ height: 8, borderRadius: 4, background: 'var(--muted)' }}>
-            <div style={{ width: `${(d.valor / max) * 100}%`, height: '100%', borderRadius: 4, background: color, minWidth: d.valor ? 4 : 0 }} />
-          </div>
-        </li>
-      ))}
-    </ul>
-  );
-}
-
 /**
  * Operativos por mes: barras = iniciados en el mes; puntos unidos = máximo de operativos
  * abiertos a la vez ese mes. Las dos son «cantidad de operativos»: comparten el único eje.
