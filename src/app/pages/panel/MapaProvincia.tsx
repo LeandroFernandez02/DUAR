@@ -139,7 +139,7 @@ export default function MapaProvincia({ historial, puntos, etiquetaPuntos, isDar
 
   return (
     <div className="flex flex-col lg:h-full min-h-0">
-      {/* Selector de vista y leyenda en una sola línea, para dejarle la altura al mapa */}
+      {/* Selector de vista en una sola línea, para dejarle la altura al mapa */}
       <div className="flex items-center gap-x-3 gap-y-2 flex-wrap mb-3">
         {encabezado}
         <div className="inline-flex p-1 rounded-[var(--radius-button)]" style={{ background: 'var(--muted)' }} role="tablist">
@@ -152,14 +152,6 @@ export default function MapaProvincia({ historial, puntos, etiquetaPuntos, isDar
             </button>
           ))}
         </div>
-        {vista === 'calor' && (
-          <div className="flex flex-wrap items-center gap-x-3 gap-y-1" style={{ fontSize: 11, color: 'var(--muted-foreground)' }}>
-            <span className="inline-flex items-center gap-1.5">
-              <span style={{ width: 44, height: 7, borderRadius: 4, background: `linear-gradient(90deg, ${rojo}22, ${rojo})` }} />
-              menos → más operativos ({historial.length} en el período)
-            </span>
-          </div>
-        )}
       </div>
 
       <div className="flex flex-col md:flex-row gap-4 lg:flex-1 min-h-0">
