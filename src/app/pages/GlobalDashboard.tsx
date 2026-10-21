@@ -1,5 +1,5 @@
 import { useEffect, useMemo, useState, type ReactNode } from 'react';
-import { Radio, Users, UserCheck, Flag, Building2, Stethoscope, Map as MapaIcono, CalendarRange, FilePlus2 } from 'lucide-react';
+import { Radio, Users, UserCheck, Flag, Building2, Map as MapaIcono, CalendarRange, FilePlus2 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { OPERATIVOS_PANEL_MOCK, USUARIOS_EN_LINEA_MOCK } from '../data/panelGeneralMock';
 import { calcularPanel, agruparPorciones, rangoDe, type Periodo, type FiltrosPanel } from '../utils/panelGeneral';
@@ -69,7 +69,7 @@ export default function GlobalDashboard() {
   const detalleEstado = esHoy ? 'Ahora' : rango.etiqueta;
 
   return (
-    <div className="p-6 md:p-8 flex flex-col gap-4" style={{ fontFamily: 'var(--font-family-primary)' }}>
+    <div className="p-6 md:p-8 flex flex-col gap-4 lg:h-dvh lg:min-h-[640px]" style={{ fontFamily: 'var(--font-family-primary)' }}>
       <div className="flex items-end gap-x-6 gap-y-3 flex-wrap">
         <div>
           <h1 style={{ color: 'var(--foreground)', fontSize: 'var(--text-h2)', fontWeight: 'var(--font-weight-bold)' }}>Panel de Control</h1>
@@ -88,7 +88,7 @@ export default function GlobalDashboard() {
       </div>
 
       {/* Mapa + datos | agentes, usuarios y tortas: en escritorio ocupa el resto de la pantalla */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 lg:grid-rows-[auto_minmax(0,1fr)_minmax(0,1fr)] gap-4 lg:h-[calc(100dvh-15.5rem)] lg:min-h-[380px]">
+      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 lg:grid-rows-[auto_minmax(0,1fr)_minmax(0,1fr)] gap-4 lg:flex-1 lg:min-h-0">
         <section className="md:col-span-2 lg:row-span-3 rounded-[var(--radius-card)] p-4 flex flex-col min-h-0" style={estiloTarjeta}>
           <div className="lg:flex-1 lg:min-h-0">
             <MapaProvincia historial={enPeriodo} isDark={isDark}
@@ -109,18 +109,15 @@ export default function GlobalDashboard() {
             <Torta datos={agruparPorciones(d.instituciones, 5)} colores={series} unidad="operativos" diametro={diametro} compacta />
           </div>
         </section>
+        {/* Operativos por mes en lugar de la torta de especialidad (22/10): el panel entra entero, sin scroll. */}
         <section className="lg:col-span-2 rounded-[var(--radius-card)] px-4 py-3 flex flex-col min-h-0" style={estiloTarjeta}>
-          <TituloTarjeta icono={Stethoscope} titulo="Participación por especialidad" aclaracion={enElPeriodo} />
-          <div className="flex-1 min-h-0 flex items-center overflow-y-auto">
-            <Torta datos={agruparPorciones(d.especialidades, 5)} colores={series} unidad="operativos" diametro={diametro} compacta />
+          <TituloTarjeta icono={CalendarRange} titulo="Operativos por mes" aclaracion={esHoy ? 'últimos 12 meses' : `año ${anioElegido}`} />
+          <div className="flex-1 min-h-0">
+            <OperativosPorMes meses={meses} colorBarras={series[0]} colorLinea={series[1]} compacto />
           </div>
         </section>
       </div>
 
-      {/* Debajo de la primera pantalla: se llega scrolleando */}
-      <Seccion titulo="Operativos por mes" icono={CalendarRange} aclaracion={esHoy ? 'Últimos 12 meses, hasta hoy' : `Año ${anioElegido}`}>
-        <OperativosPorMes meses={meses} colorBarras={series[0]} colorLinea={series[1]} />
-      </Seccion>
     </div>
   );
 }

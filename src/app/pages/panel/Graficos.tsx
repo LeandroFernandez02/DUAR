@@ -83,7 +83,7 @@ export function Torta({ datos, colores, unidad, diametro = 160, compacta = false
  * Operativos por mes: barras = iniciados en el mes; puntos unidos = máximo de operativos
  * abiertos a la vez ese mes. Las dos son «cantidad de operativos»: comparten el único eje.
  */
-export function OperativosPorMes({ meses, colorBarras, colorLinea }: { meses: Mes[]; colorBarras: string; colorLinea: string }) {
+export function OperativosPorMes({ meses, colorBarras, colorLinea, compacto = false }: { meses: Mes[]; colorBarras: string; colorLinea: string; compacto?: boolean }) {
   const [sobre, setSobre] = useState<number | null>(null);
   if (!meses.length) return <p style={tinta}>Sin datos para los filtros elegidos.</p>;
   const W = 720, H = 240, M = { l: 28, r: 8, t: 12, b: 26 };
@@ -97,13 +97,13 @@ export function OperativosPorMes({ meses, colorBarras, colorLinea }: { meses: Me
   const linea = meses.map((m, i) => `${i ? 'L' : 'M'} ${xc(i)} ${y(m.maxSimultaneos)}`).join(' ');
 
   return (
-    <div>
+    <div className={compacto ? 'flex flex-col h-full min-h-0' : ''}>
       <div className="flex gap-4 mb-2 flex-wrap" style={tinta}>
         <span className="inline-flex items-center gap-1.5"><span style={{ width: 10, height: 10, borderRadius: 3, background: colorBarras }} />Operativos iniciados en el mes</span>
         <span className="inline-flex items-center gap-1.5"><span style={{ width: 14, height: 2, background: colorLinea }} />Máximo abiertos a la vez</span>
       </div>
-      <div className="relative w-full">
-        <svg viewBox={`0 0 ${W} ${H}`} className="w-full h-auto" role="img" aria-label="Operativos por mes">
+      <div className={`relative w-full ${compacto ? 'flex-1 min-h-0' : ''}`}>
+        <svg viewBox={`0 0 ${W} ${H}`} className={compacto ? 'w-full h-full' : 'w-full h-auto'} role="img" aria-label="Operativos por mes">
           {marcas.map(v => (
             <g key={v}>
               <line x1={M.l} x2={W - M.r} y1={y(v)} y2={y(v)} stroke="var(--border)" strokeWidth={1} />
@@ -142,13 +142,13 @@ export function OperativosPorMes({ meses, colorBarras, colorLinea }: { meses: Me
           </Globo>
         )}
       </div>
-      <details className="mt-2" style={tinta}>
+      {!compacto && <details className="mt-2" style={tinta}>
         <summary style={{ cursor: 'pointer' }}>Ver los datos en tabla</summary>
         <table className="mt-2 w-full" style={{ fontSize: 12, color: 'var(--foreground)' }}>
           <thead><tr style={{ color: 'var(--muted-foreground)' }}><th className="text-left font-normal">Mes</th><th className="text-right font-normal">Iniciados</th><th className="text-right font-normal">Máximo a la vez</th></tr></thead>
           <tbody>{meses.map(m => <tr key={m.clave}><td>{m.etiqueta}</td><td className="text-right tabular-nums">{m.iniciados}</td><td className="text-right tabular-nums">{m.maxSimultaneos}</td></tr>)}</tbody>
         </table>
-      </details>
+      </details>}
     </div>
   );
 }
