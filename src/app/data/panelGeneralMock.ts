@@ -87,6 +87,7 @@ function generar(): OperativoPanel[] {
       resultado: elegir(RESULTADOS),
       conCoordinador: true,
       agentes: { terreno: 0, base: 0, noDisponible: 0 },
+      agentesAsignados: Math.floor(entre(4, 26)),
       instituciones,
       especialidades,
       areas: Array.from({ length: nAreas }, () => area(lat + entre(-0.02, 0.02), lng + entre(-0.02, 0.02), entre(0.6, 2.2))),
@@ -101,10 +102,11 @@ function generar(): OperativoPanel[] {
   for (const [zi, dias, conCoord, estado] of actuales) {
     const zz = ZONAS[zi];
     const enCurso = estado !== 'NUEVO';
+    const agentes = enCurso ? { terreno: Math.floor(entre(6, 20)), base: Math.floor(entre(3, 10)), noDisponible: Math.floor(entre(0, 3)) } : { terreno: 0, base: 0, noDisponible: 0 };
     ops.push({
       id: `mock-actual-${zi}`, titulo: `${elegir(TIPOS)} — ${zz.localidad}`, localidad: `${zz.localidad}, Córdoba`,
       estado, inicio: new Date(ahora - dias * DIA).toISOString(), fin: null, resultado: null, conCoordinador: conCoord,
-      agentes: enCurso ? { terreno: Math.floor(entre(6, 20)), base: Math.floor(entre(3, 10)), noDisponible: Math.floor(entre(0, 3)) } : { terreno: 0, base: 0, noDisponible: 0 },
+      agentes, agentesAsignados: agentes.terreno + agentes.base + agentes.noDisponible,
       instituciones: ['DUAR', 'Bomberos Voluntarios', ...(r() > 0.5 ? ['Policía de Córdoba'] : [])],
       especialidades: ['Canes', 'Paramédico', ...(r() > 0.5 ? ['Dron'] : [])],
       areas: enCurso ? [area(zz.lat, zz.lng, 1.5), area(zz.lat - 0.015, zz.lng + 0.01, 1.1)] : [],
@@ -120,7 +122,7 @@ function generar(): OperativoPanel[] {
   ops.push({
     id: 'mock-fin-hoy', titulo: `Excursionista extraviado — ${zf.localidad}`, localidad: `${zf.localidad}, Córdoba`,
     estado: 'FINALIZADO', inicio: new Date(ahora - 30 * 3_600_000).toISOString(), fin: new Date(ahora - 2 * 3_600_000).toISOString(),
-    resultado: 'HALLADA_CON_VIDA', conCoordinador: true, agentes: { terreno: 0, base: 0, noDisponible: 0 },
+    resultado: 'HALLADA_CON_VIDA', conCoordinador: true, agentes: { terreno: 0, base: 0, noDisponible: 0 }, agentesAsignados: 9,
     instituciones: ['DUAR', 'Defensa Civil'], especialidades: ['Canes', 'Paramédico'],
     areas: [area(zf.lat, zf.lng, 1.6)], puntoCero: [zf.lat, zf.lng], coordinador: null,
     objetivo: OBJETIVOS[0], grupos: { total: 0, enTerreno: 0 },
@@ -130,7 +132,7 @@ function generar(): OperativoPanel[] {
   ops.push({
     id: 'mock-largo', titulo: `Turista desaparecido — ${z.localidad}`, localidad: `${z.localidad}, Córdoba`,
     estado: 'ACTIVO', inicio: new Date(ahora - 41 * DIA).toISOString(), fin: null, resultado: null,
-    conCoordinador: false, agentes: { terreno: 3, base: 4, noDisponible: 1 },
+    conCoordinador: false, agentes: { terreno: 3, base: 4, noDisponible: 1 }, agentesAsignados: 8,
     instituciones: ['DUAR', 'Policía de Córdoba'], especialidades: ['Canes', 'Dron'],
     areas: [area(z.lat, z.lng, 2.5), area(z.lat + 0.02, z.lng - 0.02, 1.8)],
     puntoCero: [z.lat + 0.01, z.lng - 0.01], coordinador: null,

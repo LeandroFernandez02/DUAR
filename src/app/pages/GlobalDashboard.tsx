@@ -2,7 +2,8 @@ import { useEffect, useMemo, useState, type ReactNode } from 'react';
 import { Radio, Users, UserCheck, ShieldAlert, Flag, Building2, Map as MapaIcono, CalendarRange, FilePlus2 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { OPERATIVOS_PANEL_MOCK, USUARIOS_ACTIVOS_MOCK } from '../data/panelGeneralMock';
-import { calcularPanel, agruparPorciones, rangoDe, RECURSOS_CRITICOS, type Periodo, type FiltrosPanel } from '../utils/panelGeneral';
+import { calcularPanel, agruparPorciones, rangoDe, RECURSOS_CRITICOS, ESTADO_BADGE, type Periodo, type FiltrosPanel } from '../utils/panelGeneral';
+import { colorDeEstado } from '../components/shared/StatusBadge';
 import { Torta, OperativosPorMes, SERIES_CLARO, SERIES_OSCURO } from './panel/Graficos';
 import MapaProvincia from './panel/MapaProvincia';
 import LineaTiempo from './panel/LineaTiempo';
@@ -85,10 +86,10 @@ export default function GlobalDashboard() {
 
       {/* Operativos por estado en el período */}
       <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
-        <Indicador valor={cuenta('ACTIVO')} etiqueta="Operativos activos" detalle={detalleEstado} icono={Radio} />
-        <Indicador valor={cuenta('NUEVO', 'EN_PLANIFICACION')} etiqueta="Operativos nuevos" detalle="Todavía sin activar" icono={FilePlus2} />
-        <Indicador valor={cuenta('EN_PROCESO')} etiqueta="Operativos en proceso" detalle={detalleEstado} icono={CalendarRange} />
-        <Indicador valor={finalizados} etiqueta="Operativos finalizados" detalle={esHoy ? 'Hoy' : rango.etiqueta} icono={Flag} />
+        <Indicador valor={cuenta('ACTIVO')} etiqueta="Operativos activos" detalle={detalleEstado} icono={Radio} color={colorDeEstado(ESTADO_BADGE.ACTIVO)} />
+        <Indicador valor={cuenta('NUEVO', 'EN_PLANIFICACION')} etiqueta="Operativos nuevos" detalle="Todavía sin activar" icono={FilePlus2} color={colorDeEstado(ESTADO_BADGE.NUEVO)} />
+        <Indicador valor={cuenta('EN_PROCESO')} etiqueta="Operativos en proceso" detalle={detalleEstado} icono={CalendarRange} color={colorDeEstado(ESTADO_BADGE.EN_PROCESO)} />
+        <Indicador valor={finalizados} etiqueta="Operativos finalizados" detalle={esHoy ? 'Hoy' : rango.etiqueta} icono={Flag} color={colorDeEstado(ESTADO_BADGE.FINALIZADO)} />
       </div>
 
       {/* Mapa + datos | tortas y operativos por mes: en escritorio ocupa el resto de la pantalla, sin scroll */}
@@ -158,11 +159,13 @@ function TituloTarjeta({ icono: I, titulo, aclaracion, unaLinea = false }: { ico
 }
 
 /** Tarjeta chica con una cifra (estados, agentes y usuarios). */
-function Indicador({ valor, etiqueta, detalle, icono: I }: { valor: number; etiqueta: string; detalle?: string; icono: typeof Radio }) {
+/** `color`: el del estado de operativo que cuenta (mismo que el badge y el mapa); sin él, el rojo del sistema. */
+function Indicador({ valor, etiqueta, detalle, icono: I, color }: { valor: number; etiqueta: string; detalle?: string; icono: typeof Radio; color?: string }) {
   return (
-    <div className="rounded-[var(--radius-card)] px-4 py-2.5 flex items-center gap-3" style={estiloTarjeta}>
-      <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: 'rgba(229,75,75,0.1)' }}>
-        <I size={17} style={{ color: 'var(--primary)' }} />
+    <div className="rounded-[var(--radius-card)] px-4 py-2.5 flex items-center gap-3"
+      style={{ ...estiloTarjeta, ...(color ? { borderLeft: `4px solid ${color}` } : {}) }}>
+      <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: color ? `${color}1f` : 'rgba(229,75,75,0.1)' }}>
+        <I size={17} style={{ color: color ?? 'var(--primary)' }} />
       </div>
       <div className="min-w-0">
         <p className="tabular-nums" style={{ fontSize: 22, lineHeight: 1.1, fontWeight: 700, color: 'var(--foreground)' }}>{valor}</p>

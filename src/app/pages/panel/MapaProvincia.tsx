@@ -1,8 +1,13 @@
 import { useState } from 'react';
-import { Flame, Radio, Users, UserCheck, CalendarDays, Target, AlertTriangle, MapPin, Flag, Clock } from 'lucide-react';
+import { Flame, Radio, Users, Calendar, MapPin, RadioTower } from 'lucide-react';
 import { CONTORNO_CORDOBA } from '../../data/contornoCordoba';
-import type { OperativoPanel } from '../../utils/panelGeneral';
-import { ETIQUETA_ESTADO, ETIQUETA_RESULTADO, formatoDuracion } from '../../utils/panelGeneral';
+import type { OperativoPanel, EstadoOperativoPanel } from '../../utils/panelGeneral';
+import { ESTADO_BADGE, ETIQUETA_ESTADO } from '../../utils/panelGeneral';
+import StatusBadge, { colorDeEstado } from '../../components/shared/StatusBadge';
+import { fechaHoraArgentina } from '../../utils/fechaArgentina';
+
+/** Color de cada estado: el mismo del badge y de la tarjeta en la sección Operativos. */
+const colorEstado = (e: EstadoOperativoPanel) => colorDeEstado(ESTADO_BADGE[e]);
 
 /**
  * Mapa ilustrado de la provincia de Córdoba (panel general, versión 2). No usa mapa
@@ -10,8 +15,8 @@ import { ETIQUETA_ESTADO, ETIQUETA_RESULTADO, formatoDuracion } from '../../util
  * de referencia, y dos vistas:
  *  · Mapa de calor: cada operativo del historial suma un halo rojo en su zona; donde
  *    se repiten búsquedas el color se intensifica (un solo tono, escala secuencial).
- *  · Operativos en curso: el Punto Cero de cada operativo activo; al tocarlo se ven
- *    sus datos al costado (agentes, coordinador a cargo, inicio, qué se busca…).
+ *  · Operativos en curso: el Punto Cero de cada operativo, del color de su estado; al
+ *    tocarlo se ve al costado la misma tarjeta que en la sección Operativos.
  */
 
 // Proyección simple (equirrectangular corregida por la latitud media): alcanza para una provincia.
@@ -80,10 +85,9 @@ export default function MapaProvincia({ historial, puntos, etiquetaPuntos, isDar
               menos → más operativos ({historial.length} en el período)
             </span>
           ) : (
-            <>
-              <span className="inline-flex items-center gap-1.5"><span style={{ width: 9, height: 9, borderRadius: 5, background: rojo }} />Punto Cero</span>
-              <span className="inline-flex items-center gap-1.5"><span style={{ width: 7, height: 7, borderRadius: 4, background: '#d97706' }} />sin coordinador a cargo</span>
-            </>
+            [...new Set(enCurso.map(o => o.estado))].map(e => (
+              <span key={e} className="inline-flex items-center gap-1.5"><span style={{ width: 9, height: 9, borderRadius: 5, background: colorEstado(e) }} />{ETIQUETA_ESTADO[e]}</span>
+            ))
           )}
         </div>
       </div>
@@ -129,9 +133,8 @@ export default function MapaProvincia({ historial, puntos, etiquetaPuntos, isDar
                 <g key={o.id} style={{ cursor: 'pointer' }} onClick={() => setElegidoId(o.id)}
                   onMouseEnter={() => setSobre({ o, x, y })} onMouseLeave={() => setSobre(null)}>
                   <circle cx={x} cy={y} r={14} fill="transparent" />
-                  {activo && <circle cx={x} cy={y} r={11} fill={rojo} opacity={0.18} />}
-                  <circle cx={x} cy={y} r={activo ? 7 : 5.5} fill={rojo} stroke={isDark ? '#1c1917' : '#fff'} strokeWidth={2} />
-                  {!o.coordinador && o.estado !== 'FINALIZADO' && <circle cx={x + 6} cy={y - 6} r={3} fill="#d97706" stroke={isDark ? '#1c1917' : '#fff'} strokeWidth={1.2} />}
+                  {activo && <circle cx={x} cy={y} r={11} fill={colorEstado(o.estado)} opacity={0.22} />}
+                  <circle cx={x} cy={y} r={activo ? 7 : 5.5} fill={colorEstado(o.estado)} stroke={isDark ? '#1c1917' : '#fff'} strokeWidth={2} />
                 </g>
               );
             })}
@@ -157,72 +160,34 @@ export default function MapaProvincia({ historial, puntos, etiquetaPuntos, isDar
   );
 }
 
-function Dato({ icono: I, etiqueta, children }: { icono: typeof Users; etiqueta: string; children: React.ReactNode }) {
-  return (
-    <div className="flex gap-2.5">
-      <I size={15} style={{ color: 'var(--primary)', marginTop: 2, flexShrink: 0 }} />
-      <div className="min-w-0">
-        <p style={{ fontSize: 11, color: 'var(--muted-foreground)' }}>{etiqueta}</p>
-        <div style={{ fontSize: 'var(--text-base)', color: 'var(--foreground)' }}>{children}</div>
-      </div>
+/**
+ * La tarjeta del operativo elegido: la misma información que su tarjeta en la sección Operativos
+ * (estado, localidad, inicio, agentes asignados y coordinador a cargo).
+ */
+function Ficha({ o }: { o: OperativoPanel }) {
+  // Igual que mandoDe() en Operativos.tsx: en ámbar sólo si está activo y nadie está a cargo.
+  const alerta = !o.coordinador && o.estado === 'ACTIVO';
+  const fila = (I: typeof Users, texto: React.ReactNode, color = 'var(--muted-foreground)') => (
+    <div className="flex items-center gap-2">
+      <I size={13} style={{ color: color === 'var(--muted-foreground)' ? 'var(--primary)' : color, flexShrink: 0 }} />
+      <span className="truncate" style={{ fontSize: 'var(--text-label)', color }}>{texto}</span>
     </div>
   );
-}
-
-function Ficha({ o }: { o: OperativoPanel }) {
-  const inicio = new Date(o.inicio);
-  const dia = Math.floor((Date.now() - inicio.getTime()) / 86_400_000) + 1;
-  const total = o.agentes.terreno + o.agentes.base + o.agentes.noDisponible;
-  const fecha = (d: Date) => `${d.toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit', year: 'numeric' })}, ${d.toLocaleTimeString('es-AR', { hour: '2-digit', minute: '2-digit', hour12: false })}`;
-  if (o.estado === 'FINALIZADO' && o.fin) {
-    const fin = new Date(o.fin);
-    return (
-      <div className="rounded-[var(--radius-card)] p-4 flex flex-col gap-3.5" style={{ background: 'var(--muted)' }}>
-        <div>
-          <p style={{ fontSize: 'var(--text-h4)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--foreground)' }}>{o.titulo}</p>
-          <p className="flex items-center gap-1 mt-0.5" style={{ fontSize: 'var(--text-label)', color: 'var(--muted-foreground)' }}>
-            <MapPin size={12} /> {o.localidad} · Finalizado
-          </p>
-        </div>
-        <div className="grid grid-cols-1 2xl:grid-cols-2 gap-3.5">
-          <Dato icono={Flag} etiqueta="Resultado">{o.resultado ? ETIQUETA_RESULTADO[o.resultado] : 'Sin dato'}</Dato>
-          <Dato icono={CalendarDays} etiqueta="Inicio">{fecha(inicio)}</Dato>
-          <Dato icono={CalendarDays} etiqueta="Fin">{fecha(fin)}</Dato>
-          <Dato icono={Clock} etiqueta="Duración">{formatoDuracion((fin.getTime() - inicio.getTime()) / 3_600_000)}</Dato>
-          <Dato icono={Target} etiqueta={o.objetivo?.tipo === 'objeto' ? 'Objeto buscado' : 'Persona buscada'}>
-            {o.objetivo?.descripcion ?? <span style={{ color: 'var(--muted-foreground)' }}>Sin ficha cargada</span>}
-          </Dato>
-        </div>
-      </div>
-    );
-  }
   return (
-    <div className="rounded-[var(--radius-card)] p-4 flex flex-col gap-3.5" style={{ background: 'var(--muted)' }}>
-      <div>
-        <p style={{ fontSize: 'var(--text-h4)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--foreground)' }}>{o.titulo}</p>
-        <p className="flex items-center gap-1 mt-0.5" style={{ fontSize: 'var(--text-label)', color: 'var(--muted-foreground)' }}>
-          <MapPin size={12} /> {o.localidad} · {ETIQUETA_ESTADO[o.estado]} · Día {dia}
-        </p>
+    <div className="rounded-[var(--radius-card)] overflow-hidden" style={{ background: 'var(--card)', border: '1px solid var(--border)' }}>
+      <div className="h-1 w-full" style={{ background: colorEstado(o.estado) }} />
+      <div className="p-4">
+        <div className="flex items-start justify-between gap-3 mb-3">
+          <p className="leading-snug" style={{ fontSize: 'var(--text-h4)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--foreground)' }}>{o.titulo}</p>
+          <div className="flex-shrink-0"><StatusBadge estado={ESTADO_BADGE[o.estado]} size="sm" /></div>
+        </div>
+        <div className="flex flex-col gap-2">
+          {fila(MapPin, o.localidad)}
+          {fila(Calendar, fechaHoraArgentina(o.inicio))}
+          {fila(Users, `${o.agentesAsignados} agente${o.agentesAsignados !== 1 ? 's' : ''} asignado${o.agentesAsignados !== 1 ? 's' : ''}`)}
+          {fila(RadioTower, o.coordinador ?? 'Sin coordinador a cargo', alerta ? '#b45309' : 'var(--muted-foreground)')}
+        </div>
       </div>
-      <div className="grid grid-cols-1 2xl:grid-cols-2 gap-3.5">
-        <Dato icono={UserCheck} etiqueta="Coordinador a cargo">
-          {o.coordinador ?? <span className="inline-flex items-center gap-1" style={{ color: '#b45309' }}><AlertTriangle size={13} /> Sin coordinador a cargo</span>}
-        </Dato>
-        <Dato icono={CalendarDays} etiqueta="Inicio">
-          {fecha(inicio)}
-        </Dato>
-        <Dato icono={Users} etiqueta="Agentes en el operativo">
-          <strong>{total}</strong>
-          <span style={{ fontSize: 12, color: 'var(--muted-foreground)' }}> · {o.agentes.terreno} en el terreno, {o.agentes.base} en la base{o.agentes.noDisponible ? `, ${o.agentes.noDisponible} no disponibles` : ''}</span>
-        </Dato>
-        <Dato icono={Radio} etiqueta="Grupos">
-          {o.grupos.total} <span style={{ fontSize: 12, color: 'var(--muted-foreground)' }}>· {o.grupos.enTerreno} en el terreno</span>
-        </Dato>
-        <Dato icono={Target} etiqueta={o.objetivo?.tipo === 'objeto' ? 'Objeto buscado' : 'Persona buscada'}>
-          {o.objetivo?.descripcion ?? <span style={{ color: 'var(--muted-foreground)' }}>Sin ficha cargada</span>}
-        </Dato>
-      </div>
-      <p style={{ fontSize: 11, color: 'var(--muted-foreground)' }}>Con datos reales, desde acá se va a poder entrar al panel del operativo.</p>
     </div>
   );
 }
@@ -232,7 +197,6 @@ function ZonasCalientes({ historial }: { historial: OperativoPanel[] }) {
   const porLocalidad = new Map<string, number>();
   for (const o of historial) porLocalidad.set(o.localidad, (porLocalidad.get(o.localidad) ?? 0) + 1);
   const top = [...porLocalidad].sort((a, b) => b[1] - a[1]).slice(0, 6);
-  const max = Math.max(1, ...top.map(t => t[1]));
   return (
     <div className="rounded-[var(--radius-card)] p-4" style={{ background: 'var(--muted)' }}>
       <p style={{ fontSize: 'var(--text-base)', fontWeight: 600, color: 'var(--foreground)' }}>Dónde más se busca</p>
@@ -240,12 +204,9 @@ function ZonasCalientes({ historial }: { historial: OperativoPanel[] }) {
       <ul className="flex flex-col gap-2.5">
         {top.map(([loc, n]) => (
           <li key={loc}>
-            <div className="flex justify-between mb-1" style={{ fontSize: 'var(--text-label)' }}>
+            <div className="flex justify-between" style={{ fontSize: 'var(--text-label)' }}>
               <span style={{ color: 'var(--foreground)' }}>{loc.replace(', Córdoba', '')}</span>
               <span className="tabular-nums" style={{ color: 'var(--foreground)', fontWeight: 600 }}>{n}</span>
-            </div>
-            <div style={{ height: 6, borderRadius: 3, background: 'var(--card)' }}>
-              <div style={{ width: `${(n / max) * 100}%`, height: '100%', borderRadius: 3, background: 'var(--primary)' }} />
             </div>
           </li>
         ))}

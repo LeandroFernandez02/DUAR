@@ -20,6 +20,11 @@ export const ETIQUETA_ESTADO: Record<EstadoOperativoPanel, string> = {
   NUEVO: 'Nuevo', EN_PLANIFICACION: 'En planificación', ACTIVO: 'Activo', EN_PROCESO: 'En proceso',
   INACTIVO: 'Inactivo', FINALIZADO: 'Finalizado',
 };
+/** El estado con la clave que usa StatusBadge (el mismo badge y color que en la sección Operativos). */
+export const ESTADO_BADGE: Record<EstadoOperativoPanel, string> = {
+  NUEVO: 'nuevo', EN_PLANIFICACION: 'planificación', ACTIVO: 'activo', EN_PROCESO: 'en_proceso',
+  INACTIVO: 'inactivo', FINALIZADO: 'finalizado',
+};
 const EN_CURSO: EstadoOperativoPanel[] = ['ACTIVO', 'EN_PROCESO'];
 const SIN_ACTIVAR: EstadoOperativoPanel[] = ['NUEVO', 'EN_PLANIFICACION'];
 
@@ -35,6 +40,8 @@ export interface OperativoPanel {
   conCoordinador: boolean;
   /** Agentes vigentes ahora, por fase (sólo operativos en curso). */
   agentes: { terreno: number; base: number; noDisponible: number };
+  /** Agentes asignados al operativo (lo mismo que muestra la tarjeta de la sección Operativos). */
+  agentesAsignados: number;
   /** Instituciones y especialidades que intervinieron (cada una cuenta una vez por operativo). */
   instituciones: string[];
   especialidades: string[];
