@@ -112,19 +112,17 @@ export default function GlobalDashboard() {
           </div>
         </section>
 
-        {/* Dos tortas en una tarjeta: instituciones del período y recursos críticos trabajando ahora */}
-        <section className="md:col-span-2 rounded-[var(--radius-card)] px-4 py-3 grid grid-cols-1 sm:grid-cols-2 gap-x-5 gap-y-3 min-h-0" style={estiloTarjeta}>
-          <div className="flex flex-col min-h-0 min-w-0">
-            <TituloTarjeta icono={Building2} titulo="Instituciones" aclaracion={enElPeriodo} unaLinea />
-            <div className="flex-1 min-h-0 flex items-center overflow-y-auto">
-              <Torta datos={agruparPorciones(d.instituciones, 5)} colores={series} unidad="operativos" diametro={diametro} compacta />
-            </div>
+        {/* Cada torta en su tarjeta (una columna cada una): instituciones del período y recursos críticos trabajando ahora */}
+        <section className="rounded-[var(--radius-card)] px-4 py-3 flex flex-col min-h-0 min-w-0" style={estiloTarjeta}>
+          <TituloTarjeta icono={Building2} titulo="Instituciones" aclaracion={enElPeriodo} unaLinea />
+          <div className="flex-1 min-h-0 flex items-center overflow-y-auto">
+            <Torta datos={agruparPorciones(d.instituciones, 5)} colores={series} unidad="operativos" diametro={diametro} compacta />
           </div>
-          <div className="flex flex-col min-h-0 min-w-0">
-            <TituloTarjeta icono={ShieldAlert} titulo="Recursos críticos" aclaracion="trabajando ahora" unaLinea />
-            <div className="flex-1 min-h-0 flex items-center overflow-y-auto">
-              <Torta datos={recursosCriticos} colores={series} unidad="agentes" diametro={diametro} compacta />
-            </div>
+        </section>
+        <section className="rounded-[var(--radius-card)] px-4 py-3 flex flex-col min-h-0 min-w-0" style={estiloTarjeta}>
+          <TituloTarjeta icono={ShieldAlert} titulo="Recursos críticos" aclaracion="trabajando ahora" unaLinea />
+          <div className="flex-1 min-h-0 flex items-center overflow-y-auto">
+            <Torta datos={recursosCriticos} colores={series} unidad="agentes" diametro={diametro} compacta />
           </div>
         </section>
 
