@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import {
   Plus, MapPin, Calendar, Users, ArrowRight, QrCode, X, Trash2, Edit2,
-  RadioTower, LayoutGrid, List, Search, AlertCircle,
+  RadioTower, Search, AlertCircle,
   Crosshair, Lock, Flag, CheckCircle2, Clock,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -18,6 +18,11 @@ import { ETIQUETA_RESULTADO, opcionesResultado, type ResultadoOperativo } from '
 import { ahoraEnArgentina, campoDesdeIso, fechaHoraArgentina } from '../utils/fechaArgentina';
 import SelectorLocalidad from '../components/shared/SelectorLocalidad';
 import FiltroDesplegable from '../components/shared/FiltroDesplegable';
+import Button from '../components/shared/base/Button';
+import {
+  Buscador, SelectorVista, BarraFiltros, BotonTextoFiltro, Vacio, BotonIcono, ListaFija,
+  tarjetaBase, estiloTitulosColumna, type VistaListado,
+} from '../components/shared/Listados';
 import {
   validarTitulo, validarFiscal, filtrarFiscal,
   TITULO_MAX, FISCAL_MAX, DESCRIPCION_MAX, NOTA_FINAL_MAX,
@@ -57,7 +62,7 @@ function mandoDe(op: Operativo): { texto: string; alerta: boolean } {
 }
 
 type ModalType = 'create' | 'edit' | 'qr' | 'delete' | 'finalize' | null;
-type ViewMode = 'card' | 'list';
+type ViewMode = VistaListado;
 /** "Vigentes": todavía no se cerró (nuevo, en planificación, en proceso o activo). Es el filtro de entrada. */
 const VIGENTES: EstadoOperativo[] = ['nuevo', 'planificación', 'en_proceso', 'activo'];
 
@@ -140,6 +145,32 @@ function readOnlyInputStyle(): React.CSSProperties {
 }
 
 /* ── Component ── */
+/** Columnas de la vista Lista: en mobile sólo operativo y estado (las acciones bajan a otra línea). */
+const COLUMNAS_LISTA = 'grid-cols-[minmax(0,1fr)_auto] md:grid-cols-[minmax(0,3fr)_minmax(0,1fr)_minmax(0,1.5fr)_minmax(0,1.2fr)_236px]';
+
+/** Fila de metadato de la tarjeta: ícono turquesa y texto gris (ámbar si es una alerta). */
+function MetaFila({ icono: I, children, alerta, title }: { icono: typeof MapPin; children: React.ReactNode; alerta?: boolean; title?: string }) {
+  return (
+    <div className="flex items-center gap-2 min-w-0" title={title}>
+      <I size={13} style={{ color: alerta ? '#b45309' : 'var(--primary)', flexShrink: 0 }} />
+      <span className="truncate" style={{ fontSize: 'var(--text-label)', color: alerta ? '#b45309' : 'var(--muted-foreground)' }}>{children}</span>
+    </div>
+  );
+}
+
+/** «Panel →»: la única forma de entrar al operativo (entrar a uno Nuevo lo activa). */
+function BotonPanel({ onClick }: { onClick: () => void }) {
+  return (
+    <button type="button" onClick={onClick} title="Acceder al panel" className="flex items-center gap-1.5"
+      style={{ padding: '6px 12px', borderRadius: 'var(--radius-md)', cursor: 'pointer', color: 'var(--primary)', fontFamily: 'var(--font-family-primary)', fontSize: 'var(--text-label)', fontWeight: 600,
+        background: 'color-mix(in srgb, var(--primary) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--primary) 18%, transparent)' }}
+      onMouseEnter={e => (e.currentTarget.style.background = 'color-mix(in srgb, var(--primary) 15%, transparent)')}
+      onMouseLeave={e => (e.currentTarget.style.background = 'color-mix(in srgb, var(--primary) 8%, transparent)')}>
+      Panel<ArrowRight size={13} />
+    </button>
+  );
+}
+
 export default function Operativos() {
   const navigate = useNavigate();
   const { usuario } = useApp();
@@ -227,6 +258,16 @@ export default function Operativos() {
    * ahí mismo, la precondición de CU-16 (ACTIVO/EN_PLANIFICACION) tiene que
    * estar cumplida.
    */
+  /** Acciones rápidas de cada operativo: QR, Modificar, Finalizar (si no terminó) y Eliminar (sólo los Nuevos). */
+  const accionesDe = (op: Operativo) => (
+    <div className="flex items-center gap-1">
+      <BotonIcono icono={QrCode} title="Código QR" onClick={() => openQr(op)} />
+      <BotonIcono icono={Edit2} title="Modificar" onClick={() => openEdit(op)} />
+      {op.estado !== 'finalizado' && op.estado !== 'eliminado' && <BotonIcono icono={Flag} title="Finalizar operativo" tono="aviso" onClick={() => openFinalize(op)} />}
+      {op.estado === 'nuevo' && <BotonIcono icono={Trash2} title="Eliminar" tono="peligro" onClick={() => openDelete(op)} />}
+    </div>
+  );
+
   const entrarAOperativo = async (op: Operativo) => {
     if (op.estado === 'nuevo') {
       try { await operativosApi.activar(op.id); } catch { /* no bloquea la navegación */ }
@@ -468,7 +509,7 @@ export default function Operativos() {
               Sistema de Búsqueda y Rastreo
             </h1>
             <p style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-base)' }}>
-              Dirección de Unidades de Alto Riesgo (DUAR) — Córdoba
+              Gestión de Operativos de Búsqueda y Rastrillaje
             </p>
           </div>
           {/* En mobile/tablet va a la barra superior (diseño CALÍVAR) */}
@@ -508,94 +549,18 @@ export default function Operativos() {
         </div>
       )}
 
-      {/* ── Toolbar: Search + Tabs + View Toggle ── */}
-      <div
-        className="flex flex-col gap-0 mb-5 rounded-[var(--radius-card)]"
-        style={{ background: 'var(--card)', boxShadow: 'var(--elevation-sm)', border: '1px solid var(--border)' }}
-      >
-        {/* Row 1: search input + view toggle */}
-        <div className="flex items-center gap-3 px-4 pt-4 pb-3">
-          {/* Search */}
-          <div className="relative flex-1 min-w-[180px]">
-            <Search
-              size={15}
-              className="absolute left-3 top-1/2 -translate-y-1/2 pointer-events-none"
-              style={{ color: 'var(--muted-foreground)' }}
-            />
-            <input
-              type="text"
-              value={searchQuery}
-              onChange={e => setSearchQuery(e.target.value)}
-              placeholder="Buscar por título..."
-              className="w-full pl-9 pr-9 py-2 rounded-[var(--radius-input)] border outline-none transition-all"
-              style={{
-                background: 'var(--input-background)',
-                border: '1px solid var(--border)',
-                color: 'var(--foreground)',
-                fontFamily: 'var(--font-family-primary)',
-                fontSize: 'var(--text-base)',
-              }}
-              onFocus={e => (e.target.style.borderColor = 'var(--primary)')}
-              onBlur={e => (e.target.style.borderColor = 'var(--border)')}
-            />
-            {searchQuery && (
-              <button
-                onClick={() => setSearchQuery('')}
-                className="absolute right-3 top-1/2 -translate-y-1/2"
-                style={{ color: 'var(--muted-foreground)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
-                aria-label="Limpiar búsqueda"
-              >
-                <X size={14} />
-              </button>
-            )}
-          </div>
-
-          {/* View mode toggle */}
-          <div
-            className="flex items-center rounded-[var(--radius-input)] p-0.5 flex-shrink-0"
-            style={{ background: 'var(--muted)', border: '1px solid var(--border)' }}
-          >
-            {([
-              { mode: 'card' as ViewMode, icon: <LayoutGrid size={15} />, label: 'Tarjetas' },
-              { mode: 'list' as ViewMode, icon: <List size={15} />, label: 'Lista' },
-            ]).map(({ mode, icon, label }) => (
-              <button
-                key={mode}
-                onClick={() => setViewMode(mode)}
-                title={label}
-                className="flex items-center gap-1.5 px-3 py-1.5 rounded"
-                style={{
-                  background: viewMode === mode ? 'var(--card)' : 'transparent',
-                  color: viewMode === mode ? 'var(--primary)' : 'var(--muted-foreground)',
-                  fontFamily: 'var(--font-family-primary)',
-                  fontSize: 'var(--text-label)',
-                  fontWeight: viewMode === mode ? 'var(--font-weight-semibold)' : 'var(--font-weight-medium)',
-                  boxShadow: viewMode === mode ? 'var(--elevation-sm)' : 'none',
-                  border: 'none',
-                  cursor: 'pointer',
-                  transition: 'all 0.15s',
-                }}
-              >
-                {icon}
-                <span className="hidden sm:inline">{label}</span>
-              </button>
-            ))}
-          </div>
-
-          {/* Results counter */}
+      {/* ── Buscador, vista y filtro por estado ── */}
+      <div className="mb-5" style={tarjetaBase}>
+        <div className="flex items-center gap-3" style={{ padding: '16px 16px 12px' }}>
+          <Buscador value={searchQuery} onChange={setSearchQuery} placeholder="Buscar por título..." />
+          <SelectorVista value={viewMode} onChange={setViewMode} />
           {(searchQuery || !sonVigentes(estadosSel)) && filteredOperativos.length < operativos.length && (
-            <span
-              className="hidden sm:block flex-shrink-0"
-              style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-label)', fontFamily: 'var(--font-family-primary)' }}
-            >
+            <span className="hidden sm:block shrink-0" style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-label)' }}>
               {filteredOperativos.length} de {operativos.length}
             </span>
           )}
         </div>
-
-        {/* Row 2: filtros desplegables (selección múltiple) */}
-        <div className="flex items-center gap-2 flex-wrap px-4 py-3" style={{ borderTop: '1px solid var(--border)' }}>
-          <span className="shrink-0" style={{ fontSize: 'var(--text-label)', color: 'var(--muted-foreground)', fontFamily: 'var(--font-family-primary)' }}>Filtrar por:</span>
+        <BarraFiltros>
           <FiltroDesplegable<EstadoOperativo>
             titulo="Estado"
             seleccion={estadosSel}
@@ -603,350 +568,91 @@ export default function Operativos() {
             atajos={[{ label: 'Vigentes', valores: VIGENTES, count: operativos.filter(o => esVigente(o.estado)).length }]}
             opciones={ESTADOS_FILTRO.map(e => ({ ...e, count: operativos.filter(o => o.estado === e.value).length }))}
           />
-          {estadosSel.length > 0 && !sonVigentes(estadosSel) && (
-            <button type="button" onClick={() => setEstadosSel(VIGENTES)}
-              style={{ fontSize: 'var(--text-label)', color: 'var(--primary)', fontWeight: 'var(--font-weight-semibold)', background: 'none', border: 'none', cursor: 'pointer', padding: '0 4px', fontFamily: 'var(--font-family-primary)' }}>
-              Ver sólo vigentes
-            </button>
-          )}
+          {estadosSel.length > 0 && !sonVigentes(estadosSel) && <BotonTextoFiltro onClick={() => setEstadosSel(VIGENTES)}>Ver sólo vigentes</BotonTextoFiltro>}
           {estadosSel.length === 0 && (
-            <span style={{ fontSize: 'calc(11px * var(--escala-texto))', color: 'var(--muted-foreground)', fontFamily: 'var(--font-family-primary)' }}>Mostrando todos los operativos</span>
+            <span style={{ fontSize: 'calc(11px * var(--escala-texto))', color: 'var(--muted-foreground)' }}>Mostrando todos los operativos</span>
           )}
-        </div>
+        </BarraFiltros>
       </div>
 
-      {/* ── Content area ── */}
+      {/* ── Contenido ── */}
       {cargando ? (
-        <div
-          className="flex items-center justify-center py-20 rounded-[var(--radius-card)]"
-          style={{ background: 'var(--card)', boxShadow: 'var(--elevation-sm)', color: 'var(--muted-foreground)', fontFamily: 'var(--font-family-primary)' }}
-        >
-          Cargando operativos…
-        </div>
+        <div className="flex items-center justify-center py-20" style={{ ...tarjetaBase, color: 'var(--muted-foreground)' }}>Cargando operativos…</div>
       ) : operativos.length === 0 ? (
-        /* Empty — no operativos at all */
-        <div
-          className="flex flex-col items-center justify-center py-20 rounded-[var(--radius-card)]"
-          style={{ background: 'var(--card)', boxShadow: 'var(--elevation-sm)' }}
-        >
-          <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4" style={{ background: 'color-mix(in srgb, var(--primary) 10%, transparent)' }}>
-            <Plus size={28} style={{ color: 'var(--primary)' }} />
-          </div>
-          <p className="mb-1" style={{ fontSize: 'var(--text-h3)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--foreground)', fontFamily: 'var(--font-family-primary)' }}>
-            No hay operativos vigentes
-          </p>
-          <p className="mb-4" style={{ fontSize: 'var(--text-base)', color: 'var(--muted-foreground)', fontFamily: 'var(--font-family-primary)' }}>
-            Creá el primer operativo para comenzar.
-          </p>
-          <button
-            onClick={openCreate}
-            className="px-4 py-2 rounded-[var(--radius-button)] text-[var(--primary-foreground)]"
-            style={{ background: 'var(--primary)', fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-semibold)', fontFamily: 'var(--font-family-primary)', cursor: 'pointer' }}
-          >
-            Crear operativo
-          </button>
-        </div>
+        <Vacio icono={Plus} titulo="No hay operativos vigentes" texto="Creá el primer operativo para comenzar."
+          accion={<Button size="md" icon={Plus} onClick={openCreate}>Crear operativo</Button>} />
       ) : filteredOperativos.length === 0 ? (
-        /* Empty — filters / search return nothing */
-        <div
-          className="flex flex-col items-center justify-center py-16 rounded-[var(--radius-card)]"
-          style={{ background: 'var(--card)', boxShadow: 'var(--elevation-sm)', border: '1px solid var(--border)' }}
-        >
-          <div
-            className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4"
-            style={{ background: 'color-mix(in srgb, var(--primary) 8%, transparent)' }}
-          >
-            <Search size={22} style={{ color: 'var(--primary)' }} />
-          </div>
-          <p className="mb-1" style={{ fontSize: 'var(--text-h3)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--foreground)', fontFamily: 'var(--font-family-primary)' }}>
-            No hay operativos vigentes
-          </p>
-          <p className="mb-5 text-center px-8" style={{ fontSize: 'var(--text-base)', color: 'var(--muted-foreground)', fontFamily: 'var(--font-family-primary)' }}>
-            {searchQuery
-              ? `No se encontraron resultados para "${searchQuery}".`
-              : 'No hay operativos activos o en proceso para el filtro seleccionado.'}
-          </p>
-          <button
-            onClick={() => { setSearchQuery(''); setEstadosSel(VIGENTES); }}
-            className="flex items-center gap-2 px-4 py-2 rounded-[var(--radius-button)]"
-            style={{
-              background: 'var(--muted)', color: 'var(--foreground)',
-              fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-semibold)',
-              fontFamily: 'var(--font-family-primary)', border: '1px solid var(--border)',
-              cursor: 'pointer',
-            }}
-          >
-            <X size={14} />
-            Limpiar filtros
-          </button>
-        </div>
+        <Vacio icono={Search} titulo="No hay operativos vigentes"
+          texto={searchQuery ? `No se encontraron resultados para "${searchQuery}".` : 'No hay operativos activos o en proceso para el filtro seleccionado.'}
+          accion={<Button variant="muted" size="md" icon={X} onClick={() => { setSearchQuery(''); setEstadosSel(VIGENTES); }}>Limpiar filtros</Button>} />
       ) : viewMode === 'card' ? (
-        /* ═══════ CARD VIEW ═══════ */
-        <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-5">
-          {filteredOperativos.map(op => (
-            <div
-              key={op.id}
-              className="rounded-[var(--radius-card)] flex flex-col overflow-hidden group"
-              style={{ background: 'var(--card)', boxShadow: 'var(--elevation-sm)', border: '1px solid var(--border)', transition: 'box-shadow 0.15s' }}
-              onMouseEnter={e => (e.currentTarget as HTMLElement).style.boxShadow = 'var(--elevation-md)'}
-              onMouseLeave={e => (e.currentTarget as HTMLElement).style.boxShadow = 'var(--elevation-sm)'}
-            >
-              {/* Accent bar */}
-              <div className="h-1 w-full flex-shrink-0" style={{ background: estadoColors[op.estado] || 'var(--primary)' }} />
-
-              {/* Body informativo (no navega: solo el botón "Panel" accede) */}
-              <div className="p-5 flex-1 flex flex-col text-left w-full">
-                {/* Title + Badge */}
-                <div className="flex items-start justify-between gap-3 mb-3">
-                  <h3
-                    className="leading-snug"
-                    style={{ color: 'var(--foreground)', fontSize: 'var(--text-h3)', fontWeight: 'var(--font-weight-semibold)', fontFamily: 'var(--font-family-primary)' }}
-                  >
-                    {op.nombre}
-                  </h3>
-                  <div className="flex-shrink-0"><StatusBadge estado={op.estado} size="sm" /></div>
+        /* ═══════ TARJETAS ═══════ */
+        <div className="grid gap-5" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(min(300px, 100%), 1fr))' }}>
+          {filteredOperativos.map(op => {
+            const m = mandoDe(op);
+            return (
+              <div key={op.id} className="flex flex-col overflow-hidden" style={{ ...tarjetaBase, transition: 'box-shadow .15s' }}
+                onMouseEnter={e => (e.currentTarget.style.boxShadow = 'var(--elevation-md)')}
+                onMouseLeave={e => (e.currentTarget.style.boxShadow = 'var(--elevation-sm)')}>
+                <div className="h-1 w-full shrink-0" style={{ background: estadoColors[op.estado] || 'var(--primary)' }} />
+                {/* Cuerpo informativo (no navega: sólo el botón "Panel" accede) */}
+                <div className="flex-1 flex flex-col" style={{ padding: 20 }}>
+                  <div className="flex items-start justify-between gap-3 mb-3">
+                    <h3 style={{ margin: 0, color: 'var(--foreground)', fontSize: 'var(--text-h3)', fontWeight: 'var(--font-weight-semibold)', lineHeight: 1.35 }}>{op.nombre}</h3>
+                    <div className="shrink-0"><StatusBadge estado={op.estado} size="sm" /></div>
+                  </div>
+                  <div className="flex flex-col gap-2">
+                    <MetaFila icono={MapPin}>{op.ubicacion}</MetaFila>
+                    <MetaFila icono={Calendar}>{fechaHoraArgentina(op.fechaInicio)}</MetaFila>
+                    <MetaFila icono={Users}>{op.agenteIds.length} agente{op.agenteIds.length !== 1 ? 's' : ''} asignado{op.agenteIds.length !== 1 ? 's' : ''}</MetaFila>
+                    {/* Coordinador a cargo del puesto de comando (01/10): reemplaza al objetivo buscado. */}
+                    <MetaFila icono={RadioTower} alerta={m.alerta} title="Coordinador a cargo del puesto de comando">{m.texto}</MetaFila>
+                  </div>
                 </div>
-
-                {/* Metadata rows */}
-                <div className="flex flex-col gap-2 flex-1">
-                  {/* Localidad */}
-                  <div className="flex items-center gap-2">
-                    <MapPin size={13} style={{ color: 'var(--primary)', flexShrink: 0 }} />
-                    <span className="truncate" style={{ fontSize: 'var(--text-label)', color: 'var(--muted-foreground)', fontFamily: 'var(--font-family-primary)' }}>
-                      {op.ubicacion}
-                    </span>
-                  </div>
-
-                  {/* Fecha de inicio */}
-                  <div className="flex items-center gap-2">
-                    <Calendar size={13} style={{ color: 'var(--primary)', flexShrink: 0 }} />
-                    <span style={{ fontSize: 'var(--text-label)', color: 'var(--muted-foreground)', fontFamily: 'var(--font-family-primary)' }}>
-                      {fechaHoraArgentina(op.fechaInicio)}
-                    </span>
-                  </div>
-
-                  {/* Agentes */}
-                  <div className="flex items-center gap-2">
-                    <Users size={13} style={{ color: 'var(--primary)', flexShrink: 0 }} />
-                    <span style={{ fontSize: 'var(--text-label)', color: 'var(--muted-foreground)', fontFamily: 'var(--font-family-primary)' }}>
-                      {op.agenteIds.length} agente{op.agenteIds.length !== 1 ? 's' : ''} asignado{op.agenteIds.length !== 1 ? 's' : ''}
-                    </span>
-                  </div>
-
-                  {/* Coordinador a cargo del puesto de comando (01/10): reemplaza al objetivo buscado. */}
-                  {(() => {
-                    const m = mandoDe(op);
-                    return (
-                      <div className="flex items-center gap-2" title="Coordinador a cargo del puesto de comando">
-                        <RadioTower size={13} style={{ color: m.alerta ? '#b45309' : 'var(--primary)', flexShrink: 0 }} />
-                        <span className="truncate" style={{ fontSize: 'var(--text-label)', color: m.alerta ? '#b45309' : 'var(--muted-foreground)', fontFamily: 'var(--font-family-primary)' }}>
-                          {m.texto}
-                        </span>
-                      </div>
-                    );
-                  })()}
-
+                <div className="flex items-center justify-between" style={{ padding: '10px 16px', borderTop: '1px solid var(--border)', background: 'var(--muted)' }}>
+                  {accionesDe(op)}
+                  <BotonPanel onClick={() => { void entrarAOperativo(op); }} />
                 </div>
               </div>
-
-              {/* Footer: acciones rápidas + link al panel */}
-              <div
-                className="flex items-center justify-between px-4 py-2.5"
-                style={{ borderTop: '1px solid var(--border)', background: 'var(--muted)' }}
-              >
-                {/* Quick actions */}
-                <div className="flex items-center gap-1">
-                  <button
-                    onClick={e => { e.stopPropagation(); openQr(op); }}
-                    title="Código QR"
-                    className="p-1.5 rounded-lg transition-colors"
-                    style={{ color: 'var(--muted-foreground)', background: 'none', border: 'none', cursor: 'pointer' }}
-                    onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--card)'}
-                    onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'none'}
-                  >
-                    <QrCode size={14} />
-                  </button>
-                  <button
-                    onClick={e => { e.stopPropagation(); openEdit(op); }}
-                    title="Modificar"
-                    className="p-1.5 rounded-lg transition-colors"
-                    style={{ color: 'var(--muted-foreground)', background: 'none', border: 'none', cursor: 'pointer' }}
-                    onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--card)'}
-                    onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'none'}
-                  >
-                    <Edit2 size={14} />
-                  </button>
-                  {op.estado !== 'finalizado' && op.estado !== 'eliminado' && (
-                    <button
-                      onClick={e => { e.stopPropagation(); openFinalize(op); }}
-                      title="Finalizar operativo"
-                      className="p-1.5 rounded-lg transition-colors"
-                      style={{ color: '#b45309', background: 'none', border: 'none', cursor: 'pointer' }}
-                      onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = '#fef3c7'}
-                      onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'none'}
-                    >
-                      <Flag size={14} />
-                    </button>
-                  )}
-                  {op.estado === 'nuevo' && (
-                    <button
-                      onClick={e => { e.stopPropagation(); openDelete(op); }}
-                      title="Eliminar"
-                      className="p-1.5 rounded-lg transition-colors"
-                      style={{ color: 'var(--muted-foreground)', background: 'none', border: 'none', cursor: 'pointer' }}
-                      onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = '#fee2e2'}
-                      onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'none'}
-                    >
-                      <Trash2 size={14} />
-                    </button>
-                  )}
-                </div>
-
-                {/* Acceder al panel */}
-                <button
-                  onClick={() => { void entrarAOperativo(op); }}
-                  className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg"
-                  style={{
-                    color: 'var(--primary)',
-                    background: 'color-mix(in srgb, var(--primary) 8%, transparent)',
-                    border: '1px solid color-mix(in srgb, var(--primary) 18%, transparent)',
-                    fontFamily: 'var(--font-family-primary)',
-                    fontSize: 'var(--text-label)',
-                    fontWeight: 'var(--font-weight-semibold)',
-                    cursor: 'pointer',
-                  }}
-                  onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'color-mix(in srgb, var(--primary) 15%, transparent)'}
-                  onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'color-mix(in srgb, var(--primary) 8%, transparent)'}
-                >
-                  Panel
-                  <ArrowRight size={13} />
-                </button>
-              </div>
-            </div>
-          ))}
+            );
+          })}
         </div>
       ) : (
-        /* ═══════ LIST VIEW ═══════ */
-        <div
-          className="rounded-[var(--radius-card)] overflow-hidden"
-          style={{ background: 'var(--card)', boxShadow: 'var(--elevation-sm)', border: '1px solid var(--border)' }}
-        >
-          {/* Table header */}
-          <div
-            className="hidden md:grid px-5 py-2.5 gap-3"
-            style={{
-              background: 'var(--muted)',
-              borderBottom: '1px solid var(--border)',
-              gridTemplateColumns: '3fr 1fr 1.5fr 1fr auto',
-            }}
-          >
-            {['Operativo', 'Estado', 'Ubicación', 'Inicio', ''].map(col => (
-              <span key={col} style={{ color: 'var(--muted-foreground)', fontSize: 'calc(11px * var(--escala-texto))', fontWeight: 'var(--font-weight-semibold)', letterSpacing: '0.05em', textTransform: 'uppercase', fontFamily: 'var(--font-family-primary)' }}>
-                {col}
-              </span>
-            ))}
-          </div>
-
-          {/* Rows */}
-          {filteredOperativos.map((op, idx) => (
-            <div
-              key={op.id}
-              className="flex flex-col md:grid px-5 py-3.5 gap-2 md:gap-3 md:items-center transition-colors"
-              style={{
-                gridTemplateColumns: '3fr 1fr 1.5fr 1fr auto',
-                borderBottom: idx < filteredOperativos.length - 1 ? '1px solid var(--border)' : 'none',
-              }}
-              onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--muted)'}
-              onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}
-            >
-              {/* Name col */}
-              <div className="flex items-center gap-3 min-w-0">
-                <div className="w-1 self-stretch rounded-full flex-shrink-0 min-h-[36px]" style={{ background: estadoColors[op.estado] || 'var(--primary)' }} />
-                <div className="min-w-0">
-                  <p className="truncate" style={{ color: 'var(--foreground)', fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-semibold)', fontFamily: 'var(--font-family-primary)' }}>
-                    {op.nombre}
-                  </p>
-                  <div className="flex items-center gap-3 mt-0.5 flex-wrap">
-                    <span style={{ color: 'var(--muted-foreground)', fontSize: 'calc(11px * var(--escala-texto))', fontFamily: 'var(--font-family-primary)' }}>
-                      <Users size={10} style={{ display: 'inline', marginRight: 3, verticalAlign: 'middle' }} />
-                      {op.agenteIds.length} agente{op.agenteIds.length !== 1 ? 's' : ''}
-                    </span>
-                    {(() => {
-                      const m = mandoDe(op);
-                      return (
-                        <span title="Coordinador a cargo del puesto de comando"
-                          style={{ color: m.alerta ? '#b45309' : 'var(--muted-foreground)', fontSize: 'calc(11px * var(--escala-texto))', fontFamily: 'var(--font-family-primary)' }}>
-                          <RadioTower size={10} style={{ display: 'inline', marginRight: 3, verticalAlign: 'middle' }} />
-                          {m.texto}
-                        </span>
-                      );
-                    })()}
+        /* ═══════ LISTA (títulos de columna fijos al scrollear) ═══════ */
+        <ListaFija estiloEncabezado={{ padding: '10px 20px' }}
+          encabezado={
+            <div className={`grid gap-3 ${COLUMNAS_LISTA}`}>
+              {['Operativo', 'Estado', 'Ubicación', 'Inicio', ''].map((c, i) => <span key={c} className={i >= 2 ? 'hidden md:block' : undefined} style={estiloTitulosColumna}>{c}</span>)}
+            </div>
+          }>
+          {filteredOperativos.map((op, idx) => {
+            const m = mandoDe(op);
+            return (
+              <div key={op.id} className={`grid items-center gap-3 transition-colors ${COLUMNAS_LISTA}`}
+                style={{ padding: '14px 20px', borderBottom: idx < filteredOperativos.length - 1 ? '1px solid var(--border)' : 'none' }}
+                onMouseEnter={e => (e.currentTarget.style.background = 'var(--muted)')}
+                onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
+                <div className="flex items-center gap-3 min-w-0">
+                  <div className="w-1 self-stretch rounded-full shrink-0 min-h-[36px]" style={{ background: estadoColors[op.estado] || 'var(--primary)' }} />
+                  <div className="min-w-0">
+                    <p className="truncate" style={{ margin: 0, color: 'var(--foreground)', fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-semibold)' }}>{op.nombre}</p>
+                    <div className="flex items-center gap-3 mt-0.5 flex-wrap" style={{ fontSize: 'calc(11px * var(--escala-texto))', color: 'var(--muted-foreground)' }}>
+                      <span className="flex items-center gap-1"><Users size={10} />{op.agenteIds.length} agente{op.agenteIds.length !== 1 ? 's' : ''}</span>
+                      <span className="flex items-center gap-1" title="Coordinador a cargo del puesto de comando" style={{ color: m.alerta ? '#b45309' : undefined }}><RadioTower size={10} />{m.texto}</span>
+                    </div>
                   </div>
                 </div>
+                <div><StatusBadge estado={op.estado} size="sm" /></div>
+                <div className="hidden md:block min-w-0"><MetaFila icono={MapPin}>{op.ubicacion}</MetaFila></div>
+                <div className="hidden md:block"><MetaFila icono={Calendar}>{fechaHoraArgentina(op.fechaInicio)}</MetaFila></div>
+                <div className="flex items-center gap-1 shrink-0 col-span-2 md:col-span-1">
+                  {accionesDe(op)}
+                  <BotonPanel onClick={() => { void entrarAOperativo(op); }} />
+                </div>
               </div>
-
-              {/* Status col */}
-              <div className="md:block">
-                <StatusBadge estado={op.estado} size="sm" />
-              </div>
-
-              {/* Location col */}
-              <div className="min-w-0 hidden md:flex items-center gap-1.5">
-                <MapPin size={12} style={{ color: 'var(--primary)', flexShrink: 0 }} />
-                <span className="truncate" style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-label)', fontFamily: 'var(--font-family-primary)' }}>
-                  {op.ubicacion}
-                </span>
-              </div>
-
-              {/* Date col */}
-              <div className="hidden md:flex items-center gap-1.5">
-                <Calendar size={12} style={{ color: 'var(--primary)', flexShrink: 0 }} />
-                <span style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-label)', fontFamily: 'var(--font-family-primary)' }}>
-                  {fechaHoraArgentina(op.fechaInicio)}
-                </span>
-              </div>
-
-              {/* Actions col */}
-              <div className="flex items-center gap-1 flex-shrink-0 mt-2 md:mt-0">
-                <button onClick={() => openQr(op)} title="Código QR" className="p-1.5 rounded-lg" style={{ color: 'var(--muted-foreground)', background: 'none', border: 'none', cursor: 'pointer' }}
-                  onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--border)'}
-                  onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}>
-                  <QrCode size={14} />
-                </button>
-                <button onClick={() => openEdit(op)} title="Modificar" className="p-1.5 rounded-lg" style={{ color: 'var(--muted-foreground)', background: 'none', border: 'none', cursor: 'pointer' }}
-                  onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--border)'}
-                  onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}>
-                  <Edit2 size={14} />
-                </button>
-                {op.estado !== 'finalizado' && op.estado !== 'eliminado' && (
-                  <button onClick={() => openFinalize(op)} title="Finalizar operativo" className="p-1.5 rounded-lg" style={{ color: '#b45309', background: 'none', border: 'none', cursor: 'pointer' }}
-                    onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = '#fef3c7'}
-                    onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}>
-                    <Flag size={14} />
-                  </button>
-                )}
-                {op.estado === 'nuevo' && (
-                  <button onClick={() => openDelete(op)} title="Eliminar" className="p-1.5 rounded-lg" style={{ color: 'var(--muted-foreground)', background: 'none', border: 'none', cursor: 'pointer' }}
-                    onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = '#fee2e2'}
-                    onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}>
-                    <Trash2 size={14} />
-                  </button>
-                )}
-                <button
-                  onClick={() => { void entrarAOperativo(op); }}
-                  title="Acceder al panel"
-                  className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg ml-1"
-                  style={{ color: 'var(--primary)', background: 'color-mix(in srgb, var(--primary) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--primary) 20%, transparent)', cursor: 'pointer', fontFamily: 'var(--font-family-primary)', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)' }}
-                  onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'color-mix(in srgb, var(--primary) 15%, transparent)'}
-                  onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'color-mix(in srgb, var(--primary) 8%, transparent)'}
-                >
-                  Panel
-                  <ArrowRight size={13} />
-                </button>
-              </div>
-            </div>
-          ))}
-        </div>
+            );
+          })}
+        </ListaFija>
       )}
 
       {/* ════ CREATE / EDIT MODAL ════ */}
@@ -954,7 +660,7 @@ export default function Operativos() {
         <div
           style={{
             position: 'fixed', inset: 0, zIndex: 50,
-            background: 'rgba(0,0,0,0.5)',
+            background: 'var(--scrim-modal)',
             display: 'flex', alignItems: 'center', justifyContent: 'center',
             padding: '1rem',
           }}
@@ -1551,7 +1257,7 @@ export default function Operativos() {
 
       {/* Delete Modal */}
       {modal === 'delete' && selected && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.5)' }}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'var(--scrim-modal)' }}>
           <div
             className="w-full max-w-[380px] rounded-[var(--radius-card)] p-6"
             style={{ background: 'var(--card)', boxShadow: 'var(--elevation-md)' }}

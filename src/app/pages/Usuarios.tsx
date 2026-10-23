@@ -1,11 +1,17 @@
 import { useState, useEffect } from 'react';
-import { Plus, Search, Edit2, Trash2, X, Shield, User, UserCheck, AlertCircle, MailCheck } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, X, Shield, ShieldCheck, UserCheck, Footprints, AlertCircle, MailCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import { useApp } from '../context/AppContext';
 import { Usuario, Rol, EstadoUsuario, catInstituciones, catEspecialidades, catAlergias, dotacionesDe, institucionLabel, especialidadNombrePorId } from '../data/mockData';
 import { usuariosApi, ApiError, UsuarioApi } from '../services/api';
 import StatusBadge from '../components/shared/StatusBadge';
 import { AccionCabecera } from '../components/layout/Movil';
+import FiltroDesplegable from '../components/shared/FiltroDesplegable';
+import AvatarAgente from '../components/shared/AvatarAgente';
+import Button from '../components/shared/base/Button';
+import {
+  Buscador, SelectorVista, BarraFiltros, BotonTextoFiltro, Vacio, BotonIcono, Dato, TablaFija, tarjetaBase, type VistaListado,
+} from '../components/shared/Listados';
 import CampoPassword from '../components/shared/CampoPassword';
 import CampoFecha from '../components/shared/CampoFecha';
 import {
@@ -47,17 +53,41 @@ function mapearUsuario(u: UsuarioApi): Usuario {
 
 type ModalType = 'create' | 'edit' | 'delete' | null;
 
-const rolIcon = (rol: Rol) => {
-  if (rol === 'administrador') return <Shield size={13} style={{ color: 'var(--primary)' }} />;
-  if (rol === 'coordinador') return <UserCheck size={13} style={{ color: '#2563eb' }} />;
-  return <User size={13} style={{ color: 'var(--muted-foreground)' }} />;
+/** Rol con su ícono y colores (diseño CALÍVAR): administrador turquesa, coordinador azul, agente gris. */
+const ROL_INFO: Record<Rol, { label: string; icono: typeof Shield; bg: string; color: string }> = {
+  administrador: { label: 'Administrador', icono: Shield, bg: 'color-mix(in srgb, var(--primary) 10%, transparent)', color: 'var(--primary)' },
+  coordinador: { label: 'Coordinador', icono: UserCheck, bg: 'color-mix(in srgb, rgba(37,99,235,0.18) var(--tinte-oscuro, 0%), #dbeafe)', color: 'color-mix(in srgb, #93c5fd var(--tinte-oscuro, 0%), #1d4ed8)' },
+  agente: { label: 'Agente', icono: Footprints, bg: 'var(--muted)', color: 'var(--muted-foreground)' },
 };
+const ROLES_FILTRO: Rol[] = ['administrador', 'coordinador', 'agente'];
+const ESTADOS_USUARIO: { value: EstadoUsuario; label: string; dot: string }[] = [
+  { value: 'activo', label: 'Activo', dot: '#16a34a' },
+  { value: 'pendiente', label: 'Pendiente', dot: 'var(--accent)' },
+  { value: 'inactivo', label: 'Inactivo', dot: '#dc2626' },
+];
 
-const rolColor = (rol: Rol) => {
-  if (rol === 'administrador') return { bg: 'color-mix(in srgb, var(--primary) 10%, transparent)', color: 'var(--primary)' };
-  if (rol === 'coordinador') return { bg: '#dbeafe', color: '#1d4ed8' };
-  return { bg: 'var(--muted)', color: 'var(--muted-foreground)' };
-};
+function RolPill({ rol }: { rol: Rol }) {
+  const r = ROL_INFO[rol];
+  return (
+    <span className="inline-flex items-center gap-1.5 whitespace-nowrap"
+      style={{ padding: '2px 9px', borderRadius: 999, background: r.bg, color: r.color, fontSize: 'calc(11px * var(--escala-texto))', fontWeight: 600 }}>
+      <r.icono size={11} />{r.label}
+    </span>
+  );
+}
+
+/** Si la institución del usuario es el DUAR (cat_instituciones.es_duar): avatar turquesa y escudo junto a la dotación. */
+const esDelDuar = (u: Usuario) => !!catInstituciones.find(i => i.id === u.institucionId)?.esDuar;
+const iniciales = (u: Usuario) => `${u.nombre.charAt(0)}${u.apellido.charAt(0)}`.toUpperCase();
+
+function Dotacion({ u }: { u: Usuario }) {
+  return (
+    <span className="inline-flex items-center gap-1 min-w-0">
+      {esDelDuar(u) && <ShieldCheck size={12} style={{ color: 'var(--primary)', flexShrink: 0 }} />}
+      <span className="truncate">{institucionLabel(u)}</span>
+    </span>
+  );
+}
 
 const emptyForm = {
   dni: '', nombre: '', apellido: '', email: '', password: '', passwordConfirm: '',
@@ -76,7 +106,9 @@ export default function Usuarios() {
   const [selected, setSelected] = useState<Usuario | null>(null);
   const [form, setForm] = useState<typeof emptyForm>(emptyForm);
   const [search, setSearch] = useState('');
-  const [filterRol, setFilterRol] = useState<Rol | ''>('');
+  const [roles, setRoles] = useState<Rol[]>([]);
+  const [estados, setEstados] = useState<EstadoUsuario[]>([]);
+  const [vista, setVista] = useState<VistaListado>('card');
 
   /* ── Datos REALES desde la API (CU-04) ──────────────────────────────────
    * Este módulo ya no usa los mocks del contexto: la lista sale de la tabla
@@ -104,8 +136,7 @@ export default function Usuarios() {
     const q = search.toLowerCase();
     const matchSearch = !q || u.nombre.toLowerCase().includes(q) || u.apellido.toLowerCase().includes(q) ||
       u.email.toLowerCase().includes(q) || u.dni.includes(q);
-    const matchRol = !filterRol || u.rol === filterRol;
-    return matchSearch && matchRol;
+    return matchSearch && (!roles.length || roles.includes(u.rol)) && (!estados.length || estados.includes(u.estado));
   });
 
   const [erroresForm, setErroresForm] = useState<Record<string, string>>({});
@@ -289,6 +320,20 @@ export default function Usuarios() {
     fontSize: 'var(--text-base)',
   };
 
+  const acciones = (u: Usuario) => {
+    const yo = u.id === usuarioActual?.id;
+    return (
+      <div className="flex items-center gap-0.5 shrink-0">
+        {u.estado === 'pendiente' && (
+          <BotonIcono icono={MailCheck} title="Reenviar correo de confirmación" disabled={reenviando === u.id} onClick={() => handleReenviarConfirmacion(u)} />
+        )}
+        <BotonIcono icono={Edit2} title="Editar usuario" onClick={() => openEdit(u)} />
+        <BotonIcono icono={Trash2} tono="peligro" disabled={yo} title={yo ? 'No podés eliminar tu propia cuenta' : 'Eliminar usuario'}
+          onClick={() => { setSelected(u); setModal('delete'); }} />
+      </div>
+    );
+  };
+
   return (
     <div className="p-4 lg:p-6" style={{ fontFamily: 'var(--font-family-primary)' }}>
       {/* Header */}
@@ -296,305 +341,103 @@ export default function Usuarios() {
         <div>
           <h1 className="mb-1" style={{ color: 'var(--foreground)', fontSize: 'var(--text-h1)', fontWeight: 'var(--font-weight-bold)' }}>Usuarios</h1>
           <p style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-base)' }}>
-            {cargando
-              ? 'Cargando usuarios…'
-              : `Gestión de usuarios del sistema — ${usuariosVisibles.length} registrados`}
+            {cargando ? 'Cargando usuarios…' : `Gestión de Cuentas, Roles y Accesos al Sistema — ${usuariosVisibles.length} registrados`}
           </p>
         </div>
         {/* En mobile/tablet va a la barra superior (diseño CALÍVAR) */}
         <AccionCabecera>
-          <button
-            onClick={openCreate}
-            aria-label="Nuevo Usuario"
-            className="flex items-center gap-2 px-4 py-2.5 rounded-[var(--radius-button)] text-[var(--primary-foreground)] hover:opacity-90"
-            style={{ background: 'var(--primary)', fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-semibold)' }}
-          >
-            <Plus size={16} />
-            Nuevo Usuario
-          </button>
+          <Button size="lg" icon={Plus} onClick={openCreate} aria-label="Nuevo Usuario">Nuevo Usuario</Button>
         </AccionCabecera>
       </div>
 
       {/* Rechazos del servidor: duplicados (CU-05 3.1), autobloqueo (CU-07 4.1),
           último administrador, o caída de la API. */}
       {errorApi && (
-        <div
-          className="flex items-start gap-2.5 p-3 rounded-lg mb-4"
-          style={{ background: '#fee2e2', border: '1px solid #fecaca', color: '#b91c1c', fontSize: 'var(--text-base)' }}
-        >
+        <div className="flex items-start gap-2.5 mb-4" role="alert"
+          style={{ padding: '10px 12px', borderRadius: 'var(--radius-md)', background: 'color-mix(in srgb, var(--destructive) 10%, transparent)', border: '1px solid color-mix(in srgb, var(--destructive) 30%, transparent)', color: 'var(--destructive)', fontSize: 'var(--text-base)' }}>
           <AlertCircle size={16} style={{ marginTop: 1, flexShrink: 0 }} />
           <span>{errorApi}</span>
-          <button
-            onClick={() => setErrorApi('')}
-            style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#b91c1c', cursor: 'pointer' }}
-            aria-label="Cerrar aviso"
-          >
+          <button onClick={() => setErrorApi('')} aria-label="Cerrar aviso" style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'inherit', cursor: 'pointer' }}>
             <X size={14} />
           </button>
         </div>
       )}
 
-      {/* Filters */}
-      <div className="flex gap-3 mb-5 flex-wrap">
-        <div className="relative flex-1 min-w-[200px]">
-          <Search size={14} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--muted-foreground)' }} />
-          {/* type="search" y autocompletar apagado: el navegador lo tomaba por un
-              campo de correo y lo llenaba con el del modal (Testeo 13/10, punto 13). */}
-          <input
-            type="search"
-            name="buscar-usuarios"
-            autoComplete="off"
-            aria-label="Buscar usuarios"
-            placeholder="Buscar por nombre, email, DNI..."
-            value={search}
-            onChange={e => setSearch(e.target.value)}
-            className="w-full pl-8 pr-3 py-2 rounded-lg border outline-none"
-            style={fieldStyle}
-          />
+      {/* Buscador, vista y filtros por rol y estado (selección múltiple; vacío = todos) */}
+      <div className="mb-5" style={tarjetaBase}>
+        <div className="flex items-center gap-3" style={{ padding: '16px 16px 12px' }}>
+          {/* El navegador tomaba el buscador por un campo de correo y lo llenaba con el del modal (Testeo 13/10, punto 13): Buscador usa type="text" sin nombre de correo. */}
+          <Buscador value={search} onChange={setSearch} placeholder="Buscar por nombre, email, DNI..." />
+          <SelectorVista value={vista} onChange={setVista} />
         </div>
-        <select
-          value={filterRol}
-          onChange={e => setFilterRol(e.target.value as Rol | '')}
-          className="px-3 py-2 rounded-lg border outline-none"
-          style={fieldStyle}
-        >
-          <option value="">Todos los roles</option>
-          {soyAdmin && <option value="administrador">Administrador</option>}
-          <option value="coordinador">Coordinador</option>
-          <option value="agente">Agente</option>
-        </select>
+        <BarraFiltros>
+          <FiltroDesplegable<Rol> titulo="Rol" seleccion={roles} onCambiar={setRoles}
+            opciones={ROLES_FILTRO.filter(r => soyAdmin || r !== 'administrador').map(r => ({ value: r, label: ROL_INFO[r].label, count: usuariosVisibles.filter(u => u.rol === r).length }))} />
+          <FiltroDesplegable<EstadoUsuario> titulo="Estado" seleccion={estados} onCambiar={setEstados}
+            opciones={ESTADOS_USUARIO.map(e => ({ ...e, count: usuariosVisibles.filter(u => u.estado === e.value).length }))} />
+          {(roles.length > 0 || estados.length > 0) && <BotonTextoFiltro onClick={() => { setRoles([]); setEstados([]); }}>Limpiar filtros</BotonTextoFiltro>}
+        </BarraFiltros>
       </div>
 
-      {/* Mobile: tarjetas (md:hidden). Antes la tabla se achicaba con
-          overflow-x-auto, pero eso escondía Rol/Especialidad/Dotación/Estado
-          Y los botones de editar/eliminar fuera de pantalla, sin ninguna
-          pista de que había que scrollear para llegar a ellos. */}
-      <div className="flex flex-col gap-3 md:hidden">
-        {filtered.map(u => {
-          const rolC = rolColor(u.rol);
-          return (
-            <div
-              key={u.id}
-              className="rounded-[var(--radius-card)] p-4"
-              style={{ background: 'var(--card)', boxShadow: 'var(--elevation-sm)' }}
-            >
+      {cargando ? (
+        <div className="flex items-center justify-center py-20" style={{ ...tarjetaBase, color: 'var(--muted-foreground)' }}>Cargando usuarios…</div>
+      ) : filtered.length === 0 ? (
+        <Vacio icono={Search} titulo="Sin resultados" texto="Ningún usuario coincide con la búsqueda o los filtros."
+          accion={<Button variant="muted" size="md" icon={X} onClick={() => { setSearch(''); setRoles([]); setEstados([]); }}>Limpiar filtros</Button>} />
+      ) : vista === 'card' ? (
+        <div className="grid gap-4" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(min(290px, 100%), 1fr))' }}>
+          {filtered.map(u => (
+            <div key={u.id} style={{ ...tarjetaBase, padding: 16 }}>
               <div className="flex items-start justify-between gap-2">
                 <div className="flex items-center gap-3 min-w-0">
-                  <div
-                    className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
-                    style={{ background: 'var(--primary)', color: 'var(--primary-foreground)', fontSize: 'calc(12px * var(--escala-texto))', fontWeight: 'var(--font-weight-bold)' }}
-                  >
-                    {u.nombre.charAt(0)}{u.apellido.charAt(0)}
-                  </div>
+                  <AvatarAgente esDuar={esDelDuar(u)} esConductor={false} esRecursoCritico={false} tamano={40} iniciales={iniciales(u)} />
                   <div className="min-w-0">
-                    <p className="truncate" style={{ color: 'var(--foreground)', fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-medium)' }}>
-                      {u.nombre} {u.apellido}
-                    </p>
-                    <p className="truncate" style={{ color: 'var(--muted-foreground)', fontSize: 'calc(11px * var(--escala-texto))' }}>{u.email}</p>
+                    <p className="truncate" style={{ margin: 0, color: 'var(--foreground)', fontSize: 'var(--text-base)', fontWeight: 600 }}>{u.nombre} {u.apellido}</p>
+                    <p className="truncate" style={{ margin: 0, color: 'var(--muted-foreground)', fontSize: 'calc(11px * var(--escala-texto))' }}>{u.email}</p>
                   </div>
                 </div>
-                <div className="flex items-center gap-1 flex-shrink-0">
-                  {u.estado === 'pendiente' && (
-                    <button
-                      onClick={() => handleReenviarConfirmacion(u)}
-                      disabled={reenviando === u.id}
-                      className="p-2 rounded-lg"
-                      style={{ color: 'var(--muted-foreground)', background: 'var(--muted)', opacity: reenviando === u.id ? 0.5 : 1 }}
-                      aria-label="Reenviar correo de confirmación"
-                      title="Reenviar correo de confirmación"
-                    >
-                      <MailCheck size={14} />
-                    </button>
-                  )}
-                  <button
-                    onClick={() => openEdit(u)}
-                    className="p-2 rounded-lg"
-                    style={{ color: 'var(--muted-foreground)', background: 'var(--muted)' }}
-                    aria-label="Editar"
-                  >
-                    <Edit2 size={14} />
-                  </button>
-                  <button
-                    onClick={() => { setSelected(u); setModal('delete'); }}
-                    disabled={u.id === usuarioActual?.id}
-                    title={u.id === usuarioActual?.id ? 'No podés eliminar tu propia cuenta' : 'Eliminar usuario'}
-                    className="p-2 rounded-lg"
-                    style={{
-                      color: u.id === usuarioActual?.id ? 'var(--border)' : 'var(--muted-foreground)',
-                      background: 'var(--muted)',
-                    }}
-                    aria-label="Eliminar"
-                  >
-                    <Trash2 size={14} />
-                  </button>
-                </div>
+                {acciones(u)}
               </div>
-
-              <div className="flex items-center gap-2 flex-wrap mt-3">
-                <span
-                  className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full"
-                  style={{ background: rolC.bg, color: rolC.color, fontSize: 'calc(11px * var(--escala-texto))', fontWeight: 'var(--font-weight-semibold)' }}
-                >
-                  {rolIcon(u.rol)}
-                  <span className="capitalize">{u.rol}</span>
-                </span>
-                <StatusBadge estado={u.estado} size="sm" />
-              </div>
-
+              <div className="flex items-center gap-1.5 flex-wrap mt-3"><RolPill rol={u.rol} /><StatusBadge estado={u.estado} size="sm" /></div>
               <div className="grid grid-cols-2 gap-2 mt-3 pt-3" style={{ borderTop: '1px solid var(--border)' }}>
-                <div>
-                  <p style={{ color: 'var(--muted-foreground)', fontSize: 'calc(10px * var(--escala-texto))', textTransform: 'uppercase', letterSpacing: '0.04em' }}>DNI</p>
-                  <p style={{ color: 'var(--foreground)', fontSize: 'var(--text-label)' }}>{formatearDni(u.dni)}</p>
-                </div>
-                <div>
-                  <p style={{ color: 'var(--muted-foreground)', fontSize: 'calc(10px * var(--escala-texto))', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Especialidad</p>
-                  <p style={{ color: 'var(--foreground)', fontSize: 'var(--text-label)' }}>{especialidadNombrePorId(u.especialidadId)}</p>
-                </div>
-                <div className="col-span-2">
-                  <p style={{ color: 'var(--muted-foreground)', fontSize: 'calc(10px * var(--escala-texto))', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Dotación</p>
-                  <p style={{ color: 'var(--foreground)', fontSize: 'var(--text-label)' }}>{institucionLabel(u)}</p>
-                </div>
+                <Dato titulo="DNI">{formatearDni(u.dni)}</Dato>
+                <Dato titulo="Dotación"><Dotacion u={u} /></Dato>
+                <Dato titulo="Especialidad">{u.especialidadId ? especialidadNombrePorId(u.especialidadId) : <span style={{ color: 'var(--muted-foreground)', fontWeight: 400 }}>Sin especialidad</span>}</Dato>
               </div>
             </div>
-          );
-        })}
-        {filtered.length === 0 && (
-          <div
-            className="rounded-[var(--radius-card)] px-4 py-10 text-center"
-            style={{ background: 'var(--card)', boxShadow: 'var(--elevation-sm)', color: 'var(--muted-foreground)', fontSize: 'var(--text-base)' }}
-          >
-            No se encontraron usuarios
-          </div>
-        )}
-      </div>
-
-      {/* Desktop: tabla completa (oculta en mobile, ver arriba) */}
-      <div
-        className="rounded-[var(--radius-card)] overflow-hidden hidden md:block"
-        style={{ background: 'var(--card)', boxShadow: 'var(--elevation-sm)' }}
-      >
-        <div className="overflow-x-auto">
-          <table className="w-full">
-            <thead>
-              <tr style={{ borderBottom: '1px solid var(--border)', background: 'var(--muted)' }}>
-                {['Usuario', 'DNI', 'Rol', 'Especialidad', 'Dotación', 'Estado', ''].map(h => (
-                  <th key={h} className="text-left px-4 py-3 uppercase tracking-wider" style={{ color: 'var(--muted-foreground)', fontSize: 'calc(11px * var(--escala-texto))', fontWeight: 'var(--font-weight-semibold)' }}>
-                    {h}
-                  </th>
-                ))}
-              </tr>
-            </thead>
-            <tbody>
-              {filtered.map((u, idx) => {
-                const rolC = rolColor(u.rol);
-                return (
-                  <tr
-                    key={u.id}
-                    style={{ borderBottom: idx < filtered.length - 1 ? '1px solid var(--border)' : 'none' }}
-                  >
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-3">
-                        <div
-                          className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
-                          style={{ background: 'var(--primary)', color: 'var(--primary-foreground)', fontSize: 'calc(11px * var(--escala-texto))', fontWeight: 'var(--font-weight-bold)' }}
-                        >
-                          {u.nombre.charAt(0)}{u.apellido.charAt(0)}
-                        </div>
-                        <div>
-                          <p style={{ color: 'var(--foreground)', fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-medium)' }}>
-                            {u.nombre} {u.apellido}
-                          </p>
-                          <p style={{ color: 'var(--muted-foreground)', fontSize: 'calc(11px * var(--escala-texto))' }}>{u.email}</p>
-                        </div>
-                      </div>
-                    </td>
-                    <td className="px-4 py-3" style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-base)' }}>{formatearDni(u.dni)}</td>
-                    <td className="px-4 py-3">
-                      <span
-                        className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full"
-                        style={{ background: rolC.bg, color: rolC.color, fontSize: 'calc(11px * var(--escala-texto))', fontWeight: 'var(--font-weight-semibold)' }}
-                      >
-                        {rolIcon(u.rol)}
-                        <span className="capitalize">{u.rol}</span>
-                      </span>
-                    </td>
-                    <td className="px-4 py-3" style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-base)' }}>
-                      {especialidadNombrePorId(u.especialidadId)}
-                    </td>
-                    <td className="px-4 py-3" style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-base)' }}>
-                      {institucionLabel(u)}
-                    </td>
-                    <td className="px-4 py-3">
-                      <StatusBadge estado={u.estado} size="sm" />
-                    </td>
-                    <td className="px-4 py-3">
-                      <div className="flex items-center gap-1">
-                        {u.estado === 'pendiente' && (
-                          <button
-                            onClick={() => handleReenviarConfirmacion(u)}
-                            disabled={reenviando === u.id}
-                            className="p-1.5 rounded-lg transition-colors"
-                            style={{ color: 'var(--muted-foreground)', opacity: reenviando === u.id ? 0.5 : 1 }}
-                            title="Reenviar correo de confirmación"
-                            onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--muted)'}
-                            onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}
-                          >
-                            <MailCheck size={14} />
-                          </button>
-                        )}
-                        <button
-                          onClick={() => openEdit(u)}
-                          className="p-1.5 rounded-lg transition-colors"
-                          style={{ color: 'var(--muted-foreground)' }}
-                          onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'var(--muted)'}
-                          onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'transparent'}
-                        >
-                          <Edit2 size={14} />
-                        </button>
-                        <button
-                          onClick={() => { setSelected(u); setModal('delete'); }}
-                          disabled={u.id === usuarioActual?.id}
-                          title={u.id === usuarioActual?.id ? 'No podés eliminar tu propia cuenta' : 'Eliminar usuario'}
-                          className="p-1.5 rounded-lg transition-colors"
-                          style={{
-                            color: u.id === usuarioActual?.id ? 'var(--border)' : 'var(--muted-foreground)',
-                            cursor: u.id === usuarioActual?.id ? 'not-allowed' : 'pointer',
-                          }}
-                          onMouseEnter={e => {
-                            if (u.id !== usuarioActual?.id) {
-                              (e.currentTarget as HTMLElement).style.background = '#fee2e2';
-                              (e.currentTarget as HTMLElement).style.color = '#dc2626';
-                            }
-                          }}
-                          onMouseLeave={e => {
-                            (e.currentTarget as HTMLElement).style.background = 'transparent';
-                            (e.currentTarget as HTMLElement).style.color = u.id === usuarioActual?.id ? 'var(--border)' : 'var(--muted-foreground)';
-                          }}
-                        >
-                          <Trash2 size={14} />
-                        </button>
-                      </div>
-                    </td>
-                  </tr>
-                );
-              })}
-              {filtered.length === 0 && (
-                <tr>
-                  <td colSpan={7} className="px-4 py-10 text-center" style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-base)' }}>
-                    No se encontraron usuarios
-                  </td>
-                </tr>
-              )}
-            </tbody>
-          </table>
+          ))}
         </div>
-      </div>
+      ) : (
+        <TablaFija cols={[{ l: 'Usuario', w: 250 }, { l: 'DNI', w: 120 }, { l: 'Rol', w: 150 }, { l: 'Especialidad', w: 170 }, { l: 'Dotación', w: 220 }, { l: 'Estado', w: 120 }, { l: '', w: 110 }]}>
+          <tbody>
+            {filtered.map((u, i) => (
+              <tr key={u.id} style={{ borderBottom: i < filtered.length - 1 ? '1px solid var(--border)' : 'none', fontSize: 'var(--text-base)', color: 'var(--foreground)' }}>
+                <td style={{ padding: '12px 16px' }}>
+                  <div className="flex items-center gap-3 min-w-0">
+                    <AvatarAgente esDuar={esDelDuar(u)} esConductor={false} esRecursoCritico={false} tamano={32} iniciales={iniciales(u)} />
+                    <div className="min-w-0">
+                      <p className="truncate" style={{ margin: 0, fontWeight: 500 }}>{u.nombre} {u.apellido}</p>
+                      <p className="truncate" style={{ margin: 0, fontSize: 'calc(11px * var(--escala-texto))', color: 'var(--muted-foreground)' }}>{u.email}</p>
+                    </div>
+                  </div>
+                </td>
+                <td style={{ padding: '12px 16px', whiteSpace: 'nowrap', fontSize: 'var(--text-label)' }}>{formatearDni(u.dni)}</td>
+                <td style={{ padding: '12px 16px' }}><RolPill rol={u.rol} /></td>
+                <td style={{ padding: '12px 16px' }}>{u.especialidadId ? especialidadNombrePorId(u.especialidadId) : <span style={{ color: 'var(--muted-foreground)' }}>—</span>}</td>
+                <td style={{ padding: '12px 16px' }}><Dotacion u={u} /></td>
+                <td style={{ padding: '12px 16px' }}><StatusBadge estado={u.estado} size="sm" /></td>
+                <td style={{ padding: '12px 16px' }}>{acciones(u)}</td>
+              </tr>
+            ))}
+          </tbody>
+        </TablaFija>
+      )}
 
       {/* Create / Edit Modal */}
       {(modal === 'create' || modal === 'edit') && (
         // `m-auto` en el hijo (y no `items-center`) centra cuando entra y deja que se desplace desde
         // arriba cuando no: con `items-center` el borde superior quedaba cortado (Testeo 15/10, punto 20).
-        <div className="fixed inset-0 z-50 flex p-4 overflow-y-auto" style={{ background: 'rgba(0,0,0,0.5)' }}>
+        <div className="fixed inset-0 z-50 flex p-4 overflow-y-auto" style={{ background: 'var(--scrim-modal)' }}>
           <div
             className="w-full max-w-[540px] rounded-[var(--radius-card)] p-4 sm:p-6 m-auto"
             style={{ background: 'var(--card)', boxShadow: 'var(--elevation-md)' }}
@@ -893,7 +736,7 @@ export default function Usuarios() {
 
       {/* Delete Modal */}
       {modal === 'delete' && selected && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'rgba(0,0,0,0.5)' }}>
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'var(--scrim-modal)' }}>
           <div className="w-full max-w-[400px] rounded-[var(--radius-card)] p-6" style={{ background: 'var(--card)', boxShadow: 'var(--elevation-md)' }}>
 
             {selected.id === usuarioActual?.id ? (

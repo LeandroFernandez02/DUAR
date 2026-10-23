@@ -392,3 +392,8 @@ html {
   .sec-cabecera button { font-size: 0 !important; gap: 0 !important; width: 40px; height: 40px; padding: 0 !important; border-radius: 12px !important; flex-shrink: 0; justify-content: center; }
   .sec-cabecera button svg { width: 18px; height: 18px; }
 }
+
+/* Listas con encabezado fijo (Listados.tsx): mientras los títulos de columna están pegados arriba,
+   los 12 px de arriba del contenedor de scroll se tapan con el fondo, así el listado nunca roza la barra. */
+.scroll-contenido::before { content: ''; display: block; position: sticky; top: 0; height: 12px; margin-bottom: -12px; z-index: 3; pointer-events: none; background: transparent; }
+.lista-fija .scroll-contenido::before { background: var(--background); }
