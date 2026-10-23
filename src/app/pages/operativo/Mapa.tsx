@@ -22,6 +22,7 @@ import {
   type PoligonoDetalleApi, type RadioApi, type TrackApi,
 } from '../../services/api';
 import StatusBadge from '../../components/shared/StatusBadge';
+import { useEsCompacto, useEsMovilChico, useEsTablet } from '../../utils/useAncho';
 import type { OperativoOutletContext } from './OperativoLayout';
 import Lienzo, { BASES, type Base, type Herr, type Overlays, type Seleccion, type Vuelo } from './mapa/Lienzo';
 import Arbol, { type Abiertas } from './mapa/Arbol';
@@ -130,7 +131,11 @@ export default function Mapa() {
   const [editVerts, setEditVerts] = useState<{ id: string; verts: LatLng[] } | null>(null);
   const [moviendo, setMoviendo] = useState<{ id: string; ll: LatLng } | null>(null);
   const [modal, setModal] = useState<ModalMapa | null>(null);
-  const [izquierda, setIzquierda] = useState(true);
+  /* Mobile y tablet (< 1024): el árbol se superpone y hay un solo panel a la vez; en mobile chico arranca cerrado. */
+  const compacto = useEsCompacto();
+  const tablet = useEsTablet();
+  const chico = useEsMovilChico();
+  const [izquierda, setIzquierda] = useState(() => !window.matchMedia('(max-width: 599px)').matches);
   const [inmersivo, setInmersivo] = useState(false);
   const [abiertas, setAbiertas] = useState<Abiertas>({ radios: true, poligonos: true, marcadores: false, tracks: false, ajustes: false });
   const [q, setQ] = useState('');
@@ -374,7 +379,15 @@ export default function Mapa() {
     { id: 'full', icono: inmersivo ? Minimize : Maximize, etiqueta: inmersivo ? 'Salir de pantalla completa' : 'Pantalla completa' },
   ];
   const panel = !!(selPol || selTr || selMk || sel?.tipo === 'puntoCero') && !editVerts && !moviendo;
-  const derecha = panel ? 352 : 12;
+  const derecha = panel && !compacto ? 352 : 12;
+  // Un solo panel a la vez en < 1024: al abrir un detalle (también desde el árbol) se cierra el árbol.
+  useEffect(() => { if (compacto && panel) setIzquierda(false); }, [compacto, panel]);
+  const panelAbierto = compacto && (panel || izquierda);
+  /** Mobile chico con un panel abierto: se ocultan herramientas, zoom, coordenadas y escala. */
+  const ocultarControles = chico && panelAbierto;
+  /** Tablet con el árbol abierto: lo anclado a la izquierda se corre 320 px. */
+  const corrimiento = tablet && izquierda ? 320 : 0;
+  const arriba = compacto ? 32 : 12;
   const centro: LatLng = puntoCero ?? CORDOBA;
 
   if (!cargado) {
@@ -382,9 +395,11 @@ export default function Mapa() {
   }
 
   return (
-    <div ref={raiz} style={{ height: '100%', minHeight: 520, display: 'flex', position: 'relative', background: 'var(--background)' }}>
+    <div ref={raiz} className={[compacto && 'mapa-compacto', chico && 'mapa-movil', panelAbierto && 'mapa-panel'].filter(Boolean).join(' ')}
+      style={{ height: '100%', minHeight: compacto ? 0 : 520, display: 'flex', position: 'relative', background: 'var(--background)', ['--mapa-izq' as string]: `${corrimiento}px` }}>
       {izquierda && (
-        <Arbol q={q} setQ={setQ} abiertas={abiertas} setAbiertas={setAbiertas} overlays={prefs.overlays} setOv={setOv}
+        <div style={compacto ? { position: 'absolute', left: 0, top: 0, bottom: 0, width: 320, maxWidth: '100%', zIndex: 1000, boxShadow: 'var(--elevation-md)' } : { display: 'contents' }}>
+        <Arbol compacto={compacto} q={q} setQ={setQ} abiertas={abiertas} setAbiertas={setAbiertas} overlays={prefs.overlays} setOv={setOv}
           ocultos={ocultos} alternar={alternar} mostrar={mostrar} radios={radios} puntoCero={puntoCero}
           poligonos={poligonos} tracks={tracks} marcadores={marcadores} esSel={esSel} soloLectura={soloLectura} actualizado={actualizado}
           onPoligono={p => { setSel({ tipo: 'poligono', id: p.id }); setGlobo(null); volar(p.vertices, { panel: true }); }}
@@ -395,6 +410,7 @@ export default function Mapa() {
           onCargarGpx={() => setModal({ tipo: 'gpx' })}
           onRestablecer={() => { setPrefs(p => ({ ...p, overlays: OVERLAYS_INICIALES, base: 'satelital', ocultos: [] })); setQ(''); setGlobo(null); setSel(null); cancelarModo(); encuadrar(); }}
           onCerrar={() => setIzquierda(false)} />
+        </div>
       )}
       <div style={{ flex: 1, minWidth: 0, position: 'relative' }}>
         <Lienzo centroInicial={centro} base={prefs.base} overlays={prefs.overlays}
@@ -409,15 +425,16 @@ export default function Mapa() {
           onVertice={(i, ll) => setEditVerts(ev => { if (!ev) return ev; const v = ev.verts.slice(); v[i] = ll; return { ...ev, verts: v }; })} />
 
         {/* Arriba a la izquierda: mostrar el árbol y las herramientas */}
-        <div style={{ position: 'absolute', top: 12, left: 12, zIndex: 900, display: 'flex', flexDirection: 'column', gap: 8 }}>
-          {!izquierda && (
-            <button type="button" onClick={() => setIzquierda(true)} title="Mostrar panel" aria-label="Mostrar panel" style={{ width: 44, height: 44, borderRadius: 'var(--radius)', border: '1px solid var(--border)', background: 'var(--card)', boxShadow: 'var(--elevation-md)', color: 'var(--foreground)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><PanelLeftOpen size={16} /></button>
+        {!ocultarControles && <div style={{ position: 'absolute', top: arriba, left: (chico ? 8 : 12) + corrimiento, zIndex: 900, display: 'flex', flexDirection: 'column', gap: 8, transition: 'left .2s' }}>
+          {!izquierda && !(compacto && panel) && (
+            <button type="button" onClick={() => setIzquierda(true)} title="Mostrar panel" aria-label="Mostrar panel" style={{ width: chico ? 36 : 44, height: chico ? 36 : 44, borderRadius: 'var(--radius)', border: '1px solid var(--border)', background: 'var(--card)', boxShadow: 'var(--elevation-md)', color: 'var(--foreground)', cursor: 'pointer', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><PanelLeftOpen size={16} /></button>
           )}
-          {prefs.overlays.herramientas && <BarraHerramientas herramientas={rail} activa={moviendo || editVerts ? null : herr} onSelect={elegirHerr} />}
-        </div>
+          {prefs.overlays.herramientas && <BarraHerramientas herramientas={rail} activa={moviendo || editVerts ? null : herr} onSelect={elegirHerr} chico={chico} />}
+        </div>}
 
         {/* Arriba a la derecha: grupos operativos */}
-        {prefs.overlays.gruposFlot && (
+        {/* «Grupos operativos» y «Simbología táctica» sólo en escritorio (04 §4.2) */}
+        {prefs.overlays.gruposFlot && !compacto && (
           <div style={{ position: 'absolute', top: 12, right: derecha, zIndex: 900, transition: 'right .2s' }}>
             <GruposFlotante grupos={grupos} poligonos={poligonos} abierto={gruposAbierto} setAbierto={setGruposAbierto}
               onGrupo={g => {
@@ -429,8 +446,8 @@ export default function Mapa() {
         )}
 
         {/* Abajo a la derecha: vista, mapa base y simbología */}
-        {prefs.overlays.zoom && (
-          <div style={{ position: 'absolute', bottom: 26, right: derecha, zIndex: 900, transition: 'right .2s' }}>
+        {prefs.overlays.zoom && !ocultarControles && (
+          <div style={{ position: 'absolute', bottom: chico ? 16 : 26, right: derecha, zIndex: 900, transition: 'right .2s' }}>
             <BarraHerramientas herramientas={railVista} activa={basePop ? 'capas' : inmersivo ? 'full' : null} onSelect={elegirHerr} />
             {basePop && (
               <div style={{ position: 'absolute', right: 54, top: 0, display: 'flex', gap: 6, padding: 6, background: 'var(--card)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', boxShadow: 'var(--elevation-md)' }}>
@@ -447,7 +464,7 @@ export default function Mapa() {
             )}
           </div>
         )}
-        {prefs.overlays.leyenda && (
+        {prefs.overlays.leyenda && !compacto && (
           <div style={{ position: 'absolute', bottom: 26, right: derecha + (prefs.overlays.zoom ? 58 : 0), zIndex: 900, transition: 'right .2s' }}>
             <Leyenda items={LEYENDA} abiertaInicial={window.innerHeight > 820} />
           </div>
@@ -455,15 +472,21 @@ export default function Mapa() {
 
         <BannerModo herr={herr} borrador={borrador} medida={medida} editando={!!editVerts} moviendo={!!moviendo} guardando={guardandoModo}
           onDeshacer={() => setBorrador(d => d.slice(0, -1))} onTerminar={terminarPoligono} onCancelar={cancelarModo} onLimpiar={() => setMedida([])}
-          onGuardarForma={guardarForma} onGuardarUbicacion={guardarUbicacion} />
+          onGuardarForma={guardarForma} onGuardarUbicacion={guardarUbicacion} compacto={compacto} izquierda={compacto ? 56 + corrimiento : 68} arriba={arriba} />
+
+        {/* Con un panel abierto en < 1024, tocar la parte visible del mapa lo cierra (y el mapa no recibe otros toques). */}
+        {panelAbierto && (
+          <div aria-hidden="true" onClick={() => { if (panel) { setSel(null); setGlobo(null); } else setIzquierda(false); }}
+            style={{ position: 'absolute', inset: 0, zIndex: 790, background: 'transparent' }} />
+        )}
 
         {errorCarga && (
-          <div role="alert" style={{ position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)', zIndex: 1000, padding: '8px 14px', borderRadius: 'var(--radius)', background: '#fef3c7', border: '1px solid #fde68a', color: '#92400e', fontSize: 'calc(12.5px * var(--escala-texto))' }}>
+          <div role="alert" style={{ position: 'absolute', top: arriba, left: '50%', maxWidth: 'calc(100% - 24px)', transform: 'translateX(-50%)', zIndex: 1000, padding: '8px 14px', borderRadius: 'var(--radius)', background: 'color-mix(in srgb, #d97706 calc(12% + var(--tinte-oscuro, 0%) * 0.08), var(--card))', border: '1px solid color-mix(in srgb, #d97706 32%, transparent)', color: 'color-mix(in srgb, #fcd34d var(--tinte-oscuro, 0%), #92400e)', fontSize: 'calc(12.5px * var(--escala-texto))' }}>
             {errorCarga} Se muestra lo último que se cargó.
           </div>
         )}
         {soloLectura && (
-          <div style={{ position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)', zIndex: 950, padding: '6px 14px', borderRadius: 'var(--radius)', background: 'rgba(0,0,0,0.72)', color: '#fff', fontSize: 'calc(12px * var(--escala-texto))' }}>
+          <div style={{ position: 'absolute', top: arriba, left: '50%', transform: 'translateX(-50%)', zIndex: 950, padding: '6px 14px', borderRadius: 'var(--radius)', background: 'rgba(0,0,0,0.72)', color: '#fff', fontSize: 'calc(12px * var(--escala-texto))' }}>
             El operativo está {operativo.estado}: el mapa es de sólo lectura.
           </div>
         )}
@@ -514,7 +537,7 @@ export default function Mapa() {
         )}
 
         {aviso && (
-          <div role="status" style={{ position: 'absolute', left: '50%', bottom: 72, transform: 'translateX(-50%)', zIndex: 1200, display: 'flex', alignItems: 'center', gap: 10, padding: '11px 16px', borderRadius: 'var(--radius)', background: 'var(--card)', border: `1px solid ${aviso.error ? '#fecaca' : 'var(--border)'}`, boxShadow: 'var(--elevation-md)', fontSize: 'calc(13px * var(--escala-texto))', color: aviso.error ? '#b91c1c' : 'var(--foreground)', maxWidth: '80%' }}>
+          <div role="status" style={{ position: 'absolute', left: '50%', bottom: 72, transform: 'translateX(-50%)', zIndex: 1200, display: 'flex', alignItems: 'center', gap: 10, padding: '11px 16px', borderRadius: 'var(--radius)', background: 'var(--card)', border: `1px solid ${aviso.error ? 'color-mix(in srgb, var(--destructive) 35%, transparent)' : 'var(--border)'}`, boxShadow: 'var(--elevation-md)', fontSize: 'calc(13px * var(--escala-texto))', color: aviso.error ? 'var(--destructive)' : 'var(--foreground)', maxWidth: '80%' }}>
             {aviso.error ? <Info size={16} color="#dc2626" /> : <CircleCheck size={16} color="#16a34a" />}{aviso.msg}
           </div>
         )}
@@ -620,8 +643,10 @@ function GruposFlotante({ grupos, poligonos, abierto, setAbierto, onGrupo }: {
 }
 
 /* ── Banner del modo en curso (dibujar, medir, reubicar…) ── */
-function BannerModo({ herr, borrador, medida, editando, moviendo, guardando, onDeshacer, onTerminar, onCancelar, onLimpiar, onGuardarForma, onGuardarUbicacion }: {
+function BannerModo({ herr, borrador, medida, editando, moviendo, guardando, onDeshacer, onTerminar, onCancelar, onLimpiar, onGuardarForma, onGuardarUbicacion, compacto, izquierda, arriba }: {
   herr: Herr; borrador: LatLng[]; medida: LatLng[]; editando: boolean; moviendo: boolean; guardando: boolean;
+  /** < 1024: ocupa el ancho disponible, el texto en líneas normales y los botones bajan si no entran. */
+  compacto: boolean; izquierda: number; arriba: number;
   onDeshacer: () => void; onTerminar: () => void; onCancelar: () => void; onLimpiar: () => void; onGuardarForma: () => void; onGuardarUbicacion: () => void;
 }) {
   const blanco = { color: '#fff' };
@@ -643,9 +668,16 @@ function BannerModo({ herr, borrador, medida, editando, moviendo, guardando, onD
   else if (herr === 'puntoCero') txt = 'Hacé clic en el mapa en el lugar nuevo del Punto Cero';
   if (!txt) return null;
   return (
-    <div style={{ position: 'absolute', top: 12, left: 68, zIndex: 950, display: 'flex', alignItems: 'center', gap: 10, padding: '6px 6px 6px 14px', borderRadius: 'var(--radius)', background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(4px)', color: '#fff', fontSize: 'calc(12px * var(--escala-texto))', width: 'max-content', maxWidth: 'calc(100% - 390px)' }}>
-      <Info size={14} /><span style={{ flex: '1 1 auto' }}>{txt}</span>{acc}
-      <Boton variante="ghost" icono={X} onClick={onCancelar} style={{ color: '#fff', padding: '6px 8px' }} title="Cancelar (Esc)" />
+    <div style={{
+      position: 'absolute', top: arriba, left: izquierda, zIndex: 950, display: 'flex', alignItems: 'center', gap: 10, padding: '6px 6px 6px 14px',
+      borderRadius: 'var(--radius)', background: 'rgba(0,0,0,0.78)', backdropFilter: 'blur(4px)', color: '#fff', fontSize: 'calc(12px * var(--escala-texto))', transition: 'left .2s',
+      ...(compacto ? { right: 12, flexWrap: 'wrap' as const } : { width: 'max-content', maxWidth: 'calc(100% - 390px)' }),
+    }}>
+      <Info size={14} style={{ flexShrink: 0 }} /><span style={{ flex: compacto ? '1 1 160px' : '1 1 auto', minWidth: 0, lineHeight: 1.4 }}>{txt}</span>
+      <span style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 'auto', flexShrink: 0 }}>
+        {acc}
+        <Boton variante="ghost" icono={X} onClick={onCancelar} style={{ color: '#fff', padding: '6px 8px' }} title="Cancelar (Esc)" />
+      </span>
     </div>
   );
 }

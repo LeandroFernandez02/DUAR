@@ -64,6 +64,8 @@ interface Props {
   onPoligono: (p: PoligonoVista) => void; onTrack: (t: TrackVista) => void; onMarcador: (m: MarcadorApi) => void; onPuntoCero: () => void;
   onAgregarRadio: (m: number) => void; onRadio: (id: string, d: { radioM?: number; color?: string }) => void; onQuitarRadio: (r: RadioApi) => void;
   onCargarGpx: () => void; onRestablecer: () => void; onCerrar: () => void;
+  /** < 1024 px: sin «Simbología táctica» ni «Grupos operativos» (no se muestran en el mapa). */
+  compacto?: boolean;
 }
 
 export default function Arbol(p: Props) {
@@ -100,7 +102,7 @@ export default function Arbol(p: Props) {
   };
 
   return (
-    <div style={{ width: 320, flexShrink: 0, height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--card)', borderRight: '1px solid var(--border)', fontFamily: 'var(--font-family-primary)', position: 'relative', zIndex: 2 }}>
+    <div className="mapa-arbol" style={{ width: 320, maxWidth: '100%', boxSizing: 'border-box', flexShrink: 0, height: '100%', display: 'flex', flexDirection: 'column', background: 'var(--card)', borderRight: '1px solid var(--border)', fontFamily: 'var(--font-family-primary)', position: 'relative', zIndex: 2 }}>
       <div style={{ padding: '14px 14px 12px', display: 'flex', flexDirection: 'column', gap: 10, borderBottom: '1px solid var(--border)' }}>
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <span style={{ width: 30, height: 30, borderRadius: 'var(--radius-md)', background: 'color-mix(in srgb, var(--primary) 10%, transparent)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Layers size={15} /></span>
@@ -211,10 +213,10 @@ export default function Arbol(p: Props) {
             <FilaArbol fuerte etiqueta="Ventanas del mapa" />
             <FilaArbol sangria={1} marcada={overlays.herramientas} onMarcar={v => setOv('herramientas', v)} muestra={<PencilRuler size={13} color="var(--muted-foreground)" />} etiqueta="Herramientas" />
             <FilaArbol sangria={1} marcada={overlays.zoom} onMarcar={v => setOv('zoom', v)} muestra={<ZoomIn size={13} color="var(--muted-foreground)" />} etiqueta="Zoom y vista" />
-            <FilaArbol sangria={1} marcada={overlays.leyenda} onMarcar={v => setOv('leyenda', v)} muestra={<List size={13} color="var(--muted-foreground)" />} etiqueta="Simbología táctica" />
+            {!p.compacto && <FilaArbol sangria={1} marcada={overlays.leyenda} onMarcar={v => setOv('leyenda', v)} muestra={<List size={13} color="var(--muted-foreground)" />} etiqueta="Simbología táctica" />}
             <FilaArbol sangria={1} marcada={overlays.coords} onMarcar={v => setOv('coords', v)} muestra={<LocateFixed size={13} color="var(--muted-foreground)" />} etiqueta="Lat / Long / Elevación" />
             <FilaArbol sangria={1} marcada={overlays.escala} onMarcar={v => setOv('escala', v)} muestra={<Ruler size={13} color="var(--muted-foreground)" />} etiqueta="Escala gráfica" />
-            <FilaArbol sangria={1} marcada={overlays.gruposFlot} onMarcar={v => setOv('gruposFlot', v)} muestra={<Users size={13} color="var(--muted-foreground)" />} etiqueta="Grupos operativos" />
+            {!p.compacto && <FilaArbol sangria={1} marcada={overlays.gruposFlot} onMarcar={v => setOv('gruposFlot', v)} muestra={<Users size={13} color="var(--muted-foreground)" />} etiqueta="Grupos operativos" />}
           </SeccionArbol>
         )}
       </div>

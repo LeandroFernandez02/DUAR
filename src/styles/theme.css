@@ -406,3 +406,18 @@ html {
 .cabecera-op .acciones-op { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; width: 100%; padding-bottom: 2px; }
 .cabecera-op .acciones-op::-webkit-scrollbar { display: none; }
 .cabecera-op .acciones-op > * { flex-shrink: 0; }
+
+/* ── Mapa en mobile y tablet (< 1024 px, diseño CALÍVAR 04 §4.2–4.3) ──────────────
+   El mapa sube 20 px por debajo de las esquinas redondeadas de la barra superior: lo anclado arriba baja 20 px. */
+.mapa-compacto .mapa-arbol,
+.mapa-compacto .mapa-detalle { padding-top: 20px; }
+.mapa-compacto .mapa-detalle { max-width: 100% !important; }
+/* Coordenadas y escala: en tablet se corren con el árbol abierto (--mapa-izq) */
+.mapa-compacto .mapa-coords { left: calc(var(--mapa-izq, 0px) + 12px) !important; transition: left .2s; }
+/* Mobile chico: coordenadas y escala apiladas, más chicas y sin salirse de la pantalla */
+.mapa-movil .mapa-coords { left: 8px !important; bottom: 16px !important; flex-direction: column; align-items: flex-start !important; gap: 4px !important; max-width: calc(100% - 70px); }
+.mapa-movil .mapa-coords > div { font-size: calc(9.5px * var(--escala-texto)) !important; padding: 3px 6px !important; height: auto !important; }
+.mapa-movil.mapa-panel .mapa-coords { display: none; }
+/* Globos de información al 80 % en mobile */
+.mapa-movil .leaflet-popup-content { zoom: .8; }
+.mapa-movil .leaflet-popup-content-wrapper { border-radius: 12px; }

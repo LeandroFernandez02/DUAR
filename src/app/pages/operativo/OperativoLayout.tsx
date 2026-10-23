@@ -55,7 +55,9 @@ export default function OperativoLayout() {
       {compacto
         ? <CabeceraMovil onVolver={() => navigate('/operativos')}><OperativoHeader operativo={operativo} movil /></CabeceraMovil>
         : <OperativoHeader operativo={operativo} />}
-      <div className="scroll-contenido flex-1 min-h-0 overflow-y-auto overflow-x-hidden relative">
+      {/* En < 1024 el mapa sube 20 px por debajo de las esquinas redondeadas de la barra superior */}
+      <div className="scroll-contenido flex-1 min-h-0 overflow-y-auto overflow-x-hidden relative"
+        style={compacto && location.pathname.endsWith('/mapa') ? { marginTop: -20 } : undefined}>
         <Outlet context={{ operativo, recargarOperativo: cargar } satisfies OperativoOutletContext} />
       </div>
     </div>

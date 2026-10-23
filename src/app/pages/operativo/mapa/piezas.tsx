@@ -232,27 +232,28 @@ export function FilaArbol({ etiqueta, meta, muestra, marcada, onMarcar, seleccio
 /* ── Barra de herramientas ── */
 export type Herramienta = { id: string; icono: LucideIcon; etiqueta: string; disabled?: boolean } | { sep: true };
 
-function BotonHerramienta({ t, activa, onSelect }: { t: Extract<Herramienta, { id: string }>; activa: boolean; onSelect: (id: string) => void }) {
+function BotonHerramienta({ t, activa, onSelect, chico }: { t: Extract<Herramienta, { id: string }>; activa: boolean; onSelect: (id: string) => void; chico?: boolean }) {
   const [h, setH] = useState(false);
   const I = t.icono;
   return (
     <button type="button" title={t.etiqueta} aria-label={t.etiqueta} aria-pressed={activa} disabled={t.disabled} onClick={() => onSelect(t.id)}
       onMouseEnter={() => setH(true)} onMouseLeave={() => setH(false)} style={{
-        display: 'flex', alignItems: 'center', justifyContent: 'center', height: 36, width: 36, padding: 0,
+        display: 'flex', alignItems: 'center', justifyContent: 'center', height: chico ? 30 : 36, width: chico ? 30 : 36, padding: 0,
         borderRadius: 'var(--radius-md)', border: 'none', cursor: t.disabled ? 'not-allowed' : 'pointer', opacity: t.disabled ? 0.4 : 1,
         background: activa ? 'var(--primary)' : h ? 'var(--muted)' : 'transparent', color: activa ? 'var(--primary-foreground)' : 'var(--foreground)', transition: 'background .15s',
       }}>
-      <I size={16} />
+      <I size={chico ? 14 : 16} />
     </button>
   );
 }
 
-export function BarraHerramientas({ herramientas, activa, onSelect }: { herramientas: Herramienta[]; activa: string | null; onSelect: (id: string) => void }) {
+/** `chico` = mobile (< 600 px, diseño CALÍVAR 04 §4.3): botones de 30 px, íconos de 14, barra más ajustada. */
+export function BarraHerramientas({ herramientas, activa, onSelect, chico }: { herramientas: Herramienta[]; activa: string | null; onSelect: (id: string) => void; chico?: boolean }) {
   return (
-    <div style={{ display: 'flex', flexDirection: 'column', gap: 2, padding: 4, background: 'var(--card)', borderRadius: 'var(--radius)', boxShadow: 'var(--elevation-md)', border: '1px solid var(--border)' }}>
+    <div style={{ display: 'flex', flexDirection: 'column', gap: chico ? 1 : 2, padding: chico ? 3 : 4, background: 'var(--card)', borderRadius: 'var(--radius)', boxShadow: 'var(--elevation-md)', border: '1px solid var(--border)' }}>
       {herramientas.map((t, i) => 'sep' in t
         ? <div key={`s${i}`} style={{ height: 1, margin: '3px 4px', background: 'var(--border)' }} />
-        : <BotonHerramienta key={t.id} t={t} activa={activa === t.id} onSelect={onSelect} />)}
+        : <BotonHerramienta key={t.id} t={t} activa={activa === t.id} onSelect={onSelect} chico={chico} />)}
     </div>
   );
 }
@@ -358,10 +359,11 @@ export function PanelDetalle({ chip, titulo, insignia, onClose, sub, children, p
   chip: ReactNode; titulo: ReactNode; insignia?: ReactNode; onClose: () => void; sub?: ReactNode; children: ReactNode; pie?: ReactNode;
 }) {
   return (
-    <aside aria-label="Detalle" style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: 340, maxWidth: '100%', zIndex: 800, display: 'flex', flexDirection: 'column', background: 'var(--card)', borderLeft: '1px solid var(--border)', boxShadow: 'var(--elevation-md)', fontFamily: 'var(--font-family-primary)' }}>
-      <div style={{ display: 'flex', alignItems: 'flex-start', justifyContent: 'space-between', padding: 16, borderBottom: '1px solid var(--border)' }}>
-        <div style={{ display: 'flex', gap: 12, minWidth: 0 }}>
-          <span style={{ marginTop: 2, display: 'flex' }}>{chip}</span>
+    <aside aria-label="Detalle" className="mapa-detalle" style={{ position: 'absolute', top: 0, right: 0, bottom: 0, width: 340, maxWidth: '100%', zIndex: 800, display: 'flex', flexDirection: 'column', background: 'var(--card)', borderLeft: '1px solid var(--border)', boxShadow: 'var(--elevation-md)', fontFamily: 'var(--font-family-primary)' }}>
+      {/* Título y cerrar centrados verticalmente con el ícono del elemento (04 §4.4) */}
+      <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: 16, borderBottom: '1px solid var(--border)' }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, minWidth: 0 }}>
+          <span style={{ display: 'flex', flexShrink: 0 }}>{chip}</span>
           <div style={{ minWidth: 0 }}>
             <p style={{ margin: 0, fontSize: 'calc(14px * var(--escala-texto))', fontWeight: 600, color: 'var(--foreground)', lineHeight: 1.25, wordBreak: 'break-word' }}>{titulo}</p>
             {insignia && <div style={{ marginTop: 5 }}>{insignia}</div>}

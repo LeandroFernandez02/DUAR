@@ -399,7 +399,7 @@ export default function Lienzo(props: Props) {
     <div style={{ position: 'absolute', inset: 0 }}>
       <style>{ESTILOS}</style>
       <div ref={elRef} style={{ position: 'absolute', inset: 0, background: '#e8e4df' }} />
-      <div style={{ position: 'absolute', left: 12, bottom: 26, zIndex: 500, display: 'flex', alignItems: 'flex-end', gap: 8, pointerEvents: 'none' }}>
+      <div className="mapa-coords" style={{ position: 'absolute', left: 12, bottom: 26, zIndex: 500, display: 'flex', alignItems: 'flex-end', gap: 8, pointerEvents: 'none' }}>
         {overlays.coords && (
           <div style={{ ...caja, gap: 10, whiteSpace: 'pre', height: 19 }}>
             <span ref={coordRef}>{`Lat ${props.centroInicial[0].toFixed(5)}°  Lon ${props.centroInicial[1].toFixed(5)}°`}</span>{sep}<span ref={elevRef}>Elev. —</span>
