@@ -1,27 +1,31 @@
 import { useState, useEffect, useMemo } from 'react';
 import { useParams, useNavigate, useSearchParams } from 'react-router';
 import {
-  Shield, Eye, EyeOff, CheckCircle, X, Lock, Mail, AlertTriangle,
-  ArrowRightLeft, MailCheck, ExternalLink, RefreshCw, Clock,
-  QrCode, UserPlus, LogIn, AlertCircle, FlagOff, UserX,
+  Shield, CheckCircle, X, Lock, Mail, AlertTriangle, ArrowRightLeft, MailCheck, ExternalLink, RefreshCw, Clock,
+  QrCode, UserPlus, LogIn, AlertCircle, FlagOff, UserX, WifiOff, IdCard, User, Phone, Check, UserCheck, MapPin, Calendar, ArrowRight,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { RecuperarContrasenaModal } from '../components/auth/RecuperarContrasenaModal';
+import RecuperarContrasena from '../components/auth/RecuperarContrasena';
+import {
+  MarcoAcceso, TituloAcceso, CampoAcceso, CampoContrasenaAcceso, CampoFechaAcceso, SelectAcceso,
+  AlertaAcceso, BotonAcceso, EnlaceAcceso, SeparadorO,
+} from '../components/auth/Acceso';
+import StatusBadge from '../components/shared/StatusBadge';
+import EstadoAgenteBadge from '../components/shared/EstadoAgenteBadge';
+import { fechaHoraArgentina } from '../utils/fechaArgentina';
 import { catInstituciones, catEspecialidades, catAlergias, dotacionesDe } from '../data/mockData';
-import CampoPassword from '../components/shared/CampoPassword';
-import CampoFecha from '../components/shared/CampoFecha';
 import { qrApi, registroApi, authApi, setToken, ApiError, OperativoQRApi } from '../services/api';
 import {
   validarNombre, validarApellido, validarDni, validarTelefono,
   validarFechaNacimiento, digitosAntesDelCursor, reponerCursor,
-  validarEmail, validarPassword, filtrarEmail, PASSWORD_MAX,
+  validarEmail, validarPassword, filtrarEmail, PASSWORD_MAX, EMAIL_MAX,
   soloDigitos, formatearDni, formatearTelefono, limpiarTexto,
   AYUDA_PASSWORD, AYUDA_TELEFONO, PLACEHOLDER_TELEFONO,
 } from '../utils/validacionUsuario';
 import { guardarAltaPendiente, limpiarAltaPendiente } from '../utils/altaPendiente';
 
 /* ── Tipos ────────────────────────────────────────────────── */
-type Modo = 'inicial' | 'login' | 'registro' | 'confirmar' | 'verificarEmail' | 'confirmacion';
+type Modo = 'inicial' | 'login' | 'registro' | 'confirmar' | 'verificarEmail' | 'confirmacion' | 'recuperar';
 
 /* ── Componente ───────────────────────────────────────────── */
 export default function Registro() {
@@ -32,7 +36,6 @@ export default function Registro() {
 
   /* ── Core state ── */
   const [modo, setModo] = useState<Modo>('inicial');
-  const [showPwd, setShowPwd] = useState(false);
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -47,7 +50,6 @@ export default function Registro() {
    * Es un MODAL overlay independiente del modo actual.
    */
   const [showConflictoModal, setShowConflictoModal] = useState(false);
-  const [showRecover, setShowRecover] = useState(false);
 
   /* ── Formularios ── */
   const [loginForm, setLoginForm] = useState({ email: '', password: '' });
@@ -90,13 +92,19 @@ export default function Registro() {
   const qrToken = searchParams.get('qr');
   const [accesoQR, setAccesoQR] = useState<OperativoQRApi | null>(null);
   const [cargandoQR, setCargandoQR] = useState(true);
+  /** El servidor dijo que el código venció o ya no es válido (410 `qr_invalido`, CU-16 paso 4.1). */
+  const [qrVencido, setQrVencido] = useState(false);
 
   useEffect(() => {
     if (!qrToken) { setCargandoQR(false); return; }
     let vigente = true;
     qrApi.validar(qrToken)
       .then(({ operativo: op }) => { if (vigente) setAccesoQR(op); })
-      .catch(() => { if (vigente) setAccesoQR(null); })
+      .catch(err => {
+        if (!vigente) return;
+        setAccesoQR(null);
+        setQrVencido(err instanceof ApiError && err.motivo === 'qr_invalido');
+      })
       .finally(() => { if (vigente) setCargandoQR(false); });
     return () => { vigente = false; };
   }, [qrToken]);
@@ -111,6 +119,7 @@ export default function Registro() {
     nombre: accesoQR.titulo,
     ubicacion: accesoQR.localidad,
     estado: accesoQR.estado.toLowerCase(),
+    inicio: accesoQR.fechaHoraInicio,
   }, [accesoQR]);
   const isValidQR = Boolean(accesoQR);
 
@@ -160,15 +169,30 @@ export default function Registro() {
   /* ────────────────────────────────────────────────────────── */
   if (cargandoQR) {
     return (
-      <div
-        className="min-h-screen flex flex-col items-center justify-center gap-4 p-4"
-        style={{ background: 'var(--background)', fontFamily: 'var(--font-family-primary)' }}
-      >
-        <RefreshCw size={30} style={{ color: 'var(--primary)', animation: 'spin 0.9s linear infinite' }} />
-        <p style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-base)' }}>
-          Verificando el código de acceso…
-        </p>
-      </div>
+      <MarcoAcceso>
+        <div className="flex flex-col items-center gap-3 py-4 text-center">
+          <RefreshCw size={28} style={{ color: 'var(--primary)', animation: 'spin 0.9s linear infinite' }} />
+          <p style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-base)' }}>Verificando el código de acceso…</p>
+        </div>
+      </MarcoAcceso>
+    );
+  }
+
+  /* ────────────────────────────────────────────────────────── */
+  /* Pantalla: QR vencido (CU-16 paso 4.1)                      */
+  /* Antes caía en «Operativo no encontrado»: con el código      */
+  /* vencido el servidor no dice de qué operativo era.           */
+  /* ────────────────────────────────────────────────────────── */
+  if (!operativo && qrVencido) {
+    return (
+      <MarcoAcceso>
+        <TituloAcceso icono={QrCode} titulo="QR expirado" texto="Código de acceso vencido. Solicite el QR actualizado." />
+        <AlertaAcceso tono="info" icono={Clock}>
+          Los QR de acceso se renuevan automáticamente cada <strong>24 horas</strong> por seguridad. Pedile al coordinador del operativo
+          que genere uno nuevo con el botón <strong>"Refrescar QR"</strong> y vuelva a compartirlo.
+        </AlertaAcceso>
+        <BotonAcceso tono="secundario" onClick={() => navigate('/login')}>Ir al inicio de sesión</BotonAcceso>
+      </MarcoAcceso>
     );
   }
 
@@ -177,30 +201,11 @@ export default function Registro() {
   /* ────────────────────────────────────────────────────────── */
   if (!operativo) {
     return (
-      <div
-        className="min-h-screen flex items-center justify-center p-4"
-        style={{ background: 'var(--background)', fontFamily: 'var(--font-family-primary)' }}
-      >
-        <div
-          className="w-full max-w-sm rounded-[var(--radius-card)] overflow-hidden"
-          style={{ background: 'var(--card)', boxShadow: 'var(--elevation-md)', border: '1px solid var(--border)' }}
-        >
-          <div style={{ height: 4, background: 'linear-gradient(90deg, var(--primary), var(--accent))' }} />
-          <div className="flex flex-col items-center gap-4 p-8 text-center">
-            <div className="w-16 h-16 rounded-2xl flex items-center justify-center" style={{ background: 'color-mix(in srgb, var(--primary) 10%, transparent)' }}>
-              <X size={30} style={{ color: 'var(--primary)' }} />
-            </div>
-            <div>
-              <p style={{ color: 'var(--foreground)', fontSize: 'var(--text-h2)', fontWeight: 'var(--font-weight-bold)', marginBottom: 6 }}>
-                Operativo no encontrado
-              </p>
-              <p style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-base)', lineHeight: 1.6 }}>
-                El código QR no corresponde a ningún operativo activo en el sistema.
-              </p>
-            </div>
-          </div>
-        </div>
-      </div>
+      <MarcoAcceso>
+        <TituloAcceso icono={X} colorIcono="var(--destructive)" titulo="Operativo no encontrado"
+          texto="El código QR no corresponde a ningún operativo activo en el sistema." />
+        <BotonAcceso tono="secundario" onClick={() => navigate('/login')}>Ir al inicio de sesión</BotonAcceso>
+      </MarcoAcceso>
     );
   }
 
@@ -209,74 +214,17 @@ export default function Registro() {
   /* ────────────────────────────────────────────────────────── */
   if (!isValidQR) {
     return (
-      <div
-        className="min-h-screen flex items-center justify-center p-4"
-        style={{ background: 'var(--background)', fontFamily: 'var(--font-family-primary)' }}
-      >
-        <div
-          className="w-full max-w-sm rounded-[var(--radius-card)] overflow-hidden"
-          style={{ background: 'var(--card)', boxShadow: 'var(--elevation-md)', border: '1px solid var(--border)' }}
-        >
-          {/* Top accent bar */}
-          <div style={{ height: 4, background: 'linear-gradient(90deg, var(--primary), var(--accent))' }} />
-
-          <div className="flex flex-col items-center gap-4 p-8 text-center">
-            {/* Icon */}
-            <div
-              className="w-16 h-16 rounded-2xl flex items-center justify-center"
-              style={{ background: 'color-mix(in srgb, var(--primary) 10%, transparent)' }}
-            >
-              <QrCode size={30} style={{ color: 'var(--primary)' }} />
-            </div>
-
-            {/* Title */}
-            <div>
-              <p style={{
-                color: 'var(--foreground)', fontSize: 'var(--text-h2)',
-                fontWeight: 'var(--font-weight-bold)', marginBottom: 6,
-              }}>
-                QR expirado
-              </p>
-              <p style={{
-                color: 'var(--muted-foreground)', fontSize: 'var(--text-base)', lineHeight: 1.6,
-              }}>
-                Este código QR ya no es válido. Los QR de acceso se renuevan automáticamente
-                cada <strong style={{ color: 'var(--foreground)' }}>1 hora</strong> por seguridad.
-              </p>
-            </div>
-
-            {/* Info box */}
-            <div
-              className="w-full flex items-start gap-3 p-3 rounded-[var(--radius-input)] text-left"
-              style={{ background: 'color-mix(in srgb, var(--primary) 6%, transparent)', border: '1px solid color-mix(in srgb, var(--primary) 18%, transparent)' }}
-            >
-              <Clock size={14} style={{ color: 'var(--primary)', marginTop: 1, flexShrink: 0 }} />
-              <p style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-label)', lineHeight: 1.55 }}>
-                Solicitá al coordinador del operativo que genere un nuevo código QR
-                usando el botón <strong style={{ color: 'var(--foreground)' }}>"Refrescar QR"</strong> y vuelva a compartirlo.
-              </p>
-            </div>
-
-            {/* Operativo name */}
-            <div
-              className="w-full px-4 py-2.5 rounded-[var(--radius-input)]"
-              style={{ background: 'var(--muted)', border: '1px solid var(--border)' }}
-            >
-              <p style={{ color: 'var(--muted-foreground)', fontSize: 'calc(11px * var(--escala-texto))', marginBottom: 2 }}>Operativo</p>
-              <p style={{
-                color: 'var(--foreground)', fontSize: 'var(--text-base)',
-                fontWeight: 'var(--font-weight-semibold)',
-              }}>
-                {operativo.nombre}
-              </p>
-            </div>
-
-            <p style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-label)', opacity: 0.6 }}>
-              DUAR · Búsqueda y Rastreo
-            </p>
-          </div>
-        </div>
-      </div>
+      <MarcoAcceso arriba={<BannerOperativo operativo={operativo} />}>
+        <TituloAcceso icono={QrCode} titulo="QR expirado" texto={<>
+          Este código QR ya no es válido. Los QR de acceso se renuevan automáticamente
+          cada <strong style={{ color: 'var(--foreground)' }}>24 horas</strong> por seguridad.
+        </>} />
+        <AlertaAcceso tono="info" icono={Clock}>
+          Solicitá al coordinador del operativo que genere un nuevo código QR
+          usando el botón <strong>"Refrescar QR"</strong> y vuelva a compartirlo.
+        </AlertaAcceso>
+        <BotonAcceso tono="secundario" onClick={() => navigate('/login')}>Ir al inicio de sesión</BotonAcceso>
+      </MarcoAcceso>
     );
   }
 
@@ -285,45 +233,11 @@ export default function Registro() {
   /* ────────────────────────────────────────────────────────── */
   if (operativo.estado === 'finalizado') {
     return (
-      <div
-        className="min-h-screen flex items-center justify-center p-4"
-        style={{ background: 'var(--background)', fontFamily: 'var(--font-family-primary)' }}
-      >
-        <div
-          className="w-full max-w-sm rounded-[var(--radius-card)] overflow-hidden"
-          style={{ background: 'var(--card)', boxShadow: 'var(--elevation-md)', border: '1px solid var(--border)' }}
-        >
-          <div style={{ height: 4, background: 'linear-gradient(90deg, #92400e, #b45309)' }} />
-          <div className="flex flex-col items-center gap-4 p-8 text-center">
-            <div
-              className="w-16 h-16 rounded-2xl flex items-center justify-center"
-              style={{ background: 'rgba(180,83,9,0.1)' }}
-            >
-              <FlagOff size={30} style={{ color: '#b45309' }} />
-            </div>
-            <div>
-              <p style={{ color: 'var(--foreground)', fontSize: 'var(--text-h2)', fontWeight: 'var(--font-weight-bold)', marginBottom: 6 }}>
-                Operativo finalizado
-              </p>
-              <p style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-base)', lineHeight: 1.6 }}>
-                Este operativo ya fue cerrado. El código QR no permite nuevos accesos ni registros.
-              </p>
-            </div>
-            <div
-              className="w-full px-4 py-2.5 rounded-[var(--radius-input)]"
-              style={{ background: 'var(--muted)', border: '1px solid var(--border)' }}
-            >
-              <p style={{ color: 'var(--muted-foreground)', fontSize: 'calc(11px * var(--escala-texto))', marginBottom: 2 }}>Operativo</p>
-              <p style={{ color: 'var(--foreground)', fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-semibold)' }}>
-                {operativo.nombre}
-              </p>
-            </div>
-            <p style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-label)', opacity: 0.6 }}>
-              DUAR · Búsqueda y Rastreo
-            </p>
-          </div>
-        </div>
-      </div>
+      <MarcoAcceso arriba={<BannerOperativo operativo={operativo} />}>
+        <TituloAcceso icono={FlagOff} colorIcono="#b45309" titulo="Operativo finalizado"
+          texto="Este operativo ya fue cerrado. El código QR no permite nuevos accesos ni registros." />
+        <BotonAcceso tono="secundario" onClick={() => navigate('/login')}>Ir al inicio de sesión</BotonAcceso>
+      </MarcoAcceso>
     );
   }
 
@@ -494,965 +408,321 @@ export default function Registro() {
   const handleDarmeDeAlta = () => { void intentarAlta(true); };
 
   /* ────────────────────────────────────────────────────────── */
-  /* Helpers de estilos                                         */
-  /* ────────────────────────────────────────────────────────── */
-  const inputCls = 'w-full px-3 py-3 rounded-xl border outline-none transition-all';
-  const inputStyle = {
-    background: '#fff',
-    border: '1.5px solid var(--border)',
-    color: 'var(--foreground)',
-    fontFamily: 'var(--font-family-primary)',
-    fontSize: 'var(--text-base)',
-  };
-
-  /* ────────────────────────────────────────────────────────── */
   /* Render                                                     */
   /* ────────────────────────────────────────────────────────── */
+  const poner = (k: keyof typeof regForm, v: unknown) => {
+    setRegForm(prev => ({ ...prev, [k]: v }));
+    if (erroresCampos[k]) setErroresCampos(e => ({ ...e, [k]: '' }));
+  };
+  const fila = 'grid gap-3 [grid-template-columns:repeat(auto-fit,minmax(150px,1fr))]';
+  const volverAlInicio = () => { setError(''); setModo('inicial'); };
+
+  if (modo === 'recuperar') {
+    return <MarcoAcceso><RecuperarContrasena onVolver={() => setModo('login')} /></MarcoAcceso>;
+  }
+
   return (
-    <div
-      className="min-h-screen flex flex-col items-center justify-start"
-      style={{ background: 'var(--background)', fontFamily: 'var(--font-family-primary)' }}
-    >
-      <div className="w-full max-w-[420px] px-4 py-6">
+    <>
+      <MarcoAcceso arriba={<BannerOperativo operativo={operativo} />}>
 
-        {/* ── DUAR Header ── */}
-        <div className="flex items-center gap-3 mb-6">
-          <div
-            className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
-            style={{ background: 'var(--primary)' }}
-          >
-            <Shield size={20} color="var(--primary-foreground)" />
-          </div>
-          <div>
-            <p style={{ color: 'var(--foreground)', fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-bold)' }}>
-              DUAR · Acceso de Agente
-            </p>
-            <p style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-label)' }}>
-              Sistema de Búsqueda y Rastreo
-            </p>
-          </div>
-        </div>
-
-        {/* ── Operativo info card ── */}
-        <div
-          className="p-4 rounded-[var(--radius-card)] mb-6"
-          style={{ background: 'var(--card)', boxShadow: 'var(--elevation-sm)', borderLeft: '3px solid var(--primary)' }}
-        >
-          <p className="mb-1 uppercase" style={{ color: 'var(--primary)', fontSize: 'calc(11px * var(--escala-texto))', fontWeight: 'var(--font-weight-semibold)' }}>
-            Operativo
-          </p>
-          <p style={{ color: 'var(--foreground)', fontSize: 'var(--text-h3)', fontWeight: 'var(--font-weight-semibold)' }}>
-            {operativo.nombre}
-          </p>
-          <p style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-label)' }}>
-            {operativo.ubicacion}
-          </p>
-        </div>
-
-        {/* ══════════════════════════════════════════════════════ */}
-        {/* MODO: INICIAL                                          */}
-        {/* ══════════════════════════════════════════════════════ */}
+        {/* ══ MODO: INICIAL ══ */}
         {modo === 'inicial' && (
-          <div className="flex flex-col gap-4">
-            <div>
-              <h2
-                className="mb-1"
-                style={{ color: 'var(--foreground)', fontSize: 'var(--text-h2)', fontWeight: 'var(--font-weight-bold)' }}
-              >
-                ¿Cómo querés continuar?
-              </h2>
-              <p style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-base)' }}>
-                Para unirte al operativo, ingresá con tu cuenta o registrate como usuario nuevo.
-              </p>
-            </div>
-
-            <button
-              onClick={() => { setError(''); setModo('login'); }}
-              className="w-full py-4 rounded-[var(--radius-card)] text-[var(--primary-foreground)] flex items-center justify-center gap-3 transition-opacity hover:opacity-90"
-              style={{ background: 'var(--primary)', fontSize: 'var(--text-h3)', fontWeight: 'var(--font-weight-semibold)' }}
-            >
-              <LogIn size={20} />
-              Ya tengo cuenta — Iniciar sesión
-            </button>
-
-            <button
-              onClick={() => { setError(''); setModo('registro'); }}
-              className="w-full py-4 rounded-[var(--radius-card)] border-2 flex items-center justify-center gap-3 transition-all hover:opacity-80"
-              style={{
-                borderColor: 'var(--primary)',
-                color: 'var(--primary)',
-                background: 'transparent',
-                fontSize: 'var(--text-h3)',
-                fontWeight: 'var(--font-weight-semibold)',
-              }}
-            >
-              <UserPlus size={20} />
-              Soy nuevo — Registrarme
-            </button>
-
-            <p style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-label)', textAlign: 'center', marginTop: 4 }}>
+          <>
+            <TituloAcceso titulo="¿Cómo querés continuar?" texto="Para unirte al operativo, ingresá con tu cuenta o registrate como usuario nuevo." />
+            <p style={{ margin: '4px 0 -8px', fontSize: 'var(--text-label)', fontWeight: 600, color: 'var(--muted-foreground)' }}>¿Ya tenés cuenta?</p>
+            <BotonAcceso icono={LogIn} onClick={() => { setError(''); setModo('login'); }}>Iniciar sesión</BotonAcceso>
+            <SeparadorO />
+            <p style={{ margin: '0 0 -8px', fontSize: 'var(--text-label)', fontWeight: 600, color: 'var(--muted-foreground)' }}>¿Es tu primera vez?</p>
+            <BotonAcceso tono="secundario" icono={UserPlus} onClick={() => { setError(''); setModo('registro'); }}>Registrarme</BotonAcceso>
+            <p className="text-center" style={{ margin: 0, fontSize: 'var(--text-small)', color: 'var(--muted-foreground)' }}>
               El acceso a este operativo es exclusivo por código QR.
             </p>
-          </div>
+          </>
         )}
 
-        {/* ══════════════════════════════════════════════════════ */}
-        {/* MODO: LOGIN                                            */}
-        {/* ══════════════════════════════════════════════════════ */}
+        {/* ══ MODO: LOGIN ══ */}
         {modo === 'login' && (
-          <div>
-            <h2
-              className="mb-1"
-              style={{ color: 'var(--foreground)', fontSize: 'var(--text-h2)', fontWeight: 'var(--font-weight-bold)' }}
-            >
-              Iniciar Sesión
-            </h2>
-            <p className="mb-6" style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-base)' }}>
-              Ingresá con tu correo y contraseña para unirte al operativo.
-            </p>
+          <form onSubmit={e => { e.preventDefault(); void handleLogin(); }} noValidate className="flex flex-col gap-4">
+            <TituloAcceso titulo="Iniciar Sesión" texto="Ingresá con tu correo y contraseña para unirte al operativo." />
+            <CampoAcceso label="Correo electrónico" icono={Mail} type="email" value={loginForm.email} maxLength={EMAIL_MAX}
+              onChange={v => setLoginForm({ ...loginForm, email: filtrarEmail(v) })} autoComplete="username" />
+            <CampoContrasenaAcceso label="Contraseña" value={loginForm.password}
+              onChange={v => setLoginForm({ ...loginForm, password: v })} autoComplete="current-password" />
 
-            <div className="flex flex-col gap-4">
-              {/* Email */}
-              <div className="relative">
-                <Mail size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--muted-foreground)' }} />
-                <input
-                  type="email"
-                  placeholder="Correo electrónico"
-                  value={loginForm.email}
-                  onChange={e => setLoginForm({ ...loginForm, email: e.target.value })}
-                  className={`${inputCls} pl-10`}
-                  style={inputStyle}
-                  onFocus={e => (e.target.style.borderColor = 'var(--primary)')}
-                  onBlur={e => (e.target.style.borderColor = 'var(--border)')}
-                />
-              </div>
+            {error === 'campos' && <AlertaAcceso>Completá todos los campos.</AlertaAcceso>}
+            {error === 'credentials' && <AlertaAcceso>Credenciales incorrectas. Verificá tu email y contraseña.</AlertaAcceso>}
+            {error === 'conexion' && (
+              <AlertaAcceso tono="aviso" icono={WifiOff}>No se pudo contactar al servidor. Revisá tu conexión e intentá de nuevo en unos minutos.</AlertaAcceso>
+            )}
+            {error === 'inactivo' && (
+              <AlertaAcceso icono={UserX} titulo="Cuenta inactiva">
+                Tu cuenta se encuentra deshabilitada. Contactá al coordinador del DUAR para reactivarla.
+              </AlertaAcceso>
+            )}
+            {error === 'eliminado' && (
+              <AlertaAcceso icono={UserX} titulo="Cuenta eliminada">
+                Esta cuenta ha sido dada de baja del sistema. Contactá al coordinador del DUAR para más información.
+              </AlertaAcceso>
+            )}
 
-              {/* Password */}
-              <div className="relative">
-                <Lock size={16} className="absolute left-3 top-1/2 -translate-y-1/2" style={{ color: 'var(--muted-foreground)' }} />
-                <input
-                  type={showPwd ? 'text' : 'password'}
-                  placeholder="Contraseña"
-                  value={loginForm.password}
-                  onChange={e => setLoginForm({ ...loginForm, password: e.target.value })}
-                  className={`${inputCls} pl-10 pr-10`}
-                  style={inputStyle}
-                  onFocus={e => (e.target.style.borderColor = 'var(--primary)')}
-                  onBlur={e => (e.target.style.borderColor = 'var(--border)')}
-                  onKeyDown={e => e.key === 'Enter' && handleLogin()}
-                />
-                <button
-                  type="button"
-                  onClick={() => setShowPwd(!showPwd)}
-                  className="absolute right-3 top-1/2 -translate-y-1/2"
-                  style={{ color: 'var(--muted-foreground)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}
-                >
-                  {showPwd ? <EyeOff size={16} /> : <Eye size={16} />}
-                </button>
-              </div>
-
-              {/* Error: campos vacíos */}
-              {error === 'campos' && (
-                <div
-                  className="flex items-start gap-2.5 p-3 rounded-xl"
-                  style={{ background: '#fee2e2', border: '1px solid #fecaca', color: '#b91c1c', fontSize: 'var(--text-base)', fontFamily: 'var(--font-family-primary)' }}
-                >
-                  <AlertCircle size={15} style={{ marginTop: 1, flexShrink: 0 }} />
-                  <span>Completá todos los campos.</span>
-                </div>
-              )}
-
-              {/* Error: credenciales incorrectas */}
-              {error === 'credentials' && (
-                <div
-                  className="flex items-start gap-2.5 p-3 rounded-xl"
-                  style={{ background: '#fee2e2', border: '1px solid #fecaca', color: '#b91c1c', fontSize: 'var(--text-base)', fontFamily: 'var(--font-family-primary)' }}
-                >
-                  <AlertCircle size={15} style={{ marginTop: 1, flexShrink: 0 }} />
-                  <span>Credenciales incorrectas. Verificá tu email y contraseña.</span>
-                </div>
-              )}
-
-              {/* Error: cuenta inactiva */}
-              {error === 'inactivo' && (
-                <div
-                  className="flex flex-col gap-1.5 p-3.5 rounded-xl"
-                  style={{ background: 'rgba(180,83,9,0.08)', border: '1px solid rgba(180,83,9,0.3)', fontFamily: 'var(--font-family-primary)' }}
-                >
-                  <div className="flex items-center gap-2">
-                    <UserX size={15} style={{ color: '#b45309', flexShrink: 0 }} />
-                    <span style={{ color: '#b45309', fontWeight: 'var(--font-weight-semibold)', fontSize: 'var(--text-base)' }}>
-                      Cuenta inactiva
-                    </span>
-                  </div>
-                  <p style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-label)', paddingLeft: '23px', lineHeight: 1.5 }}>
-                    Tu cuenta se encuentra deshabilitada. Contactá al coordinador del DUAR para reactivarla.
-                  </p>
-                </div>
-              )}
-
-              {/* Error: cuenta eliminada */}
-              {error === 'eliminado' && (
-                <div
-                  className="flex flex-col gap-1.5 p-3.5 rounded-xl"
-                  style={{ background: '#fee2e2', border: '1px solid #fecaca', fontFamily: 'var(--font-family-primary)' }}
-                >
-                  <div className="flex items-center gap-2">
-                    <UserX size={15} style={{ color: '#b91c1c', flexShrink: 0 }} />
-                    <span style={{ color: '#b91c1c', fontWeight: 'var(--font-weight-semibold)', fontSize: 'var(--text-base)' }}>
-                      Cuenta eliminada
-                    </span>
-                  </div>
-                  <p style={{ color: '#b91c1c', fontSize: 'var(--text-label)', paddingLeft: '23px', lineHeight: 1.5, opacity: 0.85 }}>
-                    Esta cuenta ha sido dada de baja del sistema. Contactá al coordinador del DUAR para más información.
-                  </p>
-                </div>
-              )}
-
-              {/* Submit */}
-              <button
-                onClick={handleLogin}
-                disabled={loading}
-                className="w-full py-4 rounded-[var(--radius-card)] text-[var(--primary-foreground)] transition-opacity"
-                style={{
-                  background: 'var(--primary)',
-                  opacity: loading ? 0.7 : 1,
-                  fontSize: 'var(--text-h3)',
-                  fontWeight: 'var(--font-weight-semibold)',
-                }}
-              >
-                {loading ? 'Verificando...' : 'Ingresar al operativo'}
-              </button>
-
-              {/* ── Recuperar contraseña ── */}
-              <div
-                className="flex items-center justify-center gap-1.5 p-3.5 rounded-[var(--radius-input)]"
-                style={{ background: 'var(--muted)', border: '1px solid var(--border)' }}
-              >
-                <span style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-label)' }}>
-                  ¿Olvidó su contraseña?
-                </span>
-                <button
-                  onClick={() => setShowRecover(true)}
-                  style={{
-                    background: 'none', border: 'none', padding: 0, cursor: 'pointer',
-                    color: 'var(--primary)',
-                    fontSize: 'var(--text-label)',
-                    fontWeight: 'var(--font-weight-semibold)',
-                    fontFamily: 'var(--font-family-primary)',
-                    textDecoration: 'underline',
-                    textUnderlineOffset: '2px',
-                  }}
-                >
-                  Recuperar contraseña
-                </button>
-              </div>
-
-              <button
-                onClick={() => { setError(''); setModo('inicial'); }}
-                className="text-center"
-                style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-base)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-family-primary)' }}
-              >
-                ← Volver
-              </button>
+            <BotonAcceso type="submit" cargando={loading}>{loading ? 'Verificando...' : 'Ingresar al operativo'}</BotonAcceso>
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <EnlaceAcceso onClick={volverAlInicio}>Volver</EnlaceAcceso>
+              <EnlaceAcceso onClick={() => { setError(''); setModo('recuperar'); }}>¿Olvidó su contraseña?</EnlaceAcceso>
             </div>
-          </div>
+          </form>
         )}
 
-        {/* ══════════════════════════════════════════════════════ */}
-        {/* MODO: REGISTRO                                         */}
-        {/* ══════════════════════════════════════════════════════ */}
+        {/* ══ MODO: REGISTRO ══ */}
         {modo === 'registro' && (
-          <div>
-            <h2
-              className="mb-1"
-              style={{ color: 'var(--foreground)', fontSize: 'var(--text-h2)', fontWeight: 'var(--font-weight-bold)' }}
-            >
-              Crear Cuenta
-            </h2>
-            <p className="mb-5" style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-base)' }}>
-              Completá tus datos. Los campos marcados con <span style={{ color: 'var(--primary)' }}>*</span> son obligatorios.
-            </p>
-            <div className="flex flex-col gap-3">
-              {[
-                {
-                  label: 'DNI *', key: 'dni', type: 'text', placeholder: 'Ej: 45.080.924',
-                  inputMode: 'numeric' as const,
-                  filtro: (v: string) => soloDigitos(v).slice(0, 8),
-                  formato: formatearDni,
-                },
-                {
-                  label: 'Nombre *', key: 'nombre', type: 'text', placeholder: 'Tu nombre',
-                  filtro: (v: string) => v.replace(/[^A-Za-zÀ-ÖØ-öø-ÿ ]/g, '').slice(0, 35),
-                  limpiar: limpiarTexto,
-                },
-                {
-                  label: 'Apellido *', key: 'apellido', type: 'text', placeholder: 'Tu apellido',
-                  filtro: (v: string) => v.replace(/[^A-Za-zÀ-ÖØ-öø-ÿ'\- ]/g, '').slice(0, 35),
-                  limpiar: limpiarTexto,
-                },
-                { label: 'Correo electrónico *', key: 'email', type: 'email', placeholder: 'tu@email.com', filtro: filtrarEmail },
-                {
-                  label: 'Contraseña *', key: 'password', type: 'password', placeholder: '', ayuda: AYUDA_PASSWORD,
-                  autoComplete: 'new-password', filtro: (v: string) => v.slice(0, PASSWORD_MAX),
-                },
-                // Obligatoria (Testeo 15/10, punto 24): sin ella no se puede comprobar la edad mínima de 16 años.
-                { label: 'Fecha de Nacimiento *', key: 'fechaNacimiento', type: 'date', placeholder: '' },
-                {
-                  label: 'Teléfono', key: 'telefono', type: 'tel', placeholder: PLACEHOLDER_TELEFONO, ayuda: AYUDA_TELEFONO,
-                  inputMode: 'numeric' as const,
-                  filtro: (v: string) => soloDigitos(v).slice(0, 10),
-                  formato: formatearTelefono,
-                },
-              ].map(f => {
-                const raw = (regForm as any)[f.key] as string;
-                const valorMostrado = f.formato ? f.formato(raw) : raw;
-                return (
-                  <div key={f.key}>
-                    <label
-                      className="block mb-1"
-                      style={{ color: 'var(--foreground)', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)' }}
-                    >
-                      {f.label}
-                    </label>
-                    {f.type === 'password' ? (
-                      // Con el ojito para ver lo que se escribe (Testeo 15/10, punto 26).
-                      <CampoPassword
-                        placeholder={f.placeholder}
-                        autoComplete={(f as any).autoComplete}
-                        value={valorMostrado}
-                        onChange={e => {
-                          setRegForm({ ...regForm, [f.key]: f.filtro ? f.filtro(e.target.value) : e.target.value });
-                          if (erroresCampos[f.key]) setErroresCampos({ ...erroresCampos, [f.key]: '' });
-                        }}
-                        className={inputCls}
-                        style={{ ...inputStyle, border: erroresCampos[f.key] ? '1.5px solid #dc2626' : inputStyle.border }}
-                        onFocus={e => (e.target.style.borderColor = erroresCampos[f.key] ? '#dc2626' : 'var(--primary)')}
-                        onBlur={e => (e.target.style.borderColor = erroresCampos[f.key] ? '#dc2626' : 'var(--border)')}
-                      />
-                    ) : f.type === 'date' ? (
-                      <CampoFecha
-                        value={valorMostrado}
-                        onChange={v => {
-                          setRegForm({ ...regForm, [f.key]: v });
-                          if (erroresCampos[f.key]) setErroresCampos({ ...erroresCampos, [f.key]: '' });
-                        }}
-                        className={inputCls}
-                        style={{ ...inputStyle, border: erroresCampos[f.key] ? '1.5px solid #dc2626' : inputStyle.border }}
-                      />
-                    ) : (
-                      <input
-                        type={f.type}
-                        inputMode={f.inputMode}
-                        placeholder={f.placeholder}
-                        autoComplete={(f as any).autoComplete}
-                        value={valorMostrado}
-                        onChange={e => {
-                          const el = e.target;
-                          const digitos = digitosAntesDelCursor(el);   // para no perder el lugar al reformatear (punto 22)
-                          const v = f.filtro ? f.filtro(el.value) : el.value;
-                          setRegForm({ ...regForm, [f.key]: v });
-                          if (erroresCampos[f.key]) setErroresCampos({ ...erroresCampos, [f.key]: '' });
-                          if (f.formato) reponerCursor(el, digitos);
-                        }}
-                        className={inputCls}
-                        style={{ ...inputStyle, border: erroresCampos[f.key] ? '1.5px solid #dc2626' : inputStyle.border }}
-                        onFocus={e => (e.target.style.borderColor = erroresCampos[f.key] ? '#dc2626' : 'var(--primary)')}
-                        onBlur={e => {
-                          e.target.style.borderColor = erroresCampos[f.key] ? '#dc2626' : 'var(--border)';
-                          const limpiar = (f as any).limpiar as ((v: string) => string) | undefined;
-                          if (limpiar) setRegForm(prev => ({ ...prev, [f.key]: limpiar((prev as any)[f.key]) }));
-                        }}
-                      />
-                    )}
-                    {erroresCampos[f.key] ? (
-                      <p style={{ color: '#dc2626', fontSize: 'calc(11px * var(--escala-texto))', marginTop: '4px' }}>{erroresCampos[f.key]}</p>
-                    ) : (f as any).ayuda && (
-                      <p style={{ color: 'var(--muted-foreground)', fontSize: 'calc(11px * var(--escala-texto))', marginTop: '4px', lineHeight: 1.4 }}>{(f as any).ayuda}</p>
-                    )}
-                  </div>
-                );
-              })}
+          <form onSubmit={e => { e.preventDefault(); void handleRegistro(); }} noValidate className="flex flex-col gap-4">
+            <TituloAcceso titulo="Crear Cuenta" texto="Completá tus datos para registrarte y sumarte al operativo. Los campos con * son obligatorios." />
 
-              {/* ── Institución ── */}
-              <div>
-                <label className="block mb-1" style={{ color: 'var(--foreground)', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)' }}>
-                  Institución *
-                </label>
-                <select
-                  value={regForm.institucionId}
-                  // Cambiar de institución limpia la dotación: una base del DUAR
-                  // no puede quedar colgada de otra fuerza (la BD lo rechaza).
-                  onChange={e => setRegForm({ ...regForm, institucionId: e.target.value, dotacionId: '' })}
-                  className={inputCls}
-                  style={inputStyle}
-                >
-                  <option value="">— Seleccioná tu institución —</option>
-                  {catInstituciones.map(i => (
-                    <option key={i.id} value={i.id}>{i.nombre}</option>
-                  ))}
-                </select>
+            <SeccionRegistro n={1} titulo="Datos personales">
+              <CampoAcceso label="DNI" requerido icono={IdCard} inputMode="numeric" placeholder="Ej: 45.080.924" error={erroresCampos.dni}
+                value={formatearDni(regForm.dni)}
+                onChange={(v, el) => { const d = digitosAntesDelCursor(el); poner('dni', soloDigitos(v).slice(0, 8)); reponerCursor(el, d); }} />
+              <div className={fila}>
+                <CampoAcceso label="Nombre" requerido icono={User} placeholder="Tu nombre" autoComplete="given-name" error={erroresCampos.nombre}
+                  value={regForm.nombre} onChange={v => poner('nombre', v.replace(/[^A-Za-zÀ-ÖØ-öø-ÿ ]/g, '').slice(0, 35))}
+                  onBlur={() => setRegForm(p => ({ ...p, nombre: limpiarTexto(p.nombre) }))} />
+                <CampoAcceso label="Apellido" requerido icono={User} placeholder="Tu apellido" autoComplete="family-name" error={erroresCampos.apellido}
+                  value={regForm.apellido} onChange={v => poner('apellido', v.replace(/[^A-Za-zÀ-ÖØ-öø-ÿ'\- ]/g, '').slice(0, 35))}
+                  onBlur={() => setRegForm(p => ({ ...p, apellido: limpiarTexto(p.apellido) }))} />
               </div>
-
-              {/* ── Dotación: aparece sólo si la institución tiene destacamentos ── */}
-              {dotacionesDe(regForm.institucionId).length > 0 && (
-                <div>
-                  <label className="block mb-1" style={{ color: 'var(--foreground)', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)' }}>
-                    Dotación *
-                  </label>
-                  <select
-                    value={regForm.dotacionId}
-                    onChange={e => setRegForm({ ...regForm, dotacionId: e.target.value })}
-                    className={inputCls}
-                    style={inputStyle}
-                  >
-                    <option value="">— Seleccioná tu dotación —</option>
-                    {dotacionesDe(regForm.institucionId).map(d => (
-                      <option key={d.id} value={d.id}>{d.nombre}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              <div>
-                <label className="block mb-1" style={{ color: 'var(--foreground)', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)' }}>
-                  Especialidad
-                </label>
-                <select
-                  value={regForm.especialidadId}
-                  onChange={e => setRegForm({ ...regForm, especialidadId: e.target.value })}
-                  className={inputCls}
-                  style={inputStyle}
-                >
-                  {/* Se envía el id del catálogo, no el slug: es lo que espera la
-                      API y de lo que el backend deriva si el agente camina el
-                      polígono o es un recurso crítico que se queda en Punto Cero. */}
-                  <option value="">— Seleccioná tu especialidad —</option>
-                  {catEspecialidades.map(e => (
-                    <option key={e.id} value={e.id}>{e.nombre}</option>
-                  ))}
-                </select>
+              <div className={fila}>
+                <CampoAcceso label="Teléfono" icono={Phone} type="tel" inputMode="numeric" placeholder={PLACEHOLDER_TELEFONO} ayuda={AYUDA_TELEFONO} error={erroresCampos.telefono}
+                  value={formatearTelefono(regForm.telefono)} autoComplete="tel"
+                  onChange={(v, el) => { const d = digitosAntesDelCursor(el); poner('telefono', soloDigitos(v).slice(0, 10)); reponerCursor(el, d); }} />
+                {/* Obligatoria (Testeo 15/10, punto 24): sin ella no se puede comprobar la edad mínima de 16 años. */}
+                <CampoFechaAcceso label="Fecha de Nacimiento" requerido value={regForm.fechaNacimiento} error={erroresCampos.fechaNacimiento}
+                  onChange={v => poner('fechaNacimiento', v)} />
               </div>
+            </SeccionRegistro>
 
-              <div>
-                <label className="block mb-1" style={{ color: 'var(--foreground)', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)' }}>
-                  Grupo Sanguíneo
-                </label>
-                <select
-                  value={regForm.grupo_sanguineo}
-                  onChange={e => setRegForm({ ...regForm, grupo_sanguineo: e.target.value })}
-                  className={inputCls}
-                  style={inputStyle}
-                >
-                  <option value="">— No especificado —</option>
-                  {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map(g => (
-                    <option key={g} value={g}>{g}</option>
-                  ))}
-                </select>
+            <SeccionRegistro n={2} titulo="Institución">
+              <div className={fila}>
+                {/* Cambiar de institución limpia la dotación: una base del DUAR no puede quedar colgada de otra fuerza (la BD lo rechaza). */}
+                <SelectAcceso label="Institución" requerido value={regForm.institucionId} placeholder="— Seleccioná tu institución —"
+                  onChange={v => setRegForm({ ...regForm, institucionId: v, dotacionId: '' })}
+                  opciones={catInstituciones.map(i => ({ value: i.id, label: i.nombre }))} />
+                {/* Dotación: aparece sólo si la institución tiene destacamentos */}
+                {dotacionesDe(regForm.institucionId).length > 0 && (
+                  <SelectAcceso label="Dotación" requerido value={regForm.dotacionId} placeholder="— Seleccioná tu dotación —"
+                    onChange={v => setRegForm({ ...regForm, dotacionId: v })}
+                    opciones={dotacionesDe(regForm.institucionId).map(d => ({ value: d.id, label: d.nombre }))} />
+                )}
               </div>
+              {/* Se envía el id del catálogo, no el slug: de él el backend deriva si es un recurso crítico. */}
+              <SelectAcceso label="Especialidad" value={regForm.especialidadId} placeholder="— Seleccioná tu especialidad —"
+                onChange={v => setRegForm({ ...regForm, especialidadId: v })}
+                opciones={catEspecialidades.map(e => ({ value: e.id, label: e.nombre }))} />
+            </SeccionRegistro>
 
-              <div>
-                <label className="block mb-1" style={{ color: 'var(--foreground)', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)' }}>
-                  Alergias {regForm.alergiaIds.length > 0 && `(${regForm.alergiaIds.length})`}
-                </label>
-                {/* Relación N:M real contra cat_alergias: un agente puede tener
-                    más de una, y en campo este dato puede ser crítico. */}
-                <div
-                  className="grid grid-cols-1 gap-2 p-3 rounded-xl"
-                  style={{ background: '#fff', border: '1.5px solid var(--border)' }}
-                >
-                  {catAlergias.map(a => (
-                    <label
-                      key={a.id}
-                      className="flex items-center gap-2.5 cursor-pointer"
-                      style={{ fontSize: 'var(--text-base)', color: 'var(--foreground)' }}
-                    >
-                      <input
-                        type="checkbox"
-                        checked={regForm.alergiaIds.includes(a.id)}
-                        onChange={e => setRegForm({
-                          ...regForm,
-                          alergiaIds: e.target.checked
-                            ? [...regForm.alergiaIds, a.id]
-                            : regForm.alergiaIds.filter(id => id !== a.id),
-                        })}
-                      />
-                      {a.nombre}
-                    </label>
-                  ))}
+            <SeccionRegistro n={3} titulo="Salud">
+              <SelectAcceso label="Grupo Sanguíneo" value={regForm.grupo_sanguineo} placeholder="— No especificado —"
+                onChange={v => setRegForm({ ...regForm, grupo_sanguineo: v })}
+                opciones={['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map(g => ({ value: g, label: g }))} />
+              {/* Relación N:M real contra cat_alergias: un agente puede tener más de una, y en campo este dato puede ser crítico. */}
+              <div className="flex flex-col gap-2">
+                <span style={{ fontSize: 'var(--text-label)', fontWeight: 600 }}>Alergias{regForm.alergiaIds.length > 0 && ` (${regForm.alergiaIds.length})`}</span>
+                <div className="flex flex-wrap gap-2">
+                  {catAlergias.map(a => {
+                    const on = regForm.alergiaIds.includes(a.id);
+                    return (
+                      <button key={a.id} type="button" aria-pressed={on} className="inline-flex items-center gap-1.5"
+                        onClick={() => setRegForm(p => ({ ...p, alergiaIds: on ? p.alergiaIds.filter(id => id !== a.id) : [...p.alergiaIds, a.id] }))}
+                        style={{ minHeight: 36, padding: '0 12px', borderRadius: 999, cursor: 'pointer', fontFamily: 'var(--font-family-primary)', fontSize: 'var(--text-label)',
+                          fontWeight: on ? 600 : 500, border: `1px solid ${on ? 'var(--primary)' : 'var(--border)'}`,
+                          background: on ? 'color-mix(in srgb, var(--primary) 14%, transparent)' : 'var(--card)', color: 'var(--foreground)' }}>
+                        {on && <Check size={13} />}{a.nombre}
+                      </button>
+                    );
+                  })}
                 </div>
               </div>
+            </SeccionRegistro>
 
-              {error && (
-                <div
-                  className="flex items-start gap-2.5 p-3 rounded-xl"
-                  style={{ background: '#fee2e2', border: '1px solid #fecaca', color: '#b91c1c', fontSize: 'var(--text-base)' }}
-                >
-                  <AlertCircle size={15} style={{ marginTop: 1, flexShrink: 0 }} />
-                  <span>{error}</span>
-                </div>
-              )}
+            <SeccionRegistro n={4} titulo="Cuenta">
+              <CampoAcceso label="Correo electrónico" requerido icono={Mail} type="email" placeholder="tu@email.com" autoComplete="email" error={erroresCampos.email}
+                value={regForm.email} onChange={v => poner('email', filtrarEmail(v))} />
+              {/* Con el ojito para ver lo que se escribe (Testeo 15/10, punto 26). */}
+              <CampoContrasenaAcceso label="Contraseña" requerido icono={Lock} autoComplete="new-password" ayuda={AYUDA_PASSWORD} error={erroresCampos.password}
+                value={regForm.password} onChange={v => poner('password', v.slice(0, PASSWORD_MAX))} />
+            </SeccionRegistro>
 
-              <button
-                onClick={handleRegistro}
-                disabled={loading}
-                className="w-full py-4 rounded-[var(--radius-card)] text-[var(--primary-foreground)] mt-2 transition-opacity"
-                style={{ background: 'var(--primary)', opacity: loading ? 0.7 : 1, fontSize: 'var(--text-h3)', fontWeight: 'var(--font-weight-semibold)' }}
-              >
-                {loading ? 'Registrando...' : 'Registrarme y unirme al operativo'}
-              </button>
-
-              {/* Link a login */}
-              <div className="flex items-center justify-center gap-1.5">
-                <span style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-label)' }}>
-                  ¿Ya tenés cuenta?
-                </span>
-                <button
-                  onClick={() => { setError(''); setModo('login'); }}
-                  style={{
-                    background: 'none', border: 'none', padding: 0, cursor: 'pointer',
-                    color: 'var(--primary)',
-                    fontSize: 'var(--text-label)',
-                    fontWeight: 'var(--font-weight-semibold)',
-                    fontFamily: 'var(--font-family-primary)',
-                    textDecoration: 'underline',
-                    textUnderlineOffset: '2px',
-                  }}
-                >
-                  Iniciá sesión aquí
-                </button>
-              </div>
-
-              <button
-                onClick={() => { setError(''); setModo('inicial'); }}
-                className="text-center"
-                style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-base)', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-family-primary)' }}
-              >
-                ← Volver
-              </button>
+            {error && <AlertaAcceso>{error}</AlertaAcceso>}
+            <BotonAcceso type="submit" cargando={loading}>{loading ? 'Registrando...' : 'Registrarme y unirme al operativo'}</BotonAcceso>
+            <div className="flex items-center justify-between gap-2 flex-wrap">
+              <EnlaceAcceso onClick={volverAlInicio}>Volver</EnlaceAcceso>
+              <EnlaceAcceso onClick={() => { setError(''); setModo('login'); }}>¿Ya tenés cuenta? Iniciá sesión</EnlaceAcceso>
             </div>
-          </div>
+          </form>
         )}
 
-        {/* ══════════════════════════════════════════════════════ */}
-        {/* MODO: CONFIRMAR participación                          */}
-        {/* ══════════════════════════════════════════════════════ */}
+        {/* ══ MODO: CONFIRMAR participación ══ */}
         {modo === 'confirmar' && (
-          <div className="flex flex-col gap-5">
-            <div
-              className="w-14 h-14 rounded-2xl flex items-center justify-center"
-              style={{ background: 'color-mix(in srgb, var(--primary) 10%, transparent)' }}
-            >
-              <Shield size={28} style={{ color: 'var(--primary)' }} />
+          <>
+            <TituloAcceso icono={UserCheck} titulo="Confirmá tu participación" texto="Estás a punto de unirte al siguiente operativo:" />
+            <div className="flex flex-col gap-2" style={{ padding: '12px 14px', borderRadius: 'var(--radius-md)', background: 'var(--muted)', fontSize: 'var(--text-label)' }}>
+              <span className="flex items-center gap-2" style={{ color: 'var(--foreground)', fontWeight: 600 }}><Shield size={14} style={{ color: 'var(--muted-foreground)' }} />{operativo.nombre}</span>
+              <span className="flex items-center gap-2" style={{ color: 'var(--foreground)' }}><MapPin size={14} style={{ color: 'var(--muted-foreground)' }} />{operativo.ubicacion}</span>
+              {operativo.inicio && <span className="flex items-center gap-2" style={{ color: 'var(--foreground)' }}><Calendar size={14} style={{ color: 'var(--muted-foreground)' }} />Inicio: {fechaHoraArgentina(operativo.inicio)}</span>}
             </div>
-            <div>
-              <h2
-                className="mb-2"
-                style={{ color: 'var(--foreground)', fontSize: 'var(--text-h2)', fontWeight: 'var(--font-weight-bold)' }}
-              >
-                Confirmá tu participación
-              </h2>
-              <p style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-base)' }}>
-                Estás a punto de unirte al siguiente operativo:
-              </p>
-            </div>
-            <div
-              className="p-4 rounded-[var(--radius-card)]"
-              style={{ background: 'color-mix(in srgb, var(--primary) 6%, transparent)', border: '1.5px solid color-mix(in srgb, var(--primary) 25%, transparent)' }}
-            >
-              <p style={{ color: 'var(--foreground)', fontSize: 'var(--text-h3)', fontWeight: 'var(--font-weight-semibold)' }}>
-                {operativo.nombre}
-              </p>
-              <p className="mt-1" style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-base)' }}>
-                {operativo.ubicacion}
-              </p>
-            </div>
-            <p style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-base)' }}>
+            <p style={{ margin: 0, color: 'var(--muted-foreground)', fontSize: 'var(--text-base)', lineHeight: 1.55 }}>
               Al confirmar, quedarás registrado con estado <strong style={{ color: 'var(--foreground)' }}>Disponible</strong> y el coordinador podrá verte asignado al operativo.
             </p>
-            <button
-              onClick={handleConfirmar}
-              className="w-full py-4 rounded-[var(--radius-card)] text-[var(--primary-foreground)] transition-opacity hover:opacity-90"
-              style={{ background: 'var(--primary)', fontSize: 'var(--text-h3)', fontWeight: 'var(--font-weight-semibold)' }}
-            >
-              Confirmar participación
-            </button>
-            <button
-              onClick={() => setModo('inicial')}
-              className="w-full py-3 rounded-[var(--radius-card)] border"
-              style={{ borderColor: 'var(--border)', color: 'var(--foreground)', background: 'transparent', fontSize: 'var(--text-base)', cursor: 'pointer', fontFamily: 'var(--font-family-primary)' }}
-            >
-              Cancelar
-            </button>
-          </div>
+            {error && <AlertaAcceso>{error}</AlertaAcceso>}
+            <BotonAcceso icono={Check} cargando={loading} onClick={handleConfirmar}>{loading ? 'Confirmando...' : 'Confirmar participación'}</BotonAcceso>
+            <BotonAcceso tono="secundario" onClick={() => setModo('inicial')}>Cancelar</BotonAcceso>
+          </>
         )}
 
-        {/* ══════════════════════════════════════════════════════ */}
-        {/* MODO: VERIFICAR EMAIL (solo nuevos usuarios)           */}
-        {/* ══════════════════════════════════════════════════════ */}
+        {/* ══ MODO: VERIFICAR EMAIL (solo nuevos usuarios) ══ */}
         {modo === 'verificarEmail' && (
-          <div className="flex flex-col gap-5">
-            <div
-              className="w-16 h-16 rounded-2xl flex items-center justify-center"
-              style={{ background: 'rgba(37,99,235,0.1)' }}
-            >
-              <MailCheck size={32} style={{ color: '#2563eb' }} />
-            </div>
-            <div>
-              <h2
-                className="mb-2"
-                style={{ color: 'var(--foreground)', fontSize: 'var(--text-h2)', fontWeight: 'var(--font-weight-bold)' }}
-              >
-                Confirmá tu cuenta para continuar
-              </h2>
-              <p style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-base)', lineHeight: 1.6 }}>
-                Te enviamos un correo a la casilla de abajo. Hacé clic en el link para confirmar tu cuenta —
-                recién ahí vas a poder unirte a <strong style={{ color: 'var(--foreground)' }}>{operativo.nombre}</strong>.
+          <>
+            <TituloAcceso icono={MailCheck} titulo="Confirmá tu cuenta para continuar" texto={<>
+              Te enviamos un correo a la casilla de abajo. Hacé clic en el link para confirmar tu cuenta —
+              recién ahí vas a poder unirte a <strong style={{ color: 'var(--foreground)' }}>{operativo.nombre}</strong>.
+            </>} />
+            {cuentaReactivada && (
+              <p style={{ margin: 0, color: 'var(--muted-foreground)', fontSize: 'var(--text-label)', lineHeight: 1.5 }}>
+                Tu DNI ya tenía una cuenta que había sido dada de baja: la recuperamos con los datos que cargaste,
+                así conservás tu historial de operativos.
               </p>
-              {cuentaReactivada && (
-                <p className="mt-2" style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-label)', lineHeight: 1.5 }}>
-                  Tu DNI ya tenía una cuenta que había sido dada de baja: la recuperamos con los datos que cargaste,
-                  así conservás tu historial de operativos.
-                </p>
-              )}
-            </div>
-
-            <div
-              className="p-3 rounded-xl flex items-center gap-3"
-              style={{ background: 'rgba(37,99,235,0.06)', border: '1px solid rgba(37,99,235,0.2)' }}
-            >
-              <Mail size={16} style={{ color: '#2563eb', flexShrink: 0 }} />
-              <span style={{ color: 'var(--foreground)', fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-semibold)', wordBreak: 'break-all' }}>
-                {nuevoUserEmail}
-              </span>
-            </div>
-
-            <div
-              className="p-3 rounded-xl flex items-start gap-2.5"
-              style={{ background: 'rgba(245,158,11,0.08)', border: '1px solid rgba(245,158,11,0.25)' }}
-            >
-              <AlertTriangle size={14} style={{ color: '#d97706', flexShrink: 0, marginTop: '2px' }} />
-              <p style={{ color: 'var(--foreground)', fontSize: 'var(--text-label)', lineHeight: 1.5 }}>
-                Todavía no quedaste unido al operativo. Confirmá el correo y volvé a esta pantalla.
-              </p>
-            </div>
-
-            {error && (
-              <div
-                className="flex items-start gap-2.5 p-3 rounded-xl"
-                style={{ background: '#fee2e2', border: '1px solid #fecaca', color: '#b91c1c', fontSize: 'var(--text-base)' }}
-              >
-                <AlertCircle size={15} style={{ marginTop: 1, flexShrink: 0 }} />
-                <span>{error}</span>
-              </div>
             )}
+            <div className="flex items-center gap-2.5" style={{ padding: '12px 14px', borderRadius: 'var(--radius-md)', background: 'var(--muted)', fontSize: 'var(--text-base)', fontWeight: 600, wordBreak: 'break-all' }}>
+              <Mail size={16} style={{ color: 'var(--muted-foreground)', flexShrink: 0 }} />{nuevoUserEmail}
+            </div>
+            <AlertaAcceso tono="aviso" icono={AlertTriangle}>Todavía no quedaste unido al operativo. Confirmá el correo y volvé a esta pantalla.</AlertaAcceso>
+            {error && <AlertaAcceso>{error}</AlertaAcceso>}
 
             {/* Link de confirmación en desarrollo */}
             {urlConfirmacionDev && (
-              <div
-                className="p-3 rounded-xl flex flex-col gap-2"
-                style={{ background: '#f0fdf4', border: '1px solid #86efac' }}
-              >
-                <div className="flex items-center gap-2">
-                  <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                  <p style={{ color: '#15803d', fontSize: 'calc(11px * var(--escala-texto))', fontWeight: 'var(--font-weight-semibold)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
-                    Modo desarrollo — link de confirmación
-                  </p>
-                </div>
-                <a
-                  href={urlConfirmacionDev}
-                  className="flex items-center gap-1.5 break-all"
-                  style={{ color: '#15803d', fontSize: 'calc(12px * var(--escala-texto))', lineHeight: 1.5 }}
-                >
-                  <ExternalLink size={11} style={{ flexShrink: 0 }} />
-                  {urlConfirmacionDev}
-                </a>
-              </div>
+              <AlertaAcceso tono="info" icono={ExternalLink} titulo="Modo desarrollo — link de confirmación">
+                <a href={urlConfirmacionDev} className="break-all" style={{ color: 'var(--foreground)' }}>{urlConfirmacionDev}</a>
+              </AlertaAcceso>
             )}
 
-            <button
-              onClick={handleConfirmar}
-              disabled={loading}
-              className="w-full py-4 rounded-[var(--radius-card)] text-[var(--primary-foreground)] transition-opacity hover:opacity-90"
-              style={{ background: 'var(--primary)', opacity: loading ? 0.7 : 1, fontSize: 'var(--text-h3)', fontWeight: 'var(--font-weight-semibold)' }}
-            >
-              {loading ? 'Verificando...' : 'Ya confirmé mi correo — continuar'}
-            </button>
-
-            <button
-              onClick={handleReenviarCorreo}
-              disabled={cooldownReenvio > 0 || reenviando}
-              className="w-full py-3 rounded-[var(--radius-card)] border transition-colors"
-              style={{
-                borderColor: 'var(--border)',
-                color: cooldownReenvio > 0 ? 'var(--muted-foreground)' : 'var(--foreground)',
-                background: 'transparent',
-                fontSize: 'var(--text-base)',
-                cursor: cooldownReenvio > 0 || reenviando ? 'not-allowed' : 'pointer',
-                fontFamily: 'var(--font-family-primary)',
-              }}
-            >
-              {reenviando
-                ? 'Reenviando...'
-                : cooldownReenvio > 0
-                  ? `Reenviar correo (${formatCooldown(cooldownReenvio)})`
-                  : 'Reenviar correo'}
-            </button>
-
-            <p style={{ color: 'var(--muted-foreground)', fontSize: 'calc(11px * var(--escala-texto))', textAlign: 'center', lineHeight: 1.5 }}>
+            <BotonAcceso icono={Check} cargando={loading} onClick={handleConfirmar}>{loading ? 'Verificando...' : 'Ya confirmé mi correo — continuar'}</BotonAcceso>
+            <BotonAcceso tono="secundario" icono={RefreshCw} onClick={handleReenviarCorreo} cargando={reenviando} deshabilitado={cooldownReenvio > 0}>
+              {reenviando ? 'Reenviando...' : cooldownReenvio > 0 ? `Reenviar correo (${formatCooldown(cooldownReenvio)})` : 'Reenviar correo'}
+            </BotonAcceso>
+            <p className="text-center" style={{ margin: 0, color: 'var(--muted-foreground)', fontSize: 'var(--text-small)', lineHeight: 1.5 }}>
               Si después de un par de intentos no te llegó, contactá a un coordinador del DUAR.
             </p>
-          </div>
+          </>
         )}
 
-        {/* ══════════════════════════════════════════════════════ */}
-        {/* MODO: CONFIRMACIÓN FINAL                               */}
-        {/* ══════════════════════════════════════════════════════ */}
+        {/* ══ MODO: CONFIRMACIÓN FINAL ══ */}
         {modo === 'confirmacion' && (
-          <div className="flex flex-col items-center text-center gap-5">
-            <div
-              className="w-20 h-20 rounded-full flex items-center justify-center"
-              style={{ background: '#dcfce7' }}
-            >
-              <CheckCircle size={40} color="#16a34a" />
-            </div>
-            <div>
-              <h2
-                className="mb-2"
-                style={{ color: 'var(--foreground)', fontSize: 'var(--text-h1)', fontWeight: 'var(--font-weight-bold)' }}
-              >
-                ¡Te uniste al operativo!
-              </h2>
-              <p style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-base)' }}>
-                Ya estás registrado en:
-              </p>
-              <p className="mt-1" style={{ color: 'var(--foreground)', fontSize: 'var(--text-h3)', fontWeight: 'var(--font-weight-semibold)' }}>
-                {operativo.nombre}
-              </p>
-            </div>
-
-            {/* Estado asignado */}
-            <div
-              className="inline-flex items-center gap-2 px-3 py-1.5 rounded-full"
-              style={{ background: 'rgba(13,148,136,0.1)', border: '1px solid rgba(13,148,136,0.3)' }}
-            >
-              <span style={{ width: 7, height: 7, borderRadius: '50%', background: '#0d9488', display: 'inline-block' }} />
-              <span style={{ color: '#0d9488', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)', fontFamily: 'var(--font-family-primary)' }}>
-                Estado: Disponible
-              </span>
-            </div>
-
-            <div
-              className="w-full p-4 rounded-[var(--radius-card)] text-left"
-              style={{ background: 'var(--card)', boxShadow: 'var(--elevation-sm)' }}
-            >
-              <p style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-base)' }}>
-                El coordinador del operativo podrá verte en el sistema. Presentate al Puesto de Comando para recibir instrucciones.
-              </p>
-            </div>
-            <button
-              onClick={() => navigate('/agente')}
-              className="w-full py-4 rounded-[var(--radius-card)] text-[var(--primary-foreground)] transition-opacity hover:opacity-90"
-              style={{ background: 'var(--primary)', fontSize: 'var(--text-h3)', fontWeight: 'var(--font-weight-semibold)' }}
-            >
-              Ir a mi panel
-            </button>
-          </div>
+          <>
+            <TituloAcceso icono={CheckCircle} colorIcono="#16a34a" titulo="¡Te uniste al operativo!" texto={<>
+              Ya estás registrado en <strong style={{ color: 'var(--foreground)' }}>{operativo.nombre}</strong>.
+            </>} />
+            <span className="self-start"><EstadoAgenteBadge estado="disponible" /></span>
+            <p style={{ margin: 0, color: 'var(--muted-foreground)', fontSize: 'var(--text-base)', lineHeight: 1.55 }}>
+              El coordinador del operativo podrá verte en el sistema. Presentate al Puesto de Comando para recibir instrucciones.
+            </p>
+            <BotonAcceso icono={ArrowRight} onClick={() => navigate('/agente')}>Ir a mi panel</BotonAcceso>
+          </>
         )}
+      </MarcoAcceso>
 
-      </div>
-
-      {/* ══════════════════════════════════════════════════════════
-          MODAL DE CONFLICTO DE OPERATIVO — CU-14, Paso 5.1 / 6
-          Overlay independiente del modo actual.
-          Texto exacto requerido por el caso de uso.
-         ══════════════════════════════════════════════════════════ */}
+      {/* ══ MODAL DE CONFLICTO DE OPERATIVO — CU-14, Paso 5.1 / 6. Texto exacto requerido por el caso de uso. ══ */}
       {showConflictoModal && operativoConflicto && (
-        <div
-          className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
-          style={{ background: 'rgba(0,0,0,0.6)', backdropFilter: 'blur(4px)' }}
-          onClick={() => setShowConflictoModal(false)}
-        >
-          <div
-            className="w-full rounded-t-[var(--radius-card)] sm:rounded-[var(--radius-card)] overflow-hidden flex flex-col"
-            style={{
-              maxWidth: 440,
-              background: 'var(--card)',
-              boxShadow: 'var(--elevation-md)',
-            }}
-            onClick={e => e.stopPropagation()}
-          >
-            {/* ── Accent bar ── */}
-            <div style={{ height: 4, background: 'linear-gradient(90deg, #d97706, #f59e0b)' }} />
-
-            {/* ── Header ── */}
-            <div
-              className="flex items-start justify-between px-5 pt-5 pb-4"
-              style={{ borderBottom: '1px solid var(--border)' }}
-            >
+        <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
+          style={{ background: 'var(--scrim-modal)' }} onClick={() => setShowConflictoModal(false)}>
+          <div role="dialog" aria-label="Conflicto de operativo" className="w-full rounded-t-[var(--radius-card)] sm:rounded-[var(--radius-card)] overflow-hidden flex flex-col"
+            style={{ maxWidth: 440, background: 'var(--card)', boxShadow: 'var(--elevation-modal)', border: '1px solid var(--border)' }}
+            onClick={e => e.stopPropagation()}>
+            <div className="flex items-start justify-between gap-3" style={{ padding: '18px 20px', borderBottom: '1px solid var(--border)' }}>
               <div className="flex items-start gap-3">
-                <div
-                  className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0 mt-0.5"
-                  style={{ background: 'rgba(217,119,6,0.12)' }}
-                >
-                  <AlertTriangle size={20} style={{ color: '#d97706' }} />
-                </div>
+                <span className="flex items-center justify-center shrink-0" style={{ width: 40, height: 40, borderRadius: 12, background: 'color-mix(in srgb, #d97706 14%, transparent)', color: '#d97706' }}>
+                  <AlertTriangle size={20} />
+                </span>
                 <div>
-                  <p style={{
-                    color: 'var(--foreground)', fontSize: 'var(--text-base)',
-                    fontWeight: 'var(--font-weight-bold)', fontFamily: 'var(--font-family-primary)',
-                    marginBottom: 2,
-                  }}>
-                    Conflicto de operativo
-                  </p>
-                  <p style={{
-                    color: 'var(--muted-foreground)', fontSize: 'var(--text-label)',
-                    fontFamily: 'var(--font-family-primary)',
-                  }}>
-                    Se detectó actividad en otro operativo activo
-                  </p>
+                  <p style={{ margin: 0, color: 'var(--foreground)', fontSize: 'var(--text-h3)', fontWeight: 'var(--font-weight-semibold)' }}>Conflicto de operativo</p>
+                  <p style={{ margin: '2px 0 0', color: 'var(--muted-foreground)', fontSize: 'var(--text-label)' }}>Se detectó actividad en otro operativo activo</p>
                 </div>
               </div>
-              <button
-                onClick={() => setShowConflictoModal(false)}
-                className="p-1.5 rounded-lg flex-shrink-0 transition-colors"
-                style={{ color: 'var(--muted-foreground)', background: 'none', border: 'none', cursor: 'pointer' }}
-                onMouseEnter={e => (e.currentTarget.style.background = 'var(--muted)')}
-                onMouseLeave={e => (e.currentTarget.style.background = 'none')}
-              >
-                <X size={16} />
+              <button onClick={() => setShowConflictoModal(false)} aria-label="Cerrar" className="flex" style={{ color: 'var(--muted-foreground)', background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
+                <X size={18} />
               </button>
             </div>
 
-            {/* ── Cuerpo: texto exacto del CU-14, Paso 5.1 ── */}
-            <div className="px-5 py-5 flex flex-col gap-4">
-              <p style={{
-                color: 'var(--foreground)',
-                fontSize: 'var(--text-base)',
-                fontFamily: 'var(--font-family-primary)',
-                lineHeight: 1.65,
-              }}>
+            {/* Cuerpo: texto exacto del CU-14, Paso 5.1 */}
+            <div className="flex flex-col gap-4" style={{ padding: 20 }}>
+              <p style={{ margin: 0, color: 'var(--foreground)', fontSize: 'var(--text-base)', lineHeight: 1.65 }}>
                 Ya te encontrás activo en un operativo,{' '}
                 <span style={{ color: 'var(--muted-foreground)' }}>¿Deseás abandonar el operativo</span>{' '}
-                <strong style={{ color: '#d97706' }}>{operativoConflicto.nombre}</strong>{' '}
+                <strong>{operativoConflicto.nombre}</strong>{' '}
                 <span style={{ color: 'var(--muted-foreground)' }}>y darte de alta en el operativo</span>{' '}
-                <strong style={{ color: 'var(--primary)' }}>{operativo.nombre}</strong>?
+                <strong>{operativo.nombre}</strong>?
               </p>
-
-              {/* ── Visualización de transferencia ── */}
               <div className="flex flex-col gap-2">
-                {/* Operativo anterior */}
-                <div
-                  className="flex items-center gap-3 p-3 rounded-[var(--radius-input)]"
-                  style={{ background: 'rgba(217,119,6,0.07)', border: '1.5px solid rgba(217,119,6,0.25)' }}
-                >
-                  <div
-                    className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                    style={{ background: 'rgba(217,119,6,0.12)' }}
-                  >
-                    <AlertTriangle size={14} style={{ color: '#d97706' }} />
+                {([['Operativo actual', operativoConflicto, '#d97706', AlertTriangle], ['Nuevo operativo (QR)', operativo, 'var(--primary)', QrCode]] as const).map(([rotulo, op, color, I], i) => (
+                  <div key={rotulo}>
+                    {i === 1 && (
+                      <div className="flex items-center justify-center gap-2 pb-2" style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-small)' }}>
+                        <ArrowRightLeft size={14} />Cambiar a
+                      </div>
+                    )}
+                    <div className="flex items-center gap-3" style={{ padding: 12, borderRadius: 'var(--radius-md)', background: `color-mix(in srgb, ${color} 7%, transparent)`, border: `1.5px solid color-mix(in srgb, ${color} 28%, transparent)` }}>
+                      <span className="flex items-center justify-center shrink-0" style={{ width: 32, height: 32, borderRadius: 8, background: `color-mix(in srgb, ${color} 14%, transparent)`, color }}><I size={14} /></span>
+                      <div className="min-w-0">
+                        <p style={{ margin: 0, fontSize: 'var(--text-micro)', color: 'var(--muted-foreground)', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 'var(--tracking-overline)' }}>{rotulo}</p>
+                        <p className="truncate" style={{ margin: 0, color: 'var(--foreground)', fontSize: 'var(--text-base)', fontWeight: 600 }}>{op.nombre}</p>
+                        <p style={{ margin: 0, color: 'var(--muted-foreground)', fontSize: 'var(--text-small)' }}>{op.ubicacion}</p>
+                      </div>
+                    </div>
                   </div>
-                  <div className="min-w-0">
-                    <p style={{ fontSize: 'calc(10px * var(--escala-texto))', color: '#d97706', fontWeight: 'var(--font-weight-semibold)', textTransform: 'uppercase', letterSpacing: '0.06em', fontFamily: 'var(--font-family-primary)' }}>
-                      Operativo actual
-                    </p>
-                    <p style={{ color: 'var(--foreground)', fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-semibold)', fontFamily: 'var(--font-family-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {operativoConflicto.nombre}
-                    </p>
-                    <p style={{ color: 'var(--muted-foreground)', fontSize: 'calc(11px * var(--escala-texto))', fontFamily: 'var(--font-family-primary)' }}>
-                      {operativoConflicto.ubicacion}
-                    </p>
-                  </div>
-                </div>
-
-                {/* Flecha */}
-                <div className="flex items-center justify-center gap-2 py-0.5" style={{ color: 'var(--muted-foreground)' }}>
-                  <ArrowRightLeft size={14} />
-                  <span style={{ fontSize: 'calc(11px * var(--escala-texto))', fontFamily: 'var(--font-family-primary)' }}>Cambiar a</span>
-                </div>
-
-                {/* Operativo nuevo */}
-                <div
-                  className="flex items-center gap-3 p-3 rounded-[var(--radius-input)]"
-                  style={{ background: 'color-mix(in srgb, var(--primary) 6%, transparent)', border: '1.5px solid color-mix(in srgb, var(--primary) 25%, transparent)' }}
-                >
-                  <div
-                    className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                    style={{ background: 'color-mix(in srgb, var(--primary) 10%, transparent)' }}
-                  >
-                    <Shield size={14} style={{ color: 'var(--primary)' }} />
-                  </div>
-                  <div className="min-w-0">
-                    <p style={{ fontSize: 'calc(10px * var(--escala-texto))', color: 'var(--primary)', fontWeight: 'var(--font-weight-semibold)', textTransform: 'uppercase', letterSpacing: '0.06em', fontFamily: 'var(--font-family-primary)' }}>
-                      Nuevo operativo (QR)
-                    </p>
-                    <p style={{ color: 'var(--foreground)', fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-semibold)', fontFamily: 'var(--font-family-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
-                      {operativo.nombre}
-                    </p>
-                    <p style={{ color: 'var(--muted-foreground)', fontSize: 'calc(11px * var(--escala-texto))', fontFamily: 'var(--font-family-primary)' }}>
-                      {operativo.ubicacion}
-                    </p>
-                  </div>
-                </div>
+                ))}
               </div>
-
-              {/* Advertencia */}
-              <div
-                className="flex items-start gap-2.5 p-3 rounded-[var(--radius-input)]"
-                style={{ background: 'rgba(217,119,6,0.06)', border: '1px solid rgba(217,119,6,0.2)' }}
-              >
-                <AlertCircle size={13} style={{ color: '#d97706', marginTop: 1, flexShrink: 0 }} />
-                <p style={{ color: 'var(--muted-foreground)', fontSize: 'calc(11px * var(--escala-texto))', fontFamily: 'var(--font-family-primary)', lineHeight: 1.55 }}>
-                  Serás desvinculado del operativo anterior automáticamente y tu estado quedará como <strong style={{ color: 'var(--foreground)' }}>Disponible</strong> en el nuevo operativo.
-                </p>
-              </div>
+              <AlertaAcceso tono="aviso" icono={AlertCircle}>
+                Serás desvinculado del operativo anterior automáticamente y tu estado quedará como <strong>Disponible</strong> en el nuevo operativo.
+              </AlertaAcceso>
             </div>
 
-            {/* ── Footer: botones CU-14 ── */}
-            <div
-              className="flex flex-col gap-2.5 px-5 pb-5"
-            >
+            {/* Footer: botones CU-14 */}
+            <div className="flex flex-col gap-2.5" style={{ padding: '0 20px 20px' }}>
               {/* Botón principal: "Darme de alta" — CU-14, Paso 6 */}
-              <button
-                onClick={handleDarmeDeAlta}
-                className="w-full py-3.5 rounded-[var(--radius-button)] text-[var(--primary-foreground)] flex items-center justify-center gap-2 transition-opacity hover:opacity-90"
-                style={{
-                  background: 'var(--primary)',
-                  fontSize: 'var(--text-base)',
-                  fontWeight: 'var(--font-weight-bold)',
-                  fontFamily: 'var(--font-family-primary)',
-                }}
-              >
-                <Shield size={16} />
-                Darme de alta
-              </button>
-
-              {/* Botón secundario */}
-              <button
-                onClick={() => { setShowConflictoModal(false); navigate('/agente'); }}
-                className="w-full py-3 rounded-[var(--radius-button)] transition-colors"
-                style={{
-                  background: 'var(--muted)',
-                  border: '1px solid var(--border)',
-                  color: 'var(--foreground)',
-                  fontSize: 'var(--text-base)',
-                  fontWeight: 'var(--font-weight-semibold)',
-                  fontFamily: 'var(--font-family-primary)',
-                  cursor: 'pointer',
-                }}
-                onMouseEnter={e => (e.currentTarget.style.background = 'var(--border)')}
-                onMouseLeave={e => (e.currentTarget.style.background = 'var(--muted)')}
-              >
-                Quedarme en el operativo actual
-              </button>
+              <BotonAcceso icono={Check} cargando={loading} onClick={handleDarmeDeAlta}>Darme de alta</BotonAcceso>
+              <BotonAcceso tono="secundario" onClick={() => { setShowConflictoModal(false); navigate('/agente'); }}>Quedarme en el operativo actual</BotonAcceso>
             </div>
           </div>
         </div>
       )}
+    </>
+  );
+}
 
-      {showRecover && (
-        <RecuperarContrasenaModal onClose={() => setShowRecover(false)} />
-      )}
+/** El operativo del QR, en una franja azul noche arriba de la tarjeta (diseño CALÍVAR). */
+function BannerOperativo({ operativo }: { operativo: { nombre: string; ubicacion: string; estado: string } }) {
+  // La API manda el estado en mayúsculas («EN_PLANIFICACION»); StatusBadge usa las claves de la app.
+  const estado = operativo.estado === 'en_planificacion' ? 'planificación' : operativo.estado;
+  return (
+    <div className="w-full flex items-center gap-3" style={{ padding: '12px 14px', borderRadius: 'var(--radius-card)', background: 'var(--sidebar)', color: 'var(--sidebar-foreground)' }}>
+      <span className="flex items-center justify-center shrink-0" style={{ width: 40, height: 40, borderRadius: 12, background: 'var(--primary)', color: 'var(--primary-foreground)' }}><QrCode size={20} /></span>
+      <div className="min-w-0 flex-1">
+        <p style={{ margin: 0, fontSize: 'var(--text-micro)', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', opacity: 0.7 }}>Operativo</p>
+        <p style={{ margin: '1px 0 2px', fontSize: 'var(--text-base)', fontWeight: 700, lineHeight: 1.3 }}>{operativo.nombre}</p>
+        <p className="flex items-center gap-1" style={{ margin: 0, fontSize: 'var(--text-small)', opacity: 0.75 }}><MapPin size={11} />{operativo.ubicacion}</p>
+      </div>
+      <StatusBadge estado={estado} size="sm" />
+    </div>
+  );
+}
+
+/** Sección numerada del formulario de registro. */
+function SeccionRegistro({ n, titulo, children }: { n: number; titulo: string; children: React.ReactNode }) {
+  return (
+    <div className="flex flex-col gap-3.5" style={{ paddingTop: n > 1 ? 16 : 0, borderTop: n > 1 ? '1px solid var(--border)' : 'none' }}>
+      <p className="flex items-center gap-2" style={{ margin: 0, fontSize: 'var(--text-micro)', fontWeight: 600, letterSpacing: '0.08em', textTransform: 'uppercase', color: 'var(--muted-foreground)' }}>
+        <span className="flex items-center justify-center" style={{ width: 20, height: 20, borderRadius: '50%', background: 'color-mix(in srgb, var(--primary) 16%, transparent)', color: 'var(--foreground)', fontSize: 'var(--text-micro)', letterSpacing: 0 }}>{n}</span>
+        {titulo}
+      </p>
+      {children}
     </div>
   );
 }

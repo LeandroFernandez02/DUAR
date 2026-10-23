@@ -1,6 +1,7 @@
 import { useEffect, useState } from 'react';
-import { useParams, useNavigate, Link } from 'react-router';
-import { Shield, CheckCircle, XCircle, Loader, MailCheck, Users, AlertTriangle, RefreshCw } from 'lucide-react';
+import { useParams, useNavigate } from 'react-router';
+import { CheckCircle, XCircle, Loader, MailCheck, Users, AlertTriangle, RefreshCw } from 'lucide-react';
+import { MarcoAcceso, TituloAcceso, AlertaAcceso, BotonAcceso } from '../components/auth/Acceso';
 import { useApp } from '../context/AppContext';
 import { authApi, registroApi, ApiError } from '../services/api';
 import { leerAltaPendiente, limpiarAltaPendiente, AltaPendiente } from '../utils/altaPendiente';
@@ -121,95 +122,52 @@ export default function ConfirmarEmail() {
   }, [estado]);
 
   /** Sección chica que se agrega bajo el mensaje de "cuenta confirmada" cuando había un operativo esperando. */
+  const irAlQR = () => altaPendiente && navigate(`/registro/${altaPendiente.operativoId}?qr=${altaPendiente.qrToken}`);
   const renderEstadoAlta = () => {
     if (estadoAlta === 'ninguna') return null;
-
     if (estadoAlta === 'uniendo') {
       return (
-        <div className="w-full flex items-center gap-3 p-3.5 rounded-xl text-left" style={{ background: 'rgba(37,99,235,0.06)', border: '1px solid rgba(37,99,235,0.2)' }}>
-          <Loader size={18} style={{ color: '#2563eb', flexShrink: 0 }} className="animate-spin" />
-          <p style={{ color: 'var(--foreground)', fontSize: 'var(--text-label)' }}>
-            Sumándote al operativo <strong>{altaPendiente?.operativoNombre}</strong>...
-          </p>
-        </div>
+        <AlertaAcceso tono="info" icono={Loader}>
+          Sumándote al operativo <strong>{altaPendiente?.operativoNombre}</strong>...
+        </AlertaAcceso>
       );
     }
-
     if (estadoAlta === 'unido') {
       return (
-        <div className="w-full flex items-start gap-3 p-3.5 rounded-xl text-left" style={{ background: '#dcfce7', border: '1px solid #86efac' }}>
-          <Users size={18} style={{ color: '#16a34a', flexShrink: 0, marginTop: 1 }} />
-          <p style={{ color: '#15803d', fontSize: 'var(--text-label)', lineHeight: 1.5 }}>
-            Ya figurás como agente <strong>Disponible</strong> en{' '}
-            <strong>{altaPendiente?.operativoNombre}</strong>.
-          </p>
-        </div>
+        <AlertaAcceso tono="info" icono={Users}>
+          Ya figurás como agente <strong>Disponible</strong> en <strong>{altaPendiente?.operativoNombre}</strong>.
+        </AlertaAcceso>
       );
     }
-
     if (estadoAlta === 'conflicto' && altaPendiente) {
       return (
-        <div className="w-full flex flex-col gap-2.5 p-3.5 rounded-xl text-left" style={{ background: 'rgba(217,119,6,0.08)', border: '1px solid rgba(217,119,6,0.3)' }}>
-          <div className="flex items-start gap-3">
-            <AlertTriangle size={18} style={{ color: '#d97706', flexShrink: 0, marginTop: 1 }} />
-            <p style={{ color: 'var(--foreground)', fontSize: 'var(--text-label)', lineHeight: 1.5 }}>
-              Ya estás activo en otro operativo. Volvé a entrar por el QR de{' '}
-              <strong>{altaPendiente.operativoNombre}</strong> para decidir si te trasladás.
-            </p>
-          </div>
-          <Link
-            to={`/registro/${altaPendiente.operativoId}?qr=${altaPendiente.qrToken}`}
-            className="text-center py-2.5 rounded-lg"
-            style={{ background: '#d97706', color: '#fff', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)', fontFamily: 'var(--font-family-primary)' }}
-          >
-            Ver operativo y decidir
-          </Link>
-        </div>
+        <>
+          <AlertaAcceso tono="aviso" icono={AlertTriangle}>
+            Ya estás activo en otro operativo. Volvé a entrar por el QR de <strong>{altaPendiente.operativoNombre}</strong> para decidir si te trasladás.
+          </AlertaAcceso>
+          <BotonAcceso tono="secundario" onClick={irAlQR}>Ver operativo y decidir</BotonAcceso>
+        </>
       );
     }
-
     if (estadoAlta === 'sin_sesion' && altaPendiente) {
       return (
-        <div className="w-full flex flex-col gap-2.5 p-3.5 rounded-xl text-left" style={{ background: 'rgba(37,99,235,0.06)', border: '1px solid rgba(37,99,235,0.2)' }}>
-          <div className="flex items-start gap-3">
-            <Users size={18} style={{ color: '#2563eb', flexShrink: 0, marginTop: 1 }} />
-            <p style={{ color: 'var(--foreground)', fontSize: 'var(--text-label)', lineHeight: 1.5 }}>
-              Falta un paso para sumarte a <strong>{altaPendiente.operativoNombre}</strong>: volvé a la pantalla donde te
-              registraste y tocá <strong>«Ya confirmé mi correo»</strong>, o iniciá sesión acá.
-            </p>
-          </div>
-          <Link
-            to={`/registro/${altaPendiente.operativoId}?qr=${altaPendiente.qrToken}`}
-            className="text-center py-2.5 rounded-lg"
-            style={{ background: '#2563eb', color: '#fff', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)', fontFamily: 'var(--font-family-primary)' }}
-          >
-            Iniciar sesión y unirme
-          </Link>
-        </div>
+        <>
+          <AlertaAcceso tono="info" icono={Users}>
+            Falta un paso para sumarte a <strong>{altaPendiente.operativoNombre}</strong>: volvé a la pantalla donde te
+            registraste y tocá <strong>«Ya confirmé mi correo»</strong>, o iniciá sesión acá.
+          </AlertaAcceso>
+          <BotonAcceso tono="secundario" onClick={irAlQR}>Iniciar sesión y unirme</BotonAcceso>
+        </>
       );
     }
-
     if (estadoAlta === 'error') {
       return (
-        <div className="w-full flex flex-col gap-2.5 p-3.5 rounded-xl text-left" style={{ background: '#fee2e2', border: '1px solid #fecaca' }}>
-          <div className="flex items-start gap-3">
-            <AlertTriangle size={18} style={{ color: '#dc2626', flexShrink: 0, marginTop: 1 }} />
-            <p style={{ color: '#b91c1c', fontSize: 'var(--text-label)', lineHeight: 1.5 }}>{errorAlta}</p>
-          </div>
-          {altaPendiente && (
-            <button
-              onClick={intentarAltaAutomatica}
-              className="flex items-center justify-center gap-1.5 py-2.5 rounded-lg"
-              style={{ background: 'var(--muted)', border: '1px solid var(--border)', color: 'var(--foreground)', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)', fontFamily: 'var(--font-family-primary)', cursor: 'pointer' }}
-            >
-              <RefreshCw size={13} />
-              Reintentar
-            </button>
-          )}
-        </div>
+        <>
+          <AlertaAcceso icono={AlertTriangle}>{errorAlta}</AlertaAcceso>
+          {altaPendiente && <BotonAcceso tono="secundario" icono={RefreshCw} onClick={intentarAltaAutomatica}>Reintentar</BotonAcceso>}
+        </>
       );
     }
-
     return null;
   };
 
@@ -221,22 +179,13 @@ export default function ConfirmarEmail() {
 
   /** Aviso cuando el navegador tiene abierta la sesión de otra cuenta. */
   const renderOtraSesion = () => otraSesion && usuario && (
-    <div className="w-full flex flex-col gap-2.5 p-3.5 rounded-xl text-left" style={{ background: 'rgba(217,119,6,0.08)', border: '1px solid rgba(217,119,6,0.3)' }}>
-      <div className="flex items-start gap-3">
-        <AlertTriangle size={18} style={{ color: '#d97706', flexShrink: 0, marginTop: 1 }} />
-        <p style={{ color: 'var(--foreground)', fontSize: 'var(--text-label)', lineHeight: 1.5 }}>
-          En este navegador está abierta la sesión de <strong>{usuario.nombre} {usuario.apellido}</strong> ({usuario.rol}).
-          Para entrar con la cuenta que confirmaste (<strong>{emailConfirmado}</strong>), cerrá esa sesión.
-        </p>
-      </div>
-      <button
-        onClick={handleEntrarConMiCuenta}
-        className="py-2.5 rounded-lg"
-        style={{ background: '#d97706', color: '#fff', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)', fontFamily: 'var(--font-family-primary)', border: 'none', cursor: 'pointer' }}
-      >
-        Cerrar esa sesión e ingresar con mi cuenta
-      </button>
-    </div>
+    <>
+      <AlertaAcceso tono="aviso" icono={AlertTriangle}>
+        En este navegador está abierta la sesión de <strong>{usuario.nombre} {usuario.apellido}</strong> ({usuario.rol}).
+        Para entrar con la cuenta que confirmaste (<strong>{emailConfirmado}</strong>), cerrá esa sesión.
+      </AlertaAcceso>
+      <BotonAcceso onClick={handleEntrarConMiCuenta}>Cerrar esa sesión e ingresar con mi cuenta</BotonAcceso>
+    </>
   );
 
   const handleIrAlPanel = () => {
@@ -246,174 +195,49 @@ export default function ConfirmarEmail() {
       navigate('/login');
     }
   };
+  const botonIrAlSistema = (
+    <BotonAcceso tono={otraSesion ? 'secundario' : 'primario'} onClick={handleIrAlPanel}>
+      {otraSesion && usuario ? `Seguir como ${usuario.nombre}` : 'Ir al sistema'}
+    </BotonAcceso>
+  );
 
   return (
-    <div
-      className="min-h-screen flex flex-col items-center justify-center p-6"
-      style={{ background: 'var(--background)', fontFamily: 'var(--font-family-primary)' }}
-    >
-      {/* Header */}
-      <div className="flex items-center gap-3 mb-10">
-        <div
-          className="w-10 h-10 rounded-xl flex items-center justify-center"
-          style={{ background: 'var(--primary)' }}
-        >
-          <Shield size={20} color="var(--primary-foreground)" />
-        </div>
-        <div>
-          <p style={{ color: 'var(--foreground)', fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-bold)' }}>
-            DUAR · Confirmación de cuenta
-          </p>
-          <p style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-label)' }}>
-            Sistema de Búsqueda y Rastreo
-          </p>
-        </div>
-      </div>
+    <MarcoAcceso>
+      {/* ── Verificando ── */}
+      {estado === 'verificando' && (
+        <TituloAcceso icono={Loader} titulo="Verificando tu cuenta..." texto="Por favor esperá un momento." />
+      )}
 
-      <div
-        className="w-full max-w-[400px] rounded-[var(--radius-card)] p-8 flex flex-col items-center text-center gap-6"
-        style={{ background: 'var(--card)', boxShadow: 'var(--elevation-md)' }}
-      >
-        {/* ── Verificando ── */}
-        {estado === 'verificando' && (
-          <>
-            <div
-              className="w-20 h-20 rounded-full flex items-center justify-center"
-              style={{ background: 'rgba(37,99,235,0.1)' }}
-            >
-              <Loader size={36} style={{ color: '#2563eb' }} className="animate-spin" />
-            </div>
-            <div>
-              <h2
-                className="mb-2"
-                style={{ color: 'var(--foreground)', fontSize: 'var(--text-h2)', fontWeight: 'var(--font-weight-bold)' }}
-              >
-                Verificando tu cuenta...
-              </h2>
-              <p style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-base)' }}>
-                Por favor esperá un momento.
-              </p>
-            </div>
-          </>
-        )}
+      {/* ── Exitoso ── */}
+      {estado === 'exitoso' && (
+        <>
+          <TituloAcceso icono={CheckCircle} colorIcono="#16a34a" titulo="¡Cuenta confirmada!"
+            texto="Tu correo electrónico fue verificado exitosamente. Ya tenés acceso completo al sistema." />
+          {renderOtraSesion()}
+          {renderEstadoAlta()}
+          {botonIrAlSistema}
+        </>
+      )}
 
-        {/* ── Exitoso ── */}
-        {estado === 'exitoso' && (
-          <>
-            <div
-              className="w-20 h-20 rounded-full flex items-center justify-center"
-              style={{ background: '#dcfce7' }}
-            >
-              <CheckCircle size={40} color="#16a34a" />
-            </div>
-            <div>
-              <h2
-                className="mb-2"
-                style={{ color: 'var(--foreground)', fontSize: 'var(--text-h2)', fontWeight: 'var(--font-weight-bold)' }}
-              >
-                ¡Cuenta confirmada!
-              </h2>
-              <p style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-base)', lineHeight: 1.6 }}>
-                Tu correo electrónico fue verificado exitosamente. Ya tenés acceso completo al sistema DUAR.
-              </p>
-            </div>
-            {renderOtraSesion()}
-            {renderEstadoAlta()}
-            <button
-              onClick={handleIrAlPanel}
-              className="w-full py-3.5 rounded-xl text-[var(--primary-foreground)]"
-              style={{
-                background: otraSesion ? 'var(--muted-foreground)' : 'var(--primary)',
-                fontSize: 'var(--text-base)',
-                fontWeight: 'var(--font-weight-semibold)',
-                fontFamily: 'var(--font-family-primary)',
-              }}
-            >
-              {otraSesion && usuario ? `Seguir como ${usuario.nombre}` : 'Ir al sistema'}
-            </button>
-          </>
-        )}
+      {/* ── Ya confirmado ── */}
+      {estado === 'ya_confirmado' && (
+        <>
+          <TituloAcceso icono={MailCheck} titulo="Cuenta ya verificada"
+            texto="Tu cuenta ya fue confirmada previamente. Podés ingresar al sistema con normalidad." />
+          {renderOtraSesion()}
+          {renderEstadoAlta()}
+          {botonIrAlSistema}
+        </>
+      )}
 
-        {/* ── Ya confirmado ── */}
-        {estado === 'ya_confirmado' && (
-          <>
-            <div
-              className="w-20 h-20 rounded-full flex items-center justify-center"
-              style={{ background: 'rgba(37,99,235,0.1)' }}
-            >
-              <MailCheck size={36} style={{ color: '#2563eb' }} />
-            </div>
-            <div>
-              <h2
-                className="mb-2"
-                style={{ color: 'var(--foreground)', fontSize: 'var(--text-h2)', fontWeight: 'var(--font-weight-bold)' }}
-              >
-                Cuenta ya verificada
-              </h2>
-              <p style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-base)', lineHeight: 1.6 }}>
-                Tu cuenta ya fue confirmada previamente. Podés ingresar al sistema con normalidad.
-              </p>
-            </div>
-            {renderOtraSesion()}
-            {renderEstadoAlta()}
-            <button
-              onClick={handleIrAlPanel}
-              className="w-full py-3.5 rounded-xl text-[var(--primary-foreground)]"
-              style={{
-                background: otraSesion ? 'var(--muted-foreground)' : 'var(--primary)',
-                fontSize: 'var(--text-base)',
-                fontWeight: 'var(--font-weight-semibold)',
-                fontFamily: 'var(--font-family-primary)',
-              }}
-            >
-              {otraSesion && usuario ? `Seguir como ${usuario.nombre}` : 'Ir al sistema'}
-            </button>
-          </>
-        )}
-
-        {/* ── Inválido / expirado ── */}
-        {estado === 'invalido' && (
-          <>
-            <div
-              className="w-20 h-20 rounded-full flex items-center justify-center"
-              style={{ background: '#fee2e2' }}
-            >
-              <XCircle size={40} color="#dc2626" />
-            </div>
-            <div>
-              <h2
-                className="mb-2"
-                style={{ color: 'var(--foreground)', fontSize: 'var(--text-h2)', fontWeight: 'var(--font-weight-bold)' }}
-              >
-                Link inválido o expirado
-              </h2>
-              <p style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-base)', lineHeight: 1.6 }}>
-                El link de confirmación no es válido o ya fue utilizado. Solicitá un nuevo correo desde tu panel de agente.
-              </p>
-            </div>
-            <button
-              onClick={handleIrAlPanel}
-              className="w-full py-3.5 rounded-xl"
-              style={{
-                background: 'var(--muted)',
-                color: 'var(--foreground)',
-                fontSize: 'var(--text-base)',
-                fontWeight: 'var(--font-weight-semibold)',
-                fontFamily: 'var(--font-family-primary)',
-              }}
-            >
-              Ir al inicio
-            </button>
-          </>
-        )}
-      </div>
-
-      <p
-        className="mt-8 text-center"
-        style={{ color: 'var(--muted-foreground)', fontSize: 'calc(11px * var(--escala-texto))' }}
-      >
-        © 2026 DUAR Córdoba · Sistema v2.0
-      </p>
-    </div>
+      {/* ── Inválido / expirado ── */}
+      {estado === 'invalido' && (
+        <>
+          <TituloAcceso icono={XCircle} colorIcono="var(--destructive)" titulo="Link inválido o expirado"
+            texto="El link de confirmación no es válido o ya fue utilizado. Solicitá un nuevo correo desde tu panel de agente." />
+          <BotonAcceso tono="secundario" onClick={handleIrAlPanel}>Ir al inicio</BotonAcceso>
+        </>
+      )}
+    </MarcoAcceso>
   );
 }
