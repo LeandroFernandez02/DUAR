@@ -10,10 +10,12 @@
  */
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useState } from 'react';
 import { Users, AlertCircle, Loader2, X } from 'lucide-react';
+import { toast } from 'sonner';
 import {
   agentesOperativoApi, gruposApi, ApiError,
   type AccionGrupo, type GrupoApi, type IntegranteGrupoApi, type PersonalOperativoApi,
 } from '../../services/api';
+import { Vacio } from '../../components/shared/Listados';
 import GruposDnD, { hayArrastreEnCurso, type AgenteTablero } from './GruposDnD';
 import ExtraerAgenteModal from '../../components/shared/ExtraerAgenteModal';
 import LineaTiempoModal from '../../components/shared/LineaTiempoModal';
@@ -27,6 +29,8 @@ interface Props {
   operativoId: string;
   /** Operativo finalizado o eliminado: se puede mirar, no reorganizar. */
   soloLectura: boolean;
+  /** Cuántos grupos hay (para el subtítulo de la sección). */
+  onCantidad?: (n: number) => void;
 }
 
 /** Lo que el padre (Agentes.tsx) puede pedirle al tablero desde su propia cabecera. */
@@ -34,7 +38,7 @@ export interface TableroGruposHandle {
   abrirCrear: () => void;
 }
 
-const TableroGrupos = forwardRef<TableroGruposHandle, Props>(function TableroGrupos({ operativoId, soloLectura }, ref) {
+const TableroGrupos = forwardRef<TableroGruposHandle, Props>(function TableroGrupos({ operativoId, soloLectura, onCantidad }, ref) {
   const [grupos, setGrupos] = useState<GrupoApi[]>([]);
   const [personal, setPersonal] = useState<PersonalOperativoApi[]>([]);
   const [cargando, setCargando] = useState(true);
@@ -65,6 +69,7 @@ const TableroGrupos = forwardRef<TableroGruposHandle, Props>(function TableroGru
   }, [operativoId]);
 
   useEffect(() => { cargar(); }, [cargar]);
+  useEffect(() => { if (!cargando) onCantidad?.(grupos.length); }, [cargando, grupos.length, onCantidad]);
 
   // Consulta periódica. Los modales trabajan sobre `vigente(...)`, así que
   // refrescar con uno abierto no les pisa lo que el usuario está escribiendo.
@@ -82,23 +87,24 @@ const TableroGrupos = forwardRef<TableroGruposHandle, Props>(function TableroGru
   const vigente = (g: GrupoApi | null) => (g ? grupos.find(x => x.id === g.id) ?? g : null);
 
   // Sólo un agente DISPONIBLE entra a un grupo. Sin grupo también puede haber
-  // No disponibles y Replegados (retirados por CU-27 que vuelven): se cuentan
-  // aparte (CU-24 obs. 2) y se habilitan desde la pestaña Agentes o su portal.
+  // No disponibles y Replegados (retirados por CU-27 que vuelven): no se muestran
+  // en el tablero (CU-24 obs. 2) y se habilitan desde la sección Agentes o su portal.
   const sinGrupo: AgenteTablero[] = useMemo(
     () => personal.filter(a => !a.grupoId && a.estado === 'DISPONIBLE'),
     [personal]
   );
-  const noAptosSinGrupo = personal.filter(a => !a.grupoId && a.estado !== 'DISPONIBLE').length;
   const disponiblesSinGrupo = personal.filter(a => !a.grupoId && a.estado === 'DISPONIBLE');
   // La asignación automática sólo reparte agentes de rastrillaje: los recursos especiales
   // (26/09) y los conductores (28/09, esperan en la camioneta) se suman a mano.
   const agentesSinGrupo = disponiblesSinGrupo.filter(a => !a.esRecursoCritico && !a.esConductor);
   const nombres = grupos.map(g => g.nombre);
 
-  const mover = async (agenteId: string, destino: string | null) => {
+  const mover = async (agente: AgenteTablero, destino: GrupoApi | null) => {
     setAviso(null);
+    const nombre = `${agente.nombre} ${agente.apellido}`;
     try {
-      await gruposApi.mover(operativoId, agenteId, destino);
+      await gruposApi.mover(operativoId, agente.id, destino?.id ?? null);
+      toast(destino ? `${nombre} sumado a ${destino.nombre}` : `${nombre} quedó sin grupo`);
     } catch (err) {
       setAviso(err instanceof ApiError ? err.message : 'No se pudo mover al agente.');
     }
@@ -116,27 +122,21 @@ const TableroGrupos = forwardRef<TableroGruposHandle, Props>(function TableroGru
   // CU-24 paso 3.1: tablero vacío.
   if (personal.length === 0 && grupos.length === 0) {
     return (
-      <div className="flex flex-col items-center justify-center text-center gap-3 py-16 rounded-[var(--radius-card)]"
-        style={{ background: 'var(--card)', border: '1px dashed var(--border)' }}>
-        <Users size={26} style={{ color: 'var(--muted-foreground)' }} />
-        <p style={{ color: 'var(--foreground)', fontWeight: 'var(--font-weight-semibold)' }}>Aún no hay agentes asignados a este operativo</p>
-        <p style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-label)', maxWidth: 360 }}>
-          Sumá personal desde la pestaña Agentes o con el QR del operativo, y después armá los grupos acá.
-        </p>
-      </div>
+      <Vacio icono={Users} titulo="Aún no hay agentes asignados a este operativo"
+        texto="Sumá personal desde la sección Agentes o con el QR del operativo, y después armá los grupos acá." />
     );
   }
 
   return (
     <div className="flex flex-col gap-4">
       {error && (
-        <div className="flex items-start gap-2 p-3 rounded-[var(--radius-input)]" style={{ background: '#fef3c7', border: '1px solid #fde68a', color: '#92400e', fontSize: 'var(--text-label)' }}>
+        <div className="flex items-start gap-2 p-3 rounded-[var(--radius-input)]" style={{ background: 'color-mix(in srgb, #d97706 calc(10% + var(--tinte-oscuro, 0%) * 0.08), transparent)', border: '1px solid color-mix(in srgb, #d97706 30%, transparent)', color: 'color-mix(in srgb, #fcd34d var(--tinte-oscuro, 0%), #92400e)', fontSize: 'var(--text-label)' }}>
           <AlertCircle size={15} style={{ flexShrink: 0, marginTop: 1 }} />
           <span>{error}</span>
         </div>
       )}
       {aviso && (
-        <div className="flex items-start gap-2 p-3 rounded-[var(--radius-input)]" style={{ background: '#fee2e2', border: '1px solid #fecaca', color: '#b91c1c', fontSize: 'var(--text-label)' }}>
+        <div className="flex items-start gap-2 p-3 rounded-[var(--radius-input)]" style={{ background: 'color-mix(in srgb, var(--destructive) calc(10% + var(--tinte-oscuro, 0%) * 0.1), transparent)', border: '1px solid color-mix(in srgb, var(--destructive) 30%, transparent)', color: 'color-mix(in srgb, #fca5a5 var(--tinte-oscuro, 0%), #b91c1c)', fontSize: 'var(--text-label)' }}>
           <AlertCircle size={15} style={{ flexShrink: 0, marginTop: 1 }} />
           <span className="flex-1">{aviso}</span>
           <button type="button" onClick={() => setAviso(null)} aria-label="Cerrar aviso" style={{ background: 'none', border: 'none', color: 'inherit', cursor: 'pointer', display: 'flex' }}>
@@ -148,7 +148,6 @@ const TableroGrupos = forwardRef<TableroGruposHandle, Props>(function TableroGru
       <GruposDnD
         grupos={grupos}
         sinGrupo={sinGrupo}
-        noAptosSinGrupo={noAptosSinGrupo}
         editable={!soloLectura}
         onMover={mover}
         onEditar={setEditar}
@@ -157,6 +156,7 @@ const TableroGrupos = forwardRef<TableroGruposHandle, Props>(function TableroGru
         onArmadoAutomatico={() => setArmado(true)}
         onAccion={(grupo, a) => setAccion({ grupo, accion: a })}
         onLineaTiempo={setHistoria}
+        onAviso={t => toast(t)}
         onNuevoGrupo={() => setCrear(true)}
       />
 

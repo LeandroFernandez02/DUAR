@@ -130,7 +130,7 @@ export default function EditarAgenteModal({ agente, operativoId, onClose, onSave
   return (
     <div
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(3px)' }}
+      style={{ background: 'var(--scrim-modal)' }}
       onClick={onClose}
     >
       <div

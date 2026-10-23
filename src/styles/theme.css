@@ -401,3 +401,8 @@ html {
 /* Panel de Control en mobile/tablet: la línea de tiempo va a lo ancho, debajo del título (que en mobile está en la barra) */
 .contenido-movil .pc-linea { margin-left: 0 !important; width: 100%; }
 .contenido-movil .pc-cabecera { margin-top: -15px; }
+
+/* Encabezado del operativo en la barra superior: los botones en una sola fila (se desliza de costado si no entran) */
+.cabecera-op .acciones-op { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; width: 100%; padding-bottom: 2px; }
+.cabecera-op .acciones-op::-webkit-scrollbar { display: none; }
+.cabecera-op .acciones-op > * { flex-shrink: 0; }

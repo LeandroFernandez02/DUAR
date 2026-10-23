@@ -112,7 +112,7 @@ export default function OperativoHeader({ operativo, movil = false }: Props) {
         </div>
 
         {/* ── Right: quick-action buttons + weather ── */}
-        <div className="flex items-center gap-2 flex-wrap min-w-0">
+        <div className="acciones-op flex items-center gap-2 flex-wrap min-w-0">
 
           {/* Achicar / agrandar: la flecha mira a la izquierda para achicar y se gira para agrandar. Sólo en escritorio. */}
           {!movil && <button

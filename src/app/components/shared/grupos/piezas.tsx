@@ -102,7 +102,7 @@ export function Overlay({ children, onClose, ancho = 480 }: { children: ReactNod
   return (
     <div
       className="fixed inset-0 z-[60] flex items-center justify-center p-4"
-      style={{ background: 'rgba(0,0,0,0.55)', backdropFilter: 'blur(3px)' }}
+      style={{ background: 'var(--scrim-modal)' }}
       onClick={onClose}
     >
       <div
@@ -201,7 +201,7 @@ export function BotonPrimario({ children, onClick, habilitado, peligro = false }
 export function ErrorCaja({ children }: { children: ReactNode }) {
   return (
     <div className="flex items-start gap-2 p-3 rounded-[var(--radius-input)]"
-      style={{ background: '#fee2e2', border: '1px solid #fecaca', color: '#b91c1c', fontSize: 'var(--text-label)', fontFamily: 'var(--font-family-primary)', lineHeight: 1.5 }}>
+      style={{ background: 'color-mix(in srgb, var(--destructive) calc(10% + var(--tinte-oscuro, 0%) * 0.1), transparent)', border: '1px solid color-mix(in srgb, var(--destructive) 30%, transparent)', color: 'color-mix(in srgb, #fca5a5 var(--tinte-oscuro, 0%), #b91c1c)', fontSize: 'var(--text-label)', fontFamily: 'var(--font-family-primary)', lineHeight: 1.5 }}>
       <AlertCircle size={14} style={{ marginTop: 2, flexShrink: 0 }} />
       <span>{children}</span>
     </div>

@@ -391,7 +391,7 @@ export function AccionGrupoModal({ operativoId, grupo, accion, onClose, onHecho 
 
   return (
     <Overlay onClose={onClose}>
-      <Encabezado icono={icono} fondo={esCorreccion ? '#fef3c7' : 'color-mix(in srgb, var(--primary) 10%, transparent)'} titulo={titulo} subtitulo={grupo.nombre} onClose={onClose} />
+      <Encabezado icono={icono} fondo={esCorreccion ? 'color-mix(in srgb, #d97706 calc(10% + var(--tinte-oscuro, 0%) * 0.08), transparent)' : 'color-mix(in srgb, var(--primary) 10%, transparent)'} titulo={titulo} subtitulo={grupo.nombre} onClose={onClose} />
       <div className="px-5 py-5 flex flex-col gap-4" style={{ overflowY: 'auto' }}>
         {!esCorreccion && (
           <>
@@ -518,7 +518,7 @@ export function ArmadoAutomaticoModal({ operativoId, disponibles, lideresDuar, r
             ))}
           </ul>
           {resultado.sinAsignar.length > 0 && (
-            <div className="p-3 rounded-[var(--radius-input)]" style={{ background: '#fef9c3', border: '1px solid #fde047', fontSize: 'var(--text-label)', color: '#713f12', lineHeight: 1.5, fontFamily: 'var(--font-family-primary)' }}>
+            <div className="p-3 rounded-[var(--radius-input)]" style={{ background: 'color-mix(in srgb, #d97706 calc(10% + var(--tinte-oscuro, 0%) * 0.08), transparent)', border: '1px solid color-mix(in srgb, #d97706 32%, transparent)', fontSize: 'var(--text-label)', color: 'color-mix(in srgb, #fde68a var(--tinte-oscuro, 0%), #713f12)', lineHeight: 1.5, fontFamily: 'var(--font-family-primary)' }}>
               {resultado.limitadoPorLideres
                 ? 'No hay más personal del DUAR para liderar, así que se armaron menos grupos de los pedidos. '
                 : ''}
@@ -623,7 +623,7 @@ export function DisolverGrupoModal({ grupo, onClose, onConfirmar }: {
 
   return (
     <Overlay onClose={onClose}>
-      <Encabezado icono={<Trash2 size={16} style={{ color: '#dc2626' }} />} fondo="#fee2e2"
+      <Encabezado icono={<Trash2 size={16} style={{ color: '#dc2626' }} />} fondo="color-mix(in srgb, var(--destructive) calc(10% + var(--tinte-oscuro, 0%) * 0.1), transparent)"
         titulo={`Disolver ${grupo.nombre}`} onClose={onClose} />
       <div className="px-5 py-5 flex flex-col gap-3">
         <p style={{ fontSize: 'var(--text-base)', color: 'var(--foreground)', fontFamily: 'var(--font-family-primary)' }}>

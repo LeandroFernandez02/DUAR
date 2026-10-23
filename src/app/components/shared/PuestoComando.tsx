@@ -69,7 +69,7 @@ export default function PuestoComando({ operativoId, soloLectura, compacto = fal
         aria-label={`Puesto de comando: ${mando.aCargo ? nombreDe(mando.aCargo) : 'sin coordinador a cargo'}`}
         className={`flex items-center gap-1.5 ${compacto ? 'px-2.5' : 'px-3'} py-1.5 rounded-[var(--radius-button)] transition-all`}
         style={{
-          background: sinMando ? '#fef3c7' : 'var(--muted)',
+          background: sinMando ? 'color-mix(in srgb, #d97706 calc(10% + var(--tinte-oscuro, 0%) * 0.08), transparent)' : 'var(--muted)',
           border: `1.5px solid ${sinMando ? '#fcd34d' : 'var(--border)'}`,
           color: sinMando ? '#92400e' : 'var(--foreground)',
           fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)', fontFamily: 'var(--font-family-primary)',
@@ -211,7 +211,7 @@ function PuestoComandoModal({ operativoId, mando, soloLectura, onCambio, onClose
         </div>
       )}
       {p.aCargo && !pideSucesor && (
-        <p style={{ fontSize: 'calc(11px * var(--escala-texto))', color: '#92400e' }}>No queda otro coordinador presente: el operativo va a quedar sin coordinador a cargo.</p>
+        <p style={{ fontSize: 'calc(11px * var(--escala-texto))', color: 'color-mix(in srgb, #fcd34d var(--tinte-oscuro, 0%), #92400e)' }}>No queda otro coordinador presente: el operativo va a quedar sin coordinador a cargo.</p>
       )}
       {error && <ErrorCaja>{error}</ErrorCaja>}
       <div className="flex justify-end gap-2">
@@ -225,8 +225,8 @@ function PuestoComandoModal({ operativoId, mando, soloLectura, onCambio, onClose
 
   const avisoTraslado = (
     traslado && (
-      <div className="flex flex-col gap-2 p-3 rounded-[var(--radius-input)]" style={{ background: '#fef3c7', border: '1px solid #fcd34d' }}>
-        <p style={{ fontSize: 'var(--text-label)', color: '#92400e', lineHeight: 1.5 }}>{traslado.mensaje}</p>
+      <div className="flex flex-col gap-2 p-3 rounded-[var(--radius-input)]" style={{ background: 'color-mix(in srgb, #d97706 calc(10% + var(--tinte-oscuro, 0%) * 0.08), transparent)', border: '1px solid color-mix(in srgb, #d97706 32%, transparent)' }}>
+        <p style={{ fontSize: 'var(--text-label)', color: 'color-mix(in srgb, #fcd34d var(--tinte-oscuro, 0%), #92400e)', lineHeight: 1.5 }}>{traslado.mensaje}</p>
         <div className="flex justify-end gap-2">
           <BotonSecundario onClick={() => setTraslado(null)}>Cancelar</BotonSecundario>
           <BotonPrimario onClick={() => ingresar(traslado.usuarioId, true)} habilitado={!ocupado}>Sí, trasladar</BotonPrimario>
@@ -271,7 +271,7 @@ function PuestoComandoModal({ operativoId, mando, soloLectura, onCambio, onClose
             </div>
           </div>
         ) : (
-          <div className="flex items-start gap-2 p-3 rounded-[var(--radius-input)]" style={{ background: '#fef3c7', border: '1px solid #fcd34d', color: '#92400e', fontSize: 'var(--text-label)', lineHeight: 1.5 }}>
+          <div className="flex items-start gap-2 p-3 rounded-[var(--radius-input)]" style={{ background: 'color-mix(in srgb, #d97706 calc(10% + var(--tinte-oscuro, 0%) * 0.08), transparent)', border: '1px solid color-mix(in srgb, #d97706 32%, transparent)', color: 'color-mix(in srgb, #fcd34d var(--tinte-oscuro, 0%), #92400e)', fontSize: 'var(--text-label)', lineHeight: 1.5 }}>
             <AlertTriangle size={15} style={{ flexShrink: 0, marginTop: 1 }} />
             <span>
               {soloLectura ? 'El operativo está cerrado: el puesto de comando ya no tiene a nadie.'

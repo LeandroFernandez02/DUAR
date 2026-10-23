@@ -209,10 +209,10 @@ export default function ExtraerAgenteModal({ operativoId, grupo, integrante, onC
           {/* ── Paso 5.1 · Binomio Mínimo ── */}
           {alertaBinomio && (
             <label className="flex items-start gap-2.5 p-3 rounded-[var(--radius-input)] cursor-pointer"
-              style={{ background: '#fef9c3', border: '1px solid #fde047' }}>
+              style={{ background: 'color-mix(in srgb, #d97706 calc(10% + var(--tinte-oscuro, 0%) * 0.08), transparent)', border: '1px solid color-mix(in srgb, #d97706 32%, transparent)' }}>
               <input id="extraer-riesgo" type="checkbox" checked={riesgoAceptado}
                 onChange={e => setRiesgoAceptado(e.target.checked)} style={{ marginTop: 2, flexShrink: 0 }} />
-              <span style={{ fontSize: 'var(--text-label)', color: '#713f12', lineHeight: 1.5, fontFamily: 'var(--font-family-primary)' }}>
+              <span style={{ fontSize: 'var(--text-label)', color: 'color-mix(in srgb, #fde68a var(--tinte-oscuro, 0%), #713f12)', lineHeight: 1.5, fontFamily: 'var(--font-family-primary)' }}>
                 <strong>Advertencia:</strong> el grupo quedará con una sola persona rastrillando, por debajo
                 del binomio mínimo. Sigue en el terreno y el tablero lo marca en rojo hasta que
                 vuelva. Confirmo ser consciente del riesgo.

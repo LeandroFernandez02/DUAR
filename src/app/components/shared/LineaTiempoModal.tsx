@@ -210,7 +210,7 @@ export default function LineaTiempoModal({ vista, titulo, subtitulo, cargar, onC
                       <p style={{ fontSize: 'calc(10.5px * var(--escala-texto))', color: '#b45309' }}>Llegó tarde: el grupo ya había pasado a otro estado. Queda en la historia, sin cambiar nada.</p>
                     )}
                     {e.resultado === 'RECHAZADO' && (
-                      <p style={{ fontSize: 'calc(10.5px * var(--escala-texto))', color: '#b91c1c' }}>Rechazado{e.motivo ? `: ${e.motivo}` : ''}.</p>
+                      <p style={{ fontSize: 'calc(10.5px * var(--escala-texto))', color: 'color-mix(in srgb, #fca5a5 var(--tinte-oscuro, 0%), #b91c1c)' }}>Rechazado{e.motivo ? `: ${e.motivo}` : ''}.</p>
                     )}
                     {!e.horaConfiable && (
                       <p className="flex items-center gap-1" style={{ fontSize: 'calc(10.5px * var(--escala-texto))', color: '#b45309' }}>
