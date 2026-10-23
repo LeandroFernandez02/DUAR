@@ -70,8 +70,10 @@ type Vista = 'calor' | 'curso';
  * período si se mira un año o un mes). `historial`: los que suman calor. Los elige el panel según
  * la línea de tiempo.
  */
-export default function MapaProvincia({ historial, puntos, etiquetaPuntos, isDark, encabezado }: {
+export default function MapaProvincia({ historial, puntos, etiquetaPuntos, isDark, encabezado, apilado = false }: {
   historial: OperativoPanel[]; puntos: OperativoPanel[]; etiquetaPuntos: string; isDark: boolean; encabezado?: React.ReactNode;
+  /** Panel angosto (menos de 4 columnas): el mapa arriba, centrado, y la ficha debajo. Ancho: el mapa toma toda la altura y la ficha va al costado. */
+  apilado?: boolean;
 }) {
   const [vista, setVista] = useState<Vista>('curso');
   const enCurso = puntos;
@@ -140,7 +142,7 @@ export default function MapaProvincia({ historial, puntos, etiquetaPuntos, isDar
   const textoCiudad = tinta(60);
 
   return (
-    <div className="flex flex-col lg:h-full min-h-0">
+    <div className={`flex flex-col min-h-0 ${apilado ? '' : 'h-full'}`}>
       {/* Selector de vista en una sola línea, para dejarle la altura al mapa */}
       <div className="flex items-center gap-x-3 gap-y-2 flex-wrap mb-3">
         {encabezado}
@@ -156,9 +158,11 @@ export default function MapaProvincia({ historial, puntos, etiquetaPuntos, isDar
         </div>
       </div>
 
-      <div className="flex flex-col md:flex-row gap-4 lg:flex-1 min-h-0">
+      <div className={`flex gap-4 min-h-0 ${apilado ? 'flex-col' : 'flex-row flex-1'}`}>
         {/* El mapa toma toda la altura disponible y su ancho sale de la proporción de la provincia */}
-        <div className="relative mx-auto md:mx-0 shrink-0 w-full md:w-[46%] lg:w-auto lg:h-full" style={{ aspectRatio: `${W} / ${H}`, maxWidth: '100%' }}>
+        <div className="relative shrink-0" style={apilado
+          ? { width: 'min(100%, 360px)', aspectRatio: `${W} / ${H}`, alignSelf: 'center' }
+          : { height: '100%', aspectRatio: `${W} / ${H}`, maxWidth: '58%' }}>
           <svg ref={svgRef} viewBox={`0 0 ${W.toFixed(0)} ${H.toFixed(0)}`} className="w-full h-full select-none" role="img"
             onPointerDown={empezarArrastre} onDoubleClick={ev => { const p = aSvg(ev.clientX, ev.clientY); setEnc(e => acercar(e, 2, p.x, p.y)); }}
             style={{ cursor: k > 1 ? (arrastrando ? 'grabbing' : 'grab') : 'zoom-in', touchAction: k > 1 ? 'none' : 'auto' }}
@@ -252,7 +256,7 @@ export default function MapaProvincia({ historial, puntos, etiquetaPuntos, isDar
         </div>
 
         {/* «Datos»: la ficha del operativo elegido (en curso) o dónde más se busca (calor). Si no entra, scrollea sola. */}
-        <div className="flex-1 min-w-0 min-h-0 overflow-y-auto">
+        <div className={apilado ? 'min-w-0' : 'flex-1 min-w-0 min-h-0 overflow-y-auto'}>
           {vista === 'curso'
             ? (elegido ? <Ficha o={elegido} /> : <p style={{ fontSize: 'var(--text-label)', color: 'var(--muted-foreground)' }}>No hay operativos en este período.</p>)
             : <ZonasCalientes historial={historial} />}

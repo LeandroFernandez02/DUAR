@@ -3,12 +3,13 @@ import type { Mes, Porcion } from '../../utils/panelGeneral';
 
 /**
  * Gráficos del panel general, en SVG propio (el proyecto no usa librería de gráficos).
- * Colores: paleta categórica validada (orden fijo, nunca rotado; claro y oscuro con sus
- * propios tonos, chequeados contra --card). Los tonos claros 3–5 no llegan a 3:1 sobre
- * blanco: por eso cada porción lleva su valor escrito en la leyenda.
+ * Colores: las series del diseño CALÍVAR (--serie-1..6 en theme.css: turquesa, azul noche,
+ * petróleo, acero, turquesa claro, niebla oscura), en orden fijo, con sus tonos de tema oscuro.
+ * Algunos tonos claros no llegan a 3:1 sobre blanco: por eso cada porción lleva su valor
+ * escrito en la leyenda.
  */
-export const SERIES_CLARO = ['#2a78d6', '#eb6834', '#1baf7a', '#eda100', '#e87ba4', '#008300'];
-export const SERIES_OSCURO = ['#3987e5', '#d95926', '#199e70', '#c98500', '#d55181', '#008300'];
+/** Las seis series como variables del tema: cambian solas con el modo oscuro. */
+export const SERIES = [1, 2, 3, 4, 5, 6].map(n => `var(--serie-${n})`);
 
 const tinta = { fontSize: 'var(--text-label)', color: 'var(--muted-foreground)' } as const;
 

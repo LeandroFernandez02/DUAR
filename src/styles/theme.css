@@ -397,3 +397,7 @@ html {
    los 12 px de arriba del contenedor de scroll se tapan con el fondo, así el listado nunca roza la barra. */
 .scroll-contenido::before { content: ''; display: block; position: sticky; top: 0; height: 12px; margin-bottom: -12px; z-index: 3; pointer-events: none; background: transparent; }
 .lista-fija .scroll-contenido::before { background: var(--background); }
+
+/* Panel de Control en mobile/tablet: la línea de tiempo va a lo ancho, debajo del título (que en mobile está en la barra) */
+.contenido-movil .pc-linea { margin-left: 0 !important; width: 100%; }
+.contenido-movil .pc-cabecera { margin-top: -15px; }

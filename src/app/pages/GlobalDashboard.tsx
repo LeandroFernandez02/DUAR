@@ -1,10 +1,10 @@
-import { useEffect, useMemo, useState, type ReactNode } from 'react';
+import { useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
 import { Radio, Users, UserCheck, ShieldAlert, Flag, Building2, Map as MapaIcono, CalendarRange, FilePlus2 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { OPERATIVOS_PANEL_MOCK, USUARIOS_ACTIVOS_MOCK } from '../data/panelGeneralMock';
 import { calcularPanel, agruparPorciones, rangoDe, RECURSOS_CRITICOS, ESTADO_BADGE, type Periodo, type FiltrosPanel } from '../utils/panelGeneral';
 import { colorDeEstado } from '../components/shared/StatusBadge';
-import { Torta, OperativosPorMes, SERIES_CLARO, SERIES_OSCURO } from './panel/Graficos';
+import { Torta, OperativosPorMes, SERIES } from './panel/Graficos';
 import MapaProvincia from './panel/MapaProvincia';
 import LineaTiempo from './panel/LineaTiempo';
 
@@ -13,7 +13,9 @@ import LineaTiempo from './panel/LineaTiempo';
  * coordinadores. Qué muestra lo decidió el equipo (doc «Panel general de operativos») y el
  * boceto del 21/10: arriba los operativos por estado; abajo el mapa de la provincia con los
  * datos del operativo elegido y, al costado, agentes, usuarios y las tortas; «Operativos por
- * mes» al final, con scroll. 4 columnas en escritorio, 2 en tablet, 1 en celular.
+ * mes» al final. Diseño CALÍVAR (23/10): la grilla depende del ancho del propio panel —4 columnas
+ * desde 1100 px (y entonces entra en la pantalla sin scroll), 2 hasta 760 px, 1 más angosto—, así
+ * en una notebook con el menú abierto no quedan 4 columnas apretadas.
  *
  * La línea de tiempo del encabezado (22/10) elige el período: hoy (al entrar), un año entero
  * o un mes, y deja pasar de año en año hasta el actual.
@@ -22,13 +24,13 @@ import LineaTiempo from './panel/LineaTiempo';
  * utils/panelGeneral.ts, que después recibe los datos reales con la misma forma.
  */
 
-const estiloTarjeta = { background: 'var(--card)', boxShadow: 'var(--elevation-sm)' } as const;
+const estiloTarjeta = { background: 'var(--card)', boxShadow: 'var(--elevation-sm)', border: '1px solid var(--card-border)' } as const;
 const sinFiltros = { estado: '', localidad: '', institucion: '' } as const;
 const isoDia = (x: Date) => `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`;
 
 export default function GlobalDashboard() {
   const { isDark } = useApp();
-  const series = isDark ? SERIES_OSCURO : SERIES_CLARO;
+  const series = SERIES;
   const todos = OPERATIVOS_PANEL_MOCK;
   const [periodo, setPeriodo] = useState<Periodo>({ tipo: 'hoy' });
   const rango = rangoDe(periodo);
@@ -62,89 +64,92 @@ export default function GlobalDashboard() {
     .map(nombre => ({ nombre, valor: enCurso.reduce((s, o) => s + (o.recursosCriticos?.[nombre] ?? 0), 0) }))
     .filter(x => x.valor > 0).sort((a, b) => b.valor - a.valor), [enCurso]);
 
-  // Las tortas crecen con la altura de la pantalla: en una notebook entran chicas, en un monitor grande no quedan perdidas.
-  const [alto, setAlto] = useState(() => window.innerHeight);
-  useEffect(() => {
-    const f = () => setAlto(window.innerHeight);
-    window.addEventListener('resize', f);
-    return () => window.removeEventListener('resize', f);
+  // La grilla y las tortas se adaptan al ancho y al alto del propio panel (no de la ventana).
+  const raiz = useRef<HTMLDivElement>(null);
+  const [med, setMed] = useState({ w: 0, h: 0 });
+  useLayoutEffect(() => {
+    const el = raiz.current;
+    if (!el) return;
+    const medir = () => {
+      const cont = el.parentElement ?? el;
+      setMed(m => (m.w === el.clientWidth && m.h === cont.clientHeight ? m : { w: el.clientWidth, h: cont.clientHeight }));
+    };
+    medir();
+    const ro = new ResizeObserver(medir);
+    ro.observe(el);
+    if (el.parentElement) ro.observe(el.parentElement);
+    return () => ro.disconnect();
   }, []);
-  const diametro = alto >= 1000 ? 132 : alto >= 860 ? 108 : alto >= 740 ? 88 : 70;
+  const ancho = med.w >= 1100, angosto = med.w < 760;
+  const diametro = med.w && med.w < 1300 ? Math.min(88, med.h >= 860 ? 108 : 88) : med.h >= 1000 ? 132 : med.h >= 860 ? 108 : med.h >= 740 ? 88 : 70;
+  const columnas = ancho ? 'repeat(4, minmax(0, 1fr))' : angosto ? 'minmax(0, 1fr)' : 'repeat(2, minmax(0, 1fr))';
+  /** Lugar en la grilla de 4 columnas; en las angostas cada tarjeta sigue el orden natural. */
+  const en = (col: string, fila: string): CSSProperties => (ancho ? { gridColumn: col, gridRow: fila } : {});
+  const todoElAncho: CSSProperties = ancho ? {} : { gridColumn: '1 / -1' };
+
   const enElPeriodo = esHoy ? 'en los operativos de hoy' : `en los operativos de ${periodo.tipo === 'mes' ? rango.etiqueta.toLowerCase() : rango.etiqueta}`;
   const detalleEstado = esHoy ? 'Ahora' : rango.etiqueta;
 
   return (
-    <div className="p-4 lg:p-6 flex flex-col gap-4 lg:h-dvh lg:min-h-[640px]" style={{ fontFamily: 'var(--font-family-primary)' }}>
-      <div className="flex items-end gap-x-6 gap-y-3 flex-wrap">
+    <div ref={raiz} className="p-4 lg:p-6 flex flex-col gap-4"
+      style={{ fontFamily: 'var(--font-family-primary)', height: ancho ? '100%' : 'auto', minHeight: ancho ? 640 : 0, visibility: med.w ? 'visible' : 'hidden' }}>
+      <div className="pc-cabecera flex items-center gap-x-6 gap-y-3 flex-wrap">
         <div>
-          <h1 style={{ color: 'var(--foreground)', fontSize: 'var(--text-h2)', fontWeight: 'var(--font-weight-bold)' }}>Panel de Control</h1>
+          <h1 style={{ margin: '0 0 4px', color: 'var(--foreground)', fontSize: 'var(--text-h2)', fontWeight: 'var(--font-weight-bold)' }}>Panel de Control</h1>
+          <p style={{ margin: 0, color: 'var(--muted-foreground)', fontSize: 'var(--text-base)' }}>Estadísticas Generales de Todos los Operativos</p>
         </div>
-        <div className="lg:ml-auto w-full lg:w-auto">
+        <div className="pc-linea ml-auto max-w-full overflow-x-auto">
           <LineaTiempo periodo={periodo} onCambiar={setPeriodo} anioMin={anioMin} iniciadosPorMes={iniciadosPorMes} />
         </div>
       </div>
 
       {/* Operativos por estado en el período */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-4">
+      <div className="grid gap-4" style={{ gridTemplateColumns: columnas }}>
         <Indicador valor={cuenta('ACTIVO')} etiqueta="Operativos activos" detalle={detalleEstado} icono={Radio} color={colorDeEstado(ESTADO_BADGE.ACTIVO)} />
         <Indicador valor={cuenta('NUEVO', 'EN_PLANIFICACION')} etiqueta="Operativos nuevos" detalle="Todavía sin activar" icono={FilePlus2} color={colorDeEstado(ESTADO_BADGE.NUEVO)} />
         <Indicador valor={cuenta('EN_PROCESO')} etiqueta="Operativos en proceso" detalle={detalleEstado} icono={CalendarRange} color={colorDeEstado(ESTADO_BADGE.EN_PROCESO)} />
         <Indicador valor={finalizados} etiqueta="Operativos finalizados" detalle={esHoy ? 'Hoy' : rango.etiqueta} icono={Flag} color={colorDeEstado(ESTADO_BADGE.FINALIZADO)} />
       </div>
 
-      {/* Mapa + datos | tortas y operativos por mes: en escritorio ocupa el resto de la pantalla, sin scroll */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 lg:grid-rows-[auto_minmax(0,1fr)_minmax(0,1fr)] gap-4 lg:flex-1 lg:min-h-0">
-        <section className="md:col-span-2 lg:row-span-3 rounded-[var(--radius-card)] p-4 flex flex-col min-h-0" style={estiloTarjeta}>
-          <div className="lg:flex-1 lg:min-h-0">
-            <MapaProvincia historial={enPeriodo} isDark={isDark}
-              puntos={esHoy ? enCurso : enPeriodo} etiquetaPuntos={esHoy ? 'Operativos en curso' : 'Operativos del período'}
-              encabezado={<div className="mr-auto -mb-2"><TituloTarjeta icono={MapaIcono} titulo="Mapa de la provincia" /></div>} />
-          </div>
+      {/* Mapa + datos | agentes, usuarios, tortas y operativos por mes: con 4 columnas ocupa el resto de la pantalla, sin scroll */}
+      <div className="grid gap-4 min-h-0"
+        style={{ gridTemplateColumns: columnas, gridTemplateRows: ancho ? 'auto minmax(0, 1fr) minmax(0, 1fr)' : 'none', flex: ancho ? 1 : 'none' }}>
+        <section className="rounded-[var(--radius-card)] p-4 flex flex-col min-h-0" style={{ ...estiloTarjeta, ...en('1 / span 2', '1 / span 3'), ...todoElAncho }}>
+          <MapaProvincia apilado={!ancho} historial={enPeriodo} isDark={isDark}
+            puntos={esHoy ? enCurso : enPeriodo} etiquetaPuntos={esHoy ? 'Operativos en curso' : 'Operativos del período'}
+            encabezado={<div className="mr-auto -mb-2"><TituloTarjeta icono={MapaIcono} titulo="Mapa de la provincia" /></div>} />
         </section>
 
         {/* Agentes y usuarios (23/10): sólo dos, siempre de ahora */}
-        <Indicador valor={agentes.terreno + agentes.base + agentes.noDisponible} etiqueta="Agentes en operativos"
+        <Indicador estilo={en('3', '1')} valor={agentes.terreno + agentes.base + agentes.noDisponible} etiqueta="Agentes en operativos"
           detalle={`Ahora · en ${enCurso.length} ${enCurso.length === 1 ? 'operativo' : 'operativos'} en curso`} icono={Users} />
-        <Indicador valor={USUARIOS_ACTIVOS_MOCK.total} etiqueta="Usuarios activos"
+        <Indicador estilo={en('4', '1')} valor={USUARIOS_ACTIVOS_MOCK.total} etiqueta="Usuarios activos"
           detalle={`Cuentas activas · ${USUARIOS_ACTIVOS_MOCK.agentes} agentes`} icono={UserCheck} />
 
-        {/* Cada torta en su tarjeta (una columna cada una): instituciones del período y recursos críticos trabajando ahora */}
-        <section className="rounded-[var(--radius-card)] px-4 py-3 flex flex-col min-h-0 min-w-0" style={estiloTarjeta}>
+        {/* Cada torta en su tarjeta: instituciones del período y recursos críticos trabajando ahora */}
+        <section className="rounded-[var(--radius-card)] px-4 py-3 flex flex-col min-w-0" style={{ ...estiloTarjeta, ...en('3', '2'), minHeight: ancho ? 0 : 170 }}>
           <TituloTarjeta icono={Building2} titulo="Instituciones" aclaracion={enElPeriodo} unaLinea />
           <div className="flex-1 min-h-0 flex items-center overflow-y-auto">
-            <Torta datos={agruparPorciones(d.instituciones, 5)} colores={series} unidad="operativos" diametro={diametro} compacta />
+            <Torta datos={agruparPorciones(d.instituciones, 5)} colores={series} unidad="operativos" diametro={ancho ? diametro : 96} compacta />
           </div>
         </section>
-        <section className="rounded-[var(--radius-card)] px-4 py-3 flex flex-col min-h-0 min-w-0" style={estiloTarjeta}>
+        <section className="rounded-[var(--radius-card)] px-4 py-3 flex flex-col min-w-0" style={{ ...estiloTarjeta, ...en('4', '2'), minHeight: ancho ? 0 : 170 }}>
           <TituloTarjeta icono={ShieldAlert} titulo="Recursos críticos" aclaracion="trabajando ahora" unaLinea />
           <div className="flex-1 min-h-0 flex items-center overflow-y-auto">
-            <Torta datos={recursosCriticos} colores={series} unidad="agentes" diametro={diametro} compacta />
+            <Torta datos={recursosCriticos} colores={series} unidad="agentes" diametro={ancho ? diametro : 96} compacta />
           </div>
         </section>
 
-        {/* Operativos por mes en lugar de la torta de especialidad (22/10): el panel entra entero, sin scroll. */}
-        <section className="md:col-span-2 rounded-[var(--radius-card)] px-4 py-3 flex flex-col min-h-0" style={estiloTarjeta}>
+        {/* Operativos por mes en lugar de la torta de especialidad (22/10) */}
+        <section className="rounded-[var(--radius-card)] px-4 py-3 flex flex-col min-h-0"
+          style={{ ...estiloTarjeta, ...en('3 / span 2', '3'), ...(ancho ? {} : { gridColumn: '1 / -1', height: 260 }) }}>
           <TituloTarjeta icono={CalendarRange} titulo="Operativos por mes" aclaracion={esHoy ? 'últimos 12 meses' : `año ${anioElegido}`} />
           <div className="flex-1 min-h-0">
             <OperativosPorMes meses={meses} colorBarras={series[0]} colorLinea={series[1]} compacto />
           </div>
         </section>
       </div>
-
     </div>
-  );
-}
-
-function Seccion({ titulo, icono: Icono, aclaracion, children }: { titulo: string; icono: typeof Radio; aclaracion?: string; children: ReactNode }) {
-  return (
-    <section className="rounded-[var(--radius-card)] p-5" style={estiloTarjeta}>
-      <div className="flex items-baseline gap-2 mb-4 flex-wrap">
-        <Icono size={16} style={{ color: 'var(--primary)', alignSelf: 'center' }} />
-        <h2 style={{ fontSize: 'var(--text-h4)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--foreground)' }}>{titulo}</h2>
-        {aclaracion && <span style={{ fontSize: 'var(--text-label)', color: 'var(--muted-foreground)' }}>{aclaracion}</span>}
-      </div>
-      {children}
-    </section>
   );
 }
 
@@ -159,12 +164,15 @@ function TituloTarjeta({ icono: I, titulo, aclaracion, unaLinea = false }: { ico
 }
 
 /** Tarjeta chica con una cifra (estados, agentes y usuarios). */
-/** `color`: el del estado de operativo que cuenta (mismo que el badge y el mapa); sin él, el rojo del sistema. */
-function Indicador({ valor, etiqueta, detalle, icono: I, color }: { valor: number; etiqueta: string; detalle?: string; icono: typeof Radio; color?: string }) {
+/** `color`: el del estado de operativo que cuenta (mismo que el badge y el mapa); sin él, el turquesa del sistema. */
+function Indicador({ valor, etiqueta, detalle, icono: I, color, estilo }: {
+  valor: number; etiqueta: string; detalle?: string; icono: typeof Radio; color?: string; estilo?: CSSProperties;
+}) {
   return (
-    <div className="rounded-[var(--radius-card)] px-4 py-2.5 flex items-center gap-3"
-      style={{ ...estiloTarjeta, ...(color ? { borderLeft: `4px solid ${color}` } : {}) }}>
-      <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: color ? `color-mix(in srgb, ${color} 12%, transparent)` : 'color-mix(in srgb, var(--primary) 10%, transparent)' }}>
+    <div className="rounded-[var(--radius-card)] flex items-center gap-3"
+      style={{ ...estiloTarjeta, padding: '10px 16px', ...(color ? { borderLeft: `4px solid ${color}` } : {}), ...estilo }}>
+      <div className="w-9 h-9 rounded-[var(--radius-md)] flex items-center justify-center shrink-0"
+        style={{ background: `color-mix(in srgb, ${color ?? 'var(--primary)'} 12%, transparent)` }}>
         <I size={17} style={{ color: color ?? 'var(--primary)' }} />
       </div>
       <div className="min-w-0">
