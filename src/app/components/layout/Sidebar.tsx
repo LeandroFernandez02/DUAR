@@ -3,9 +3,10 @@ import { Link, useLocation, useNavigate } from 'react-router';
 import {
   LayoutDashboard, ClipboardList, Users,
   ChevronLeft, LogOut, Moon, Sun, Shield, Map,
-  UserCheck, X, PanelLeftClose, PanelLeftOpen,
+  UserCheck, X, PanelLeftClose, PanelLeftOpen, Accessibility,
 } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
+import AccesibilidadPanel from './AccesibilidadPanel';
 
 interface NavItem {
   icon: React.ReactNode;
@@ -29,6 +30,8 @@ export default function Sidebar({ mobileOpen, onMobileClose }: Props) {
   // mobile el drawer siempre se abre a ancho completo.
   const [collapsed, setCollapsed] = useState(false);
   const [showAccountMenu, setShowAccountMenu] = useState(false);
+  /** Panel de Accesibilidad (diseño CALÍVAR): debajo de Modo oscuro. */
+  const [showAcc, setShowAcc] = useState(false);
 
   // Cerrar el popover de cuenta al navegar, para que no quede flotando sobre
   // la pantalla siguiente.
@@ -83,10 +86,10 @@ export default function Sidebar({ mobileOpen, onMobileClose }: Props) {
           y un transform en un ancestro convierte a `position: fixed` en
           relativo a ESE ancestro en vez de al viewport, así que puesto
           adentro nunca cubriría toda la pantalla. */}
-      {showAccountMenu && (
+      {(showAccountMenu || showAcc) && (
         <div
           className="fixed inset-0 z-[45]"
-          onClick={() => setShowAccountMenu(false)}
+          onClick={() => { setShowAccountMenu(false); setShowAcc(false); }}
           aria-hidden="true"
         />
       )}
@@ -239,6 +242,39 @@ export default function Sidebar({ mobileOpen, onMobileClose }: Props) {
             {isDark ? <Sun size={16} /> : <Moon size={16} />}
             <span className={collapsed ? 'md:hidden' : ''}>{isDark ? 'Modo Claro' : 'Modo Oscuro'}</span>
           </button>
+
+          {/* Accesibilidad: tamaño de texto, alto contraste y foco */}
+          <div className="relative">
+            <button
+              onClick={() => setShowAcc(v => !v)}
+              title="Accesibilidad"
+              aria-expanded={showAcc}
+              className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all w-full text-left ${collapsed ? 'md:justify-center' : ''}`}
+              style={{ color: 'var(--sidebar-foreground)', opacity: showAcc ? 1 : 0.7, fontSize: 'var(--text-base)', background: showAcc ? 'var(--sidebar-accent)' : 'transparent' }}
+              onMouseEnter={e => {
+                (e.currentTarget as HTMLElement).style.background = 'var(--sidebar-accent)';
+                (e.currentTarget as HTMLElement).style.opacity = '1';
+              }}
+              onMouseLeave={e => {
+                if (showAcc) return;
+                (e.currentTarget as HTMLElement).style.background = 'transparent';
+                (e.currentTarget as HTMLElement).style.opacity = '0.7';
+              }}
+            >
+              <Accessibility size={16} />
+              <span className={collapsed ? 'md:hidden' : ''}>Accesibilidad</span>
+            </button>
+            {showAcc && (
+              <div role="dialog" aria-label="Accesibilidad" className="absolute z-50 left-0"
+                style={{ bottom: 'calc(100% + 8px)', width: 290, padding: 6, background: 'var(--popover)', color: 'var(--popover-foreground)',
+                  boxShadow: 'var(--elevation-md)', borderRadius: 'var(--radius-lg)', border: '1px solid var(--border)' }}>
+                <p style={{ padding: '6px 12px 2px', fontSize: 'calc(11px * var(--escala-texto))', fontWeight: 700, letterSpacing: 'var(--tracking-overline)', textTransform: 'uppercase', color: 'var(--muted-foreground)' }}>
+                  Accesibilidad
+                </p>
+                <AccesibilidadPanel />
+              </div>
+            )}
+          </div>
 
           {/* Perfil → abre popover con cuenta + cerrar sesión */}
           <div className="relative mt-1">

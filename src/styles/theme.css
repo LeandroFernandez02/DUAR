@@ -370,7 +370,8 @@ html {
   line-height: 1.5;
 }
 
-/* Chips de estado en modo oscuro: el texto oscuro de los de fondo translúcido no se veía (Testeo 15/10, punto 25). */
-.dark .status-badge { --badge-fg: var(--badge-fg-dark) !important; }
+/* Chips de estado (StatusBadge): en el tema oscuro el texto oscuro de los de fondo translúcido no se veía (Testeo 15/10, punto 25). */
+.status-badge { color: var(--badge-fg-claro); }
+.dark .status-badge { color: var(--badge-fg-dark); }
 
 .leaflet-container { font-family: var(--font-family-primary); }

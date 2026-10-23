@@ -22,20 +22,17 @@ import {
 } from '../../data/mockData';
 import { agentesOperativoApi, ApiError, PersonalOperativoApi, type EstadoAgenteApi } from '../../services/api';
 import { formatearDni } from '../../utils/validacionUsuario';
+import EstadoAgenteBadge, { ESTADOS_AGENTE, tonosEstadoAgente } from './EstadoAgenteBadge';
 
 /* ── Catálogos de colores / etiquetas ─────────────────────── */
-export const ESTADO_OP_CONFIG: Record<
-  EstadoOperativoAgente,
-  { label: string; color: string; bg: string; border: string; dot: string }
-> = {
-  disponible:   { label: 'Disponible',   color: '#0d9488', bg: 'rgba(13,148,136,0.10)',  border: 'rgba(13,148,136,0.30)',  dot: '#0d9488' },
-  agrupado:     { label: 'Agrupado',     color: '#4f46e5', bg: 'rgba(79,70,229,0.10)',   border: 'rgba(79,70,229,0.30)',   dot: '#4f46e5' },
-  desplegado:   { label: 'Desplegado',   color: '#ca8a04', bg: 'rgba(202,138,4,0.10)',   border: 'rgba(202,138,4,0.30)',   dot: '#ca8a04' },
-  rastrillando: { label: 'Rastrillando', color: '#15803d', bg: 'rgba(21,128,61,0.10)',   border: 'rgba(21,128,61,0.30)',   dot: '#15803d' },
-  replegado:    { label: 'Replegado',    color: '#6b7280', bg: 'rgba(107,114,128,0.10)', border: 'rgba(107,114,128,0.28)', dot: '#6b7280' },
-  en_espera:    { label: 'En espera',    color: '#0891b2', bg: 'rgba(8,145,178,0.10)',   border: 'rgba(8,145,178,0.30)',   dot: '#0891b2' },
-  no_disponible:{ label: 'No disponible',color: '#b91c1c', bg: 'rgba(185,28,28,0.10)',   border: 'rgba(185,28,28,0.28)',   dot: '#b91c1c' },
-};
+/** Los 7 estados con el color del diseño CALÍVAR (EstadoAgenteBadge), ya mezclados según el tema. */
+export const ESTADO_OP_CONFIG = Object.fromEntries(
+  (Object.keys(ESTADOS_AGENTE) as EstadoOperativoAgente[]).map(k => {
+    const { label, color } = ESTADOS_AGENTE[k];
+    const t = tonosEstadoAgente(color);
+    return [k, { label, color: t.texto, bg: t.fondo, border: t.borde.replace('1px solid ', ''), dot: color }];
+  }),
+) as Record<EstadoOperativoAgente, { label: string; color: string; bg: string; border: string; dot: string }>;
 
 /** Lo único que se elige para alguien SIN grupo; con grupo, el estado lo define el grupo (24/09). */
 const ESTADOS_ELEGIBLES: EstadoOperativoAgente[] = ['disponible', 'no_disponible'];
@@ -66,35 +63,8 @@ const ESPECIALIDADES: { value: Especialidad; label: string; color: string }[] =
   }));
 
 /* ── Pequeño badge reutilizable para mostrar estado actual ── */
-export function EstadoOperativoBadge({
-  estado,
-  size = 'sm',
-}: {
-  estado?: EstadoOperativoAgente;
-  size?: 'xs' | 'sm';
-}) {
-  if (!estado) return null;
-  const cfg = ESTADO_OP_CONFIG[estado];
-  const fs = size === 'xs' ? '10px' : 'var(--text-label)';
-  return (
-    <span
-      className="inline-flex items-center gap-1 px-2 py-0.5 rounded-full"
-      style={{
-        background: cfg.bg,
-        border: `1px solid ${cfg.border}`,
-        color: cfg.color,
-        fontSize: fs,
-        fontWeight: 'var(--font-weight-semibold)',
-        fontFamily: 'var(--font-family-primary)',
-        whiteSpace: 'nowrap',
-      }}
-    >
-      <span
-        style={{ width: 5, height: 5, borderRadius: '50%', background: cfg.dot, flexShrink: 0, display: 'inline-block' }}
-      />
-      {cfg.label}
-    </span>
-  );
+export function EstadoOperativoBadge({ estado, size = 'sm' }: { estado?: EstadoOperativoAgente; size?: 'xs' | 'sm' }) {
+  return <EstadoAgenteBadge estado={estado} size={size} />;
 }
 
 /* ── Modal principal ────────────────────────────────────────── */
