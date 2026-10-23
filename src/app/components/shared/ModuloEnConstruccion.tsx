@@ -19,7 +19,7 @@ export default function ModuloEnConstruccion({
   detalle?: string;
 }) {
   return (
-    <div className="p-6 md:p-8" style={{ fontFamily: 'var(--font-family-primary)' }}>
+    <div className="p-4 lg:p-6" style={{ fontFamily: 'var(--font-family-primary)' }}>
       <div className="mb-8">
         <h1 className="mb-1" style={{ color: 'var(--foreground)', fontSize: 'var(--text-h2)', fontWeight: 'var(--font-weight-bold)' }}>
           {titulo}

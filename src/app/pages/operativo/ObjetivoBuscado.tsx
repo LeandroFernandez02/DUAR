@@ -1003,7 +1003,7 @@ export default function ObjetivoBuscado() {
 
   return (
     <>
-      <div className="p-6 md:p-8" style={{ fontFamily: 'var(--font-family-primary)' }}>
+      <div className="p-4 lg:p-6" style={{ fontFamily: 'var(--font-family-primary)' }}>
 
         {/* Page header */}
         <div

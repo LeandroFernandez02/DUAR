@@ -74,7 +74,7 @@ export default function GlobalDashboard() {
   const detalleEstado = esHoy ? 'Ahora' : rango.etiqueta;
 
   return (
-    <div className="p-6 md:p-8 flex flex-col gap-4 lg:h-dvh lg:min-h-[640px]" style={{ fontFamily: 'var(--font-family-primary)' }}>
+    <div className="p-4 lg:p-6 flex flex-col gap-4 lg:h-dvh lg:min-h-[640px]" style={{ fontFamily: 'var(--font-family-primary)' }}>
       <div className="flex items-end gap-x-6 gap-y-3 flex-wrap">
         <div>
           <h1 style={{ color: 'var(--foreground)', fontSize: 'var(--text-h2)', fontWeight: 'var(--font-weight-bold)' }}>Panel de Control</h1>

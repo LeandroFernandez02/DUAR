@@ -100,6 +100,11 @@ export const router = createBrowserRouter([
                 lazy: cargar(() => import('./pages/operativo/Agentes')),
               },
               {
+                // Grupos es una sección propia del menú (diseño CALÍVAR, 23/10); la pantalla es la misma que Agentes.
+                path: 'grupos',
+                lazy: cargar(() => import('./pages/operativo/Agentes')),
+              },
+              {
                 path: 'mapa',
                 lazy: cargar(() => import('./pages/operativo/Mapa')),
               },

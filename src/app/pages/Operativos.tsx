@@ -7,6 +7,7 @@ import {
 } from 'lucide-react';
 import { toast } from 'sonner';
 import StatusBadge from '../components/shared/StatusBadge';
+import { AccionCabecera } from '../components/layout/Movil';
 import { MapPickerModal } from '../components/shared/MapPickerModal';
 import { QRModal } from '../components/shared/QRModal';
 import { useApp } from '../context/AppContext';
@@ -458,7 +459,7 @@ export default function Operativos() {
 
 
   return (
-    <div className="p-6 md:p-8" style={{ fontFamily: 'var(--font-family-primary)' }}>
+    <div className="p-4 lg:p-6" style={{ fontFamily: 'var(--font-family-primary)' }}>
       {/* Page header */}
       <div className="mb-6">
         <div className="flex items-start justify-between gap-4 flex-wrap">
@@ -470,14 +471,18 @@ export default function Operativos() {
               Dirección de Unidades de Alto Riesgo (DUAR) — Córdoba
             </p>
           </div>
-          <button
-            onClick={openCreate}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-[var(--radius-button)] text-[var(--primary-foreground)] transition-opacity hover:opacity-90"
-            style={{ background: 'var(--primary)', fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-semibold)' }}
-          >
-            <Plus size={16} />
-            Nuevo Operativo
-          </button>
+          {/* En mobile/tablet va a la barra superior (diseño CALÍVAR) */}
+          <AccionCabecera>
+            <button
+              onClick={openCreate}
+              aria-label="Nuevo Operativo"
+              className="flex items-center gap-2 px-4 py-2.5 rounded-[var(--radius-button)] text-[var(--primary-foreground)] transition-opacity hover:opacity-90"
+              style={{ background: 'var(--primary)', fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-semibold)' }}
+            >
+              <Plus size={16} />
+              Nuevo Operativo
+            </button>
+          </AccionCabecera>
         </div>
 
         {/* Stats strip */}

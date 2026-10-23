@@ -3,23 +3,18 @@ import { Navigate, useNavigate } from 'react-router';
 import {
   Shield, LogOut, MapPin, Calendar, Users, User,
   ChevronDown, ChevronUp, Droplets, Heart, AlertCircle,
-  Target, Clock, Search, History, MailWarning, RefreshCw, Edit2, X,
+  Target, Clock, Search, History, MailWarning, RefreshCw, Edit2,
 } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import {
   Operativo, EstadoOperativo, institucionLabel, especialidadNombrePorId,
-  catInstituciones, catEspecialidades, catAlergias, dotacionesDe,
+  catAlergias,
 } from '../data/mockData';
 import { authApi, OperativoApi, ApiError } from '../services/api';
 import PanelTactico from '../components/portal/PanelTactico';
 import MisRecorridos from '../components/portal/MisRecorridos';
-import CampoFecha from '../components/shared/CampoFecha';
-import {
-  validarNombre, validarApellido, validarTelefono, validarFechaNacimiento,
-  soloDigitos, formatearTelefono, formatearDni, limpiarTexto,
-  digitosAntesDelCursor, reponerCursor,
-  AYUDA_TELEFONO, PLACEHOLDER_TELEFONO,
-} from '../utils/validacionUsuario';
+import MisDatosModal from '../components/shared/MisDatosModal';
+import { formatearDni, formatearTelefono } from '../utils/validacionUsuario';
 
 /** Estados que representan que un agente está actualmente activo en un operativo */
 const ESTADOS_ACTIVOS = new Set(['activo', 'en_proceso', 'planificación', 'nuevo']);
@@ -237,7 +232,7 @@ function OperativoCard({
 // ─── Página principal ────────────────────────────────────────────────────────
 
 export default function AgenteDashboard() {
-  const { isAuthenticated, usuario, logout, data, actualizarPerfilPropio } = useApp();
+  const { isAuthenticated, usuario, logout, data } = useApp();
   const navigate = useNavigate();
 
   /* ── Reenvío de confirmación: mismo endpoint real y cooldown de 2 min que
@@ -274,70 +269,10 @@ export default function AgenteDashboard() {
     }
   };
 
-  /* ── Autoedición del perfil: teléfono, institución/dotación, especialidad,
-   *  grupo sanguíneo, alergias, fecha de nacimiento. DNI, email, estado y
-   *  rol quedan reservados al panel de Usuarios (admin/coordinador). ── */
+  /* ── Autoedición del perfil (Mis datos, compartido con el coordinador): DNI, email,
+   *  estado y rol quedan reservados al panel de Usuarios (admin/coordinador). ── */
   const [showEditarPerfil, setShowEditarPerfil] = useState(false);
-  const [formPerfil, setFormPerfil] = useState({
-    nombre: '', apellido: '', telefono: '', fechaNacimiento: '',
-    institucionId: '', dotacionId: '', especialidadId: '', grupo_sanguineo: '',
-    alergiaIds: [] as string[],
-  });
-  const [erroresPerfil, setErroresPerfil] = useState<Record<string, string>>({});
-  const [guardandoPerfil, setGuardandoPerfil] = useState(false);
-  const [errorPerfil, setErrorPerfil] = useState('');
-
-  const abrirEditarPerfil = () => {
-    if (!usuario) return;
-    setFormPerfil({
-      nombre: usuario.nombre, apellido: usuario.apellido,
-      // El campo de fecha sólo entiende «YYYY-MM-DD» (Testeo 13/10, punto 10).
-      telefono: usuario.telefono ?? '', fechaNacimiento: (usuario.fechaNacimiento ?? '').slice(0, 10),
-      institucionId: usuario.institucionId ?? '', dotacionId: usuario.dotacionId ?? '',
-      especialidadId: usuario.especialidadId ?? '', grupo_sanguineo: usuario.grupo_sanguineo ?? '',
-      alergiaIds: usuario.alergiaIds ?? [],
-    });
-    setErroresPerfil({});
-    setErrorPerfil('');
-    setShowEditarPerfil(true);
-  };
-
-  const guardarPerfil = async () => {
-    // Sin espacios de más (Testeo 13/10, punto 14): lo que se valida es lo que se guarda.
-    const nombre = limpiarTexto(formPerfil.nombre);
-    const apellido = limpiarTexto(formPerfil.apellido);
-    if (nombre !== formPerfil.nombre || apellido !== formPerfil.apellido) setFormPerfil({ ...formPerfil, nombre, apellido });
-    const errores: Record<string, string> = {};
-    const errNombre = validarNombre(nombre); if (errNombre) errores.nombre = errNombre;
-    const errApellido = validarApellido(apellido); if (errApellido) errores.apellido = errApellido;
-    const errTelefono = validarTelefono(formPerfil.telefono); if (errTelefono) errores.telefono = errTelefono;
-    const errFechaNacimiento = validarFechaNacimiento(formPerfil.fechaNacimiento, !!usuario.fechaNacimiento); if (errFechaNacimiento) errores.fechaNacimiento = errFechaNacimiento;
-    setErroresPerfil(errores);
-    if (Object.keys(errores).length > 0) {
-      setErrorPerfil('Revisá los campos marcados en rojo.');
-      return;
-    }
-
-    setGuardandoPerfil(true);
-    setErrorPerfil('');
-    const resultado = await actualizarPerfilPropio({
-      nombre,
-      apellido,
-      telefono: formPerfil.telefono || undefined,
-      fechaNacimiento: formPerfil.fechaNacimiento || undefined,
-      institucionId: formPerfil.institucionId || undefined,
-      dotacionId: formPerfil.dotacionId || undefined,
-      especialidadId: formPerfil.especialidadId || undefined,
-      grupoSanguineo: formPerfil.grupo_sanguineo || undefined,
-      alergiaIds: formPerfil.alergiaIds,
-    });
-    setGuardandoPerfil(false);
-    if (resultado === 'ok') {
-      setShowEditarPerfil(false);
-    } else {
-      setErrorPerfil(resultado);
-    }
-  };
+  const abrirEditarPerfil = () => setShowEditarPerfil(true);
 
   /* ── Operativo actual: REAL desde la API (Decisión B — a lo sumo uno) ──
    * Antes leía de `data.operativos` (mock), por eso mostraba "Sin operativo
@@ -610,218 +545,8 @@ export default function AgenteDashboard() {
         </p>
       </div>
 
-      {/* ── Modal: Editar mis datos ──
-       * DNI, email, estado y rol NO están acá — el agente no los puede tocar
-       * (quedan reservados al panel de Usuarios, admin/coordinador). */}
-      {showEditarPerfil && (
-        <div className="fixed inset-0 z-50 flex items-center justify-center p-4 overflow-y-auto" style={{ background: 'rgba(0,0,0,0.5)' }}>
-          <div
-            className="w-full max-w-[480px] rounded-[var(--radius-card)] p-6 my-4"
-            style={{ background: 'var(--card)', boxShadow: 'var(--elevation-md)' }}
-          >
-            <div className="flex items-center justify-between mb-5">
-              <h2 style={{ color: 'var(--foreground)', fontSize: 'var(--text-h2)', fontWeight: 'var(--font-weight-semibold)' }}>
-                Editar mis datos
-              </h2>
-              <button onClick={() => setShowEditarPerfil(false)} style={{ color: 'var(--muted-foreground)', background: 'none', border: 'none', cursor: 'pointer' }}>
-                <X size={18} />
-              </button>
-            </div>
-
-            <div className="flex flex-col gap-3">
-              {[
-                {
-                  label: 'Nombre *', key: 'nombre',
-                  filtro: (v: string) => v.replace(/[^A-Za-zÀ-ÖØ-öø-ÿ ]/g, '').slice(0, 35),
-                },
-                {
-                  label: 'Apellido *', key: 'apellido',
-                  filtro: (v: string) => v.replace(/[^A-Za-zÀ-ÖØ-öø-ÿ'\- ]/g, '').slice(0, 35),
-                },
-              ].map(f => (
-                <div key={f.key}>
-                  <label className="block mb-1" style={{ color: 'var(--foreground)', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)' }}>
-                    {f.label}
-                  </label>
-                  <input
-                    type="text"
-                    value={(formPerfil as any)[f.key]}
-                    onChange={e => {
-                      setFormPerfil({ ...formPerfil, [f.key]: f.filtro(e.target.value) });
-                      if (erroresPerfil[f.key]) setErroresPerfil({ ...erroresPerfil, [f.key]: '' });
-                    }}
-                    onBlur={() => setFormPerfil(prev => ({ ...prev, [f.key]: limpiarTexto((prev as any)[f.key]) }))}
-                    className="w-full px-3 py-2 rounded-lg border outline-none"
-                    style={{
-                      background: 'var(--input-background)', color: 'var(--foreground)',
-                      fontFamily: 'var(--font-family-primary)', fontSize: 'var(--text-base)',
-                      border: erroresPerfil[f.key] ? '1px solid #dc2626' : '1px solid var(--border)',
-                    }}
-                  />
-                  {erroresPerfil[f.key] && <p style={{ color: '#dc2626', fontSize: 'calc(11px * var(--escala-texto))', marginTop: '4px' }}>{erroresPerfil[f.key]}</p>}
-                </div>
-              ))}
-
-              <div>
-                <label className="block mb-1" style={{ color: 'var(--foreground)', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)' }}>Teléfono</label>
-                <input
-                  type="tel"
-                  inputMode="numeric"
-                  placeholder={PLACEHOLDER_TELEFONO}
-                  value={formatearTelefono(formPerfil.telefono)}
-                  onChange={e => {
-                    const el = e.target;
-                    const digitos = digitosAntesDelCursor(el);   // para no perder el lugar al reformatear (Testeo 15/10, punto 22)
-                    setFormPerfil({ ...formPerfil, telefono: soloDigitos(el.value).slice(0, 10) });
-                    if (erroresPerfil.telefono) setErroresPerfil({ ...erroresPerfil, telefono: '' });
-                    reponerCursor(el, digitos);
-                  }}
-                  className="w-full px-3 py-2 rounded-lg border outline-none"
-                  style={{
-                    background: 'var(--input-background)', color: 'var(--foreground)',
-                    fontFamily: 'var(--font-family-primary)', fontSize: 'var(--text-base)',
-                    border: erroresPerfil.telefono ? '1px solid #dc2626' : '1px solid var(--border)',
-                  }}
-                />
-                {erroresPerfil.telefono
-                  ? <p style={{ color: '#dc2626', fontSize: 'calc(11px * var(--escala-texto))', marginTop: '4px' }}>{erroresPerfil.telefono}</p>
-                  : <p style={{ color: 'var(--muted-foreground)', fontSize: 'calc(11px * var(--escala-texto))', marginTop: '4px', lineHeight: 1.4 }}>{AYUDA_TELEFONO}</p>}
-              </div>
-
-              <div>
-                <label className="block mb-1" style={{ color: 'var(--foreground)', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)' }}>Fecha de Nacimiento</label>
-                <CampoFecha
-                  value={formPerfil.fechaNacimiento}
-                  onChange={v => {
-                    setFormPerfil({ ...formPerfil, fechaNacimiento: v });
-                    if (erroresPerfil.fechaNacimiento) setErroresPerfil({ ...erroresPerfil, fechaNacimiento: '' });
-                  }}
-                  className="w-full px-3 py-2 rounded-lg border outline-none"
-                  style={{
-                    background: 'var(--input-background)', color: 'var(--foreground)',
-                    fontFamily: 'var(--font-family-primary)', fontSize: 'var(--text-base)',
-                    border: erroresPerfil.fechaNacimiento ? '1px solid #dc2626' : '1px solid var(--border)',
-                  }}
-                />
-                {erroresPerfil.fechaNacimiento && <p style={{ color: '#dc2626', fontSize: 'calc(11px * var(--escala-texto))', marginTop: '4px' }}>{erroresPerfil.fechaNacimiento}</p>}
-              </div>
-
-              <div>
-                <label className="block mb-1" style={{ color: 'var(--foreground)', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)' }}>Institución</label>
-                <select
-                  value={formPerfil.institucionId}
-                  onChange={e => setFormPerfil({ ...formPerfil, institucionId: e.target.value, dotacionId: '' })}
-                  className="w-full px-3 py-2 rounded-lg border outline-none"
-                  style={{ background: 'var(--input-background)', color: 'var(--foreground)', fontFamily: 'var(--font-family-primary)', fontSize: 'var(--text-base)', border: '1px solid var(--border)' }}
-                >
-                  <option value="">— Seleccioná la institución —</option>
-                  {catInstituciones.map(i => (
-                    <option key={i.id} value={i.id}>{i.nombre}</option>
-                  ))}
-                </select>
-              </div>
-
-              {dotacionesDe(formPerfil.institucionId).length > 0 && (
-                <div>
-                  <label className="block mb-1" style={{ color: 'var(--foreground)', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)' }}>Dotación</label>
-                  <select
-                    value={formPerfil.dotacionId}
-                    onChange={e => setFormPerfil({ ...formPerfil, dotacionId: e.target.value })}
-                    className="w-full px-3 py-2 rounded-lg border outline-none"
-                    style={{ background: 'var(--input-background)', color: 'var(--foreground)', fontFamily: 'var(--font-family-primary)', fontSize: 'var(--text-base)', border: '1px solid var(--border)' }}
-                  >
-                    <option value="">— Seleccioná la dotación —</option>
-                    {dotacionesDe(formPerfil.institucionId).map(d => (
-                      <option key={d.id} value={d.id}>{d.nombre}</option>
-                    ))}
-                  </select>
-                </div>
-              )}
-
-              <div>
-                <label className="block mb-1" style={{ color: 'var(--foreground)', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)' }}>Especialidad</label>
-                <select
-                  value={formPerfil.especialidadId}
-                  onChange={e => setFormPerfil({ ...formPerfil, especialidadId: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg border outline-none"
-                  style={{ background: 'var(--input-background)', color: 'var(--foreground)', fontFamily: 'var(--font-family-primary)', fontSize: 'var(--text-base)', border: '1px solid var(--border)' }}
-                >
-                  <option value="">— No especificado —</option>
-                  {catEspecialidades.map(e => (
-                    <option key={e.id} value={e.id}>{e.nombre}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block mb-1" style={{ color: 'var(--foreground)', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)' }}>Grupo Sanguíneo</label>
-                <select
-                  value={formPerfil.grupo_sanguineo}
-                  onChange={e => setFormPerfil({ ...formPerfil, grupo_sanguineo: e.target.value })}
-                  className="w-full px-3 py-2 rounded-lg border outline-none"
-                  style={{ background: 'var(--input-background)', color: 'var(--foreground)', fontFamily: 'var(--font-family-primary)', fontSize: 'var(--text-base)', border: '1px solid var(--border)' }}
-                >
-                  <option value="">— No especificado —</option>
-                  {['A+', 'A-', 'B+', 'B-', 'AB+', 'AB-', 'O+', 'O-'].map(g => (
-                    <option key={g} value={g}>{g}</option>
-                  ))}
-                </select>
-              </div>
-
-              <div>
-                <label className="block mb-1" style={{ color: 'var(--foreground)', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)' }}>
-                  Alergias {formPerfil.alergiaIds.length > 0 && `(${formPerfil.alergiaIds.length} seleccionadas)`}
-                </label>
-                <div
-                  className="grid grid-cols-2 gap-x-3 gap-y-2 p-3 rounded-lg border"
-                  style={{ background: 'var(--input-background)', borderColor: 'var(--border)' }}
-                >
-                  {catAlergias.map(a => (
-                    <label key={a.id} className="flex items-center gap-2 cursor-pointer" style={{ fontSize: 'var(--text-base)', color: 'var(--foreground)' }}>
-                      <input
-                        type="checkbox"
-                        checked={formPerfil.alergiaIds.includes(a.id)}
-                        onChange={e => setFormPerfil({
-                          ...formPerfil,
-                          alergiaIds: e.target.checked
-                            ? [...formPerfil.alergiaIds, a.id]
-                            : formPerfil.alergiaIds.filter(id => id !== a.id),
-                        })}
-                      />
-                      {a.nombre}
-                    </label>
-                  ))}
-                </div>
-              </div>
-
-              {errorPerfil && (
-                <div className="flex items-start gap-2.5 p-3 rounded-lg" style={{ background: '#fee2e2', border: '1px solid #fecaca', color: '#b91c1c', fontSize: 'var(--text-base)' }}>
-                  <AlertCircle size={15} style={{ marginTop: 1, flexShrink: 0 }} />
-                  <span>{errorPerfil}</span>
-                </div>
-              )}
-            </div>
-
-            <div className="flex items-center justify-end gap-2 mt-5">
-              <button
-                onClick={() => setShowEditarPerfil(false)}
-                className="px-4 py-2 rounded-[var(--radius-button)]"
-                style={{ color: 'var(--foreground)', background: 'var(--muted)', border: 'none', cursor: 'pointer', fontSize: 'var(--text-base)', fontFamily: 'var(--font-family-primary)' }}
-              >
-                Cancelar
-              </button>
-              <button
-                onClick={guardarPerfil}
-                disabled={guardandoPerfil}
-                className="px-4 py-2 rounded-[var(--radius-button)] text-[var(--primary-foreground)]"
-                style={{ background: 'var(--primary)', border: 'none', cursor: guardandoPerfil ? 'not-allowed' : 'pointer', opacity: guardandoPerfil ? 0.7 : 1, fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-semibold)', fontFamily: 'var(--font-family-primary)' }}
-              >
-                {guardandoPerfil ? 'Guardando...' : 'Guardar Cambios'}
-              </button>
-            </div>
-          </div>
-        </div>
-      )}
+      {/* ── Editar mis datos (MisDatosModal, compartido con el coordinador) ── */}
+      {showEditarPerfil && <MisDatosModal inicial="editar" onClose={() => setShowEditarPerfil(false)} />}
     </div>
   );
 }

@@ -2,6 +2,7 @@ import { RouterProvider } from 'react-router';
 import { Toaster } from 'sonner';
 import { router } from './routes';
 import { AppProvider } from './context/AppContext';
+import { useEsCompacto } from './utils/useAncho';
 
 /**
  * AppProvider wraps RouterProvider so ALL route components (MainLayout,
@@ -9,11 +10,15 @@ import { AppProvider } from './context/AppContext';
  * and the provider reference stays stable across HMR re-evaluations.
  */
 export default function App() {
+  // Avisos abajo al centro (diseño CALÍVAR); en mobile/tablet a 84 px, para no tapar el menú inferior.
+  const compacto = useEsCompacto();
   return (
     <AppProvider>
       <RouterProvider router={router} />
       <Toaster
-        position="bottom-right"
+        position="bottom-center"
+        offset={compacto ? 84 : 24}
+        mobileOffset={84}
         toastOptions={{
           style: {
             fontFamily: 'var(--font-family-primary)',

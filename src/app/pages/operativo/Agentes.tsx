@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { useOutletContext } from 'react-router';
+import { useLocation, useOutletContext } from 'react-router';
 import {
   UserPlus, Users, Search, X, Check, Pencil, Trash2, ShieldCheck,
   LayoutGrid, List, AlertTriangle, Loader2, History, Plus,
@@ -57,7 +57,8 @@ const INTERVALO_MS = 10_000;
  */
 export default function Agentes() {
   const { operativo } = useOutletContext<OperativoOutletContext>();
-  const [pestana, setPestana] = useState<'agentes' | 'grupos'>('agentes');
+  // Agentes y Grupos son dos secciones del menú del operativo (diseño CALÍVAR, 23/10): la dirección dice cuál.
+  const pestana: 'agentes' | 'grupos' = useLocation().pathname.endsWith('/grupos') ? 'grupos' : 'agentes';
   const soloLectura = operativo.estado === 'finalizado' || operativo.estado === 'eliminado';
   const tableroRef = useRef<TableroGruposHandle>(null);
 
@@ -221,39 +222,16 @@ export default function Agentes() {
   };
 
   return (
-    <div className="p-6 md:p-8" style={{ fontFamily: 'var(--font-family-primary)' }}>
-      {/* Header */}
-      <div className="flex items-center justify-between gap-4 flex-wrap mb-6">
-        <div>
+    <div className="p-4 lg:p-6" style={{ fontFamily: 'var(--font-family-primary)' }}>
+      {/* Título de la sección y su acción principal (en mobile el botón queda sólo con el ícono) */}
+      <div className="sec-cabecera flex items-center justify-between gap-4 flex-wrap mb-6">
+        <div className="min-w-0">
           <h1 className="mb-1" style={{ fontSize: 'var(--text-h2)', fontWeight: 'var(--font-weight-bold)', color: 'var(--foreground)' }}>
             {pestana === 'grupos' ? 'Grupos' : 'Agentes'}
           </h1>
           <p style={{ fontSize: 'var(--text-label)', color: 'var(--muted-foreground)' }}>
             {agentes.length} agente{agentes.length !== 1 ? 's' : ''} en el operativo
           </p>
-        </div>
-      </div>
-
-      {/* Pestañas: el tablero de grupos vive dentro de Agentes (CU-24 paso 1). El
-          botón de acción principal cambia con la pestaña, al mismo nivel que las tabs. */}
-      <div className="flex items-center justify-between gap-3 flex-wrap mb-5">
-        <div role="tablist" aria-label="Vista del personal" className="flex gap-1 p-1 rounded-[var(--radius-button)] w-fit"
-          style={{ background: 'var(--muted)', border: '1px solid var(--border)' }}>
-          {([['agentes', 'Agentes'], ['grupos', 'Grupos']] as const).map(([valor, etiqueta]) => (
-            <button key={valor} type="button" role="tab" aria-selected={pestana === valor}
-              onClick={() => setPestana(valor)}
-              className="px-4 py-1.5 rounded-[calc(var(--radius-button)-2px)]"
-              style={{
-                background: pestana === valor ? 'var(--card)' : 'transparent',
-                color: pestana === valor ? 'var(--primary)' : 'var(--muted-foreground)',
-                fontSize: 'var(--text-label)',
-                fontWeight: pestana === valor ? 'var(--font-weight-semibold)' : 'var(--font-weight-medium)',
-                boxShadow: pestana === valor ? 'var(--elevation-sm)' : 'none',
-                border: 'none', cursor: 'pointer',
-              }}>
-              {etiqueta}
-            </button>
-          ))}
         </div>
 
         {pestana === 'agentes' ? (

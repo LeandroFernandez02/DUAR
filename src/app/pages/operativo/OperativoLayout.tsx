@@ -1,9 +1,11 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Outlet, useParams, Navigate } from 'react-router';
+import { Outlet, useParams, Navigate, useNavigate } from 'react-router';
 import { Operativo } from '../../data/mockData';
 import { operativosApi, ApiError } from '../../services/api';
 import { mapearOperativo } from '../../utils/mapearOperativo';
 import OperativoHeader from './OperativoHeader';
+import { CabeceraMovil } from '../../components/layout/Movil';
+import { useEsCompacto } from '../../utils/useAncho';
 
 export interface OperativoOutletContext {
   operativo: Operativo;
@@ -15,6 +17,8 @@ export default function OperativoLayout() {
   const [operativo, setOperativo] = useState<Operativo | null>(null);
   const [notFound, setNotFound] = useState(false);
   const [loading, setLoading] = useState(true);
+  const compacto = useEsCompacto();
+  const navigate = useNavigate();
 
   const cargar = useCallback(async () => {
     if (!id) return;
@@ -47,8 +51,11 @@ export default function OperativoLayout() {
 
   return (
     <div className="flex flex-col h-full min-h-0" style={{ fontFamily: 'var(--font-family-primary)' }}>
-      <OperativoHeader operativo={operativo} />
-      <div className="flex-1 overflow-y-auto">
+      {/* En mobile/tablet el encabezado del operativo va dentro de la barra superior, con el botón volver */}
+      {compacto
+        ? <CabeceraMovil onVolver={() => navigate('/operativos')}><OperativoHeader operativo={operativo} movil /></CabeceraMovil>
+        : <OperativoHeader operativo={operativo} />}
+      <div className="scroll-contenido flex-1 min-h-0 overflow-y-auto overflow-x-hidden relative">
         <Outlet context={{ operativo, recargarOperativo: cargar } satisfies OperativoOutletContext} />
       </div>
     </div>

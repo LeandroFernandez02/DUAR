@@ -1,17 +1,33 @@
 import { useState, useEffect } from 'react';
-import { Outlet, Navigate, useLocation } from 'react-router';
-import { Menu, Shield } from 'lucide-react';
-import Sidebar from './Sidebar';
+import { Outlet, Navigate, useLocation, useNavigate } from 'react-router';
+import Sidebar, { seccionesDe } from './Sidebar';
+import { CabeceraMovil, BarraInferior, HojaPerfil } from './Movil';
+import MisDatosModal from '../shared/MisDatosModal';
 import { useApp } from '../../context/AppContext';
+import { useEsCompacto } from '../../utils/useAncho';
 
+/** Título y leyenda de cada sección global en la barra superior de mobile (diseño CALÍVAR). */
+const CABECERAS: Record<string, [string, string]> = {
+  '/dashboard': ['Panel de Control', 'Estadísticas Generales de Todos los Operativos'],
+  '/operativos': ['Operativos', 'Gestión de Operativos de Búsqueda y Rastrillaje'],
+  '/usuarios': ['Usuarios', 'Gestión de Cuentas, Roles y Accesos al Sistema'],
+};
+
+/**
+ * Layout del sistema del coordinador/administrador. Escritorio (≥ 1024 px): menú lateral.
+ * Mobile/tablet: barra superior + menú inferior + hoja de Perfil (Movil.tsx). Dentro de un
+ * operativo la barra superior la pone OperativoLayout, con el encabezado del operativo.
+ */
 export default function MainLayout() {
-  const { isAuthenticated, usuario } = useApp();
+  const { isAuthenticated, usuario, logout } = useApp();
   const location = useLocation();
-  const [sidebarOpen, setSidebarOpen] = useState(false);
+  const navigate = useNavigate();
+  const compacto = useEsCompacto();
+  const [perfil, setPerfil] = useState(false);
+  const [misDatos, setMisDatos] = useState(false);
 
-  // Cerrar el drawer al cambiar de pantalla — si quedara abierto, la próxima
-  // navegación por debajo se vería tapada por el fondo oscuro.
-  useEffect(() => { setSidebarOpen(false); }, [location.pathname]);
+  // La hoja de Perfil no queda abierta sobre la pantalla siguiente.
+  useEffect(() => { setPerfil(false); }, [location.pathname]);
 
   if (!isAuthenticated) {
     return <Navigate to="/login" replace />;
@@ -22,39 +38,33 @@ export default function MainLayout() {
     return <Navigate to="/agente" replace />;
   }
 
-  return (
+  const { enOperativo, items } = seccionesDe(location.pathname);
+
+  if (!compacto) return (
     <div className="flex h-screen overflow-hidden" style={{ background: 'var(--background)' }}>
-      <Sidebar mobileOpen={sidebarOpen} onMobileClose={() => setSidebarOpen(false)} />
-      <div className="flex-1 flex flex-col min-w-0 overflow-hidden">
-        {/* Barra superior: sólo en mobile (el sidebar de desktop ya muestra
-            todo esto). Es lo único que le da al usuario una forma de abrir
-            el menú una vez que el sidebar deja de estar siempre visible. */}
-        <header
-          className="flex md:hidden items-center gap-3 px-4 py-3 flex-shrink-0"
-          style={{ background: 'var(--sidebar)', borderBottom: '1px solid var(--sidebar-border)' }}
-        >
-          <button
-            onClick={() => setSidebarOpen(true)}
-            className="p-1.5 rounded-lg flex-shrink-0"
-            style={{ color: 'var(--sidebar-foreground)', background: 'none', border: 'none' }}
-            aria-label="Abrir menú"
-          >
-            <Menu size={20} />
-          </button>
-          <div
-            className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
-            style={{ background: 'var(--primary)' }}
-          >
-            <Shield size={15} color="var(--primary-foreground)" />
-          </div>
-          <p style={{ color: 'var(--sidebar-foreground)', fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-bold)', letterSpacing: '0.08em' }}>
-            DUAR
-          </p>
-        </header>
-        <main className="flex-1 overflow-y-auto overflow-x-hidden">
-          <Outlet />
-        </main>
-      </div>
+      <Sidebar onVerDatos={() => setMisDatos(true)} />
+      <main className="scroll-contenido flex-1 min-w-0 overflow-y-auto overflow-x-hidden relative">
+        <Outlet />
+      </main>
+      {misDatos && <MisDatosModal onClose={() => setMisDatos(false)} />}
+    </div>
+  );
+
+  const [titulo, leyenda] = CABECERAS[location.pathname] ?? ['', ''];
+  return (
+    <div className="flex flex-col overflow-hidden relative" style={{ height: '100dvh', background: 'var(--background)', color: 'var(--foreground)' }}>
+      {!enOperativo && <CabeceraMovil titulo={titulo} subtitulo={leyenda} />}
+      <main className={`scroll-contenido contenido-movil${enOperativo ? '' : ' global'} flex-1 min-h-0 overflow-x-hidden relative ${enOperativo ? 'overflow-hidden' : 'overflow-y-auto'}`}>
+        <Outlet />
+      </main>
+      <BarraInferior items={items} activo={p => location.pathname === p} perfilAbierto={perfil}
+        onPerfil={() => setPerfil(p => !p)} onNavegar={() => setPerfil(false)} />
+      {perfil && (
+        <HojaPerfil onCerrar={() => setPerfil(false)}
+          onVerDatos={() => { setPerfil(false); setMisDatos(true); }}
+          onSalir={() => { setPerfil(false); logout(); navigate('/login'); }} />
+      )}
+      {misDatos && <MisDatosModal pantalla onClose={() => setMisDatos(false)} />}
     </div>
   );
 }

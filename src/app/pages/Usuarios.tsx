@@ -5,6 +5,7 @@ import { useApp } from '../context/AppContext';
 import { Usuario, Rol, EstadoUsuario, catInstituciones, catEspecialidades, catAlergias, dotacionesDe, institucionLabel, especialidadNombrePorId } from '../data/mockData';
 import { usuariosApi, ApiError, UsuarioApi } from '../services/api';
 import StatusBadge from '../components/shared/StatusBadge';
+import { AccionCabecera } from '../components/layout/Movil';
 import CampoPassword from '../components/shared/CampoPassword';
 import CampoFecha from '../components/shared/CampoFecha';
 import {
@@ -289,7 +290,7 @@ export default function Usuarios() {
   };
 
   return (
-    <div className="p-6 md:p-8" style={{ fontFamily: 'var(--font-family-primary)' }}>
+    <div className="p-4 lg:p-6" style={{ fontFamily: 'var(--font-family-primary)' }}>
       {/* Header */}
       <div className="flex items-start justify-between gap-4 flex-wrap mb-6">
         <div>
@@ -300,14 +301,18 @@ export default function Usuarios() {
               : `Gestión de usuarios del sistema — ${usuariosVisibles.length} registrados`}
           </p>
         </div>
-        <button
-          onClick={openCreate}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-[var(--radius-button)] text-[var(--primary-foreground)] hover:opacity-90"
-          style={{ background: 'var(--primary)', fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-semibold)' }}
-        >
-          <Plus size={16} />
-          Nuevo Usuario
-        </button>
+        {/* En mobile/tablet va a la barra superior (diseño CALÍVAR) */}
+        <AccionCabecera>
+          <button
+            onClick={openCreate}
+            aria-label="Nuevo Usuario"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-[var(--radius-button)] text-[var(--primary-foreground)] hover:opacity-90"
+            style={{ background: 'var(--primary)', fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-semibold)' }}
+          >
+            <Plus size={16} />
+            Nuevo Usuario
+          </button>
+        </AccionCabecera>
       </div>
 
       {/* Rechazos del servidor: duplicados (CU-05 3.1), autobloqueo (CU-07 4.1),

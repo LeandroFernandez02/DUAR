@@ -15,12 +15,15 @@ import { climaMock } from '../../data/mockData';
 
 interface Props {
   operativo: Operativo;
+  /** Dentro de la barra superior de mobile/tablet (< 1024 px): siempre compacto, sin fondo ni borde
+   *  propios y sin el botón de achicar ni «Ver detalles» (diseño CALÍVAR). */
+  movil?: boolean;
 }
 
 /* ─────────────────────────────────────────────────
    Header principal del operativo
 ───────────────────────────────────────────────── */
-export default function OperativoHeader({ operativo }: Props) {
+export default function OperativoHeader({ operativo, movil = false }: Props) {
   const today = new Date();
   // `fechaInicio` ya viene como datetime ISO completo (mapearOperativo lee
   // `fechaHoraInicio` de la API) — no es una fecha "pelada" para concatenarle hora.
@@ -35,9 +38,10 @@ export default function OperativoHeader({ operativo }: Props) {
 
   // Los botones de la derecha se pueden achicar a puros íconos (02/10) y la
   // elección se recuerda en este navegador. Sin almacenamiento, arranca grande.
-  const [compacto, setCompacto] = useState(() => {
+  const [compactoElegido, setCompacto] = useState(() => {
     try { return localStorage.getItem('duar-encabezado-compacto') === '1'; } catch { return false; }
   });
+  const compacto = movil || compactoElegido;
   const alternarCompacto = () => setCompacto(c => {
     const nuevo = !c;
     try { localStorage.setItem('duar-encabezado-compacto', nuevo ? '1' : '0'); } catch { /* sin almacenamiento */ }
@@ -52,8 +56,8 @@ export default function OperativoHeader({ operativo }: Props) {
   return (
     <>
       <div
-        className="flex-shrink-0 px-6 py-3.5 border-b flex items-center justify-between gap-3 flex-wrap"
-        style={{
+        className={`flex-shrink-0 flex items-center justify-between gap-3 flex-wrap ${movil ? 'py-1.5' : 'px-6 py-3.5 border-b'}`}
+        style={movil ? undefined : {
           background: 'var(--card)',
           borderColor: 'var(--border)',
           boxShadow: '0 1px 0 var(--border)',
@@ -95,12 +99,14 @@ export default function OperativoHeader({ operativo }: Props) {
                 <Calendar size={11} />
                 Inicio: {new Date(operativo.fechaInicio).toLocaleDateString('es-AR')}
               </span>
-              <span
-                className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
-                style={{ color: 'var(--primary)', fontSize: 'var(--text-label)', fontFamily: 'var(--font-family-primary)' }}
-              >
-                Ver detalles →
-              </span>
+              {!movil && (
+                <span
+                  className="flex items-center gap-1 opacity-0 group-hover:opacity-100 transition-opacity"
+                  style={{ color: 'var(--primary)', fontSize: 'var(--text-label)', fontFamily: 'var(--font-family-primary)' }}
+                >
+                  Ver detalles →
+                </span>
+              )}
             </div>
           </div>
         </div>
@@ -108,8 +114,8 @@ export default function OperativoHeader({ operativo }: Props) {
         {/* ── Right: quick-action buttons + weather ── */}
         <div className="flex items-center gap-2 flex-wrap min-w-0">
 
-          {/* Achicar / agrandar: la flecha mira a la izquierda para achicar y se gira para agrandar. */}
-          <button
+          {/* Achicar / agrandar: la flecha mira a la izquierda para achicar y se gira para agrandar. Sólo en escritorio. */}
+          {!movil && <button
             type="button"
             onClick={alternarCompacto}
             title={compacto ? 'Agrandar los botones' : 'Achicar los botones'}
@@ -124,7 +130,7 @@ export default function OperativoHeader({ operativo }: Props) {
             onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; }}
           >
             <ChevronLeft size={15} style={{ transform: compacto ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
-          </button>
+          </button>}
 
           {/* Puesto de comando: coordinadores presentes y quién está a cargo (01/10). */}
           <PuestoComando operativoId={operativo.id} compacto={compacto}
