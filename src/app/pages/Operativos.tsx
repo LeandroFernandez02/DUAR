@@ -62,7 +62,7 @@ const VIGENTES: EstadoOperativo[] = ['nuevo', 'planificación', 'en_proceso', 'a
 
 /** Estados que se pueden elegir en el filtro, con el color de su punto. */
 const ESTADOS_FILTRO: { value: EstadoOperativo; label: string; dot: string }[] = [
-  { value: 'nuevo',         label: 'Nuevo',           dot: '#FFA987' },
+  { value: 'nuevo',         label: 'Nuevo',           dot: 'var(--accent)' },
   { value: 'activo',        label: 'Activo',          dot: '#16a34a' },
   { value: 'planificación', label: 'En Planificación', dot: '#ca8a04' },
   { value: 'en_proceso',    label: 'En Proceso',      dot: '#2563eb' },
@@ -122,7 +122,7 @@ function labelStyle(): React.CSSProperties {
 
 function errStyle(base: React.CSSProperties, hasError: boolean): React.CSSProperties {
   return hasError
-    ? { ...base, border: '1.5px solid var(--primary)', background: 'rgba(229,75,75,0.04)' }
+    ? { ...base, border: '1.5px solid var(--primary)', background: 'color-mix(in srgb, var(--primary) 4%, transparent)' }
     : base;
 }
 
@@ -439,7 +439,7 @@ export default function Operativos() {
     activo: '#16a34a',
     'planificación': '#ca8a04',
     inactivo: '#dc2626',
-    nuevo: '#FFA987',
+    nuevo: 'var(--accent)',
     en_proceso: '#2563eb',
     finalizado: '#6b7280',
     eliminado: '#be185d',
@@ -472,7 +472,7 @@ export default function Operativos() {
           </div>
           <button
             onClick={openCreate}
-            className="flex items-center gap-2 px-4 py-2.5 rounded-[var(--radius-button)] text-white transition-opacity hover:opacity-90"
+            className="flex items-center gap-2 px-4 py-2.5 rounded-[var(--radius-button)] text-[var(--primary-foreground)] transition-opacity hover:opacity-90"
             style={{ background: 'var(--primary)', fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-semibold)' }}
           >
             <Plus size={16} />
@@ -605,7 +605,7 @@ export default function Operativos() {
             </button>
           )}
           {estadosSel.length === 0 && (
-            <span style={{ fontSize: 11, color: 'var(--muted-foreground)', fontFamily: 'var(--font-family-primary)' }}>Mostrando todos los operativos</span>
+            <span style={{ fontSize: 'calc(11px * var(--escala-texto))', color: 'var(--muted-foreground)', fontFamily: 'var(--font-family-primary)' }}>Mostrando todos los operativos</span>
           )}
         </div>
       </div>
@@ -624,7 +624,7 @@ export default function Operativos() {
           className="flex flex-col items-center justify-center py-20 rounded-[var(--radius-card)]"
           style={{ background: 'var(--card)', boxShadow: 'var(--elevation-sm)' }}
         >
-          <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4" style={{ background: 'rgba(229,75,75,0.1)' }}>
+          <div className="w-16 h-16 rounded-2xl flex items-center justify-center mb-4" style={{ background: 'color-mix(in srgb, var(--primary) 10%, transparent)' }}>
             <Plus size={28} style={{ color: 'var(--primary)' }} />
           </div>
           <p className="mb-1" style={{ fontSize: 'var(--text-h3)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--foreground)', fontFamily: 'var(--font-family-primary)' }}>
@@ -635,7 +635,7 @@ export default function Operativos() {
           </p>
           <button
             onClick={openCreate}
-            className="px-4 py-2 rounded-[var(--radius-button)] text-white"
+            className="px-4 py-2 rounded-[var(--radius-button)] text-[var(--primary-foreground)]"
             style={{ background: 'var(--primary)', fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-semibold)', fontFamily: 'var(--font-family-primary)', cursor: 'pointer' }}
           >
             Crear operativo
@@ -649,7 +649,7 @@ export default function Operativos() {
         >
           <div
             className="w-14 h-14 rounded-2xl flex items-center justify-center mb-4"
-            style={{ background: 'rgba(229,75,75,0.08)' }}
+            style={{ background: 'color-mix(in srgb, var(--primary) 8%, transparent)' }}
           >
             <Search size={22} style={{ color: 'var(--primary)' }} />
           </div>
@@ -803,15 +803,15 @@ export default function Operativos() {
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg"
                   style={{
                     color: 'var(--primary)',
-                    background: 'rgba(229,75,75,0.08)',
-                    border: '1px solid rgba(229,75,75,0.18)',
+                    background: 'color-mix(in srgb, var(--primary) 8%, transparent)',
+                    border: '1px solid color-mix(in srgb, var(--primary) 18%, transparent)',
                     fontFamily: 'var(--font-family-primary)',
                     fontSize: 'var(--text-label)',
                     fontWeight: 'var(--font-weight-semibold)',
                     cursor: 'pointer',
                   }}
-                  onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'rgba(229,75,75,0.15)'}
-                  onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'rgba(229,75,75,0.08)'}
+                  onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'color-mix(in srgb, var(--primary) 15%, transparent)'}
+                  onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'color-mix(in srgb, var(--primary) 8%, transparent)'}
                 >
                   Panel
                   <ArrowRight size={13} />
@@ -836,7 +836,7 @@ export default function Operativos() {
             }}
           >
             {['Operativo', 'Estado', 'Ubicación', 'Inicio', ''].map(col => (
-              <span key={col} style={{ color: 'var(--muted-foreground)', fontSize: '11px', fontWeight: 'var(--font-weight-semibold)', letterSpacing: '0.05em', textTransform: 'uppercase', fontFamily: 'var(--font-family-primary)' }}>
+              <span key={col} style={{ color: 'var(--muted-foreground)', fontSize: 'calc(11px * var(--escala-texto))', fontWeight: 'var(--font-weight-semibold)', letterSpacing: '0.05em', textTransform: 'uppercase', fontFamily: 'var(--font-family-primary)' }}>
                 {col}
               </span>
             ))}
@@ -862,7 +862,7 @@ export default function Operativos() {
                     {op.nombre}
                   </p>
                   <div className="flex items-center gap-3 mt-0.5 flex-wrap">
-                    <span style={{ color: 'var(--muted-foreground)', fontSize: '11px', fontFamily: 'var(--font-family-primary)' }}>
+                    <span style={{ color: 'var(--muted-foreground)', fontSize: 'calc(11px * var(--escala-texto))', fontFamily: 'var(--font-family-primary)' }}>
                       <Users size={10} style={{ display: 'inline', marginRight: 3, verticalAlign: 'middle' }} />
                       {op.agenteIds.length} agente{op.agenteIds.length !== 1 ? 's' : ''}
                     </span>
@@ -870,7 +870,7 @@ export default function Operativos() {
                       const m = mandoDe(op);
                       return (
                         <span title="Coordinador a cargo del puesto de comando"
-                          style={{ color: m.alerta ? '#b45309' : 'var(--muted-foreground)', fontSize: '11px', fontFamily: 'var(--font-family-primary)' }}>
+                          style={{ color: m.alerta ? '#b45309' : 'var(--muted-foreground)', fontSize: 'calc(11px * var(--escala-texto))', fontFamily: 'var(--font-family-primary)' }}>
                           <RadioTower size={10} style={{ display: 'inline', marginRight: 3, verticalAlign: 'middle' }} />
                           {m.texto}
                         </span>
@@ -931,9 +931,9 @@ export default function Operativos() {
                   onClick={() => { void entrarAOperativo(op); }}
                   title="Acceder al panel"
                   className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg ml-1"
-                  style={{ color: 'var(--primary)', background: 'rgba(229,75,75,0.08)', border: '1px solid rgba(229,75,75,0.2)', cursor: 'pointer', fontFamily: 'var(--font-family-primary)', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)' }}
-                  onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'rgba(229,75,75,0.15)'}
-                  onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'rgba(229,75,75,0.08)'}
+                  style={{ color: 'var(--primary)', background: 'color-mix(in srgb, var(--primary) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--primary) 20%, transparent)', cursor: 'pointer', fontFamily: 'var(--font-family-primary)', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)' }}
+                  onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = 'color-mix(in srgb, var(--primary) 15%, transparent)'}
+                  onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'color-mix(in srgb, var(--primary) 8%, transparent)'}
                 >
                   Panel
                   <ArrowRight size={13} />
@@ -978,7 +978,7 @@ export default function Operativos() {
                 </h2>
                 {modal === 'create' && (
                   <p style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-label)', fontFamily: 'var(--font-family-primary)', marginTop: 2 }}>
-                    Estado inicial: <span style={{ color: '#FFA987', fontWeight: 'var(--font-weight-semibold)' }}>Nuevo</span> — se activará al ingresar al panel
+                    Estado inicial: <span style={{ color: 'var(--accent-strong)', fontWeight: 'var(--font-weight-semibold)' }}>Nuevo</span> — se activará al ingresar al panel
                   </p>
                 )}
               </div>
@@ -1012,17 +1012,17 @@ export default function Operativos() {
               {formErrorMsg && !isEditReadOnly && (
                 <div
                   className="flex items-center gap-2 px-4 py-3 rounded-[var(--radius-input)]"
-                  style={{ background: 'rgba(229,75,75,0.08)', border: '1px solid rgba(229,75,75,0.3)' }}
+                  style={{ background: 'color-mix(in srgb, var(--destructive) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--destructive) 30%, transparent)' }}
                 >
-                  <AlertCircle size={15} style={{ color: 'var(--primary)', flexShrink: 0 }} />
-                  <span style={{ color: 'var(--primary)', fontSize: 'var(--text-label)', fontFamily: 'var(--font-family-primary)' }}>{formErrorMsg}</span>
+                  <AlertCircle size={15} style={{ color: 'var(--destructive)', flexShrink: 0 }} />
+                  <span style={{ color: 'var(--destructive)', fontSize: 'var(--text-label)', fontFamily: 'var(--font-family-primary)' }}>{formErrorMsg}</span>
                 </div>
               )}
 
               <>
                   {/* ── Sección: Datos del Operativo ── */}
                   <div className="flex flex-col gap-4">
-                    <p style={{ color: 'var(--muted-foreground)', fontSize: '11px', fontWeight: 'var(--font-weight-semibold)', textTransform: 'uppercase', letterSpacing: '0.06em', fontFamily: 'var(--font-family-primary)' }}>
+                    <p style={{ color: 'var(--muted-foreground)', fontSize: 'calc(11px * var(--escala-texto))', fontWeight: 'var(--font-weight-semibold)', textTransform: 'uppercase', letterSpacing: '0.06em', fontFamily: 'var(--font-family-primary)' }}>
                       Datos del operativo
                     </p>
 
@@ -1039,7 +1039,7 @@ export default function Operativos() {
                         className="w-full px-3 py-2.5 rounded-lg border outline-none"
                         style={isEditReadOnly ? readOnlyInputStyle() : errStyle(inputStyle(), formErrors.has('nombre'))}
                       />
-                      {!isEditReadOnly && formErrors.has('nombre') && <span style={{ color: 'var(--primary)', fontSize: '11px', fontFamily: 'var(--font-family-primary)' }}>Revisá este campo</span>}
+                      {!isEditReadOnly && formErrors.has('nombre') && <span style={{ color: 'var(--destructive)', fontSize: 'calc(11px * var(--escala-texto))', fontFamily: 'var(--font-family-primary)' }}>Revisá este campo</span>}
                     </div>
 
                     {/* Provincia + Localidad (lista Georef; se guarda como "Localidad, Provincia") */}
@@ -1055,7 +1055,7 @@ export default function Operativos() {
                         errStyle={errStyle}
                         readOnlyStyle={readOnlyInputStyle()}
                       />
-                      {!isEditReadOnly && formErrors.has('ubicacion') && <span style={{ color: 'var(--primary)', fontSize: '11px', fontFamily: 'var(--font-family-primary)' }}>Elegí provincia y localidad</span>}
+                      {!isEditReadOnly && formErrors.has('ubicacion') && <span style={{ color: 'var(--destructive)', fontSize: 'calc(11px * var(--escala-texto))', fontFamily: 'var(--font-family-primary)' }}>Elegí provincia y localidad</span>}
                     </div>
 
                     {/* Fecha y Hora */}
@@ -1069,7 +1069,7 @@ export default function Operativos() {
                           className="w-full px-3 py-2.5 rounded-lg border outline-none"
                           style={isEditReadOnly ? readOnlyInputStyle() : errStyle(inputStyle(), formErrors.has('fechaInicio'))}
                         />
-                        {!isEditReadOnly && formErrors.has('fechaInicio') && <span style={{ color: 'var(--primary)', fontSize: '11px', fontFamily: 'var(--font-family-primary)' }}>Obligatorio</span>}
+                        {!isEditReadOnly && formErrors.has('fechaInicio') && <span style={{ color: 'var(--destructive)', fontSize: 'calc(11px * var(--escala-texto))', fontFamily: 'var(--font-family-primary)' }}>Obligatorio</span>}
                     </div>
 
                     {/* Fiscal de Instrucción */}
@@ -1085,7 +1085,7 @@ export default function Operativos() {
                         className="w-full px-3 py-2.5 rounded-lg border outline-none"
                         style={isEditReadOnly ? readOnlyInputStyle() : errStyle(inputStyle(), formErrors.has('fiscal'))}
                       />
-                      {!isEditReadOnly && formErrors.has('fiscal') && <span style={{ color: 'var(--primary)', fontSize: '11px', fontFamily: 'var(--font-family-primary)' }}>Revisá este campo</span>}
+                      {!isEditReadOnly && formErrors.has('fiscal') && <span style={{ color: 'var(--destructive)', fontSize: 'calc(11px * var(--escala-texto))', fontFamily: 'var(--font-family-primary)' }}>Revisá este campo</span>}
                     </div>
 
                     {/* Estado — solo en edición */}
@@ -1128,12 +1128,12 @@ export default function Operativos() {
 
                   {/* ── Sección: Punto 0 (LSP) ── */}
                   <div className="flex flex-col gap-3">
-                    <p style={{ color: 'var(--muted-foreground)', fontSize: '11px', fontWeight: 'var(--font-weight-semibold)', textTransform: 'uppercase', letterSpacing: '0.06em', fontFamily: 'var(--font-family-primary)' }}>
+                    <p style={{ color: 'var(--muted-foreground)', fontSize: 'calc(11px * var(--escala-texto))', fontWeight: 'var(--font-weight-semibold)', textTransform: 'uppercase', letterSpacing: '0.06em', fontFamily: 'var(--font-family-primary)' }}>
                       Punto 0 — Última posición conocida (LSP) *
                     </p>
                     <div
                       className="rounded-[var(--radius-input)] p-4 flex flex-col gap-3"
-                      style={{ background: 'var(--muted)', border: (formErrors.has('punto0lat') || formErrors.has('punto0lng')) ? '1.5px solid var(--primary)' : '1px solid var(--border)' }}
+                      style={{ background: 'var(--muted)', border: (formErrors.has('punto0lat') || formErrors.has('punto0lng')) ? '1.5px solid var(--destructive)' : '1px solid var(--border)' }}
                     >
                       <div className="flex items-start gap-2">
                         <Crosshair size={14} style={{ color: 'var(--primary)', marginTop: 2, flexShrink: 0 }} />
@@ -1169,7 +1169,7 @@ export default function Operativos() {
                             className="w-full px-3 py-2.5 rounded-lg border outline-none"
                             style={isEditReadOnly ? readOnlyInputStyle() : errStyle(inputStyle(), formErrors.has('punto0lat'))}
                           />
-                          {!isEditReadOnly && formErrors.has('punto0lat') && <span style={{ color: 'var(--primary)', fontSize: '11px', fontFamily: 'var(--font-family-primary)' }}>Obligatorio</span>}
+                          {!isEditReadOnly && formErrors.has('punto0lat') && <span style={{ color: 'var(--destructive)', fontSize: 'calc(11px * var(--escala-texto))', fontFamily: 'var(--font-family-primary)' }}>Obligatorio</span>}
                         </div>
                         <div>
                           <label style={labelStyle()}>Longitud *</label>
@@ -1185,7 +1185,7 @@ export default function Operativos() {
                             className="w-full px-3 py-2.5 rounded-lg border outline-none"
                             style={isEditReadOnly ? readOnlyInputStyle() : errStyle(inputStyle(), formErrors.has('punto0lng'))}
                           />
-                          {!isEditReadOnly && formErrors.has('punto0lng') && <span style={{ color: 'var(--primary)', fontSize: '11px', fontFamily: 'var(--font-family-primary)' }}>Obligatorio</span>}
+                          {!isEditReadOnly && formErrors.has('punto0lng') && <span style={{ color: 'var(--destructive)', fontSize: 'calc(11px * var(--escala-texto))', fontFamily: 'var(--font-family-primary)' }}>Obligatorio</span>}
                         </div>
                       </div>
 
@@ -1201,7 +1201,7 @@ export default function Operativos() {
                             className="w-full px-3 py-2.5 rounded-lg border outline-none resize-none"
                             style={errStyle(inputStyle(), formErrors.has('motivoPuntoCero'))}
                           />
-                          <span style={{ color: formErrors.has('motivoPuntoCero') ? 'var(--primary)' : 'var(--muted-foreground)', fontSize: '11px', fontFamily: 'var(--font-family-primary)' }}>
+                          <span style={{ color: formErrors.has('motivoPuntoCero') ? 'var(--destructive)' : 'var(--muted-foreground)', fontSize: 'calc(11px * var(--escala-texto))', fontFamily: 'var(--font-family-primary)' }}>
                             El operativo está en curso: el movimiento queda en el historial del Punto 0, con quién, cuándo y por qué.
                           </span>
                         </div>
@@ -1210,15 +1210,15 @@ export default function Operativos() {
                       {form.punto0lat && form.punto0lng ? (
                         <div
                           className="flex items-center gap-2 px-3 py-1.5 rounded-[var(--radius-button)]"
-                          style={{ background: 'rgba(229,75,75,0.07)', border: '1px solid rgba(229,75,75,0.2)' }}
+                          style={{ background: 'color-mix(in srgb, var(--primary) 7%, transparent)', border: '1px solid color-mix(in srgb, var(--primary) 20%, transparent)' }}
                         >
                           <Crosshair size={11} style={{ color: 'var(--primary)', flexShrink: 0 }} />
-                          <span style={{ fontFamily: 'var(--font-family-primary)', fontSize: '11px', color: 'var(--primary)' }}>
+                          <span style={{ fontFamily: 'var(--font-family-primary)', fontSize: 'calc(11px * var(--escala-texto))', color: 'var(--primary)' }}>
                             {parseFloat(form.punto0lat).toFixed(5)}, {parseFloat(form.punto0lng).toFixed(5)}
                           </span>
                         </div>
                       ) : (
-                        <p style={{ color: 'var(--muted-foreground)', fontSize: '11px', fontFamily: 'var(--font-family-primary)' }}>
+                        <p style={{ color: 'var(--muted-foreground)', fontSize: 'calc(11px * var(--escala-texto))', fontFamily: 'var(--font-family-primary)' }}>
                           Ejemplo: –31.41667, –64.18333 (Córdoba capital)
                         </p>
                       )}
@@ -1255,7 +1255,7 @@ export default function Operativos() {
                   </button>
                   <button
                     onClick={modal === 'create' ? handleCreate : handleEdit}
-                    className="px-4 py-2 rounded-[var(--radius-button)] text-white"
+                    className="px-4 py-2 rounded-[var(--radius-button)] text-[var(--primary-foreground)]"
                     style={{ background: 'var(--primary)', fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-semibold)', fontFamily: 'var(--font-family-primary)', cursor: 'pointer' }}
                   >
                     {modal === 'create' ? 'Guardar Operativo' : 'Guardar Cambios'}
@@ -1301,7 +1301,7 @@ export default function Operativos() {
                 ) : (
                   <div
                     className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-                    style={{ background: 'rgba(229,75,75,0.1)' }}
+                    style={{ background: 'color-mix(in srgb, var(--primary) 10%, transparent)' }}
                   >
                     <Clock size={18} style={{ color: 'var(--primary)' }} />
                   </div>
@@ -1352,7 +1352,7 @@ export default function Operativos() {
                         const elegido = finalizeResultado === op;
                         return (
                           <label key={op} className="flex items-center gap-2.5 px-3 py-2 rounded-[var(--radius-input)] cursor-pointer"
-                            style={{ border: elegido ? '1.5px solid var(--primary)' : '1px solid var(--border)', background: elegido ? 'rgba(229,75,75,0.06)' : 'var(--background)',
+                            style={{ border: elegido ? '1.5px solid var(--primary)' : '1px solid var(--border)', background: elegido ? 'color-mix(in srgb, var(--primary) 6%, transparent)' : 'var(--background)',
                               color: 'var(--foreground)', fontSize: 'var(--text-base)', fontFamily: 'var(--font-family-primary)' }}>
                             <input type="radio" name="resultado-operativo" value={op} checked={elegido}
                               onChange={() => { setFinalizeResultado(op); setFinalizeSinResultado(false); }} style={{ accentColor: 'var(--primary)' }} />
@@ -1392,7 +1392,7 @@ export default function Operativos() {
                       onFocus={e => (e.currentTarget.style.border = '1.5px solid var(--primary)')}
                       onBlur={e => (e.currentTarget.style.border = '1px solid var(--border)')}
                     />
-                    <p style={{ color: 'var(--muted-foreground)', fontSize: '11px', fontFamily: 'var(--font-family-primary)', marginTop: 4 }}>
+                    <p style={{ color: 'var(--muted-foreground)', fontSize: 'calc(11px * var(--escala-texto))', fontFamily: 'var(--font-family-primary)', marginTop: 4 }}>
                       Esta nota quedará registrada en el Informe Final del operativo.
                     </p>
                   </div>
@@ -1450,9 +1450,9 @@ export default function Operativos() {
                   {/* Alert bloqueante */}
                   <div
                     className="flex items-start gap-3 rounded-[var(--radius-input)] px-4 py-4"
-                    style={{ background: 'rgba(229,75,75,0.06)', border: '1.5px solid rgba(229,75,75,0.35)' }}
+                    style={{ background: 'color-mix(in srgb, var(--destructive) 6%, transparent)', border: '1.5px solid color-mix(in srgb, var(--destructive) 35%, transparent)' }}
                   >
-                    <AlertCircle size={18} style={{ color: 'var(--primary)', flexShrink: 0, marginTop: 1 }} />
+                    <AlertCircle size={18} style={{ color: 'var(--destructive)', flexShrink: 0, marginTop: 1 }} />
                     <div>
                       <p style={{ color: 'var(--foreground)', fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-semibold)', fontFamily: 'var(--font-family-primary)' }}>
                         Atención: hay cosas sin resolver en este operativo.
@@ -1484,7 +1484,7 @@ export default function Operativos() {
                             {revision.agentesEnActividad.length === 1 ? '1 agente sigue en actividad' : `${revision.agentesEnActividad.length} agentes siguen en actividad`}
                           </strong>{' '}
                           (no está En espera, Disponible ni No disponible):
-                          <ul style={{ margin: '4px 0 0', paddingLeft: 16, color: 'var(--muted-foreground)', fontSize: '11px' }}>
+                          <ul style={{ margin: '4px 0 0', paddingLeft: 16, color: 'var(--muted-foreground)', fontSize: 'calc(11px * var(--escala-texto))' }}>
                             {revision.agentesEnActividad.slice(0, 5).map((a, i) => (
                               <li key={i}>{a.nombre} {a.apellido} · {ETIQUETA_ESTADO_AGENTE[a.estado] ?? a.estado}</li>
                             ))}
@@ -1524,7 +1524,7 @@ export default function Operativos() {
                     className="flex items-center gap-2 px-4 py-2 rounded-[var(--radius-button)]"
                     style={{
                       background: 'var(--primary)',
-                      color: '#fff',
+                      color: 'var(--primary-foreground)',
                       fontSize: 'var(--text-base)',
                       fontWeight: 'var(--font-weight-semibold)',
                       fontFamily: 'var(--font-family-primary)',

@@ -438,7 +438,7 @@ export default function Mapa() {
                   const on = b.id === prefs.base;
                   const I = ICONO_BASE[b.id];
                   return (
-                    <button key={b.id} type="button" aria-pressed={on} onClick={() => { setBase(b.id); setBasePop(false); }} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, width: 72, padding: '8px 4px', borderRadius: 'var(--radius-md)', cursor: 'pointer', border: `1.5px solid ${on ? 'var(--primary)' : 'var(--border)'}`, background: on ? 'color-mix(in srgb, var(--primary) 8%, transparent)' : 'transparent', color: on ? 'var(--primary)' : 'var(--foreground)', fontFamily: 'var(--font-family-primary)', fontSize: 11, fontWeight: 600 }}>
+                    <button key={b.id} type="button" aria-pressed={on} onClick={() => { setBase(b.id); setBasePop(false); }} style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 4, width: 72, padding: '8px 4px', borderRadius: 'var(--radius-md)', cursor: 'pointer', border: `1.5px solid ${on ? 'var(--primary)' : 'var(--border)'}`, background: on ? 'color-mix(in srgb, var(--primary) 8%, transparent)' : 'transparent', color: on ? 'var(--primary)' : 'var(--foreground)', fontFamily: 'var(--font-family-primary)', fontSize: 'calc(11px * var(--escala-texto))', fontWeight: 600 }}>
                       <I size={16} />{b.etiqueta}
                     </button>
                   );
@@ -458,12 +458,12 @@ export default function Mapa() {
           onGuardarForma={guardarForma} onGuardarUbicacion={guardarUbicacion} />
 
         {errorCarga && (
-          <div role="alert" style={{ position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)', zIndex: 1000, padding: '8px 14px', borderRadius: 'var(--radius)', background: '#fef3c7', border: '1px solid #fde68a', color: '#92400e', fontSize: 12.5 }}>
+          <div role="alert" style={{ position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)', zIndex: 1000, padding: '8px 14px', borderRadius: 'var(--radius)', background: '#fef3c7', border: '1px solid #fde68a', color: '#92400e', fontSize: 'calc(12.5px * var(--escala-texto))' }}>
             {errorCarga} Se muestra lo último que se cargó.
           </div>
         )}
         {soloLectura && (
-          <div style={{ position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)', zIndex: 950, padding: '6px 14px', borderRadius: 'var(--radius)', background: 'rgba(0,0,0,0.72)', color: '#fff', fontSize: 12 }}>
+          <div style={{ position: 'absolute', top: 12, left: '50%', transform: 'translateX(-50%)', zIndex: 950, padding: '6px 14px', borderRadius: 'var(--radius)', background: 'rgba(0,0,0,0.72)', color: '#fff', fontSize: 'calc(12px * var(--escala-texto))' }}>
             El operativo está {operativo.estado}: el mapa es de sólo lectura.
           </div>
         )}
@@ -514,7 +514,7 @@ export default function Mapa() {
         )}
 
         {aviso && (
-          <div role="status" style={{ position: 'absolute', left: '50%', bottom: 72, transform: 'translateX(-50%)', zIndex: 1200, display: 'flex', alignItems: 'center', gap: 10, padding: '11px 16px', borderRadius: 'var(--radius)', background: 'var(--card)', border: `1px solid ${aviso.error ? '#fecaca' : 'var(--border)'}`, boxShadow: 'var(--elevation-md)', fontSize: 13, color: aviso.error ? '#b91c1c' : 'var(--foreground)', maxWidth: '80%' }}>
+          <div role="status" style={{ position: 'absolute', left: '50%', bottom: 72, transform: 'translateX(-50%)', zIndex: 1200, display: 'flex', alignItems: 'center', gap: 10, padding: '11px 16px', borderRadius: 'var(--radius)', background: 'var(--card)', border: `1px solid ${aviso.error ? '#fecaca' : 'var(--border)'}`, boxShadow: 'var(--elevation-md)', fontSize: 'calc(13px * var(--escala-texto))', color: aviso.error ? '#b91c1c' : 'var(--foreground)', maxWidth: '80%' }}>
             {aviso.error ? <Info size={16} color="#dc2626" /> : <CircleCheck size={16} color="#16a34a" />}{aviso.msg}
           </div>
         )}
@@ -590,10 +590,10 @@ function GruposFlotante({ grupos, poligonos, abierto, setAbierto, onGrupo }: {
       <button type="button" onClick={() => setAbierto(!abierto)} aria-expanded={abierto} style={{ width: '100%', display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', background: 'none', border: 'none', cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-family-primary)' }}>
         <span style={{ width: 8, height: 8, borderRadius: '50%', background: '#16a34a', boxShadow: '0 0 0 3px #dcfce7', flexShrink: 0 }} />
         <span style={{ flex: 1, minWidth: 0 }}>
-          <span style={{ display: 'block', fontSize: 11.5, fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--foreground)' }}>Grupos operativos</span>
-          <span style={{ display: 'block', fontSize: 11, color: 'var(--muted-foreground)' }}>{terreno} en el terreno · {grupos.length - terreno} en la base</span>
+          <span style={{ display: 'block', fontSize: 'calc(11.5px * var(--escala-texto))', fontWeight: 700, letterSpacing: '0.04em', textTransform: 'uppercase', color: 'var(--foreground)' }}>Grupos operativos</span>
+          <span style={{ display: 'block', fontSize: 'calc(11px * var(--escala-texto))', color: 'var(--muted-foreground)' }}>{terreno} en el terreno · {grupos.length - terreno} en la base</span>
         </span>
-        <span style={{ fontSize: 10, fontWeight: 600, padding: '1px 7px', borderRadius: 999, background: 'var(--muted)', color: 'var(--muted-foreground)' }}>{grupos.length}</span>
+        <span style={{ fontSize: 'calc(10px * var(--escala-texto))', fontWeight: 600, padding: '1px 7px', borderRadius: 999, background: 'var(--muted)', color: 'var(--muted-foreground)' }}>{grupos.length}</span>
         {abierto ? <ChevronUp size={15} color="var(--muted-foreground)" /> : <ChevronDown size={15} color="var(--muted-foreground)" />}
       </button>
       {abierto && (
@@ -605,14 +605,14 @@ function GruposFlotante({ grupos, poligonos, abierto, setAbierto, onGrupo }: {
                 style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 8, borderRadius: 'var(--radius-md)', border: 'none', background: 'transparent', cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-family-primary)' }}>
                 <span style={{ width: 10, height: 10, borderRadius: 3, background: colorDeGrupo(grupos, g.id) ?? '#94a3b8', flexShrink: 0 }} />
                 <span style={{ flex: 1, minWidth: 0 }}>
-                  <span style={{ display: 'block', fontSize: 12.5, fontWeight: 600, color: 'var(--foreground)' }}>{g.nombre}</span>
-                  <span style={{ display: 'block', fontSize: 10.5, color: 'var(--muted-foreground)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{pol ? pol.nombre : 'Sin polígono'} · {g.integrantes.length} integrantes</span>
+                  <span style={{ display: 'block', fontSize: 'calc(12.5px * var(--escala-texto))', fontWeight: 600, color: 'var(--foreground)' }}>{g.nombre}</span>
+                  <span style={{ display: 'block', fontSize: 'calc(10.5px * var(--escala-texto))', color: 'var(--muted-foreground)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{pol ? pol.nombre : 'Sin polígono'} · {g.integrantes.length} integrantes</span>
                 </span>
                 <StatusBadge estado={g.estado.toLowerCase()} size="sm" />
               </button>
             );
           })}
-          {!grupos.length && <p style={{ margin: 0, padding: 8, fontSize: 12, color: 'var(--muted-foreground)' }}>Todavía no hay grupos armados.</p>}
+          {!grupos.length && <p style={{ margin: 0, padding: 8, fontSize: 'calc(12px * var(--escala-texto))', color: 'var(--muted-foreground)' }}>Todavía no hay grupos armados.</p>}
         </div>
       )}
     </div>
@@ -643,7 +643,7 @@ function BannerModo({ herr, borrador, medida, editando, moviendo, guardando, onD
   else if (herr === 'puntoCero') txt = 'Hacé clic en el mapa en el lugar nuevo del Punto Cero';
   if (!txt) return null;
   return (
-    <div style={{ position: 'absolute', top: 12, left: 68, zIndex: 950, display: 'flex', alignItems: 'center', gap: 10, padding: '6px 6px 6px 14px', borderRadius: 'var(--radius)', background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(4px)', color: '#fff', fontSize: 12, width: 'max-content', maxWidth: 'calc(100% - 390px)' }}>
+    <div style={{ position: 'absolute', top: 12, left: 68, zIndex: 950, display: 'flex', alignItems: 'center', gap: 10, padding: '6px 6px 6px 14px', borderRadius: 'var(--radius)', background: 'rgba(0,0,0,0.72)', backdropFilter: 'blur(4px)', color: '#fff', fontSize: 'calc(12px * var(--escala-texto))', width: 'max-content', maxWidth: 'calc(100% - 390px)' }}>
       <Info size={14} /><span style={{ flex: '1 1 auto' }}>{txt}</span>{acc}
       <Boton variante="ghost" icono={X} onClick={onCancelar} style={{ color: '#fff', padding: '6px 8px' }} title="Cancelar (Esc)" />
     </div>

@@ -153,7 +153,7 @@ function TituloTarjeta({ icono: I, titulo, aclaracion, unaLinea = false }: { ico
     <div className={`flex items-baseline gap-2 mb-2 min-w-0 ${unaLinea ? 'whitespace-nowrap overflow-hidden' : 'flex-wrap'}`} title={aclaracion ? `${titulo} · ${aclaracion}` : undefined}>
       <I size={15} style={{ color: 'var(--primary)', alignSelf: 'center' }} />
       <h2 style={{ fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--foreground)' }}>{titulo}</h2>
-      {aclaracion && <span className={unaLinea ? 'truncate' : ''} style={{ fontSize: 12, color: 'var(--muted-foreground)' }}>{aclaracion}</span>}
+      {aclaracion && <span className={unaLinea ? 'truncate' : ''} style={{ fontSize: 'calc(12px * var(--escala-texto))', color: 'var(--muted-foreground)' }}>{aclaracion}</span>}
     </div>
   );
 }
@@ -164,13 +164,13 @@ function Indicador({ valor, etiqueta, detalle, icono: I, color }: { valor: numbe
   return (
     <div className="rounded-[var(--radius-card)] px-4 py-2.5 flex items-center gap-3"
       style={{ ...estiloTarjeta, ...(color ? { borderLeft: `4px solid ${color}` } : {}) }}>
-      <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: color ? `${color}1f` : 'rgba(229,75,75,0.1)' }}>
+      <div className="w-9 h-9 rounded-lg flex items-center justify-center shrink-0" style={{ background: color ? `color-mix(in srgb, ${color} 12%, transparent)` : 'color-mix(in srgb, var(--primary) 10%, transparent)' }}>
         <I size={17} style={{ color: color ?? 'var(--primary)' }} />
       </div>
       <div className="min-w-0">
-        <p className="tabular-nums" style={{ fontSize: 22, lineHeight: 1.1, fontWeight: 700, color: 'var(--foreground)' }}>{valor}</p>
+        <p className="tabular-nums" style={{ fontSize: 'calc(22px * var(--escala-texto))', lineHeight: 1.1, fontWeight: 700, color: 'var(--foreground)' }}>{valor}</p>
         <p className="leading-tight" style={{ fontSize: 'var(--text-label)', color: 'var(--foreground)', fontWeight: 'var(--font-weight-semibold)' }}>{etiqueta}</p>
-        {detalle && <p className="leading-tight" style={{ fontSize: 11, color: 'var(--muted-foreground)' }}>{detalle}</p>}
+        {detalle && <p className="leading-tight" style={{ fontSize: 'calc(11px * var(--escala-texto))', color: 'var(--muted-foreground)' }}>{detalle}</p>}
       </div>
     </div>
   );

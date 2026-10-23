@@ -60,7 +60,7 @@ export default function VerificarInforme() {
       <div className="w-full flex flex-col gap-6" style={{ maxWidth: 560 }}>
         <div className="flex items-center gap-3">
           <div className="w-11 h-11 rounded-xl flex items-center justify-center" style={{ background: 'var(--primary)' }}>
-            <Shield size={20} color="#fff" />
+            <Shield size={20} color="var(--primary-foreground)" />
           </div>
           <div>
             <div style={{ fontWeight: 700, color: 'var(--foreground)' }}>DUAR</div>
@@ -96,7 +96,7 @@ export default function VerificarInforme() {
         </form>
 
         {buscando && <p className="flex items-center gap-2" style={tenue}><Loader2 size={14} className="animate-spin" /> Buscando el informe…</p>}
-        {error && <p style={{ ...texto, color: 'var(--primary)' }}>{error}</p>}
+        {error && <p style={{ ...texto, color: 'var(--destructive)' }}>{error}</p>}
 
         {informe && (
           <section className="rounded-xl p-5 flex flex-col gap-4" style={{ background: 'var(--card)', border: '1px solid var(--border)' }}>
@@ -106,7 +106,7 @@ export default function VerificarInforme() {
               <dt style={tenue}>Operativo</dt><dd style={{ ...texto, ...mono }}>{informe.operativoCodigo}</dd>
               <dt style={tenue}>Datos al</dt><dd style={texto}>{fecha(informe.corteEn)}</dd>
               <dt style={tenue}>Emitido</dt><dd style={texto}>{fecha(informe.generadoEn)}</dd>
-              <dt style={tenue}>Huella SHA-256</dt><dd style={{ ...mono, fontSize: 12, color: 'var(--foreground)', wordBreak: 'break-all' }}>{informe.sha256}</dd>
+              <dt style={tenue}>Huella SHA-256</dt><dd style={{ ...mono, fontSize: 'calc(12px * var(--escala-texto))', color: 'var(--foreground)', wordBreak: 'break-all' }}>{informe.sha256}</dd>
             </dl>
 
             <label
@@ -123,11 +123,11 @@ export default function VerificarInforme() {
             {resultado && (
               <div
                 className="flex items-start gap-3 p-4 rounded-lg"
-                style={{ background: resultado.ok ? 'rgba(34,139,84,0.10)' : 'rgba(229,75,75,0.10)', border: `1px solid ${resultado.ok ? 'rgba(34,139,84,0.35)' : 'rgba(229,75,75,0.35)'}` }}
+                style={{ background: resultado.ok ? 'rgba(34,139,84,0.10)' : 'color-mix(in srgb, var(--destructive) 10%, transparent)', border: `1px solid ${resultado.ok ? 'rgba(34,139,84,0.35)' : 'color-mix(in srgb, var(--destructive) 35%, transparent)'}` }}
               >
                 {resultado.ok
                   ? <CheckCircle2 size={22} className="flex-shrink-0" style={{ color: '#228b54' }} />
-                  : <XCircle size={22} className="flex-shrink-0" style={{ color: 'var(--primary)' }} />}
+                  : <XCircle size={22} className="flex-shrink-0" style={{ color: 'var(--destructive)' }} />}
                 <div className="flex flex-col gap-1" style={{ minWidth: 0 }}>
                   <strong style={texto}>
                     {resultado.ok

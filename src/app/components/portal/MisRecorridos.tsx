@@ -23,7 +23,7 @@ const NOTAS_MAX = 2000;
 
 const tarjeta = { background: 'var(--card)', boxShadow: 'var(--elevation-sm)' };
 const rotulo = {
-  color: 'var(--muted-foreground)', fontSize: '10px',
+  color: 'var(--muted-foreground)', fontSize: 'calc(10px * var(--escala-texto))',
   fontWeight: 'var(--font-weight-semibold)', textTransform: 'uppercase' as const, letterSpacing: '0.05em',
 };
 
@@ -45,7 +45,7 @@ function franja(inicio: string | null, fin: string | null): string {
 function Dato({ etiqueta, valor }: { etiqueta: string; valor: string }) {
   return (
     <div className="px-3 py-2 rounded-[var(--radius-input)]" style={{ background: 'var(--muted)' }}>
-      <p style={{ ...rotulo, fontSize: 9.5 }}>{etiqueta}</p>
+      <p style={{ ...rotulo, fontSize: 'calc(9.5px * var(--escala-texto))' }}>{etiqueta}</p>
       <p style={{ color: 'var(--foreground)', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)' }}>{valor}</p>
     </div>
   );
@@ -121,7 +121,7 @@ export default function MisRecorridos() {
       <div className="flex items-center justify-between gap-3">
         <p id="mis-recorridos-titulo" style={rotulo}>Mis recorridos GPX</p>
         {tracks.length > 0 && (
-          <span style={{ fontSize: 11, color: 'var(--muted-foreground)' }}>
+          <span style={{ fontSize: 'calc(11px * var(--escala-texto))', color: 'var(--muted-foreground)' }}>
             {tracks.length} · {km(tracks.reduce((s, t) => s + t.distanciaM, 0))}
           </span>
         )}
@@ -130,7 +130,7 @@ export default function MisRecorridos() {
       {error && <ErrorCaja>{error}</ErrorCaja>}
       {aviso && (
         <div className="flex items-start gap-2 px-3 py-2 rounded-[var(--radius-input)]" aria-live="polite"
-          style={{ background: '#dcfce7', border: '1px solid #bbf7d0', color: '#15803d', fontSize: 11.5, lineHeight: 1.45 }}>
+          style={{ background: '#dcfce7', border: '1px solid #bbf7d0', color: '#15803d', fontSize: 'calc(11.5px * var(--escala-texto))', lineHeight: 1.45 }}>
           <Check size={13} style={{ flexShrink: 0, marginTop: 1 }} />
           <span className="flex-1">{aviso}</span>
           <button type="button" aria-label="Cerrar" onClick={() => setAviso(null)}
@@ -155,7 +155,7 @@ export default function MisRecorridos() {
                 <p style={{ fontSize: 'var(--text-label)', color: 'var(--foreground)', fontWeight: 'var(--font-weight-medium)' }}>
                   {t.poligonoNombre ?? 'Fuera de polígono'} · {km(t.distanciaM)}
                 </p>
-                <p style={{ fontSize: 11, color: 'var(--muted-foreground)', lineHeight: 1.4 }}>
+                <p style={{ fontSize: 'calc(11px * var(--escala-texto))', color: 'var(--muted-foreground)', lineHeight: 1.4 }}>
                   {franja(t.inicio, t.fin)}
                   {t.cargadoPor !== t.agente && ` · cargado por ${t.cargadoPor}`}
                 </p>
@@ -182,7 +182,7 @@ export default function MisRecorridos() {
       {analisis && archivo && (
         <Overlay onClose={cerrar}>
           <div className="px-5 pt-5 flex items-start gap-3">
-            <IconBox bg="rgba(229,75,75,0.1)"><Route size={17} style={{ color: 'var(--primary)' }} /></IconBox>
+            <IconBox bg="color-mix(in srgb, var(--primary) 10%, transparent)"><Route size={17} style={{ color: 'var(--primary)' }} /></IconBox>
             <div className="min-w-0">
               <Titulo>¿Cargar este recorrido?</Titulo>
               <Texto><span style={{ wordBreak: 'break-all' }}>{archivo.name}</span></Texto>
@@ -209,7 +209,7 @@ export default function MisRecorridos() {
               <Dato etiqueta="Desnivel"
                 valor={analisis.conElevacion ? `+${analisis.desnivelPositivoM} m / −${analisis.desnivelNegativoM} m` : 'sin elevación'} />
             </div>
-            <p style={{ fontSize: 11.5, color: 'var(--muted-foreground)' }}>{franja(analisis.inicio, analisis.fin)}</p>
+            <p style={{ fontSize: 'calc(11.5px * var(--escala-texto))', color: 'var(--muted-foreground)' }}>{franja(analisis.inicio, analisis.fin)}</p>
 
             <div>
               <Etiqueta htmlFor="notas-recorrido">Notas (opcional)</Etiqueta>
@@ -218,7 +218,7 @@ export default function MisRecorridos() {
                 placeholder="Ej.: el GPS perdió señal en la quebrada"
                 className="w-full px-3 py-2" style={{ ...estiloCampo, resize: 'vertical' }} />
             </div>
-            <p style={{ fontSize: 11, color: 'var(--muted-foreground)', lineHeight: 1.45 }}>
+            <p style={{ fontSize: 'calc(11px * var(--escala-texto))', color: 'var(--muted-foreground)', lineHeight: 1.45 }}>
               El recorrido, las horas y la elevación se guardan como vienen en el archivo y no se editan.
             </p>
             {errorModal && <ErrorCaja>{errorModal}</ErrorCaja>}

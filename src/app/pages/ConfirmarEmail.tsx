@@ -258,7 +258,7 @@ export default function ConfirmarEmail() {
           className="w-10 h-10 rounded-xl flex items-center justify-center"
           style={{ background: 'var(--primary)' }}
         >
-          <Shield size={20} color="#fff" />
+          <Shield size={20} color="var(--primary-foreground)" />
         </div>
         <div>
           <p style={{ color: 'var(--foreground)', fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-bold)' }}>
@@ -321,7 +321,7 @@ export default function ConfirmarEmail() {
             {renderEstadoAlta()}
             <button
               onClick={handleIrAlPanel}
-              className="w-full py-3.5 rounded-xl text-white"
+              className="w-full py-3.5 rounded-xl text-[var(--primary-foreground)]"
               style={{
                 background: otraSesion ? 'var(--muted-foreground)' : 'var(--primary)',
                 fontSize: 'var(--text-base)',
@@ -358,7 +358,7 @@ export default function ConfirmarEmail() {
             {renderEstadoAlta()}
             <button
               onClick={handleIrAlPanel}
-              className="w-full py-3.5 rounded-xl text-white"
+              className="w-full py-3.5 rounded-xl text-[var(--primary-foreground)]"
               style={{
                 background: otraSesion ? 'var(--muted-foreground)' : 'var(--primary)',
                 fontSize: 'var(--text-base)',
@@ -410,7 +410,7 @@ export default function ConfirmarEmail() {
 
       <p
         className="mt-8 text-center"
-        style={{ color: 'var(--muted-foreground)', fontSize: '11px' }}
+        style={{ color: 'var(--muted-foreground)', fontSize: 'calc(11px * var(--escala-texto))' }}
       >
         © 2026 DUAR Córdoba · Sistema v2.0
       </p>

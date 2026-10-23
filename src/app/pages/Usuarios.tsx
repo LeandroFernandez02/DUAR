@@ -53,7 +53,7 @@ const rolIcon = (rol: Rol) => {
 };
 
 const rolColor = (rol: Rol) => {
-  if (rol === 'administrador') return { bg: 'rgba(229,75,75,0.1)', color: 'var(--primary)' };
+  if (rol === 'administrador') return { bg: 'color-mix(in srgb, var(--primary) 10%, transparent)', color: 'var(--primary)' };
   if (rol === 'coordinador') return { bg: '#dbeafe', color: '#1d4ed8' };
   return { bg: 'var(--muted)', color: 'var(--muted-foreground)' };
 };
@@ -302,7 +302,7 @@ export default function Usuarios() {
         </div>
         <button
           onClick={openCreate}
-          className="flex items-center gap-2 px-4 py-2.5 rounded-[var(--radius-button)] text-white hover:opacity-90"
+          className="flex items-center gap-2 px-4 py-2.5 rounded-[var(--radius-button)] text-[var(--primary-foreground)] hover:opacity-90"
           style={{ background: 'var(--primary)', fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-semibold)' }}
         >
           <Plus size={16} />
@@ -377,7 +377,7 @@ export default function Usuarios() {
                 <div className="flex items-center gap-3 min-w-0">
                   <div
                     className="w-9 h-9 rounded-full flex items-center justify-center flex-shrink-0"
-                    style={{ background: 'var(--primary)', color: '#fff', fontSize: '12px', fontWeight: 'var(--font-weight-bold)' }}
+                    style={{ background: 'var(--primary)', color: 'var(--primary-foreground)', fontSize: 'calc(12px * var(--escala-texto))', fontWeight: 'var(--font-weight-bold)' }}
                   >
                     {u.nombre.charAt(0)}{u.apellido.charAt(0)}
                   </div>
@@ -385,7 +385,7 @@ export default function Usuarios() {
                     <p className="truncate" style={{ color: 'var(--foreground)', fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-medium)' }}>
                       {u.nombre} {u.apellido}
                     </p>
-                    <p className="truncate" style={{ color: 'var(--muted-foreground)', fontSize: '11px' }}>{u.email}</p>
+                    <p className="truncate" style={{ color: 'var(--muted-foreground)', fontSize: 'calc(11px * var(--escala-texto))' }}>{u.email}</p>
                   </div>
                 </div>
                 <div className="flex items-center gap-1 flex-shrink-0">
@@ -428,7 +428,7 @@ export default function Usuarios() {
               <div className="flex items-center gap-2 flex-wrap mt-3">
                 <span
                   className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full"
-                  style={{ background: rolC.bg, color: rolC.color, fontSize: '11px', fontWeight: 'var(--font-weight-semibold)' }}
+                  style={{ background: rolC.bg, color: rolC.color, fontSize: 'calc(11px * var(--escala-texto))', fontWeight: 'var(--font-weight-semibold)' }}
                 >
                   {rolIcon(u.rol)}
                   <span className="capitalize">{u.rol}</span>
@@ -438,15 +438,15 @@ export default function Usuarios() {
 
               <div className="grid grid-cols-2 gap-2 mt-3 pt-3" style={{ borderTop: '1px solid var(--border)' }}>
                 <div>
-                  <p style={{ color: 'var(--muted-foreground)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>DNI</p>
+                  <p style={{ color: 'var(--muted-foreground)', fontSize: 'calc(10px * var(--escala-texto))', textTransform: 'uppercase', letterSpacing: '0.04em' }}>DNI</p>
                   <p style={{ color: 'var(--foreground)', fontSize: 'var(--text-label)' }}>{formatearDni(u.dni)}</p>
                 </div>
                 <div>
-                  <p style={{ color: 'var(--muted-foreground)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Especialidad</p>
+                  <p style={{ color: 'var(--muted-foreground)', fontSize: 'calc(10px * var(--escala-texto))', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Especialidad</p>
                   <p style={{ color: 'var(--foreground)', fontSize: 'var(--text-label)' }}>{especialidadNombrePorId(u.especialidadId)}</p>
                 </div>
                 <div className="col-span-2">
-                  <p style={{ color: 'var(--muted-foreground)', fontSize: '10px', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Dotación</p>
+                  <p style={{ color: 'var(--muted-foreground)', fontSize: 'calc(10px * var(--escala-texto))', textTransform: 'uppercase', letterSpacing: '0.04em' }}>Dotación</p>
                   <p style={{ color: 'var(--foreground)', fontSize: 'var(--text-label)' }}>{institucionLabel(u)}</p>
                 </div>
               </div>
@@ -473,7 +473,7 @@ export default function Usuarios() {
             <thead>
               <tr style={{ borderBottom: '1px solid var(--border)', background: 'var(--muted)' }}>
                 {['Usuario', 'DNI', 'Rol', 'Especialidad', 'Dotación', 'Estado', ''].map(h => (
-                  <th key={h} className="text-left px-4 py-3 uppercase tracking-wider" style={{ color: 'var(--muted-foreground)', fontSize: '11px', fontWeight: 'var(--font-weight-semibold)' }}>
+                  <th key={h} className="text-left px-4 py-3 uppercase tracking-wider" style={{ color: 'var(--muted-foreground)', fontSize: 'calc(11px * var(--escala-texto))', fontWeight: 'var(--font-weight-semibold)' }}>
                     {h}
                   </th>
                 ))}
@@ -491,7 +491,7 @@ export default function Usuarios() {
                       <div className="flex items-center gap-3">
                         <div
                           className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
-                          style={{ background: 'var(--primary)', color: '#fff', fontSize: '11px', fontWeight: 'var(--font-weight-bold)' }}
+                          style={{ background: 'var(--primary)', color: 'var(--primary-foreground)', fontSize: 'calc(11px * var(--escala-texto))', fontWeight: 'var(--font-weight-bold)' }}
                         >
                           {u.nombre.charAt(0)}{u.apellido.charAt(0)}
                         </div>
@@ -499,7 +499,7 @@ export default function Usuarios() {
                           <p style={{ color: 'var(--foreground)', fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-medium)' }}>
                             {u.nombre} {u.apellido}
                           </p>
-                          <p style={{ color: 'var(--muted-foreground)', fontSize: '11px' }}>{u.email}</p>
+                          <p style={{ color: 'var(--muted-foreground)', fontSize: 'calc(11px * var(--escala-texto))' }}>{u.email}</p>
                         </div>
                       </div>
                     </td>
@@ -507,7 +507,7 @@ export default function Usuarios() {
                     <td className="px-4 py-3">
                       <span
                         className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full"
-                        style={{ background: rolC.bg, color: rolC.color, fontSize: '11px', fontWeight: 'var(--font-weight-semibold)' }}
+                        style={{ background: rolC.bg, color: rolC.color, fontSize: 'calc(11px * var(--escala-texto))', fontWeight: 'var(--font-weight-semibold)' }}
                       >
                         {rolIcon(u.rol)}
                         <span className="capitalize">{u.rol}</span>
@@ -702,9 +702,9 @@ export default function Usuarios() {
                       />
                     )}
                     {erroresForm[f.key] ? (
-                      <p style={{ color: '#dc2626', fontSize: '11px', marginTop: '4px' }}>{erroresForm[f.key]}</p>
+                      <p style={{ color: '#dc2626', fontSize: 'calc(11px * var(--escala-texto))', marginTop: '4px' }}>{erroresForm[f.key]}</p>
                     ) : (f as any).ayuda && (
-                      <p style={{ color: 'var(--muted-foreground)', fontSize: '11px', marginTop: '4px', lineHeight: 1.4 }}>{(f as any).ayuda}</p>
+                      <p style={{ color: 'var(--muted-foreground)', fontSize: 'calc(11px * var(--escala-texto))', marginTop: '4px', lineHeight: 1.4 }}>{(f as any).ayuda}</p>
                     )}
                   </div>
                 );
@@ -761,7 +761,7 @@ export default function Usuarios() {
                   {(soyAdmin || form.rol === 'administrador') && <option value="administrador">Administrador</option>}
                 </select>
                 {editandomePropio && (
-                  <p className="mt-1" style={{ fontSize: 11, color: 'var(--muted-foreground)' }}>No podés cambiar tu propio rol.</p>
+                  <p className="mt-1" style={{ fontSize: 'calc(11px * var(--escala-texto))', color: 'var(--muted-foreground)' }}>No podés cambiar tu propio rol.</p>
                 )}
               </div>
 
@@ -838,7 +838,7 @@ export default function Usuarios() {
                   >
                     Pendiente
                   </div>
-                  <p className="mt-1" style={{ fontSize: 11, color: 'var(--muted-foreground)', lineHeight: 1.4 }}>
+                  <p className="mt-1" style={{ fontSize: 'calc(11px * var(--escala-texto))', color: 'var(--muted-foreground)', lineHeight: 1.4 }}>
                     Pasa a Activo cuando la persona confirma su correo. Si no le llegó, reenvialo desde el listado.
                   </p>
                 </div>
@@ -876,7 +876,7 @@ export default function Usuarios() {
               <button onClick={() => setModal(null)} className="px-4 py-2 rounded-[var(--radius-button)] border" style={{ color: 'var(--foreground)', borderColor: 'var(--border)', background: 'transparent', fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-semibold)' }}>
                 Cancelar
               </button>
-              <button onClick={handleSave} disabled={guardando} className="px-4 py-2 rounded-[var(--radius-button)] text-white disabled:cursor-wait" style={{ background: 'var(--primary)', fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-semibold)', opacity: guardando ? 0.7 : 1 }}>
+              <button onClick={handleSave} disabled={guardando} className="px-4 py-2 rounded-[var(--radius-button)] text-[var(--primary-foreground)] disabled:cursor-wait" style={{ background: 'var(--primary)', fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-semibold)', opacity: guardando ? 0.7 : 1 }}>
                 {guardando
                   ? (modal === 'create' ? 'Creando…' : 'Guardando…')
                   : (modal === 'create' ? 'Crear Usuario' : 'Guardar Cambios')}

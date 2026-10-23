@@ -198,7 +198,7 @@ export function MapPickerModal({ onConfirm, initialLat, initialLng, localidad }:
         className="flex items-center gap-2 px-3 py-2 rounded-[var(--radius-button)] transition-all w-full justify-center"
         style={{
           background: 'var(--primary)',
-          color: '#fff',
+          color: 'var(--primary-foreground)',
           fontFamily: 'var(--font-family-primary)',
           fontSize: 'var(--text-label)',
           fontWeight: 'var(--font-weight-semibold)',
@@ -296,7 +296,7 @@ export function MapPickerModal({ onConfirm, initialLat, initialLng, localidad }:
                   style={{
                     fontFamily: 'var(--font-family-primary)', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)',
                     background: busqueda.trim() ? 'var(--primary)' : 'var(--card)',
-                    color: busqueda.trim() ? '#fff' : 'var(--muted-foreground)',
+                    color: busqueda.trim() ? 'var(--primary-foreground)' : 'var(--muted-foreground)',
                     border: busqueda.trim() ? 'none' : '1px solid var(--border)',
                     cursor: busqueda.trim() && !buscando ? 'pointer' : 'not-allowed',
                   }}
@@ -439,8 +439,8 @@ export function MapPickerModal({ onConfirm, initialLat, initialLng, localidad }:
               <div
                 className="flex items-center gap-3 px-3 py-2 rounded-[var(--radius-input)] sm:min-w-[200px]"
                 style={{
-                  background: selected ? 'rgba(229,75,75,0.07)' : 'var(--muted)',
-                  border: selected ? '1px solid rgba(229,75,75,0.3)' : '1px solid var(--border)',
+                  background: selected ? 'color-mix(in srgb, var(--primary) 7%, transparent)' : 'var(--muted)',
+                  border: selected ? '1px solid color-mix(in srgb, var(--primary) 30%, transparent)' : '1px solid var(--border)',
                 }}
               >
                 <MapPin size={13} style={{ color: selected ? 'var(--primary)' : 'var(--muted-foreground)', flexShrink: 0 }} />
@@ -499,7 +499,7 @@ export function MapPickerModal({ onConfirm, initialLat, initialLng, localidad }:
                     fontSize: 'var(--text-label)',
                     fontWeight: 'var(--font-weight-semibold)',
                     background: selected ? 'var(--primary)' : 'var(--muted)',
-                    color: selected ? '#fff' : 'var(--muted-foreground)',
+                    color: selected ? 'var(--primary-foreground)' : 'var(--muted-foreground)',
                     border: 'none',
                     cursor: selected ? 'pointer' : 'not-allowed',
                     opacity: selected ? 1 : 0.55,

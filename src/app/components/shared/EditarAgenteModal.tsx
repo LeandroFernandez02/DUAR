@@ -180,7 +180,7 @@ export default function EditarAgenteModal({ agente, operativoId, onClose, onSave
           <div className="flex items-center gap-3">
             <div
               className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-              style={{ background: isDUAR ? 'rgba(229,75,75,0.1)' : 'rgba(255,169,135,0.15)' }}
+              style={{ background: isDUAR ? 'color-mix(in srgb, var(--primary) 10%, transparent)' : 'color-mix(in srgb, var(--accent) 15%, transparent)' }}
             >
               <Pencil size={16} style={{ color: isDUAR ? 'var(--primary)' : 'var(--accent)' }} />
             </div>
@@ -222,7 +222,7 @@ export default function EditarAgenteModal({ agente, operativoId, onClose, onSave
               className="w-10 h-10 rounded-full flex items-center justify-center flex-shrink-0"
               style={{
                 background: isDUAR ? 'var(--primary)' : 'var(--accent)',
-                color: '#fff',
+                color: 'var(--primary-foreground)',
                 fontSize: 'var(--text-label)',
                 fontWeight: 'var(--font-weight-bold)',
                 fontFamily: 'var(--font-family-primary)',
@@ -238,7 +238,7 @@ export default function EditarAgenteModal({ agente, operativoId, onClose, onSave
                 {agente.nombre} {agente.apellido}
               </p>
               <p style={{
-                color: 'var(--muted-foreground)', fontSize: '11px',
+                color: 'var(--muted-foreground)', fontSize: 'calc(11px * var(--escala-texto))',
                 fontFamily: 'var(--font-family-primary)',
               }}>
                 DNI {formatearDni(agente.dni)}{agente.institucionNombre ? ` · ${agente.institucionNombre}` : ''}
@@ -260,7 +260,7 @@ export default function EditarAgenteModal({ agente, operativoId, onClose, onSave
               <div className="flex items-start gap-3 p-3 rounded-[var(--radius-input)]"
                 style={{ background: 'var(--muted)', border: '1px solid var(--border)' }}>
                 <EstadoOperativoBadge estado={estadoInicial} />
-                <p style={{ color: 'var(--muted-foreground)', fontSize: '11px', lineHeight: 1.5, fontFamily: 'var(--font-family-primary)' }}>
+                <p style={{ color: 'var(--muted-foreground)', fontSize: 'calc(11px * var(--escala-texto))', lineHeight: 1.5, fontFamily: 'var(--font-family-primary)' }}>
                   Integra un grupo y su estado lo define el grupo. Para cambiarlo, cambiá el estado
                   del grupo en la pestaña Grupos, o sacalo del grupo.
                 </p>
@@ -328,7 +328,7 @@ export default function EditarAgenteModal({ agente, operativoId, onClose, onSave
                     ? '2px solid var(--primary)'
                     : '1.5px solid var(--border)',
                   background: especialidad === ''
-                    ? 'rgba(229,75,75,0.06)'
+                    ? 'color-mix(in srgb, var(--primary) 6%, transparent)'
                     : 'var(--card)',
                   cursor: 'pointer',
                 }}
@@ -408,7 +408,7 @@ export default function EditarAgenteModal({ agente, operativoId, onClose, onSave
                     className="flex items-center gap-2.5 px-3 py-2.5 rounded-[var(--radius-input)] transition-all text-left"
                     style={{
                       border: isSelected ? '2px solid var(--primary)' : '1.5px solid var(--border)',
-                      background: isSelected ? 'rgba(229,75,75,0.06)' : 'var(--card)',
+                      background: isSelected ? 'color-mix(in srgb, var(--primary) 6%, transparent)' : 'var(--card)',
                       cursor: 'pointer',
                     }}
                   >
@@ -433,7 +433,7 @@ export default function EditarAgenteModal({ agente, operativoId, onClose, onSave
             </div>
             {conductor && (
               <p className="mt-2" style={{
-                color: 'var(--muted-foreground)', fontSize: '11px',
+                color: 'var(--muted-foreground)', fontSize: 'calc(11px * var(--escala-texto))',
                 fontFamily: 'var(--font-family-primary)',
               }}>
                 No rastrilla: espera al grupo con la camioneta (queda Desplegado mientras el grupo rastrilla). Puede ir en cualquier grupo.
@@ -470,7 +470,7 @@ export default function EditarAgenteModal({ agente, operativoId, onClose, onSave
               className="flex items-center justify-center gap-2 flex-1 py-2.5 rounded-[var(--radius-button)] transition-all"
               style={{
                 background: saved ? '#16a34a' : hasChanges ? 'var(--primary)' : 'var(--muted)',
-                color: hasChanges || saved ? '#fff' : 'var(--muted-foreground)',
+                color: hasChanges || saved ? 'var(--primary-foreground)' : 'var(--muted-foreground)',
                 fontSize: 'var(--text-base)',
                 fontWeight: 'var(--font-weight-semibold)', fontFamily: 'var(--font-family-primary)',
                 opacity: !hasChanges && !saved ? 0.55 : 1,

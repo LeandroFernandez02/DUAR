@@ -173,10 +173,10 @@ function textoSobre(hex: string): string {
   return conBlanco >= conOscuro ? '#fff' : '#1f2937';
 }
 
-/** `#rrggbb` → `rgba(r,g,b,alpha)`. Con un color inválido cae al rojo primario, que es lo que había antes. */
+/** `#rrggbb` → `rgba(r,g,b,alpha)`. Otro color CSS (p. ej. `var(--accent)`) se mezcla con color-mix. */
 function conAlfa(hex: string, alpha: number): string {
   const m = /^#([0-9a-f]{6})$/i.exec(hex);
-  if (!m) return `rgba(229,75,75,${alpha})`;
+  if (!m) return `color-mix(in srgb, ${hex || 'var(--primary)'} ${Math.round(alpha * 100)}%, transparent)`;
   const n = parseInt(m[1], 16);
   return `rgba(${(n >> 16) & 255},${(n >> 8) & 255},${n & 255},${alpha})`;
 }
@@ -256,8 +256,8 @@ function Chip({ agente, desdeGrupoId, esLider = false, colorGrupo, fijo = false,
       style={{
         opacity: levantado ? 0.25 : 1,
         cursor: fijo ? 'default' : 'grab',
-        background: esLider ? conAlfa(colorGrupo ?? '#e54b4b', 0.07) : (fondo ?? 'var(--muted)'),
-        border: esLider ? `1px dashed ${conAlfa(colorGrupo ?? '#e54b4b', 0.3)}` : '1px solid transparent',
+        background: esLider ? conAlfa(colorGrupo ?? 'var(--primary)', 0.07) : (fondo ?? 'var(--muted)'),
+        border: esLider ? `1px dashed ${conAlfa(colorGrupo ?? 'var(--primary)', 0.3)}` : '1px solid transparent',
         borderRadius: 'var(--radius-input)',
         padding: '6px 10px',
         display: 'flex', alignItems: 'center', gap: 7,
@@ -270,7 +270,7 @@ function Chip({ agente, desdeGrupoId, esLider = false, colorGrupo, fijo = false,
       <AvatarAgente esDuar={agente.esDuar} esConductor={agente.esConductor} esRecursoCritico={agente.esRecursoCritico} tamano={detallado ? 30 : 24} />
       <div style={{ minWidth: 0, flex: 1 }}>
         <p style={{
-          fontSize: 11.5, fontWeight: 'var(--font-weight-semibold)', color: 'var(--foreground)',
+          fontSize: 'calc(11.5px * var(--escala-texto))', fontWeight: 'var(--font-weight-semibold)', color: 'var(--foreground)',
           fontFamily: 'var(--font-family-primary)', lineHeight: 1.25,
           whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
         }}>
@@ -278,20 +278,20 @@ function Chip({ agente, desdeGrupoId, esLider = false, colorGrupo, fijo = false,
         </p>
         {detallado ? (
           <>
-            <p style={{ fontSize: 10, color: 'var(--muted-foreground)', fontFamily: 'var(--font-family-primary)', lineHeight: 1.35 }}
+            <p style={{ fontSize: 'calc(10px * var(--escala-texto))', color: 'var(--muted-foreground)', fontFamily: 'var(--font-family-primary)', lineHeight: 1.35 }}
               title={`Desde ${horaExacta(agente.estadoActualizadoEn)}`}>
               {cfg && <span style={{ color: cfg.color, fontWeight: 'var(--font-weight-semibold)' }}>● {cfg.label}</span>}
               {' '}{haceCuanto(agente.estadoActualizadoEn)}
             </p>
-            <p style={{ fontSize: 10, color: 'var(--muted-foreground)', fontFamily: 'var(--font-family-primary)', lineHeight: 1.35 }}>
+            <p style={{ fontSize: 'calc(10px * var(--escala-texto))', color: 'var(--muted-foreground)', fontFamily: 'var(--font-family-primary)', lineHeight: 1.35 }}>
               {agente.institucionNombre ?? 'Sin dotación'}
             </p>
-            <p style={{ fontSize: 10, color: 'var(--muted-foreground)', fontFamily: 'var(--font-family-primary)', lineHeight: 1.35 }}>
+            <p style={{ fontSize: 'calc(10px * var(--escala-texto))', color: 'var(--muted-foreground)', fontFamily: 'var(--font-family-primary)', lineHeight: 1.35 }}>
               {agente.especialidadNombre ?? 'Sin especialidad'}
             </p>
           </>
         ) : (
-          <p style={{ fontSize: 10, color: 'var(--muted-foreground)', fontFamily: 'var(--font-family-primary)', lineHeight: 1.3 }}
+          <p style={{ fontSize: 'calc(10px * var(--escala-texto))', color: 'var(--muted-foreground)', fontFamily: 'var(--font-family-primary)', lineHeight: 1.3 }}
             title={`Desde ${horaExacta(agente.estadoActualizadoEn)}`}>
             {cfg && <span style={{ color: cfg.color, fontWeight: 'var(--font-weight-semibold)' }}>● {cfg.label}</span>}
             {' '}{haceCuanto(agente.estadoActualizadoEn)}
@@ -372,13 +372,13 @@ function Filtro<T extends string>({ etiqueta, opciones, valor, onCambiar }: {
             className="flex items-center gap-1.5 px-2.5 py-1 rounded-full"
             style={{
               border: sel ? '1.5px solid var(--primary)' : '1.5px solid var(--border)',
-              background: sel ? 'rgba(229,75,75,0.08)' : 'transparent',
+              background: sel ? 'color-mix(in srgb, var(--primary) 8%, transparent)' : 'transparent',
               color: sel ? 'var(--primary)' : 'var(--muted-foreground)',
-              fontSize: 11, fontFamily: 'var(--font-family-primary)', cursor: 'pointer',
+              fontSize: 'calc(11px * var(--escala-texto))', fontFamily: 'var(--font-family-primary)', cursor: 'pointer',
               fontWeight: sel ? 'var(--font-weight-semibold)' : 'var(--font-weight-medium)',
             }}>
             {o.texto}
-            <span style={{ fontSize: 10, padding: '0 5px', borderRadius: 999, background: sel ? 'rgba(229,75,75,0.15)' : 'var(--muted)' }}>
+            <span style={{ fontSize: 'calc(10px * var(--escala-texto))', padding: '0 5px', borderRadius: 999, background: sel ? 'color-mix(in srgb, var(--primary) 15%, transparent)' : 'var(--muted)' }}>
               {o.cantidad}
             </span>
           </button>
@@ -392,7 +392,7 @@ function Filtro<T extends string>({ etiqueta, opciones, valor, onCambiar }: {
 function TituloSeccion({ texto, cantidad }: { texto: string; cantidad: number }) {
   return (
     <p className="uppercase tracking-wider" style={{
-      fontSize: 10, color: 'var(--muted-foreground)', fontWeight: 'var(--font-weight-semibold)',
+      fontSize: 'calc(10px * var(--escala-texto))', color: 'var(--muted-foreground)', fontWeight: 'var(--font-weight-semibold)',
       fontFamily: 'var(--font-family-primary)', padding: '6px 2px 2px',
     }}>
       {texto} · {cantidad}
@@ -402,7 +402,7 @@ function TituloSeccion({ texto, cantidad }: { texto: string; cantidad: number })
 
 function VacioSeccion({ texto }: { texto: string }) {
   return (
-    <p style={{ fontSize: 11, color: 'var(--muted-foreground)', fontFamily: 'var(--font-family-primary)', padding: '6px 4px 8px', opacity: 0.8 }}>
+    <p style={{ fontSize: 'calc(11px * var(--escala-texto))', color: 'var(--muted-foreground)', fontFamily: 'var(--font-family-primary)', padding: '6px 4px 8px', opacity: 0.8 }}>
       {texto}
     </p>
   );
@@ -441,7 +441,7 @@ function PanelSinGrupo({ agentes, noAptos, editable, onSoltar, onArmadoAutomatic
 
   return (
     <div {...zona.handlers} style={{
-      background: zona.activa ? 'rgba(229,75,75,0.06)' : 'var(--card)',
+      background: zona.activa ? 'color-mix(in srgb, var(--primary) 6%, transparent)' : 'var(--card)',
       borderRadius: 'var(--radius-card)', boxShadow: 'var(--elevation-sm)',
       border: zona.activa ? '2px dashed var(--primary)' : '2px dashed transparent',
       minHeight: 180, display: 'flex', flexDirection: 'column',
@@ -457,12 +457,12 @@ function PanelSinGrupo({ agentes, noAptos, editable, onSoltar, onArmadoAutomatic
               title="Asignación automática: arma grupos de rastrillaje con los agentes"
               aria-label="Asignación automática"
               style={{ display: 'flex', padding: 5, borderRadius: 6, background: 'transparent', border: 'none', cursor: 'pointer', color: 'var(--primary)' }}
-              onMouseEnter={e => (e.currentTarget.style.background = 'rgba(229,75,75,0.08)')}
+              onMouseEnter={e => (e.currentTarget.style.background = 'color-mix(in srgb, var(--primary) 8%, transparent)')}
               onMouseLeave={e => (e.currentTarget.style.background = 'transparent')}>
               <Wand2 size={14} />
             </button>
           )}
-          <span style={{ fontSize: 10, fontWeight: 'var(--font-weight-semibold)', background: 'var(--muted)', color: 'var(--muted-foreground)', borderRadius: 999, padding: '1px 7px' }}>
+          <span style={{ fontSize: 'calc(10px * var(--escala-texto))', fontWeight: 'var(--font-weight-semibold)', background: 'var(--muted)', color: 'var(--muted-foreground)', borderRadius: 999, padding: '1px 7px' }}>
             {agentes.length}
           </span>
         </div>
@@ -497,12 +497,12 @@ function PanelSinGrupo({ agentes, noAptos, editable, onSoltar, onArmadoAutomatic
           </>
         )}
         {zona.activa && (
-          <p style={{ marginTop: 4, textAlign: 'center', fontSize: 11, color: 'var(--primary)', fontWeight: 'var(--font-weight-semibold)', fontFamily: 'var(--font-family-primary)' }}>
+          <p style={{ marginTop: 4, textAlign: 'center', fontSize: 'calc(11px * var(--escala-texto))', color: 'var(--primary)', fontWeight: 'var(--font-weight-semibold)', fontFamily: 'var(--font-family-primary)' }}>
             Soltar para sacar del grupo
           </p>
         )}
         {noAptos > 0 && (
-          <p style={{ marginTop: 'auto', paddingTop: 8, fontSize: 10.5, color: 'var(--muted-foreground)', lineHeight: 1.4, fontFamily: 'var(--font-family-primary)' }}>
+          <p style={{ marginTop: 'auto', paddingTop: 8, fontSize: 'calc(10.5px * var(--escala-texto))', color: 'var(--muted-foreground)', lineHeight: 1.4, fontFamily: 'var(--font-family-primary)' }}>
             {noAptos} sin grupo {noAptos === 1 ? 'no aparece' : 'no aparecen'} por estar No disponible o Replegado (CU-24). Cambiá su estado en la pestaña Agentes para integrarlos.
           </p>
         )}
@@ -518,13 +518,13 @@ function SinGrupos({ onNuevoGrupo }: { onNuevoGrupo?: () => void }) {
       <div style={{ position: 'relative', marginBottom: 8 }}>
         <div style={{
           width: 56, height: 56, borderRadius: 16, display: 'flex', alignItems: 'center', justifyContent: 'center',
-          background: 'rgba(229,75,75,0.1)',
+          background: 'color-mix(in srgb, var(--primary) 10%, transparent)',
         }}>
           <Users size={24} style={{ color: 'var(--primary)' }} />
         </div>
         <div style={{
           position: 'absolute', right: -4, bottom: -4, width: 20, height: 20, borderRadius: '50%',
-          background: 'var(--primary)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center',
+          background: 'var(--primary)', color: 'var(--primary-foreground)', display: 'flex', alignItems: 'center', justifyContent: 'center',
           border: '2px solid var(--card)',
         }}>
           <Plus size={11} />
@@ -619,13 +619,13 @@ function TarjetaGrupo({ grupo, editable, onSoltar, onEditar, onDisolver, onRetir
               {!rastrillaje && (
                 <span title="Grupo especial: recursos especiales, con agentes de apoyo"
                   style={{
-                    fontSize: 10, fontWeight: 'var(--font-weight-semibold)', fontFamily: 'var(--font-family-primary)',
+                    fontSize: 'calc(10px * var(--escala-texto))', fontWeight: 'var(--font-weight-semibold)', fontFamily: 'var(--font-family-primary)',
                     padding: '1px 8px', borderRadius: 999, border: '1px solid var(--border)', color: 'var(--foreground)',
                   }}>
                   Especial
                 </span>
               )}
-              <span style={{ fontSize: 10.5, color: 'var(--muted-foreground)', fontFamily: 'var(--font-family-primary)' }}
+              <span style={{ fontSize: 'calc(10.5px * var(--escala-texto))', color: 'var(--muted-foreground)', fontFamily: 'var(--font-family-primary)' }}
                 title={`Desde ${horaExacta(grupo.estadoActualizadoEn)}`}>
                 {haceCuanto(grupo.estadoActualizadoEn)} · {grupo.integrantes.length} integrante{grupo.integrantes.length !== 1 ? 's' : ''}
               </span>
@@ -659,19 +659,19 @@ function TarjetaGrupo({ grupo, editable, onSoltar, onEditar, onDisolver, onRetir
 
         {/* Binomio mínimo (CU-27): en el terreno con uno solo rastrillando. El grupo sigue; se avisa. */}
         {grupo.alertaBinomio && (
-          <div role="alert" className="flex items-start gap-1.5 p-2 rounded-[var(--radius-input)]" style={{ background: '#fee2e2', color: '#b91c1c', fontSize: 11, lineHeight: 1.4, fontWeight: 'var(--font-weight-semibold)', fontFamily: 'var(--font-family-primary)' }}>
+          <div role="alert" className="flex items-start gap-1.5 p-2 rounded-[var(--radius-input)]" style={{ background: '#fee2e2', color: '#b91c1c', fontSize: 'calc(11px * var(--escala-texto))', lineHeight: 1.4, fontWeight: 'var(--font-weight-semibold)', fontFamily: 'var(--font-family-primary)' }}>
             <AlertTriangle size={12} style={{ flexShrink: 0, marginTop: 1 }} />
             Una sola persona rastrillando: está sola en el polígono.
           </div>
         )}
         {!grupo.liderId && (
-          <div className="flex items-start gap-1.5 p-2 rounded-[var(--radius-input)]" style={{ background: '#fef9c3', color: '#713f12', fontSize: 11, lineHeight: 1.4, fontFamily: 'var(--font-family-primary)' }}>
+          <div className="flex items-start gap-1.5 p-2 rounded-[var(--radius-input)]" style={{ background: '#fef9c3', color: '#713f12', fontSize: 'calc(11px * var(--escala-texto))', lineHeight: 1.4, fontFamily: 'var(--font-family-primary)' }}>
             <AlertTriangle size={12} style={{ flexShrink: 0, marginTop: 1 }} />
             Sin Líder: el anterior dejó el operativo. Editá el grupo para designar {rastrillaje ? 'uno del DUAR' : 'otro'}.
           </div>
         )}
         {grupo.zonaAsignada && grupo.estado !== 'EN_FORMACION' && grupo.estado !== 'CONFIRMADO' && (
-          <p className="flex items-center gap-1.5" style={{ fontSize: 11, color: 'var(--foreground)', fontFamily: 'var(--font-family-primary)' }}>
+          <p className="flex items-center gap-1.5" style={{ fontSize: 'calc(11px * var(--escala-texto))', color: 'var(--foreground)', fontFamily: 'var(--font-family-primary)' }}>
             <MapPin size={12} style={{ color: 'var(--muted-foreground)', flexShrink: 0 }} />
             {grupo.zonaAsignada}
           </p>
@@ -686,12 +686,12 @@ function TarjetaGrupo({ grupo, editable, onSoltar, onEditar, onDisolver, onRetir
         }}>
           {integrantes.map(i => chipDe(i))}
           {zona.activa && (
-            <p style={{ textAlign: 'center', fontSize: 10.5, color, fontWeight: 'var(--font-weight-semibold)', fontFamily: 'var(--font-family-primary)', paddingTop: 2 }}>
+            <p style={{ textAlign: 'center', fontSize: 'calc(10.5px * var(--escala-texto))', color, fontWeight: 'var(--font-weight-semibold)', fontFamily: 'var(--font-family-primary)', paddingTop: 2 }}>
               Soltar para sumar al grupo
             </p>
           )}
           {zona.rechaza && (
-            <p style={{ textAlign: 'center', fontSize: 10.5, color: '#dc2626', fontWeight: 'var(--font-weight-semibold)', fontFamily: 'var(--font-family-primary)', paddingTop: 2 }}>
+            <p style={{ textAlign: 'center', fontSize: 'calc(10.5px * var(--escala-texto))', color: '#dc2626', fontWeight: 'var(--font-weight-semibold)', fontFamily: 'var(--font-family-primary)', paddingTop: 2 }}>
               {motivoRechazo()}
             </p>
           )}
@@ -702,11 +702,11 @@ function TarjetaGrupo({ grupo, editable, onSoltar, onEditar, onDisolver, onRetir
           border: zona.activa ? `1.5px dashed ${color}` : '1.5px dashed var(--border)',
           display: 'flex', flexDirection: 'column', gap: 4,
         }}>
-          <p className="uppercase tracking-wider" style={{ fontSize: 9.5, color: 'var(--muted-foreground)', fontWeight: 'var(--font-weight-semibold)', fontFamily: 'var(--font-family-primary)', padding: '0 2px' }}>
+          <p className="uppercase tracking-wider" style={{ fontSize: 'calc(9.5px * var(--escala-texto))', color: 'var(--muted-foreground)', fontWeight: 'var(--font-weight-semibold)', fontFamily: 'var(--font-family-primary)', padding: '0 2px' }}>
             Conductor
           </p>
           {conductores.length === 0 ? (
-            <p style={{ fontSize: 11, color: 'var(--muted-foreground)', fontFamily: 'var(--font-family-primary)', padding: '2px 2px 4px', opacity: 0.8 }}>
+            <p style={{ fontSize: 'calc(11px * var(--escala-texto))', color: 'var(--muted-foreground)', fontFamily: 'var(--font-family-primary)', padding: '2px 2px 4px', opacity: 0.8 }}>
               Sin conductor
             </p>
           ) : conductores.map(i => chipDe(i, false))}
@@ -724,7 +724,7 @@ function TarjetaGrupo({ grupo, editable, onSoltar, onEditar, onDisolver, onRetir
                     border: principal ? 'none' : '1px solid var(--border)',
                     background: principal ? color : 'var(--card)',
                     color: principal ? textoSobre(color) : 'var(--foreground)',
-                    fontSize: 11, fontWeight: 'var(--font-weight-semibold)', fontFamily: 'var(--font-family-primary)', cursor: 'pointer',
+                    fontSize: 'calc(11px * var(--escala-texto))', fontWeight: 'var(--font-weight-semibold)', fontFamily: 'var(--font-family-primary)', cursor: 'pointer',
                   }}>
                   {ACCION_INFO[a].boton}
                 </button>
@@ -787,7 +787,7 @@ export default function GruposDnD({
             <p style={{ fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--foreground)', fontFamily: 'var(--font-family-primary)' }}>
               Grupos del operativo
             </p>
-            <span style={{ marginLeft: 'auto', fontSize: 10, fontWeight: 'var(--font-weight-semibold)', background: 'var(--muted)', color: 'var(--muted-foreground)', borderRadius: 999, padding: '1px 7px' }}>
+            <span style={{ marginLeft: 'auto', fontSize: 'calc(10px * var(--escala-texto))', fontWeight: 'var(--font-weight-semibold)', background: 'var(--muted)', color: 'var(--muted-foreground)', borderRadius: 999, padding: '1px 7px' }}>
               {grupos.length}
             </span>
           </div>
@@ -823,7 +823,7 @@ export default function GruposDnD({
       </div>
 
       {grupos.length > 0 && (
-        <p className="hidden md:flex items-center justify-between gap-3" style={{ paddingLeft: 4, paddingRight: 4, fontSize: 11, color: 'var(--muted-foreground)', fontFamily: 'var(--font-family-primary)' }}>
+        <p className="hidden md:flex items-center justify-between gap-3" style={{ paddingLeft: 4, paddingRight: 4, fontSize: 'calc(11px * var(--escala-texto))', color: 'var(--muted-foreground)', fontFamily: 'var(--font-family-primary)' }}>
           <span>Podés arrastrar agentes directamente entre grupos <em>En formación</em>. Los recursos especiales sólo entran a grupos especiales.</span>
           <span style={{ opacity: 0.6 }}>DUAR Táctico</span>
         </p>

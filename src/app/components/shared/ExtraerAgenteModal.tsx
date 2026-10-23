@@ -136,7 +136,7 @@ export default function ExtraerAgenteModal({ operativoId, grupo, integrante, onC
       <Overlay onClose={onClose}>
         <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
           <div className="flex items-center gap-3">
-            <IconBox bg="rgba(229,75,75,0.1)"><UserMinus size={17} style={{ color: 'var(--primary)' }} /></IconBox>
+            <IconBox bg="color-mix(in srgb, var(--primary) 10%, transparent)"><UserMinus size={17} style={{ color: 'var(--primary)' }} /></IconBox>
             <div>
               <Titulo>Retirar del Grupo</Titulo>
               <Texto>{integrante.nombre} {integrante.apellido} · {grupo.nombre}</Texto>
@@ -150,7 +150,7 @@ export default function ExtraerAgenteModal({ operativoId, grupo, integrante, onC
         <div className="px-5 py-5 flex flex-col gap-5" style={{ overflowY: 'auto' }}>
           {/* ── Paso 4.1 · Sucesión de Mando ── */}
           {requiereSucesion && (
-            <div className="p-3 rounded-[var(--radius-input)]" style={{ background: 'rgba(229,75,75,0.07)', border: '1px solid rgba(229,75,75,0.25)' }}>
+            <div className="p-3 rounded-[var(--radius-input)]" style={{ background: 'color-mix(in srgb, var(--primary) 7%, transparent)', border: '1px solid color-mix(in srgb, var(--primary) 25%, transparent)' }}>
               <div className="flex items-start gap-2 mb-2.5">
                 <ShieldAlert size={15} style={{ color: 'var(--primary)', marginTop: 1, flexShrink: 0 }} />
                 <p style={{ fontSize: 'var(--text-label)', color: 'var(--foreground)', lineHeight: 1.5, fontFamily: 'var(--font-family-primary)' }}>
@@ -180,7 +180,7 @@ export default function ExtraerAgenteModal({ operativoId, grupo, integrante, onC
                     className="px-3 py-2.5 rounded-[var(--radius-input)] text-left"
                     style={{
                       border: sel ? '2px solid var(--primary)' : '1.5px solid var(--border)',
-                      background: sel ? 'rgba(229,75,75,0.06)' : 'var(--card)',
+                      background: sel ? 'color-mix(in srgb, var(--primary) 6%, transparent)' : 'var(--card)',
                       color: sel ? 'var(--primary)' : 'var(--foreground)',
                       fontSize: 'var(--text-label)', fontFamily: 'var(--font-family-primary)',
                       fontWeight: sel ? 'var(--font-weight-semibold)' : 'var(--font-weight-medium)',

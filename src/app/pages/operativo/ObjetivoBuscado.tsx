@@ -171,7 +171,7 @@ function EditModal({
             <div className="flex items-center gap-3">
               <div
                 className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-                style={{ background: 'rgba(229,75,75,0.1)' }}
+                style={{ background: 'color-mix(in srgb, var(--primary) 10%, transparent)' }}
               >
                 {isNew
                   ? <Plus size={17} style={{ color: 'var(--primary)' }} />
@@ -214,11 +214,11 @@ function EditModal({
             {(Object.keys(errors).length > 0 || errorGeneral) && (
               <div
                 className="flex items-center gap-2 p-3 rounded-[var(--radius-input)] mb-4"
-                style={{ background: 'rgba(229,75,75,0.08)', border: '1px solid rgba(229,75,75,0.25)' }}
+                style={{ background: 'color-mix(in srgb, var(--destructive) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--destructive) 25%, transparent)' }}
               >
-                <AlertCircle size={15} style={{ color: 'var(--primary)', flexShrink: 0 }} />
+                <AlertCircle size={15} style={{ color: 'var(--destructive)', flexShrink: 0 }} />
                 <p style={{
-                  color: 'var(--primary)',
+                  color: 'var(--destructive)',
                   fontSize: 'var(--text-label)',
                   fontFamily: 'var(--font-family-primary)',
                 }}>
@@ -276,7 +276,7 @@ function EditModal({
               className="flex items-center gap-2 px-4 py-2 rounded-[var(--radius-button)] transition-opacity hover:opacity-88"
               style={{
                 background: 'var(--primary)',
-                color: '#fff',
+                color: 'var(--primary-foreground)',
                 fontSize: 'var(--text-label)',
                 fontWeight: 'var(--font-weight-semibold)',
                 fontFamily: 'var(--font-family-primary)',
@@ -356,9 +356,9 @@ function DeleteModal({
         >
           <div
             className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-            style={{ background: 'rgba(229,75,75,0.12)' }}
+            style={{ background: 'color-mix(in srgb, var(--destructive) 12%, transparent)' }}
           >
-            <AlertTriangle size={18} style={{ color: 'var(--primary)' }} />
+            <AlertTriangle size={18} style={{ color: 'var(--destructive)' }} />
           </div>
           <div>
             <p style={{
@@ -391,9 +391,9 @@ function DeleteModal({
         <div className="px-5 py-4">
           <div
             className="flex items-start gap-2 p-3 rounded-[var(--radius-input)]"
-            style={{ background: 'rgba(229,75,75,0.06)', border: '1px solid rgba(229,75,75,0.2)' }}
+            style={{ background: 'color-mix(in srgb, var(--destructive) 6%, transparent)', border: '1px solid color-mix(in srgb, var(--destructive) 20%, transparent)' }}
           >
-            <AlertTriangle size={13} style={{ color: 'var(--primary)', flexShrink: 0, marginTop: 1 }} />
+            <AlertTriangle size={13} style={{ color: 'var(--destructive)', flexShrink: 0, marginTop: 1 }} />
             <p style={{
               color: 'var(--foreground)', fontSize: 'var(--text-label)',
               fontFamily: 'var(--font-family-primary)', lineHeight: 1.55,
@@ -420,7 +420,7 @@ function DeleteModal({
             onClick={onConfirm}
             className="flex items-center gap-1.5 px-4 py-2 rounded-[var(--radius-button)] transition-opacity hover:opacity-85"
             style={{
-              background: 'var(--primary)', color: '#fff',
+              background: 'var(--primary)', color: 'var(--primary-foreground)',
               fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)',
               fontFamily: 'var(--font-family-primary)',
             }}
@@ -466,12 +466,12 @@ function Lightbox({
             onClick={() => onDeleteRequest(fotos[index].id)}
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg transition-all"
             style={{
-              background: 'rgba(229,75,75,0.15)', color: '#E54B4B',
-              border: '1px solid rgba(229,75,75,0.3)',
+              background: 'color-mix(in srgb, var(--destructive) 15%, transparent)', color: 'var(--destructive)',
+              border: '1px solid color-mix(in srgb, var(--destructive) 30%, transparent)',
               fontSize: 'var(--text-label)', fontFamily: 'var(--font-family-primary)',
             }}
-            onMouseEnter={e => (e.currentTarget.style.background = 'rgba(229,75,75,0.28)')}
-            onMouseLeave={e => (e.currentTarget.style.background = 'rgba(229,75,75,0.15)')}
+            onMouseEnter={e => (e.currentTarget.style.background = 'color-mix(in srgb, var(--destructive) 28%, transparent)')}
+            onMouseLeave={e => (e.currentTarget.style.background = 'color-mix(in srgb, var(--destructive) 15%, transparent)')}
           >
             <Trash2 size={13} /> Eliminar
           </button>
@@ -531,7 +531,7 @@ function Lightbox({
               style={{
                 width: 48, height: 48,
                 opacity: i === index ? 1 : 0.45,
-                outline: i === index ? '2px solid #E54B4B' : 'none',
+                outline: i === index ? '2px solid var(--primary)' : 'none',
                 outlineOffset: 2,
               }}
             >
@@ -565,7 +565,7 @@ function ImageGallery({
             onClick={() => inputRef.current?.click()}
             className="flex items-center gap-2 px-4 py-2 rounded-[var(--radius-button)] transition-all"
             style={{
-              background: 'var(--primary)', color: '#fff',
+              background: 'var(--primary)', color: 'var(--primary-foreground)',
               fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)',
               fontFamily: 'var(--font-family-primary)',
             }}
@@ -646,12 +646,12 @@ function ImageGallery({
                   <button
                     onClick={() => onDeleteRequest(foto.id)}
                     className="p-1.5 rounded-lg"
-                    style={{ background: 'rgba(229,75,75,0.25)' }}
+                    style={{ background: 'color-mix(in srgb, var(--destructive) 25%, transparent)' }}
                     title="Eliminar imagen"
-                    onMouseEnter={e => (e.currentTarget.style.background = 'rgba(229,75,75,0.5)')}
-                    onMouseLeave={e => (e.currentTarget.style.background = 'rgba(229,75,75,0.25)')}
+                    onMouseEnter={e => (e.currentTarget.style.background = 'color-mix(in srgb, var(--destructive) 50%, transparent)')}
+                    onMouseLeave={e => (e.currentTarget.style.background = 'color-mix(in srgb, var(--destructive) 25%, transparent)')}
                   >
-                    <Trash2 size={14} color="#E54B4B" />
+                    <Trash2 size={14} color="var(--destructive)" />
                   </button>
                 )}
               </div>
@@ -659,7 +659,7 @@ function ImageGallery({
                 className="absolute top-1 left-1 rounded px-1"
                 style={{
                   background: 'rgba(0,0,0,0.55)', color: '#fff',
-                  fontSize: '9px', fontFamily: 'var(--font-family-primary)', lineHeight: '16px',
+                  fontSize: 'calc(9px * var(--escala-texto))', fontFamily: 'var(--font-family-primary)', lineHeight: '16px',
                 }}
               >
                 {idx + 1}
@@ -696,7 +696,7 @@ function DataCard({ label, value, icon }: { label: string; value?: string | numb
       style={{ background: 'var(--muted)' }}
     >
       <span style={{
-        color: 'var(--muted-foreground)', fontSize: '11px',
+        color: 'var(--muted-foreground)', fontSize: 'calc(11px * var(--escala-texto))',
         fontFamily: 'var(--font-family-primary)',
         display: 'flex', alignItems: 'center', gap: 4,
       }}>
@@ -718,7 +718,7 @@ function TextBlock({ icon, children, accent }: { icon: React.ReactNode; children
     <div
       className="flex items-start gap-3 p-4 rounded-[var(--radius-input)]"
       style={accent
-        ? { background: 'rgba(229,75,75,0.05)', border: '1px solid rgba(229,75,75,0.15)' }
+        ? { background: 'color-mix(in srgb, var(--primary) 5%, transparent)', border: '1px solid color-mix(in srgb, var(--primary) 15%, transparent)' }
         : { background: 'var(--muted)' }
       }
     >
@@ -749,7 +749,7 @@ function PersonaContent({
       <div className="flex items-center gap-4">
         <div
           className="w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0"
-          style={{ background: 'rgba(229,75,75,0.1)' }}
+          style={{ background: 'color-mix(in srgb, var(--primary) 10%, transparent)' }}
         >
           <User size={26} style={{ color: 'var(--primary)' }} />
         </div>
@@ -764,8 +764,8 @@ function PersonaContent({
             <span
               className="px-2 py-0.5 rounded-md"
               style={{
-                background: 'rgba(229,75,75,0.12)', color: 'var(--primary)',
-                fontSize: '11px', fontWeight: 'var(--font-weight-semibold)',
+                background: 'color-mix(in srgb, var(--primary) 12%, transparent)', color: 'var(--primary)',
+                fontSize: 'calc(11px * var(--escala-texto))', fontWeight: 'var(--font-weight-semibold)',
                 fontFamily: 'var(--font-family-primary)',
                 textTransform: 'uppercase', letterSpacing: '0.05em',
               }}
@@ -850,7 +850,7 @@ function ObjetoContent({
       <div className="flex items-center gap-4">
         <div
           className="w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0"
-          style={{ background: 'rgba(255,169,135,0.15)' }}
+          style={{ background: 'color-mix(in srgb, var(--accent) 15%, transparent)' }}
         >
           <Package size={26} style={{ color: 'var(--accent)' }} />
         </div>
@@ -865,8 +865,8 @@ function ObjetoContent({
             <span
               className="px-2 py-0.5 rounded-md"
               style={{
-                background: 'rgba(255,169,135,0.2)', color: 'var(--accent)',
-                fontSize: '11px', fontWeight: 'var(--font-weight-semibold)',
+                background: 'color-mix(in srgb, var(--accent) 20%, transparent)', color: 'var(--accent)',
+                fontSize: 'calc(11px * var(--escala-texto))', fontWeight: 'var(--font-weight-semibold)',
                 fontFamily: 'var(--font-family-primary)',
                 textTransform: 'uppercase', letterSpacing: '0.05em',
               }}
@@ -1015,8 +1015,8 @@ export default function ObjetivoBuscado() {
               className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
               style={{
                 background: objetivo?.tipo === 'OBJETO'
-                  ? 'rgba(255,169,135,0.15)'
-                  : 'rgba(229,75,75,0.1)',
+                  ? 'color-mix(in srgb, var(--accent) 15%, transparent)'
+                  : 'color-mix(in srgb, var(--primary) 10%, transparent)',
               }}
             >
               {objetivo?.tipo === 'OBJETO'
@@ -1045,7 +1045,7 @@ export default function ObjetivoBuscado() {
                     fontFamily: 'var(--font-family-primary)',
                   }
                 : {
-                    background: 'var(--primary)', color: '#fff',
+                    background: 'var(--primary)', color: 'var(--primary-foreground)',
                     fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)',
                     fontFamily: 'var(--font-family-primary)',
                   }
@@ -1062,10 +1062,10 @@ export default function ObjetivoBuscado() {
         {errorCarga && (
           <div
             className="flex items-center gap-2 p-3 rounded-[var(--radius-input)] mb-6"
-            style={{ background: 'rgba(229,75,75,0.08)', border: '1px solid rgba(229,75,75,0.25)' }}
+            style={{ background: 'color-mix(in srgb, var(--destructive) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--destructive) 25%, transparent)' }}
           >
-            <AlertCircle size={15} style={{ color: 'var(--primary)', flexShrink: 0 }} />
-            <p style={{ color: 'var(--primary)', fontSize: 'var(--text-label)', fontFamily: 'var(--font-family-primary)' }}>
+            <AlertCircle size={15} style={{ color: 'var(--destructive)', flexShrink: 0 }} />
+            <p style={{ color: 'var(--destructive)', fontSize: 'var(--text-label)', fontFamily: 'var(--font-family-primary)' }}>
               {errorCarga}
             </p>
           </div>
@@ -1111,7 +1111,7 @@ export default function ObjetivoBuscado() {
                 onClick={() => setShowEditModal(true)}
                 className="flex items-center gap-2 px-5 py-2.5 rounded-[var(--radius-button)] transition-opacity hover:opacity-88"
                 style={{
-                  background: 'var(--primary)', color: '#fff',
+                  background: 'var(--primary)', color: 'var(--primary-foreground)',
                   fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-semibold)',
                   fontFamily: 'var(--font-family-primary)',
                 }}

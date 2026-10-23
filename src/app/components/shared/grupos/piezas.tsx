@@ -90,7 +90,7 @@ export const BOTON_LIDER: Record<AccionTerreno, string> = {
 export function EtiquetaConductor() {
   return (
     <span className="inline-flex items-center px-2 py-0.5 rounded-full shrink-0" style={{
-      fontSize: '10px', fontWeight: 'var(--font-weight-semibold)', whiteSpace: 'nowrap', lineHeight: 1.3,
+      fontSize: 'calc(10px * var(--escala-texto))', fontWeight: 'var(--font-weight-semibold)', whiteSpace: 'nowrap', lineHeight: 1.3,
       background: 'rgba(192,38,211,0.12)', border: '1px solid rgba(192,38,211,0.35)', color: '#c026d3',
     }}>
       Conductor

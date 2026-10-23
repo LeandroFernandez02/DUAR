@@ -47,26 +47,26 @@ export default function Login() {
       {/* Left panel */}
       <div
         className="hidden lg:flex flex-col justify-between w-[420px] flex-shrink-0 p-10"
-        style={{ background: 'var(--duar-dark, #444140)' }}
+        style={{ background: 'var(--calivar-noche)' }}
       >
         <div className="flex items-center gap-3">
           <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'var(--primary)' }}>
-            <Shield size={22} color="#fff" />
+            <Shield size={22} color="var(--primary-foreground)" />
           </div>
           <div>
             <p style={{ color: '#fff', fontSize: 'var(--text-h3)', fontWeight: 'var(--font-weight-bold)', letterSpacing: '0.05em' }}>DUAR</p>
-            <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '11px' }}>Córdoba</p>
+            <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 'calc(11px * var(--escala-texto))' }}>Córdoba</p>
           </div>
         </div>
 
         <div>
           <div
             className="w-16 h-16 rounded-2xl flex items-center justify-center mb-6"
-            style={{ background: 'rgba(229,75,75,0.15)' }}
+            style={{ background: 'color-mix(in srgb, var(--primary) 15%, transparent)' }}
           >
             <Shield size={32} style={{ color: 'var(--primary)' }} />
           </div>
-          <h1 style={{ color: '#fff', fontSize: '28px', fontWeight: 'var(--font-weight-bold)', lineHeight: 1.2, marginBottom: '12px' }}>
+          <h1 style={{ color: '#fff', fontSize: 'calc(28px * var(--escala-texto))', fontWeight: 'var(--font-weight-bold)', lineHeight: 1.2, marginBottom: '12px' }}>
             Sistema de<br />Búsqueda y Rastreo
           </h1>
           <p style={{ color: 'rgba(255,255,255,0.6)', fontSize: 'var(--text-base)', lineHeight: 1.6 }}>
@@ -88,7 +88,7 @@ export default function Login() {
           </div>
         </div>
 
-        <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: '11px' }}>
+        <p style={{ color: 'rgba(255,255,255,0.3)', fontSize: 'calc(11px * var(--escala-texto))' }}>
           © 2026 DUAR Córdoba · Sistema v2.0
         </p>
       </div>
@@ -99,11 +99,11 @@ export default function Login() {
           {/* Mobile logo */}
           <div className="flex lg:hidden items-center gap-3 mb-8">
             <div className="w-10 h-10 rounded-xl flex items-center justify-center" style={{ background: 'var(--primary)' }}>
-              <Shield size={22} color="#fff" />
+              <Shield size={22} color="var(--primary-foreground)" />
             </div>
             <div>
               <p style={{ fontSize: 'var(--text-h3)', fontWeight: 'var(--font-weight-bold)', color: 'var(--foreground)' }}>DUAR</p>
-              <p style={{ fontSize: '11px', color: 'var(--muted-foreground)' }}>Dirección de Unidades de Alto Riesgo</p>
+              <p style={{ fontSize: 'calc(11px * var(--escala-texto))', color: 'var(--muted-foreground)' }}>Dirección de Unidades de Alto Riesgo</p>
             </div>
           </div>
 
@@ -222,10 +222,10 @@ export default function Login() {
             {error === 'inactive' && (
               <div
                 className="flex flex-col gap-1.5 p-3.5 rounded-lg"
-                style={{ background: 'rgba(255,169,135,0.12)', border: '1px solid rgba(255,169,135,0.45)' }}
+                style={{ background: 'color-mix(in srgb, var(--accent) 12%, transparent)', border: '1px solid color-mix(in srgb, var(--accent) 45%, transparent)' }}
               >
-                <div className="flex items-center gap-2.5" style={{ color: 'var(--duar-dark)' }}>
-                  <UserX size={16} style={{ flexShrink: 0, color: 'var(--duar-salmon)' }} />
+                <div className="flex items-center gap-2.5" style={{ color: 'var(--foreground)' }}>
+                  <UserX size={16} style={{ flexShrink: 0, color: 'var(--accent)' }} />
                   <span style={{ fontWeight: 'var(--font-weight-semibold)', fontSize: 'var(--text-base)' }}>
                     Cuenta inactiva
                   </span>
@@ -250,7 +250,7 @@ export default function Login() {
             <button
               type="submit"
               disabled={loading}
-              className="w-full py-2.5 rounded-lg text-white mt-1 transition-opacity"
+              className="w-full py-2.5 rounded-lg text-[var(--primary-foreground)] mt-1 transition-opacity"
               style={{
                 background: 'var(--primary)',
                 fontFamily: 'var(--font-family-primary)',

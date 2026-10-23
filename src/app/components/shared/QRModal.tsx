@@ -162,7 +162,7 @@ export function QRModal({ operativo, onClose }: Props) {
           <div className="flex items-center gap-3">
             <div
               className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-              style={{ background: 'rgba(229,75,75,0.1)' }}
+              style={{ background: 'color-mix(in srgb, var(--primary) 10%, transparent)' }}
             >
               <QrCode size={17} style={{ color: 'var(--primary)' }} />
             </div>
@@ -276,7 +276,7 @@ export function QRModal({ operativo, onClose }: Props) {
               ) : !tokenInfo ? (
                 <RefreshCw size={28} style={{ color: 'var(--primary)', animation: 'spin 0.8s linear infinite' }} />
               ) : (
-                <QRCodeSVG value={qrUrl} size={190} fgColor="#444140" bgColor="#ffffff" level="M" />
+                <QRCodeSVG value={qrUrl} size={190} fgColor="#0b1e2d" bgColor="#ffffff" level="M" />
               )}
               {regenerating && (
                 <div
@@ -290,7 +290,7 @@ export function QRModal({ operativo, onClose }: Props) {
 
             <div ref={canvasRef} style={{ display: 'none' }}>
               {tokenInfo && (
-                <QRCodeCanvas value={qrUrl} size={400} fgColor="#444140" bgColor="#ffffff" level="M" />
+                <QRCodeCanvas value={qrUrl} size={400} fgColor="#0b1e2d" bgColor="#ffffff" level="M" />
               )}
             </div>
           </div>
@@ -312,7 +312,7 @@ export function QRModal({ operativo, onClose }: Props) {
                     ¿Confirmar regeneración?
                   </p>
                   <p style={{
-                    color: 'var(--muted-foreground)', fontSize: '11px',
+                    color: 'var(--muted-foreground)', fontSize: 'calc(11px * var(--escala-texto))',
                     fontFamily: 'var(--font-family-primary)', lineHeight: 1.5,
                   }}>
                     El QR actual quedará inválido de inmediato. Cualquier enlace compartido previamente dejará de funcionar.
@@ -353,7 +353,7 @@ export function QRModal({ operativo, onClose }: Props) {
             <button
               onClick={handleDownload}
               disabled={regenerating}
-              className="flex items-center justify-center gap-2 flex-1 py-2.5 rounded-[var(--radius-button)] text-white transition-opacity hover:opacity-90 disabled:opacity-50"
+              className="flex items-center justify-center gap-2 flex-1 py-2.5 rounded-[var(--radius-button)] text-[var(--primary-foreground)] transition-opacity hover:opacity-90 disabled:opacity-50"
               style={{
                 background: 'var(--primary)',
                 fontSize: 'var(--text-base)',

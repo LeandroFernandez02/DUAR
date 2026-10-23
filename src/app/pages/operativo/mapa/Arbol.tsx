@@ -37,12 +37,12 @@ function FilaRadio({ r, visible, soloLectura, onVisible, onCambiar, onQuitar }: 
       <button type="button" title="Cambiar color" aria-label="Cambiar color" disabled={soloLectura}
         onClick={() => onCambiar({ color: PALETA_RADIOS[(PALETA_RADIOS.indexOf(r.color) + 1) % PALETA_RADIOS.length] })}
         style={{ width: 15, height: 15, borderRadius: '50%', border: `2px solid ${r.color}`, background: `${r.color}2e`, padding: 0, cursor: soloLectura ? 'default' : 'pointer', flexShrink: 0, boxSizing: 'border-box' }} />
-      <span style={{ flex: 1, fontSize: 12.5, fontWeight: 500, color: 'var(--foreground)' }}>Radio</span>
+      <span style={{ flex: 1, fontSize: 'calc(12.5px * var(--escala-texto))', fontWeight: 500, color: 'var(--foreground)' }}>Radio</span>
       <label style={{ display: 'flex', alignItems: 'center', gap: 4, padding: '3px 7px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', background: 'var(--input-background)' }}>
         <input value={v} inputMode="decimal" readOnly={soloLectura} aria-label="Kilómetros del radio"
           onChange={e => setV(e.target.value)} onBlur={confirmar} onKeyDown={e => { if (e.key === 'Enter') (e.target as HTMLInputElement).blur(); }}
-          style={{ width: 36, border: 'none', outline: 'none', background: 'transparent', textAlign: 'right', color: 'var(--foreground)', fontFamily: 'var(--font-family-primary)', fontSize: 12.5, fontWeight: 600, padding: 0 }} />
-        <span style={{ fontSize: 11, color: 'var(--muted-foreground)' }}>km</span>
+          style={{ width: 36, border: 'none', outline: 'none', background: 'transparent', textAlign: 'right', color: 'var(--foreground)', fontFamily: 'var(--font-family-primary)', fontSize: 'calc(12.5px * var(--escala-texto))', fontWeight: 600, padding: 0 }} />
+        <span style={{ fontSize: 'calc(11px * var(--escala-texto))', color: 'var(--muted-foreground)' }}>km</span>
       </label>
       {!soloLectura && (
         <button type="button" title="Quitar radio" aria-label="Quitar radio" onClick={onQuitar} style={{ background: 'none', border: 'none', padding: 2, cursor: 'pointer', color: 'var(--muted-foreground)', display: 'flex' }}><X size={13} /></button>
@@ -87,7 +87,7 @@ export default function Arbol(p: Props) {
     ...p.poligonos.map(pl => ({ id: pl.id, nombre: pl.nombre, color: pl.color, items: fTr.filter(t => t.poligonoId === pl.id) })),
     { id: '_fuera', nombre: 'Fuera de polígono', color: '#94a3b8', items: fTr.filter(t => !t.poligonoId || !p.poligonos.some(pl => pl.id === t.poligonoId)) },
   ].filter(b => b.items.length);
-  const vacio = (txt: string) => <p style={{ margin: '4px 8px', fontSize: 11.5, color: 'var(--muted-foreground)' }}>{txt}</p>;
+  const vacio = (txt: string) => <p style={{ margin: '4px 8px', fontSize: 'calc(11.5px * var(--escala-texto))', color: 'var(--muted-foreground)' }}>{txt}</p>;
   const grupoMarc = (k: 'instalaciones' | 'hallazgos' | 'poi') => (v: boolean) => { if (v && !overlays.marcadores) setOv('marcadores', true); setOv(k, v); };
   const hijo = (k: 'instalaciones' | 'hallazgos' | 'poi', id: string) => () => {
     if (!overlays.marcadores || !overlays[k]) { setOv('marcadores', true); setOv(k, true); if (!visible(id)) p.alternar(id); }
@@ -105,15 +105,15 @@ export default function Arbol(p: Props) {
         <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
           <span style={{ width: 30, height: 30, borderRadius: 'var(--radius-md)', background: 'color-mix(in srgb, var(--primary) 10%, transparent)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Layers size={15} /></span>
           <div style={{ flex: 1, minWidth: 0 }}>
-            <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'var(--foreground)', lineHeight: 1.3 }}>Gestión del mapa</p>
-            <p style={{ margin: 0, fontSize: 11, color: 'var(--muted-foreground)' }}>{p.poligonos.length} polígonos · {p.tracks.length} tracks · {nMarc} marcadores</p>
+            <p style={{ margin: 0, fontSize: 'calc(14px * var(--escala-texto))', fontWeight: 600, color: 'var(--foreground)', lineHeight: 1.3 }}>Gestión del mapa</p>
+            <p style={{ margin: 0, fontSize: 'calc(11px * var(--escala-texto))', color: 'var(--muted-foreground)' }}>{p.poligonos.length} polígonos · {p.tracks.length} tracks · {nMarc} marcadores</p>
           </div>
           <button type="button" onClick={p.onCerrar} title="Ocultar panel" aria-label="Ocultar panel" style={{ background: 'none', border: 'none', padding: 4, cursor: 'pointer', color: 'var(--muted-foreground)', display: 'flex' }}><ChevronLeft size={17} /></button>
         </div>
         <label style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', background: 'var(--input-background)' }}>
           <Search size={14} color="var(--muted-foreground)" />
           <input value={q} onChange={e => p.setQ(e.target.value)} placeholder="Buscar polígonos, tracks, marcadores…" aria-label="Buscar en el mapa"
-            style={{ flex: 1, minWidth: 0, border: 'none', outline: 'none', background: 'transparent', color: 'var(--foreground)', fontFamily: 'var(--font-family-primary)', fontSize: 12.5 }} />
+            style={{ flex: 1, minWidth: 0, border: 'none', outline: 'none', background: 'transparent', color: 'var(--foreground)', fontFamily: 'var(--font-family-primary)', fontSize: 'calc(12.5px * var(--escala-texto))' }} />
           {q && <button type="button" onClick={() => p.setQ('')} aria-label="Borrar búsqueda" style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--muted-foreground)', display: 'flex' }}><X size={13} /></button>}
         </label>
       </div>
@@ -125,7 +125,7 @@ export default function Arbol(p: Props) {
             {p.puntoCero && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '2px 8px 6px' }}>
                 <Simbolo tipo="puntoCero" />
-                <span style={{ flex: 1, minWidth: 0, fontSize: 11, color: 'var(--muted-foreground)', fontFamily: 'var(--font-family-mono, monospace)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Centro {fmtCoord(p.puntoCero[0], p.puntoCero[1])}</span>
+                <span style={{ flex: 1, minWidth: 0, fontSize: 'calc(11px * var(--escala-texto))', color: 'var(--muted-foreground)', fontFamily: 'var(--font-family-mono, monospace)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>Centro {fmtCoord(p.puntoCero[0], p.puntoCero[1])}</span>
               </div>
             )}
             {p.radios.map(r => (
@@ -135,27 +135,27 @@ export default function Arbol(p: Props) {
             {!p.radios.length && vacio('Sin radios. Agregá uno para guiarte desde el Punto Cero.')}
             {!p.soloLectura && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 5, rowGap: 6, flexWrap: 'wrap', padding: '8px 8px 0' }}>
-                <span style={{ flexBasis: '100%', fontSize: 11, color: 'var(--muted-foreground)' }}>Agregar</span>
+                <span style={{ flexBasis: '100%', fontSize: 'calc(11px * var(--escala-texto))', color: 'var(--muted-foreground)' }}>Agregar</span>
                 {ATAJOS_M.map(m => {
                   const ya = p.radios.some(r => r.radioM === m);
                   return (
-                    <button key={m} type="button" disabled={ya} onClick={() => p.onAgregarRadio(m)} style={{ whiteSpace: 'nowrap', padding: '2px 8px', borderRadius: 999, border: '1.5px solid var(--border)', background: 'transparent', color: ya ? 'var(--muted-foreground)' : 'var(--foreground)', opacity: ya ? 0.45 : 1, cursor: ya ? 'default' : 'pointer', fontFamily: 'var(--font-family-primary)', fontSize: 11, fontWeight: 600 }}>{fmtRadio(m)}</button>
+                    <button key={m} type="button" disabled={ya} onClick={() => p.onAgregarRadio(m)} style={{ whiteSpace: 'nowrap', padding: '2px 8px', borderRadius: 999, border: '1.5px solid var(--border)', background: 'transparent', color: ya ? 'var(--muted-foreground)' : 'var(--foreground)', opacity: ya ? 0.45 : 1, cursor: ya ? 'default' : 'pointer', fontFamily: 'var(--font-family-primary)', fontSize: 'calc(11px * var(--escala-texto))', fontWeight: 600 }}>{fmtRadio(m)}</button>
                   );
                 })}
                 {otro === null ? (
-                  <button type="button" onClick={() => setOtro('')} style={{ whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 3, padding: '2px 8px', borderRadius: 999, border: '1.5px solid color-mix(in srgb, var(--primary) 35%, transparent)', background: 'color-mix(in srgb, var(--primary) 8%, transparent)', color: 'var(--primary)', cursor: 'pointer', fontFamily: 'var(--font-family-primary)', fontSize: 11, fontWeight: 600 }}><Plus size={11} />Otro</button>
+                  <button type="button" onClick={() => setOtro('')} style={{ whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 3, padding: '2px 8px', borderRadius: 999, border: '1.5px solid color-mix(in srgb, var(--primary) 35%, transparent)', background: 'color-mix(in srgb, var(--primary) 8%, transparent)', color: 'var(--primary)', cursor: 'pointer', fontFamily: 'var(--font-family-primary)', fontSize: 'calc(11px * var(--escala-texto))', fontWeight: 600 }}><Plus size={11} />Otro</button>
                 ) : (
                   <span style={{ display: 'flex', alignItems: 'center', gap: 4 }}>
                     <input autoFocus value={otro} inputMode="decimal" placeholder="km" aria-label="Kilómetros del radio nuevo" onChange={e => setOtro(e.target.value)}
                       onKeyDown={e => { if (e.key === 'Enter') agregarOtro(); if (e.key === 'Escape') setOtro(null); }}
-                      style={{ width: 48, padding: '2px 6px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', background: 'var(--input-background)', color: 'var(--foreground)', fontSize: 11.5 }} />
-                    <button type="button" onClick={agregarOtro} style={{ padding: '2px 8px', borderRadius: 999, border: 'none', background: 'var(--primary)', color: '#fff', fontSize: 11, fontWeight: 600, cursor: 'pointer' }}>Agregar</button>
+                      style={{ width: 48, padding: '2px 6px', borderRadius: 'var(--radius-sm)', border: '1px solid var(--border)', background: 'var(--input-background)', color: 'var(--foreground)', fontSize: 'calc(11.5px * var(--escala-texto))' }} />
+                    <button type="button" onClick={agregarOtro} style={{ padding: '2px 8px', borderRadius: 999, border: 'none', background: 'var(--primary)', color: 'var(--primary-foreground)', fontSize: 'calc(11px * var(--escala-texto))', fontWeight: 600, cursor: 'pointer' }}>Agregar</button>
                     <button type="button" aria-label="Cancelar" onClick={() => setOtro(null)} style={{ background: 'none', border: 'none', padding: 0, color: 'var(--muted-foreground)', cursor: 'pointer', display: 'flex' }}><X size={12} /></button>
                   </span>
                 )}
               </div>
             )}
-            <p style={{ margin: '8px 8px 0', fontSize: 10.5, color: 'var(--muted-foreground)', lineHeight: 1.45 }}>Son del operativo: todos los coordinadores ven los mismos. Siguen al Punto Cero y quedan debajo de los polígonos. Ocultarlos es sólo en tu pantalla.</p>
+            <p style={{ margin: '8px 8px 0', fontSize: 'calc(10.5px * var(--escala-texto))', color: 'var(--muted-foreground)', lineHeight: 1.45 }}>Son del operativo: todos los coordinadores ven los mismos. Siguen al Punto Cero y quedan debajo de los polígonos. Ocultarlos es sólo en tu pantalla.</p>
           </SeccionArbol>
         )}
 
@@ -199,7 +199,7 @@ export default function Arbol(p: Props) {
           })}
           {!fTr.length && vacio(q ? 'Sin coincidencias.' : 'Sin tracks cargados.')}
           {!q && !p.soloLectura && (
-            <button type="button" onClick={p.onCargarGpx} style={{ display: 'flex', alignItems: 'center', gap: 6, margin: '4px 8px 0', padding: 0, background: 'none', border: 'none', color: 'var(--primary)', fontFamily: 'var(--font-family-primary)', fontSize: 12, fontWeight: 600, cursor: 'pointer' }}><Upload size={13} />Cargar archivo GPX</button>
+            <button type="button" onClick={p.onCargarGpx} style={{ display: 'flex', alignItems: 'center', gap: 6, margin: '4px 8px 0', padding: 0, background: 'none', border: 'none', color: 'var(--primary)', fontFamily: 'var(--font-family-primary)', fontSize: 'calc(12px * var(--escala-texto))', fontWeight: 600, cursor: 'pointer' }}><Upload size={13} />Cargar archivo GPX</button>
           )}
         </SeccionArbol>
 
@@ -220,11 +220,11 @@ export default function Arbol(p: Props) {
       </div>
 
       <div style={{ display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '10px 14px', borderTop: '1px solid var(--border)' }}>
-        <span style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 11, color: 'var(--muted-foreground)', whiteSpace: 'nowrap' }}>
+        <span style={{ display: 'flex', alignItems: 'center', gap: 7, fontSize: 'calc(11px * var(--escala-texto))', color: 'var(--muted-foreground)', whiteSpace: 'nowrap' }}>
           <span style={{ width: 7, height: 7, borderRadius: '50%', background: p.actualizado ? '#16a34a' : '#d97706' }} />
           {p.actualizado ? `Datos al día · ${p.actualizado}` : 'Sin conexión con el servidor'}
         </span>
-        <button type="button" onClick={p.onRestablecer} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--primary)', fontFamily: 'var(--font-family-primary)', fontSize: 11.5, fontWeight: 600, whiteSpace: 'nowrap' }}>Restablecer vista</button>
+        <button type="button" onClick={p.onRestablecer} style={{ background: 'none', border: 'none', padding: 0, cursor: 'pointer', color: 'var(--primary)', fontFamily: 'var(--font-family-primary)', fontSize: 'calc(11.5px * var(--escala-texto))', fontWeight: 600, whiteSpace: 'nowrap' }}>Restablecer vista</button>
       </div>
     </div>
   );

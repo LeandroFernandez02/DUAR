@@ -187,7 +187,7 @@ export default function Registro() {
         >
           <div style={{ height: 4, background: 'linear-gradient(90deg, var(--primary), var(--accent))' }} />
           <div className="flex flex-col items-center gap-4 p-8 text-center">
-            <div className="w-16 h-16 rounded-2xl flex items-center justify-center" style={{ background: 'rgba(229,75,75,0.1)' }}>
+            <div className="w-16 h-16 rounded-2xl flex items-center justify-center" style={{ background: 'color-mix(in srgb, var(--primary) 10%, transparent)' }}>
               <X size={30} style={{ color: 'var(--primary)' }} />
             </div>
             <div>
@@ -224,7 +224,7 @@ export default function Registro() {
             {/* Icon */}
             <div
               className="w-16 h-16 rounded-2xl flex items-center justify-center"
-              style={{ background: 'rgba(229,75,75,0.1)' }}
+              style={{ background: 'color-mix(in srgb, var(--primary) 10%, transparent)' }}
             >
               <QrCode size={30} style={{ color: 'var(--primary)' }} />
             </div>
@@ -248,7 +248,7 @@ export default function Registro() {
             {/* Info box */}
             <div
               className="w-full flex items-start gap-3 p-3 rounded-[var(--radius-input)] text-left"
-              style={{ background: 'rgba(229,75,75,0.06)', border: '1px solid rgba(229,75,75,0.18)' }}
+              style={{ background: 'color-mix(in srgb, var(--primary) 6%, transparent)', border: '1px solid color-mix(in srgb, var(--primary) 18%, transparent)' }}
             >
               <Clock size={14} style={{ color: 'var(--primary)', marginTop: 1, flexShrink: 0 }} />
               <p style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-label)', lineHeight: 1.55 }}>
@@ -262,7 +262,7 @@ export default function Registro() {
               className="w-full px-4 py-2.5 rounded-[var(--radius-input)]"
               style={{ background: 'var(--muted)', border: '1px solid var(--border)' }}
             >
-              <p style={{ color: 'var(--muted-foreground)', fontSize: '11px', marginBottom: 2 }}>Operativo</p>
+              <p style={{ color: 'var(--muted-foreground)', fontSize: 'calc(11px * var(--escala-texto))', marginBottom: 2 }}>Operativo</p>
               <p style={{
                 color: 'var(--foreground)', fontSize: 'var(--text-base)',
                 fontWeight: 'var(--font-weight-semibold)',
@@ -313,7 +313,7 @@ export default function Registro() {
               className="w-full px-4 py-2.5 rounded-[var(--radius-input)]"
               style={{ background: 'var(--muted)', border: '1px solid var(--border)' }}
             >
-              <p style={{ color: 'var(--muted-foreground)', fontSize: '11px', marginBottom: 2 }}>Operativo</p>
+              <p style={{ color: 'var(--muted-foreground)', fontSize: 'calc(11px * var(--escala-texto))', marginBottom: 2 }}>Operativo</p>
               <p style={{ color: 'var(--foreground)', fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-semibold)' }}>
                 {operativo.nombre}
               </p>
@@ -521,7 +521,7 @@ export default function Registro() {
             className="w-10 h-10 rounded-xl flex items-center justify-center flex-shrink-0"
             style={{ background: 'var(--primary)' }}
           >
-            <Shield size={20} color="#fff" />
+            <Shield size={20} color="var(--primary-foreground)" />
           </div>
           <div>
             <p style={{ color: 'var(--foreground)', fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-bold)' }}>
@@ -538,7 +538,7 @@ export default function Registro() {
           className="p-4 rounded-[var(--radius-card)] mb-6"
           style={{ background: 'var(--card)', boxShadow: 'var(--elevation-sm)', borderLeft: '3px solid var(--primary)' }}
         >
-          <p className="mb-1 uppercase" style={{ color: 'var(--primary)', fontSize: '11px', fontWeight: 'var(--font-weight-semibold)' }}>
+          <p className="mb-1 uppercase" style={{ color: 'var(--primary)', fontSize: 'calc(11px * var(--escala-texto))', fontWeight: 'var(--font-weight-semibold)' }}>
             Operativo
           </p>
           <p style={{ color: 'var(--foreground)', fontSize: 'var(--text-h3)', fontWeight: 'var(--font-weight-semibold)' }}>
@@ -568,7 +568,7 @@ export default function Registro() {
 
             <button
               onClick={() => { setError(''); setModo('login'); }}
-              className="w-full py-4 rounded-[var(--radius-card)] text-white flex items-center justify-center gap-3 transition-opacity hover:opacity-90"
+              className="w-full py-4 rounded-[var(--radius-card)] text-[var(--primary-foreground)] flex items-center justify-center gap-3 transition-opacity hover:opacity-90"
               style={{ background: 'var(--primary)', fontSize: 'var(--text-h3)', fontWeight: 'var(--font-weight-semibold)' }}
             >
               <LogIn size={20} />
@@ -713,7 +713,7 @@ export default function Registro() {
               <button
                 onClick={handleLogin}
                 disabled={loading}
-                className="w-full py-4 rounded-[var(--radius-card)] text-white transition-opacity"
+                className="w-full py-4 rounded-[var(--radius-card)] text-[var(--primary-foreground)] transition-opacity"
                 style={{
                   background: 'var(--primary)',
                   opacity: loading ? 0.7 : 1,
@@ -866,9 +866,9 @@ export default function Registro() {
                       />
                     )}
                     {erroresCampos[f.key] ? (
-                      <p style={{ color: '#dc2626', fontSize: '11px', marginTop: '4px' }}>{erroresCampos[f.key]}</p>
+                      <p style={{ color: '#dc2626', fontSize: 'calc(11px * var(--escala-texto))', marginTop: '4px' }}>{erroresCampos[f.key]}</p>
                     ) : (f as any).ayuda && (
-                      <p style={{ color: 'var(--muted-foreground)', fontSize: '11px', marginTop: '4px', lineHeight: 1.4 }}>{(f as any).ayuda}</p>
+                      <p style={{ color: 'var(--muted-foreground)', fontSize: 'calc(11px * var(--escala-texto))', marginTop: '4px', lineHeight: 1.4 }}>{(f as any).ayuda}</p>
                     )}
                   </div>
                 );
@@ -996,7 +996,7 @@ export default function Registro() {
               <button
                 onClick={handleRegistro}
                 disabled={loading}
-                className="w-full py-4 rounded-[var(--radius-card)] text-white mt-2 transition-opacity"
+                className="w-full py-4 rounded-[var(--radius-card)] text-[var(--primary-foreground)] mt-2 transition-opacity"
                 style={{ background: 'var(--primary)', opacity: loading ? 0.7 : 1, fontSize: 'var(--text-h3)', fontWeight: 'var(--font-weight-semibold)' }}
               >
                 {loading ? 'Registrando...' : 'Registrarme y unirme al operativo'}
@@ -1041,7 +1041,7 @@ export default function Registro() {
           <div className="flex flex-col gap-5">
             <div
               className="w-14 h-14 rounded-2xl flex items-center justify-center"
-              style={{ background: 'rgba(229,75,75,0.1)' }}
+              style={{ background: 'color-mix(in srgb, var(--primary) 10%, transparent)' }}
             >
               <Shield size={28} style={{ color: 'var(--primary)' }} />
             </div>
@@ -1058,7 +1058,7 @@ export default function Registro() {
             </div>
             <div
               className="p-4 rounded-[var(--radius-card)]"
-              style={{ background: 'rgba(229,75,75,0.06)', border: '1.5px solid rgba(229,75,75,0.25)' }}
+              style={{ background: 'color-mix(in srgb, var(--primary) 6%, transparent)', border: '1.5px solid color-mix(in srgb, var(--primary) 25%, transparent)' }}
             >
               <p style={{ color: 'var(--foreground)', fontSize: 'var(--text-h3)', fontWeight: 'var(--font-weight-semibold)' }}>
                 {operativo.nombre}
@@ -1072,7 +1072,7 @@ export default function Registro() {
             </p>
             <button
               onClick={handleConfirmar}
-              className="w-full py-4 rounded-[var(--radius-card)] text-white transition-opacity hover:opacity-90"
+              className="w-full py-4 rounded-[var(--radius-card)] text-[var(--primary-foreground)] transition-opacity hover:opacity-90"
               style={{ background: 'var(--primary)', fontSize: 'var(--text-h3)', fontWeight: 'var(--font-weight-semibold)' }}
             >
               Confirmar participación
@@ -1155,14 +1155,14 @@ export default function Registro() {
               >
                 <div className="flex items-center gap-2">
                   <div className="w-2 h-2 rounded-full bg-green-500 animate-pulse" />
-                  <p style={{ color: '#15803d', fontSize: '11px', fontWeight: 'var(--font-weight-semibold)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  <p style={{ color: '#15803d', fontSize: 'calc(11px * var(--escala-texto))', fontWeight: 'var(--font-weight-semibold)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                     Modo desarrollo — link de confirmación
                   </p>
                 </div>
                 <a
                   href={urlConfirmacionDev}
                   className="flex items-center gap-1.5 break-all"
-                  style={{ color: '#15803d', fontSize: '12px', lineHeight: 1.5 }}
+                  style={{ color: '#15803d', fontSize: 'calc(12px * var(--escala-texto))', lineHeight: 1.5 }}
                 >
                   <ExternalLink size={11} style={{ flexShrink: 0 }} />
                   {urlConfirmacionDev}
@@ -1173,7 +1173,7 @@ export default function Registro() {
             <button
               onClick={handleConfirmar}
               disabled={loading}
-              className="w-full py-4 rounded-[var(--radius-card)] text-white transition-opacity hover:opacity-90"
+              className="w-full py-4 rounded-[var(--radius-card)] text-[var(--primary-foreground)] transition-opacity hover:opacity-90"
               style={{ background: 'var(--primary)', opacity: loading ? 0.7 : 1, fontSize: 'var(--text-h3)', fontWeight: 'var(--font-weight-semibold)' }}
             >
               {loading ? 'Verificando...' : 'Ya confirmé mi correo — continuar'}
@@ -1199,7 +1199,7 @@ export default function Registro() {
                   : 'Reenviar correo'}
             </button>
 
-            <p style={{ color: 'var(--muted-foreground)', fontSize: '11px', textAlign: 'center', lineHeight: 1.5 }}>
+            <p style={{ color: 'var(--muted-foreground)', fontSize: 'calc(11px * var(--escala-texto))', textAlign: 'center', lineHeight: 1.5 }}>
               Si después de un par de intentos no te llegó, contactá a un coordinador del DUAR.
             </p>
           </div>
@@ -1252,7 +1252,7 @@ export default function Registro() {
             </div>
             <button
               onClick={() => navigate('/agente')}
-              className="w-full py-4 rounded-[var(--radius-card)] text-white transition-opacity hover:opacity-90"
+              className="w-full py-4 rounded-[var(--radius-card)] text-[var(--primary-foreground)] transition-opacity hover:opacity-90"
               style={{ background: 'var(--primary)', fontSize: 'var(--text-h3)', fontWeight: 'var(--font-weight-semibold)' }}
             >
               Ir a mi panel
@@ -1353,13 +1353,13 @@ export default function Registro() {
                     <AlertTriangle size={14} style={{ color: '#d97706' }} />
                   </div>
                   <div className="min-w-0">
-                    <p style={{ fontSize: '10px', color: '#d97706', fontWeight: 'var(--font-weight-semibold)', textTransform: 'uppercase', letterSpacing: '0.06em', fontFamily: 'var(--font-family-primary)' }}>
+                    <p style={{ fontSize: 'calc(10px * var(--escala-texto))', color: '#d97706', fontWeight: 'var(--font-weight-semibold)', textTransform: 'uppercase', letterSpacing: '0.06em', fontFamily: 'var(--font-family-primary)' }}>
                       Operativo actual
                     </p>
                     <p style={{ color: 'var(--foreground)', fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-semibold)', fontFamily: 'var(--font-family-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {operativoConflicto.nombre}
                     </p>
-                    <p style={{ color: 'var(--muted-foreground)', fontSize: '11px', fontFamily: 'var(--font-family-primary)' }}>
+                    <p style={{ color: 'var(--muted-foreground)', fontSize: 'calc(11px * var(--escala-texto))', fontFamily: 'var(--font-family-primary)' }}>
                       {operativoConflicto.ubicacion}
                     </p>
                   </div>
@@ -1368,28 +1368,28 @@ export default function Registro() {
                 {/* Flecha */}
                 <div className="flex items-center justify-center gap-2 py-0.5" style={{ color: 'var(--muted-foreground)' }}>
                   <ArrowRightLeft size={14} />
-                  <span style={{ fontSize: '11px', fontFamily: 'var(--font-family-primary)' }}>Cambiar a</span>
+                  <span style={{ fontSize: 'calc(11px * var(--escala-texto))', fontFamily: 'var(--font-family-primary)' }}>Cambiar a</span>
                 </div>
 
                 {/* Operativo nuevo */}
                 <div
                   className="flex items-center gap-3 p-3 rounded-[var(--radius-input)]"
-                  style={{ background: 'rgba(229,75,75,0.06)', border: '1.5px solid rgba(229,75,75,0.25)' }}
+                  style={{ background: 'color-mix(in srgb, var(--primary) 6%, transparent)', border: '1.5px solid color-mix(in srgb, var(--primary) 25%, transparent)' }}
                 >
                   <div
                     className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                    style={{ background: 'rgba(229,75,75,0.1)' }}
+                    style={{ background: 'color-mix(in srgb, var(--primary) 10%, transparent)' }}
                   >
                     <Shield size={14} style={{ color: 'var(--primary)' }} />
                   </div>
                   <div className="min-w-0">
-                    <p style={{ fontSize: '10px', color: 'var(--primary)', fontWeight: 'var(--font-weight-semibold)', textTransform: 'uppercase', letterSpacing: '0.06em', fontFamily: 'var(--font-family-primary)' }}>
+                    <p style={{ fontSize: 'calc(10px * var(--escala-texto))', color: 'var(--primary)', fontWeight: 'var(--font-weight-semibold)', textTransform: 'uppercase', letterSpacing: '0.06em', fontFamily: 'var(--font-family-primary)' }}>
                       Nuevo operativo (QR)
                     </p>
                     <p style={{ color: 'var(--foreground)', fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-semibold)', fontFamily: 'var(--font-family-primary)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
                       {operativo.nombre}
                     </p>
-                    <p style={{ color: 'var(--muted-foreground)', fontSize: '11px', fontFamily: 'var(--font-family-primary)' }}>
+                    <p style={{ color: 'var(--muted-foreground)', fontSize: 'calc(11px * var(--escala-texto))', fontFamily: 'var(--font-family-primary)' }}>
                       {operativo.ubicacion}
                     </p>
                   </div>
@@ -1402,7 +1402,7 @@ export default function Registro() {
                 style={{ background: 'rgba(217,119,6,0.06)', border: '1px solid rgba(217,119,6,0.2)' }}
               >
                 <AlertCircle size={13} style={{ color: '#d97706', marginTop: 1, flexShrink: 0 }} />
-                <p style={{ color: 'var(--muted-foreground)', fontSize: '11px', fontFamily: 'var(--font-family-primary)', lineHeight: 1.55 }}>
+                <p style={{ color: 'var(--muted-foreground)', fontSize: 'calc(11px * var(--escala-texto))', fontFamily: 'var(--font-family-primary)', lineHeight: 1.55 }}>
                   Serás desvinculado del operativo anterior automáticamente y tu estado quedará como <strong style={{ color: 'var(--foreground)' }}>Disponible</strong> en el nuevo operativo.
                 </p>
               </div>
@@ -1415,7 +1415,7 @@ export default function Registro() {
               {/* Botón principal: "Darme de alta" — CU-14, Paso 6 */}
               <button
                 onClick={handleDarmeDeAlta}
-                className="w-full py-3.5 rounded-[var(--radius-button)] text-white flex items-center justify-center gap-2 transition-opacity hover:opacity-90"
+                className="w-full py-3.5 rounded-[var(--radius-button)] text-[var(--primary-foreground)] flex items-center justify-center gap-2 transition-opacity hover:opacity-90"
                 style={{
                   background: 'var(--primary)',
                   fontSize: 'var(--text-base)',

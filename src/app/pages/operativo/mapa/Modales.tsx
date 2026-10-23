@@ -47,7 +47,7 @@ export function ModalNuevoPoligono({ vertices, grupos, n, onCancel, onGuardar }:
         <Selector etiqueta="Asignar a un grupo" valor={grupoId} onChange={setGrupoId}
           opciones={[{ value: '', label: '— Asignar más tarde —' }, ...libres.map(g => ({ value: g.id, label: `${g.nombre} · ${g.integrantes.length} integrantes${g.clase === 'ESPECIAL' ? ' · especial' : ''}` }))]} />
         <Campo etiqueta="Notas" multilinea filas={3} valor={notas} onChange={setNotas} maxLength={2000} placeholder="Tipo de terreno, accesos, riesgos…" />
-        <p style={{ margin: 0, fontSize: 12, color: 'var(--muted-foreground)' }}>
+        <p style={{ margin: 0, fontSize: 'calc(12px * var(--escala-texto))', color: 'var(--muted-foreground)' }}>
           {grupoId ? 'El grupo pasa a Asignado.' : libres.length ? 'Podés asignarle un grupo confirmado ahora o después.' : 'No hay grupos confirmados libres: podés asignarlo después.'}
         </p>
         {e.error && <ErrorTexto>{e.error}</ErrorTexto>}
@@ -105,12 +105,12 @@ export function ModalCargarGpx({ operativoId, personal, grupos, onCancel, onCarg
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 12, borderRadius: 'var(--radius)', background: 'rgba(22,163,74,0.08)', border: '1px solid rgba(22,163,74,0.3)' }}>
             <span style={{ width: 36, height: 36, borderRadius: 'var(--radius-md)', background: '#dcfce7', color: '#15803d', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><FileCheck size={17} /></span>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'var(--foreground)', wordBreak: 'break-all' }}>{archivo.name}</p>
-              <p style={{ margin: 0, fontSize: 11.5, color: 'var(--muted-foreground)' }}>
+              <p style={{ margin: 0, fontSize: 'calc(13px * var(--escala-texto))', fontWeight: 600, color: 'var(--foreground)', wordBreak: 'break-all' }}>{archivo.name}</p>
+              <p style={{ margin: 0, fontSize: 'calc(11.5px * var(--escala-texto))', color: 'var(--muted-foreground)' }}>
                 {analisis.puntos.toLocaleString('es-AR')} puntos · {fmtKm(analisis.distanciaM)} · {duracion(analisis.duracionS)}
                 {analisis.conElevacion ? ` · ↑ ${analisis.desnivelPositivoM} m` : ' · sin elevación'}
               </p>
-              <p style={{ margin: 0, fontSize: 11.5, color: 'var(--muted-foreground)' }}>{analisis.inicio ? `${fechaCorta(analisis.inicio)} a ${fechaCorta(analisis.fin)}` : 'Sin horas en el archivo'}</p>
+              <p style={{ margin: 0, fontSize: 'calc(11.5px * var(--escala-texto))', color: 'var(--muted-foreground)' }}>{analisis.inicio ? `${fechaCorta(analisis.inicio)} a ${fechaCorta(analisis.fin)}` : 'Sin horas en el archivo'}</p>
             </div>
             <Boton variante="ghost" icono={X} onClick={() => { setArchivo(null); setAnalisis(null); }}>Quitar</Boton>
           </div>
@@ -119,8 +119,8 @@ export function ModalCargarGpx({ operativoId, personal, grupos, onCancel, onCarg
             onDragOver={ev => { ev.preventDefault(); setEncima(true); }} onDragLeave={() => setEncima(false)} onDrop={ev => { ev.preventDefault(); setEncima(false); elegir(ev.dataTransfer.files[0]); }}
             style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 8, padding: '26px 16px', borderRadius: 'var(--radius-lg)', cursor: 'pointer', border: `2px dashed ${encima ? 'var(--primary)' : 'var(--border)'}`, background: encima ? 'color-mix(in srgb, var(--primary) 6%, transparent)' : 'var(--muted)', color: 'var(--muted-foreground)' }}>
             {leyendo ? <Loader2 size={28} className="animate-spin" /> : <FileUp size={28} style={{ opacity: 0.6 }} />}
-            <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'var(--foreground)' }}>{leyendo ? 'Leyendo el archivo…' : 'Arrastrá el archivo .gpx o hacé clic para buscarlo'}</p>
-            <p style={{ margin: 0, fontSize: 11.5 }}>Hasta 4 MB. Se lee el recorrido y se detecta en qué polígono cae.</p>
+            <p style={{ margin: 0, fontSize: 'calc(13px * var(--escala-texto))', fontWeight: 600, color: 'var(--foreground)' }}>{leyendo ? 'Leyendo el archivo…' : 'Arrastrá el archivo .gpx o hacé clic para buscarlo'}</p>
+            <p style={{ margin: 0, fontSize: 'calc(11.5px * var(--escala-texto))' }}>Hasta 4 MB. Se lee el recorrido y se detecta en qué polígono cae.</p>
           </div>
         )}
         {analisis && (
@@ -128,9 +128,9 @@ export function ModalCargarGpx({ operativoId, personal, grupos, onCancel, onCarg
             {analisis.poligono ? <Pentagon size={15} color="var(--primary)" /> : <TriangleAlert size={15} color="#b45309" />}
             <div style={{ flex: 1, minWidth: 0 }}>
               <p style={{ ...rotulo }}>Polígono detectado por coordenadas</p>
-              <p style={{ margin: '2px 0 0', fontSize: 13, fontWeight: 600, color: analisis.poligono ? 'var(--foreground)' : '#92400e' }}>
+              <p style={{ margin: '2px 0 0', fontSize: 'calc(13px * var(--escala-texto))', fontWeight: 600, color: analisis.poligono ? 'var(--foreground)' : '#92400e' }}>
                 {analisis.poligono ? analisis.poligono.nombre : 'Fuera de polígono'}
-                <span style={{ fontWeight: 400, color: 'var(--muted-foreground)', fontSize: 11.5 }}> · {Math.round(analisis.deteccionPct)} % de los puntos{analisis.poligono ? ' adentro' : ' en el más cercano (hace falta 30 %)'}</span>
+                <span style={{ fontWeight: 400, color: 'var(--muted-foreground)', fontSize: 'calc(11.5px * var(--escala-texto))' }}> · {Math.round(analisis.deteccionPct)} % de los puntos{analisis.poligono ? ' adentro' : ' en el más cercano (hace falta 30 %)'}</span>
               </p>
             </div>
           </div>
@@ -142,12 +142,12 @@ export function ModalCargarGpx({ operativoId, personal, grupos, onCancel, onCarg
               <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '8px 10px', borderRadius: 'var(--radius-input)', background: 'var(--input-background)', border: '1px solid var(--primary)' }}>
                 <span style={{ width: 30, height: 30, borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: colorDeGrupo(grupos, agente.grupoId) ?? '#64748b', color: '#fff' }}><Footprints size={14} /></span>
                 <div style={{ flex: 1, minWidth: 0 }}>
-                  <p style={{ margin: 0, fontSize: 13, fontWeight: 600, color: 'var(--foreground)' }}>{agente.nombre} {agente.apellido}</p>
-                  <p style={{ margin: 0, fontSize: 11.5, color: 'var(--muted-foreground)' }}>DNI {agente.dni} · {grupoDe(agente)?.nombre ?? 'Sin grupo'}{agente.institucionNombre ? ` · ${agente.institucionNombre}` : ''}</p>
+                  <p style={{ margin: 0, fontSize: 'calc(13px * var(--escala-texto))', fontWeight: 600, color: 'var(--foreground)' }}>{agente.nombre} {agente.apellido}</p>
+                  <p style={{ margin: 0, fontSize: 'calc(11.5px * var(--escala-texto))', color: 'var(--muted-foreground)' }}>DNI {agente.dni} · {grupoDe(agente)?.nombre ?? 'Sin grupo'}{agente.institucionNombre ? ` · ${agente.institucionNombre}` : ''}</p>
                 </div>
                 <Boton variante="ghost" icono={X} onClick={() => { setAgenteId(''); setQa(''); }}>Cambiar</Boton>
               </div>
-              <p style={{ margin: 0, fontSize: 11.5, color: 'var(--muted-foreground)' }}>Va a quedar «recorrido de» este agente y «cargado por» vos.</p>
+              <p style={{ margin: 0, fontSize: 'calc(11.5px * var(--escala-texto))', color: 'var(--muted-foreground)' }}>Va a quedar «recorrido de» este agente y «cargado por» vos.</p>
             </div>
           ) : (
             <>
@@ -164,12 +164,12 @@ export function ModalCargarGpx({ operativoId, personal, grupos, onCancel, onCarg
                         onMouseEnter={ev => (ev.currentTarget.style.background = 'var(--muted)')} onMouseLeave={ev => (ev.currentTarget.style.background = 'none')}
                         style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '7px 8px', borderRadius: 'var(--radius-sm)', border: 'none', background: 'none', cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-family-primary)' }}>
                         <span style={{ width: 8, height: 8, borderRadius: 2, flexShrink: 0, background: colorDeGrupo(grupos, a.grupoId) ?? '#cbd5e1' }} />
-                        <span style={{ flex: 1, minWidth: 0, fontSize: 12.5, fontWeight: 500, color: 'var(--foreground)' }}>{a.nombre} {a.apellido}</span>
-                        <span style={{ fontSize: 11, color: 'var(--muted-foreground)', whiteSpace: 'nowrap' }}>{g?.nombre ?? 'Sin grupo'} · {a.dni}</span>
+                        <span style={{ flex: 1, minWidth: 0, fontSize: 'calc(12.5px * var(--escala-texto))', fontWeight: 500, color: 'var(--foreground)' }}>{a.nombre} {a.apellido}</span>
+                        <span style={{ fontSize: 'calc(11px * var(--escala-texto))', color: 'var(--muted-foreground)', whiteSpace: 'nowrap' }}>{g?.nombre ?? 'Sin grupo'} · {a.dni}</span>
                       </button>
                     );
                   })}
-                  {!sugeridos.length && <p style={{ margin: 0, padding: 8, fontSize: 12, color: 'var(--muted-foreground)' }}>Ningún agente del operativo coincide con «{qa}».</p>}
+                  {!sugeridos.length && <p style={{ margin: 0, padding: 8, fontSize: 'calc(12px * var(--escala-texto))', color: 'var(--muted-foreground)' }}>Ningún agente del operativo coincide con «{qa}».</p>}
                 </div>
               </>}
             </>
@@ -199,16 +199,16 @@ export function ModalNuevoMarcador({ ll, onCancel, onGuardar }: {
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
           {(['POI', 'HALLAZGO'] as const).map(tp => {
             const k = SIMBOLOS[tp]; const on = clase === tp; const I = k.icono!;
-            return <button key={tp} type="button" aria-pressed={on} onClick={() => setClase(tp)} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 10px', borderRadius: 'var(--radius-md)', cursor: 'pointer', border: on ? `1.5px solid ${k.color}` : '1.5px solid var(--border)', background: on ? k.bg : 'transparent', color: on ? k.color : 'var(--foreground)', fontFamily: 'var(--font-family-primary)', fontSize: 12.5, fontWeight: 600 }}><I size={14} />{k.label}</button>;
+            return <button key={tp} type="button" aria-pressed={on} onClick={() => setClase(tp)} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 10px', borderRadius: 'var(--radius-md)', cursor: 'pointer', border: on ? `1.5px solid ${k.color}` : '1.5px solid var(--border)', background: on ? k.bg : 'transparent', color: on ? k.color : 'var(--foreground)', fontFamily: 'var(--font-family-primary)', fontSize: 'calc(12.5px * var(--escala-texto))', fontWeight: 600 }}><I size={14} />{k.label}</button>;
           })}
         </div>
-        <p style={{ margin: 0, fontSize: 11.5, color: 'var(--muted-foreground)', lineHeight: 1.5 }}>
+        <p style={{ margin: 0, fontSize: 'calc(11.5px * var(--escala-texto))', color: 'var(--muted-foreground)', lineHeight: 1.5 }}>
           {clase === 'HALLAZGO' ? 'Un hallazgo es evidencia del caso (una prenda, un rastro, un objeto): queda con hora y autor, y no se elimina.' : 'Un lugar útil u orientador: refugio, cruce de arroyo, acceso.'}
         </p>
         <Campo etiqueta="Nombre" requerido valor={nombre} onChange={setNombre} maxLength={120} autoFocus placeholder={clase === 'HALLAZGO' ? 'Ej.: Campera roja' : 'Ej.: Refugio de piedra'} />
         <Campo etiqueta="Descripción" valor={desc} onChange={setDesc} maxLength={300} placeholder="Descripción breve…" />
         <Campo etiqueta="Detalle" multilinea filas={3} valor={det} onChange={setDet} maxLength={4000} placeholder="Condiciones del lugar, quién lo encontró, hora…" />
-        <p style={{ margin: 0, fontSize: 11.5, color: 'var(--muted-foreground)' }}>Las fotos se agregan desde su panel, después de guardarlo.</p>
+        <p style={{ margin: 0, fontSize: 'calc(11.5px * var(--escala-texto))', color: 'var(--muted-foreground)' }}>Las fotos se agregan desde su panel, después de guardarlo.</p>
         {e.error && <ErrorTexto>{e.error}</ErrorTexto>}
       </div>
     </Modal>
@@ -231,7 +231,7 @@ export function ModalNuevaInstalacion({ ll, onCancel, onGuardar }: {
     <Modal titulo="Nueva instalación" subtitulo={`Sistema de Comando de Incidentes · ${fmtCoord(ll[0], ll[1])}`} icono={Flag} onClose={onCancel}
       pie={<><Boton variante="outline" tam="md" onClick={onCancel}>Cancelar</Boton><Boton tam="md" icono={Check} disabled={!nombre.trim() || e.enviando} onClick={() => e.enviar(() => onGuardar({ tipoInstalacion: tipo, nombre: nombre.trim(), responsable: resp.trim() || null, notas: notas.trim() || null }))}>{e.enviando ? 'Guardando…' : 'Guardar instalación'}</Boton></>}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 14 }}>
-        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}><span style={{ fontSize: 12, fontWeight: 600, color: 'var(--foreground)' }}>Tipo *</span><GrillaTiposSci valor={tipo} onChange={elegir} /></div>
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}><span style={{ fontSize: 'calc(12px * var(--escala-texto))', fontWeight: 600, color: 'var(--foreground)' }}>Tipo *</span><GrillaTiposSci valor={tipo} onChange={elegir} /></div>
         <Campo etiqueta="Nombre" requerido valor={nombre} onChange={v => { setNombre(v); setTocado(true); }} maxLength={120} error={!nombre.trim()} />
         <Campo etiqueta="Responsable" valor={resp} onChange={setResp} maxLength={120} placeholder="Quién está a cargo" />
         <Campo etiqueta="Notas" multilinea filas={3} valor={notas} onChange={setNotas} maxLength={2000} placeholder="Accesos, recursos disponibles, frecuencia de radio…" />
@@ -264,13 +264,13 @@ export function ModalPuntoCero({ desde, hasta, nRadios, requiereMotivo, onCambio
       <div style={{ display: 'flex', flexDirection: 'column', gap: 12 }}>
         <div style={{ padding: '10px 12px', borderRadius: 'var(--radius-md)', background: 'var(--muted)', border: '1px solid var(--border)' }}>
           <p style={rotulo}>Actual</p>
-          <p style={{ margin: '4px 0 0', fontFamily: 'var(--font-family-mono, monospace)', fontSize: 12, color: 'var(--foreground)' }}>{fmtCoord(desde[0], desde[1])}</p>
+          <p style={{ margin: '4px 0 0', fontFamily: 'var(--font-family-mono, monospace)', fontSize: 'calc(12px * var(--escala-texto))', color: 'var(--foreground)' }}>{fmtCoord(desde[0], desde[1])}</p>
         </div>
         <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10 }}>
           <Campo overline etiqueta="Nueva latitud" valor={lat} onChange={setLat} placeholder="-31.98120" inputMode="decimal" error={!ok} />
           <Campo overline etiqueta="Nueva longitud" valor={lng} onChange={setLng} placeholder="-64.92620" inputMode="decimal" error={!ok} />
         </div>
-        <p style={{ margin: 0, fontSize: 12.5, color: ok ? 'var(--muted-foreground)' : '#dc2626', lineHeight: 1.55 }}>
+        <p style={{ margin: 0, fontSize: 'calc(12.5px * var(--escala-texto))', color: ok ? 'var(--muted-foreground)' : '#dc2626', lineHeight: 1.55 }}>
           {ok
             ? d < 0.5 ? 'Hacé clic en el mapa en el lugar nuevo o escribí las coordenadas.'
               : <>El Punto Cero se mueve {fmtDist(d)}. Todos los usuarios del operativo van a ver el nuevo centro.{nRadios ? ` Los ${nRadios} radios se recentran en el punto nuevo (vista previa punteada en el mapa).` : ''}</>
@@ -278,7 +278,7 @@ export function ModalPuntoCero({ desde, hasta, nRadios, requiereMotivo, onCambio
         </p>
         <Campo etiqueta={requiereMotivo ? 'Motivo *' : 'Motivo'} multilinea filas={2} valor={motivo} onChange={setMotivo} maxLength={500} error={falta && d >= 0.5}
           placeholder="Ej.: hallazgo de una prenda 1 km al norte" />
-        <p style={{ margin: 0, fontSize: 11.5, color: 'var(--muted-foreground)' }}>
+        <p style={{ margin: 0, fontSize: 'calc(11.5px * var(--escala-texto))', color: 'var(--muted-foreground)' }}>
           {requiereMotivo ? 'El operativo está en curso: el motivo es obligatorio y queda en el historial del Punto Cero.' : 'El movimiento queda en el historial del Punto Cero.'}
         </p>
         {e.error && <ErrorTexto>{e.error}</ErrorTexto>}
@@ -298,9 +298,9 @@ export function ModalEliminar({ tipo, nombre, extra, onCancel, onConfirmar }: {
       <div style={{ display: 'flex', gap: 12 }}>
         <span style={{ width: 36, height: 36, borderRadius: 'var(--radius-md)', background: '#fee2e2', color: '#dc2626', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><TriangleAlert size={17} /></span>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-          <p style={{ margin: 0, fontSize: 14, color: 'var(--foreground)', lineHeight: 1.55 }}>¿Eliminar <strong>{nombre}</strong> del mapa?</p>
-          <p style={{ margin: 0, fontSize: 12, color: 'var(--muted-foreground)', lineHeight: 1.55 }}>{extra}</p>
-          <p style={{ margin: 0, fontSize: 12, color: 'var(--muted-foreground)', lineHeight: 1.55 }}>Es una baja con registro: deja de verse para todos, pero queda qué era, quién lo eliminó y cuándo.</p>
+          <p style={{ margin: 0, fontSize: 'calc(14px * var(--escala-texto))', color: 'var(--foreground)', lineHeight: 1.55 }}>¿Eliminar <strong>{nombre}</strong> del mapa?</p>
+          <p style={{ margin: 0, fontSize: 'calc(12px * var(--escala-texto))', color: 'var(--muted-foreground)', lineHeight: 1.55 }}>{extra}</p>
+          <p style={{ margin: 0, fontSize: 'calc(12px * var(--escala-texto))', color: 'var(--muted-foreground)', lineHeight: 1.55 }}>Es una baja con registro: deja de verse para todos, pero queda qué era, quién lo eliminó y cuándo.</p>
           {e.error && <ErrorTexto>{e.error}</ErrorTexto>}
         </div>
       </div>
@@ -316,7 +316,7 @@ export function ModalQuitarGrupo({ grupo, estado, poligono, onCancel, onConfirma
   return (
     <Modal titulo="Quitar grupo del polígono" icono={TriangleAlert} onClose={onCancel} ancho={440}
       pie={<><Boton variante="outline" tam="md" onClick={onCancel}>Cancelar</Boton><Boton variante="danger" tam="md" icono={X} disabled={e.enviando} onClick={() => e.enviar(onConfirmar, 'No se pudo quitar el grupo.')}>{e.enviando ? 'Quitando…' : 'Quitar igualmente'}</Boton></>}>
-      <p style={{ margin: 0, fontSize: 13, color: 'var(--muted-foreground)', lineHeight: 1.55 }}>
+      <p style={{ margin: 0, fontSize: 'calc(13px * var(--escala-texto))', color: 'var(--muted-foreground)', lineHeight: 1.55 }}>
         <strong style={{ color: 'var(--foreground)' }}>{grupo}</strong> está <strong style={{ color: 'var(--foreground)' }}>{estado.toLowerCase()}</strong> en {poligono}.
         Si lo quitás, el grupo sigue en el terreno pero el polígono queda sin él. Queda registrado en el historial del polígono.
       </p>

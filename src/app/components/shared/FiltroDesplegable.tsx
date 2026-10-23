@@ -57,16 +57,16 @@ export default function FiltroDesplegable<T extends string>({ titulo, opciones, 
 
   const pildora = (sel: boolean) => ({
     border: sel ? '1.5px solid var(--primary)' : '1.5px solid var(--border)',
-    background: sel ? 'rgba(229,75,75,0.08)' : 'transparent',
+    background: sel ? 'color-mix(in srgb, var(--primary) 8%, transparent)' : 'transparent',
     color: sel ? 'var(--primary)' : 'var(--muted-foreground)',
     fontSize: 'var(--text-label)',
     fontWeight: sel ? 'var(--font-weight-semibold)' : 'var(--font-weight-medium)',
     cursor: 'pointer', transition: 'all 0.13s',
   } as const);
   const contador = (sel: boolean) => ({
-    background: sel ? 'rgba(229,75,75,0.15)' : 'var(--muted)',
+    background: sel ? 'color-mix(in srgb, var(--primary) 15%, transparent)' : 'var(--muted)',
     color: sel ? 'var(--primary)' : 'var(--muted-foreground)',
-    fontSize: '10px',
+    fontSize: 'calc(10px * var(--escala-texto))',
   } as const);
 
   return (
@@ -119,7 +119,7 @@ export default function FiltroDesplegable<T extends string>({ titulo, opciones, 
           </div>
           {activo && (
             <button type="button" onClick={() => onCambiar([])} className="mt-3"
-              style={{ fontSize: 11, color: 'var(--primary)', fontWeight: 'var(--font-weight-semibold)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
+              style={{ fontSize: 'calc(11px * var(--escala-texto))', color: 'var(--primary)', fontWeight: 'var(--font-weight-semibold)', background: 'none', border: 'none', cursor: 'pointer', padding: 0 }}>
               Quitar {titulo.toLowerCase()}
             </button>
           )}

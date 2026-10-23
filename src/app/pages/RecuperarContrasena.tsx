@@ -29,7 +29,7 @@ function Wrapper({ children }: { children: React.ReactNode }) {
       <div
         className="fixed inset-0 pointer-events-none"
         style={{
-          background: 'radial-gradient(ellipse 70% 50% at 50% -10%, rgba(229,75,75,0.08) 0%, transparent 70%)',
+          background: 'radial-gradient(ellipse 70% 50% at 50% -10%, color-mix(in srgb, var(--primary) 8%, transparent) 0%, transparent 70%)',
         }}
       />
 
@@ -40,7 +40,7 @@ function Wrapper({ children }: { children: React.ReactNode }) {
             className="w-9 h-9 rounded-xl flex items-center justify-center"
             style={{ background: 'var(--primary)' }}
           >
-            <Shield size={18} color="#fff" />
+            <Shield size={18} color="var(--primary-foreground)" />
           </div>
           <div>
             <p
@@ -57,7 +57,7 @@ function Wrapper({ children }: { children: React.ReactNode }) {
             <p
               style={{
                 color: 'var(--muted-foreground)',
-                fontSize: '11px',
+                fontSize: 'calc(11px * var(--escala-texto))',
                 fontFamily: 'var(--font-family-primary)',
               }}
             >
@@ -76,7 +76,7 @@ function Wrapper({ children }: { children: React.ReactNode }) {
         >
           <div
             className="h-1 w-full"
-            style={{ background: 'linear-gradient(90deg, var(--duar-red), var(--duar-salmon))' }}
+            style={{ background: 'linear-gradient(90deg, var(--primary), var(--chart-4))' }}
           />
           <div className="p-8">{children}</div>
           <div
@@ -87,7 +87,7 @@ function Wrapper({ children }: { children: React.ReactNode }) {
             <span
               style={{
                 color: 'var(--muted-foreground)',
-                fontSize: '11px',
+                fontSize: 'calc(11px * var(--escala-texto))',
                 fontFamily: 'var(--font-family-primary)',
               }}
             >
@@ -295,7 +295,7 @@ export default function RecuperarContrasena() {
       <Wrapper>
         <div
           className="w-14 h-14 rounded-2xl flex items-center justify-center mb-5 mx-auto"
-          style={{ background: 'rgba(229,75,75,0.10)' }}
+          style={{ background: 'color-mix(in srgb, var(--primary) 10%, transparent)' }}
         >
           <CheckCircle size={28} style={{ color: 'var(--primary)' }} />
         </div>
@@ -348,7 +348,7 @@ export default function RecuperarContrasena() {
       {/* Icon */}
       <div
         className="w-12 h-12 rounded-xl flex items-center justify-center mb-5"
-        style={{ background: 'rgba(229,75,75,0.10)' }}
+        style={{ background: 'color-mix(in srgb, var(--primary) 10%, transparent)' }}
       >
         <Lock size={22} style={{ color: 'var(--primary)' }} />
       </div>
@@ -575,7 +575,7 @@ export default function RecuperarContrasena() {
               <span
                 className="w-4 h-4 rounded-full border-2 inline-block"
                 style={{
-                  borderColor: 'rgba(68,65,64,0.2)',
+                  borderColor: 'color-mix(in srgb, var(--foreground) 20%, transparent)',
                   borderTopColor: 'var(--muted-foreground)',
                   animation: 'spin 0.7s linear infinite',
                 }}

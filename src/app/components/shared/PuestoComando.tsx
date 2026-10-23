@@ -211,7 +211,7 @@ function PuestoComandoModal({ operativoId, mando, soloLectura, onCambio, onClose
         </div>
       )}
       {p.aCargo && !pideSucesor && (
-        <p style={{ fontSize: 11, color: '#92400e' }}>No queda otro coordinador presente: el operativo va a quedar sin coordinador a cargo.</p>
+        <p style={{ fontSize: 'calc(11px * var(--escala-texto))', color: '#92400e' }}>No queda otro coordinador presente: el operativo va a quedar sin coordinador a cargo.</p>
       )}
       {error && <ErrorCaja>{error}</ErrorCaja>}
       <div className="flex justify-end gap-2">
@@ -243,7 +243,7 @@ function PuestoComandoModal({ operativoId, mando, soloLectura, onCambio, onClose
     <Overlay onClose={onClose} ancho={520}>
       <div className="flex items-center justify-between px-5 py-4 flex-shrink-0" style={{ borderBottom: '1px solid var(--border)' }}>
         <div className="flex items-center gap-3 min-w-0">
-          <IconBox bg="rgba(229,75,75,0.1)"><RadioTower size={16} style={{ color: 'var(--primary)' }} /></IconBox>
+          <IconBox bg="color-mix(in srgb, var(--primary) 10%, transparent)"><RadioTower size={16} style={{ color: 'var(--primary)' }} /></IconBox>
           <div className="min-w-0">
             <Titulo>Puesto de comando</Titulo>
             <Texto>Coordinadores presentes en el operativo y quién está a cargo.</Texto>
@@ -258,14 +258,14 @@ function PuestoComandoModal({ operativoId, mando, soloLectura, onCambio, onClose
       <div className="px-5 py-4 flex flex-col gap-4 overflow-y-auto" style={{ fontFamily: 'var(--font-family-primary)' }}>
         {/* ── A cargo ── */}
         {mando.aCargo ? (
-          <div className="flex items-start gap-3 p-3 rounded-[var(--radius-input)]" style={{ background: 'rgba(229,75,75,0.06)', border: '1px solid rgba(229,75,75,0.25)' }}>
+          <div className="flex items-start gap-3 p-3 rounded-[var(--radius-input)]" style={{ background: 'color-mix(in srgb, var(--primary) 6%, transparent)', border: '1px solid color-mix(in srgb, var(--primary) 25%, transparent)' }}>
             <Crown size={16} style={{ color: 'var(--primary)', flexShrink: 0, marginTop: 2 }} />
             <div className="min-w-0">
               <p style={{ fontSize: 'var(--text-label)', color: 'var(--muted-foreground)' }}>A cargo del operativo</p>
               <p style={{ fontSize: 'var(--text-base)', color: 'var(--foreground)', fontWeight: 'var(--font-weight-semibold)' }}>
                 {nombreDe(mando.aCargo)}{mando.aCargo.usuarioId === yoId ? ' (vos)' : ''}
               </p>
-              <p style={{ fontSize: 11, color: 'var(--muted-foreground)' }}>
+              <p style={{ fontSize: 'calc(11px * var(--escala-texto))', color: 'var(--muted-foreground)' }}>
                 Desde las {horaCorta(mando.aCargo.desde)} ({haceCuanto(mando.aCargo.desde)}) · lo designó {mando.aCargo.asignadoPorNombre}
               </p>
             </div>
@@ -284,13 +284,13 @@ function PuestoComandoModal({ operativoId, mando, soloLectura, onCambio, onClose
         {/* ── Presentes ── */}
         <div>
           <div className="flex items-center justify-between gap-2 mb-1.5">
-            <p className="uppercase tracking-wider" style={{ fontSize: 10, color: 'var(--muted-foreground)', fontWeight: 'var(--font-weight-semibold)' }}>
+            <p className="uppercase tracking-wider" style={{ fontSize: 'calc(10px * var(--escala-texto))', color: 'var(--muted-foreground)', fontWeight: 'var(--font-weight-semibold)' }}>
               Presentes · {mando.presentes.length}
             </p>
             {!soloLectura && (
               <button type="button" onClick={abrirIngreso} disabled={ocupado}
                 className="flex items-center gap-1 px-2 py-1 rounded-md shrink-0"
-                style={{ fontSize: 11, border: '1px solid var(--border)', background: ingresando ? 'var(--muted)' : 'var(--card)', color: 'var(--foreground)', cursor: 'pointer', fontWeight: 'var(--font-weight-semibold)' }}>
+                style={{ fontSize: 'calc(11px * var(--escala-texto))', border: '1px solid var(--border)', background: ingresando ? 'var(--muted)' : 'var(--card)', color: 'var(--foreground)', cursor: 'pointer', fontWeight: 'var(--font-weight-semibold)' }}>
                 <UserPlus size={11} /> Registrar ingreso
               </button>
             )}
@@ -329,10 +329,10 @@ function PuestoComandoModal({ operativoId, mando, soloLectura, onCambio, onClose
                       <p className="flex items-center gap-1.5" style={{ fontSize: 'var(--text-label)', color: 'var(--foreground)', fontWeight: 'var(--font-weight-semibold)' }}>
                         <span className="truncate">{nombreDe(p)}{p.usuarioId === yoId ? ' (vos)' : ''}</span>
                         {p.aCargo && (
-                          <span className="px-1.5 rounded-full shrink-0" style={{ fontSize: 9.5, background: 'rgba(229,75,75,0.12)', color: 'var(--primary)' }}>A cargo</span>
+                          <span className="px-1.5 rounded-full shrink-0" style={{ fontSize: 'calc(9.5px * var(--escala-texto))', background: 'color-mix(in srgb, var(--primary) 12%, transparent)', color: 'var(--primary)' }}>A cargo</span>
                         )}
                       </p>
-                      <p style={{ fontSize: 10.5, color: 'var(--muted-foreground)' }}>
+                      <p style={{ fontSize: 'calc(10.5px * var(--escala-texto))', color: 'var(--muted-foreground)' }}>
                         Desde las {horaCorta(p.desde)}{p.ingresoPor !== p.usuarioId ? ` · registró el ingreso ${p.ingresoPorNombre}` : ''}
                       </p>
                     </div>
@@ -340,7 +340,7 @@ function PuestoComandoModal({ operativoId, mando, soloLectura, onCambio, onClose
                       <button type="button" disabled={ocupado} onClick={() => pasarMando(p.usuarioId)}
                         title={mando.aCargo ? 'Pasarle el mando' : 'Dejarlo a cargo'}
                         className="flex items-center gap-1 px-2 py-1 rounded-md shrink-0"
-                        style={{ fontSize: 11, border: '1px solid var(--border)', background: 'var(--card)', color: 'var(--foreground)', cursor: 'pointer' }}>
+                        style={{ fontSize: 'calc(11px * var(--escala-texto))', border: '1px solid var(--border)', background: 'var(--card)', color: 'var(--foreground)', cursor: 'pointer' }}>
                         <ArrowRightLeft size={11} />
                         {p.usuarioId === yoId ? 'Tomar el mando' : mando.aCargo ? 'Pasarle el mando' : 'Dejar a cargo'}
                       </button>
@@ -349,7 +349,7 @@ function PuestoComandoModal({ operativoId, mando, soloLectura, onCambio, onClose
                       <button type="button" disabled={ocupado} onClick={() => abrirRetiro(p)}
                         title={p.usuarioId === yoId ? 'Me retiro del puesto de comando' : 'Registrar el retiro de este coordinador'}
                         className="flex items-center gap-1 px-2 py-1 rounded-md shrink-0"
-                        style={{ fontSize: 11, border: '1px solid var(--border)', background: retirando?.id === p.id ? 'var(--muted)' : 'var(--card)', color: 'var(--muted-foreground)', cursor: 'pointer' }}>
+                        style={{ fontSize: 'calc(11px * var(--escala-texto))', border: '1px solid var(--border)', background: retirando?.id === p.id ? 'var(--muted)' : 'var(--card)', color: 'var(--muted-foreground)', cursor: 'pointer' }}>
                         <LogOut size={11} /> Retiro
                       </button>
                     )}
@@ -465,7 +465,7 @@ function HistorialPuestoComando({ mando }: { mando: MandoOperativoApi }) {
           return (
             <li key={e.clave}>
               {mostrarDia && (
-                <p className="uppercase tracking-wider mt-2 mb-1" style={{ fontSize: 10, color: 'var(--muted-foreground)', fontWeight: 'var(--font-weight-semibold)' }}>{d}</p>
+                <p className="uppercase tracking-wider mt-2 mb-1" style={{ fontSize: 'calc(10px * var(--escala-texto))', color: 'var(--muted-foreground)', fontWeight: 'var(--font-weight-semibold)' }}>{d}</p>
               )}
               <div className="grid gap-x-3 py-2" style={{ gridTemplateColumns: '44px 1fr', borderTop: '1px solid var(--border)' }}>
                 <span style={{ fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--foreground)', fontVariantNumeric: 'tabular-nums', paddingTop: 1 }}>
@@ -476,9 +476,9 @@ function HistorialPuestoComando({ mando }: { mando: MandoOperativoApi }) {
                     <span style={{ width: 7, height: 7, borderRadius: '50%', background: PUNTO[e.tipo], display: 'inline-block', flexShrink: 0, marginTop: 5 }} />
                     {e.titulo}
                   </p>
-                  {e.detalle && <p style={{ fontSize: 11, color: 'var(--muted-foreground)', lineHeight: 1.4 }}>{e.detalle}</p>}
+                  {e.detalle && <p style={{ fontSize: 'calc(11px * var(--escala-texto))', color: 'var(--muted-foreground)', lineHeight: 1.4 }}>{e.detalle}</p>}
                   {e.registro && (
-                    <p className="flex items-center gap-1 mt-0.5" style={{ fontSize: 10.5, color: 'var(--muted-foreground)' }}>
+                    <p className="flex items-center gap-1 mt-0.5" style={{ fontSize: 'calc(10.5px * var(--escala-texto))', color: 'var(--muted-foreground)' }}>
                       <User size={11} /> Registró: {e.registro}
                     </p>
                   )}

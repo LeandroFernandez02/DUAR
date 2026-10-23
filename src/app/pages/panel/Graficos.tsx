@@ -16,7 +16,7 @@ function Globo({ x, y, children }: { x: number | string; y: number | string; chi
   return (
     <div className="absolute pointer-events-none px-2.5 py-1.5 rounded-lg whitespace-nowrap"
       style={{ left: x, top: y, transform: 'translate(-50%, calc(-100% - 10px))', background: 'var(--card)', color: 'var(--foreground)',
-        border: '1px solid var(--border)', boxShadow: 'var(--elevation-md)', fontSize: 12, zIndex: 5 }}>
+        border: '1px solid var(--border)', boxShadow: 'var(--elevation-md)', fontSize: 'calc(12px * var(--escala-texto))', zIndex: 5 }}>
       {children}
     </div>
   );
@@ -53,8 +53,8 @@ export function Torta({ datos, colores, unidad, diametro = 160, compacta = false
             <path key={a.i} d={a.d} fill={a.color} opacity={sobre === null || sobre === a.i ? 1 : 0.35}
               onMouseEnter={() => setSobre(a.i)} onMouseLeave={() => setSobre(null)} style={{ cursor: 'default', transition: 'opacity .15s' }} />
           ))}
-          <text x="80" y="78" textAnchor="middle" style={{ fontSize: 22, fontWeight: 700, fill: 'var(--foreground)' }}>{total}</text>
-          <text x="80" y="96" textAnchor="middle" style={{ fontSize: 10, fill: 'var(--muted-foreground)' }}>{unidad}</text>
+          <text x="80" y="78" textAnchor="middle" style={{ fontSize: 'calc(22px * var(--escala-texto))', fontWeight: 700, fill: 'var(--foreground)' }}>{total}</text>
+          <text x="80" y="96" textAnchor="middle" style={{ fontSize: 'calc(10px * var(--escala-texto))', fill: 'var(--muted-foreground)' }}>{unidad}</text>
         </svg>
         {sobre !== null && (
           <Globo x={arcos[sobre].cx * diametro / 160} y={arcos[sobre].cy * diametro / 160}>
@@ -107,7 +107,7 @@ export function OperativosPorMes({ meses, colorBarras, colorLinea, compacto = fa
           {marcas.map(v => (
             <g key={v}>
               <line x1={M.l} x2={W - M.r} y1={y(v)} y2={y(v)} stroke="var(--border)" strokeWidth={1} />
-              <text x={M.l - 6} y={y(v) + 3.5} textAnchor="end" style={{ fontSize: 10, fill: 'var(--muted-foreground)' }}>{v}</text>
+              <text x={M.l - 6} y={y(v) + 3.5} textAnchor="end" style={{ fontSize: 'calc(10px * var(--escala-texto))', fill: 'var(--muted-foreground)' }}>{v}</text>
             </g>
           ))}
           {meses.map((m, i) => {
@@ -120,7 +120,7 @@ export function OperativosPorMes({ meses, colorBarras, colorLinea, compacto = fa
                     fill={colorBarras} />
                 )}
                 {(meses.length <= 14 || i % 2 === 0) && (
-                  <text x={xc(i)} y={H - 8} textAnchor="middle" style={{ fontSize: 10, fill: 'var(--muted-foreground)' }}>{m.etiqueta}</text>
+                  <text x={xc(i)} y={H - 8} textAnchor="middle" style={{ fontSize: 'calc(10px * var(--escala-texto))', fill: 'var(--muted-foreground)' }}>{m.etiqueta}</text>
                 )}
               </g>
             );
@@ -144,7 +144,7 @@ export function OperativosPorMes({ meses, colorBarras, colorLinea, compacto = fa
       </div>
       {!compacto && <details className="mt-2" style={tinta}>
         <summary style={{ cursor: 'pointer' }}>Ver los datos en tabla</summary>
-        <table className="mt-2 w-full" style={{ fontSize: 12, color: 'var(--foreground)' }}>
+        <table className="mt-2 w-full" style={{ fontSize: 'calc(12px * var(--escala-texto))', color: 'var(--foreground)' }}>
           <thead><tr style={{ color: 'var(--muted-foreground)' }}><th className="text-left font-normal">Mes</th><th className="text-right font-normal">Iniciados</th><th className="text-right font-normal">Máximo a la vez</th></tr></thead>
           <tbody>{meses.map(m => <tr key={m.clave}><td>{m.etiqueta}</td><td className="text-right tabular-nums">{m.iniciados}</td><td className="text-right tabular-nums">{m.maxSimultaneos}</td></tr>)}</tbody>
         </table>

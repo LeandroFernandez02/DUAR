@@ -41,7 +41,7 @@ function Dotacion({ agente }: { agente: PersonalOperativoApi }) {
 function Dato({ titulo, children }: { titulo: string; children: ReactNode }) {
   return (
     <div className="min-w-0">
-      <p className="uppercase tracking-wider" style={{ fontSize: '9.5px', fontWeight: 'var(--font-weight-semibold)', color: 'var(--muted-foreground)' }}>{titulo}</p>
+      <p className="uppercase tracking-wider" style={{ fontSize: 'calc(9.5px * var(--escala-texto))', fontWeight: 'var(--font-weight-semibold)', color: 'var(--muted-foreground)' }}>{titulo}</p>
       <p className="mt-0.5 truncate" style={{ fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-medium)', color: 'var(--foreground)' }}>{children}</p>
     </div>
   );
@@ -360,7 +360,7 @@ export default function Agentes() {
                     style={{ fontSize: 'var(--text-label)', color: 'var(--primary)', fontWeight: 'var(--font-weight-semibold)', background: 'none', border: 'none', cursor: 'pointer', padding: '0 4px' }}>
                     Limpiar filtros
                   </button>
-                  <span className="ml-auto" style={{ fontSize: 11, color: 'var(--muted-foreground)' }}>
+                  <span className="ml-auto" style={{ fontSize: 'calc(11px * var(--escala-texto))', color: 'var(--muted-foreground)' }}>
                     {filtrados.length} de {agentes.length} agentes
                   </span>
                 </>
@@ -398,14 +398,14 @@ export default function Agentes() {
                     <AvatarAgente esDuar={agente.esDuar} esConductor={agente.esConductor} esRecursoCritico={agente.esRecursoCritico} tamano={40} />
                     <div>
                       <p style={{ fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--foreground)' }}>{agente.nombre} {agente.apellido}</p>
-                      <p style={{ fontSize: '11px', color: 'var(--muted-foreground)' }}>DNI: {formatearDni(agente.dni)}</p>
+                      <p style={{ fontSize: 'calc(11px * var(--escala-texto))', color: 'var(--muted-foreground)' }}>DNI: {formatearDni(agente.dni)}</p>
                     </div>
                   </div>
                   <div className="flex items-center gap-1">
-                    <button onClick={() => setHistoria(agente)} className="p-1 rounded transition-colors" title="Línea de tiempo" aria-label={`Línea de tiempo de ${agente.nombre} ${agente.apellido}`} style={{ color: 'var(--muted-foreground)' }} onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--primary)'; (e.currentTarget as HTMLElement).style.background = 'rgba(229,75,75,0.08)'; }} onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--muted-foreground)'; (e.currentTarget as HTMLElement).style.background = 'transparent'; }}>
+                    <button onClick={() => setHistoria(agente)} className="p-1 rounded transition-colors" title="Línea de tiempo" aria-label={`Línea de tiempo de ${agente.nombre} ${agente.apellido}`} style={{ color: 'var(--muted-foreground)' }} onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--primary)'; (e.currentTarget as HTMLElement).style.background = 'color-mix(in srgb, var(--primary) 8%, transparent)'; }} onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--muted-foreground)'; (e.currentTarget as HTMLElement).style.background = 'transparent'; }}>
                       <History size={13} />
                     </button>
-                    <button onClick={() => setEditUsuarioId(agente.usuarioId)} className="p-1 rounded transition-colors" title="Editar datos operativos" style={{ color: 'var(--muted-foreground)' }} onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--primary)'; (e.currentTarget as HTMLElement).style.background = 'rgba(229,75,75,0.08)'; }} onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--muted-foreground)'; (e.currentTarget as HTMLElement).style.background = 'transparent'; }}>
+                    <button onClick={() => setEditUsuarioId(agente.usuarioId)} className="p-1 rounded transition-colors" title="Editar datos operativos" style={{ color: 'var(--muted-foreground)' }} onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = 'var(--primary)'; (e.currentTarget as HTMLElement).style.background = 'color-mix(in srgb, var(--primary) 8%, transparent)'; }} onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--muted-foreground)'; (e.currentTarget as HTMLElement).style.background = 'transparent'; }}>
                       <Pencil size={13} />
                     </button>
                     <button onClick={() => { setQuitarTarget(agente); setErrorQuitar(null); }} className="p-1 rounded" title="Quitar del operativo" style={{ color: 'var(--muted-foreground)' }} onMouseEnter={e => { (e.currentTarget as HTMLElement).style.color = '#dc2626'; }} onMouseLeave={e => { (e.currentTarget as HTMLElement).style.color = 'var(--muted-foreground)'; }}>
@@ -416,7 +416,7 @@ export default function Agentes() {
                 {agente.estado && (
                   <div className="mb-3 flex items-center gap-1.5">
                     <EstadoOperativoBadge estado={agente.estado.toLowerCase() as EstadoOperativoAgente} size="xs" />
-                    <span style={{ fontSize: '10px', color: 'var(--muted-foreground)' }}>
+                    <span style={{ fontSize: 'calc(10px * var(--escala-texto))', color: 'var(--muted-foreground)' }}>
                       {haceCuanto(agente.estadoActualizadoEn)}
                     </span>
                   </div>
@@ -437,7 +437,7 @@ export default function Agentes() {
                 <thead>
                   <tr style={{ borderBottom: '1px solid var(--border)', background: 'var(--muted)' }}>
                     {['Agente', 'Estado Op.', 'Dotación', 'Especialidad', ''].map(h => (
-                      <th key={h} className="text-left px-4 py-3 uppercase tracking-wider" style={{ color: 'var(--muted-foreground)', fontSize: '11px', fontWeight: 'var(--font-weight-semibold)', whiteSpace: 'nowrap' }}>{h}</th>
+                      <th key={h} className="text-left px-4 py-3 uppercase tracking-wider" style={{ color: 'var(--muted-foreground)', fontSize: 'calc(11px * var(--escala-texto))', fontWeight: 'var(--font-weight-semibold)', whiteSpace: 'nowrap' }}>{h}</th>
                     ))}
                   </tr>
                 </thead>
@@ -449,7 +449,7 @@ export default function Agentes() {
                           <AvatarAgente esDuar={agente.esDuar} esConductor={agente.esConductor} esRecursoCritico={agente.esRecursoCritico} tamano={32} />
                           <div>
                             <p style={{ color: 'var(--foreground)', fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-medium)' }}>{agente.nombre} {agente.apellido}</p>
-                            <p style={{ color: 'var(--muted-foreground)', fontSize: '11px' }}>{formatearDni(agente.dni)}</p>
+                            <p style={{ color: 'var(--muted-foreground)', fontSize: 'calc(11px * var(--escala-texto))' }}>{formatearDni(agente.dni)}</p>
                           </div>
                         </div>
                       </td>
@@ -457,7 +457,7 @@ export default function Agentes() {
                         {agente.estado ? (
                           <div className="flex items-center gap-1.5">
                             <EstadoOperativoBadge estado={agente.estado.toLowerCase() as EstadoOperativoAgente} size="xs" />
-                            <span style={{ fontSize: '10px', color: 'var(--muted-foreground)' }}>
+                            <span style={{ fontSize: 'calc(10px * var(--escala-texto))', color: 'var(--muted-foreground)' }}>
                               {haceCuanto(agente.estadoActualizadoEn)}
                             </span>
                           </div>
@@ -469,10 +469,10 @@ export default function Agentes() {
                       </td>
                       <td className="px-4 py-3">
                         <div className="flex items-center gap-1">
-                          <button onClick={() => setHistoria(agente)} className="p-1.5 rounded-lg transition-colors" title="Línea de tiempo" aria-label={`Línea de tiempo de ${agente.nombre} ${agente.apellido}`} style={{ color: 'var(--muted-foreground)' }} onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(229,75,75,0.08)'; (e.currentTarget as HTMLElement).style.color = 'var(--primary)'; }} onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = 'var(--muted-foreground)'; }}>
+                          <button onClick={() => setHistoria(agente)} className="p-1.5 rounded-lg transition-colors" title="Línea de tiempo" aria-label={`Línea de tiempo de ${agente.nombre} ${agente.apellido}`} style={{ color: 'var(--muted-foreground)' }} onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'color-mix(in srgb, var(--primary) 8%, transparent)'; (e.currentTarget as HTMLElement).style.color = 'var(--primary)'; }} onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = 'var(--muted-foreground)'; }}>
                             <History size={14} />
                           </button>
-                          <button onClick={() => setEditUsuarioId(agente.usuarioId)} className="p-1.5 rounded-lg transition-colors" title="Editar datos operativos" style={{ color: 'var(--muted-foreground)' }} onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'rgba(229,75,75,0.08)'; (e.currentTarget as HTMLElement).style.color = 'var(--primary)'; }} onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = 'var(--muted-foreground)'; }}>
+                          <button onClick={() => setEditUsuarioId(agente.usuarioId)} className="p-1.5 rounded-lg transition-colors" title="Editar datos operativos" style={{ color: 'var(--muted-foreground)' }} onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = 'color-mix(in srgb, var(--primary) 8%, transparent)'; (e.currentTarget as HTMLElement).style.color = 'var(--primary)'; }} onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = 'var(--muted-foreground)'; }}>
                             <Pencil size={14} />
                           </button>
                           <button onClick={() => { setQuitarTarget(agente); setErrorQuitar(null); }} className="p-1.5 rounded-lg transition-colors" title="Quitar del operativo" style={{ color: 'var(--muted-foreground)' }} onMouseEnter={e => { (e.currentTarget as HTMLElement).style.background = '#fee2e2'; (e.currentTarget as HTMLElement).style.color = '#dc2626'; }} onMouseLeave={e => { (e.currentTarget as HTMLElement).style.background = 'transparent'; (e.currentTarget as HTMLElement).style.color = 'var(--muted-foreground)'; }}>
@@ -567,28 +567,28 @@ export default function Agentes() {
                             display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px',
                             borderRadius: 'var(--radius-input)',
                             border: error ? '1.5px solid #dc2626' : isSelected ? '1.5px solid var(--primary)' : '1.5px solid var(--border)',
-                            background: isSelected ? 'rgba(229,75,75,0.04)' : 'var(--background)',
+                            background: isSelected ? 'color-mix(in srgb, var(--primary) 4%, transparent)' : 'var(--background)',
                             cursor: 'pointer', textAlign: 'left', width: '100%', transition: 'border-color 0.13s, background 0.13s',
                           }}
                         >
-                          <div style={{ width: 38, height: 38, borderRadius: '50%', flexShrink: 0, background: u.esDuar ? 'var(--primary)' : 'var(--accent)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 13, fontWeight: 'var(--font-weight-bold)' }}>
+                          <div style={{ width: 38, height: 38, borderRadius: '50%', flexShrink: 0, background: u.esDuar ? 'var(--primary)' : 'var(--accent)', color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 'calc(13px * var(--escala-texto))', fontWeight: 'var(--font-weight-bold)' }}>
                             {u.nombre.charAt(0)}{u.apellido.charAt(0)}
                           </div>
                           <div style={{ flex: '0 0 auto', minWidth: 150 }}>
                             <p style={{ fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--foreground)', whiteSpace: 'nowrap' }}>{u.nombre} {u.apellido}</p>
-                            {u.institucionNombre && <p style={{ fontSize: '11px', color: 'var(--muted-foreground)', marginTop: 1 }}>{u.institucionNombre}</p>}
+                            {u.institucionNombre && <p style={{ fontSize: 'calc(11px * var(--escala-texto))', color: 'var(--muted-foreground)', marginTop: 1 }}>{u.institucionNombre}</p>}
                           </div>
                           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 4, flex: 1 }}>
                             {u.especialidadNombre && (
-                              <span style={{ fontSize: '10px', fontWeight: 'var(--font-weight-semibold)', background: 'var(--muted)', color: 'var(--muted-foreground)', borderRadius: 999, padding: '2px 7px' }}>{u.especialidadNombre}</span>
+                              <span style={{ fontSize: 'calc(10px * var(--escala-texto))', fontWeight: 'var(--font-weight-semibold)', background: 'var(--muted)', color: 'var(--muted-foreground)', borderRadius: 999, padding: '2px 7px' }}>{u.especialidadNombre}</span>
                             )}
                           </div>
                           <div style={{ width: 20, height: 20, borderRadius: 6, flexShrink: 0, border: isSelected ? '2px solid var(--primary)' : '2px solid var(--border)', background: isSelected ? 'var(--primary)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all 0.13s' }}>
-                            {isSelected && <Check size={12} color="#fff" strokeWidth={3} />}
+                            {isSelected && <Check size={12} color="var(--primary-foreground)" strokeWidth={3} />}
                           </div>
                         </button>
                         {error && (
-                          <p className="mt-1" style={{ fontSize: '11px', color: '#dc2626', paddingLeft: 12 }}>{error}</p>
+                          <p className="mt-1" style={{ fontSize: 'calc(11px * var(--escala-texto))', color: '#dc2626', paddingLeft: 12 }}>{error}</p>
                         )}
                       </div>
                     );

@@ -45,7 +45,7 @@ export default function MainLayout() {
             className="w-7 h-7 rounded-lg flex items-center justify-center flex-shrink-0"
             style={{ background: 'var(--primary)' }}
           >
-            <Shield size={15} color="#fff" />
+            <Shield size={15} color="var(--primary-foreground)" />
           </div>
           <p style={{ color: 'var(--sidebar-foreground)', fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-bold)', letterSpacing: '0.08em' }}>
             DUAR

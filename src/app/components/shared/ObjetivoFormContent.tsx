@@ -221,7 +221,7 @@ function ErrMsg({ msg }: { msg?: string }) {
   if (!msg) return null;
   return (
     <p style={{
-      color: 'var(--primary)', fontSize: '11px',
+      color: 'var(--primary)', fontSize: 'calc(11px * var(--escala-texto))',
       fontFamily: 'var(--font-family-primary)', marginTop: 3,
     }}>
       {msg}
@@ -248,9 +248,9 @@ function Inp({ value, onChange, placeholder, type = 'text', readOnly, maxLength,
         onChange?.(el.value);
         if (inputMode === 'numeric') reponerCursor(el, digitos);
       } : undefined}
-      style={readOnly ? inputRO() : { ...inputSt(), ...(hasError ? { borderColor: 'var(--primary)' } : {}) }}
-      onFocus={!readOnly ? e => { e.currentTarget.style.borderColor = 'var(--primary)'; } : undefined}
-      onBlur={!readOnly ? e => { e.currentTarget.style.borderColor = hasError ? 'var(--primary)' : 'var(--border)'; } : undefined}
+      style={readOnly ? inputRO() : { ...inputSt(), ...(hasError ? { borderColor: 'var(--destructive)' } : {}) }}
+      onFocus={!readOnly ? e => { e.currentTarget.style.borderColor = 'var(--destructive)'; } : undefined}
+      onBlur={!readOnly ? e => { e.currentTarget.style.borderColor = hasError ? 'var(--destructive)' : 'var(--border)'; } : undefined}
     />
   );
 }
@@ -382,7 +382,7 @@ function PhotoSection({
           >
             <div
               className="flex items-center justify-center w-10 h-10 rounded-full"
-              style={{ background: 'rgba(229,75,75,0.08)' }}
+              style={{ background: 'color-mix(in srgb, var(--primary) 8%, transparent)' }}
             >
               <ImagePlus size={18} style={{ color: 'var(--primary)' }} />
             </div>
@@ -397,7 +397,7 @@ function PhotoSection({
               </p>
               <p style={{
                 color: 'var(--muted-foreground)',
-                fontSize: '11px',
+                fontSize: 'calc(11px * var(--escala-texto))',
                 fontFamily: 'var(--font-family-primary)',
                 marginTop: 2,
               }}>
@@ -458,7 +458,7 @@ function PhotoSection({
                     type="button"
                     onClick={() => onEliminarExistente(foto.id)}
                     className="flex items-center justify-center w-7 h-7 rounded-full"
-                    style={{ background: 'rgba(229,75,75,0.7)', border: '1px solid rgba(229,75,75,0.5)', cursor: 'pointer', color: '#fff' }}
+                    style={{ background: 'color-mix(in srgb, var(--destructive) 70%, transparent)', border: '1px solid color-mix(in srgb, var(--destructive) 50%, transparent)', cursor: 'pointer', color: '#fff' }}
                   >
                     <XIcon size={13} />
                   </button>
@@ -466,7 +466,7 @@ function PhotoSection({
               </div>
               <span
                 className="absolute top-1 left-1 rounded px-1"
-                style={{ background: 'rgba(0,0,0,0.5)', color: '#fff', fontSize: '9px', fontFamily: 'var(--font-family-primary)', lineHeight: '16px' }}
+                style={{ background: 'rgba(0,0,0,0.5)', color: '#fff', fontSize: 'calc(9px * var(--escala-texto))', fontFamily: 'var(--font-family-primary)', lineHeight: '16px' }}
               >
                 {idx + 1}
               </span>
@@ -501,7 +501,7 @@ function PhotoSection({
                     type="button"
                     onClick={() => onQuitarNueva(idx)}
                     className="flex items-center justify-center w-7 h-7 rounded-full"
-                    style={{ background: 'rgba(229,75,75,0.7)', border: '1px solid rgba(229,75,75,0.5)', cursor: 'pointer', color: '#fff' }}
+                    style={{ background: 'color-mix(in srgb, var(--destructive) 70%, transparent)', border: '1px solid color-mix(in srgb, var(--destructive) 50%, transparent)', cursor: 'pointer', color: '#fff' }}
                   >
                     <XIcon size={13} />
                   </button>
@@ -509,7 +509,7 @@ function PhotoSection({
               </div>
               <span
                 className="absolute top-1 left-1 rounded px-1.5 py-0.5"
-                style={{ background: 'var(--primary)', color: '#fff', fontSize: '8px', fontWeight: 'var(--font-weight-semibold)', fontFamily: 'var(--font-family-primary)', lineHeight: 1 }}
+                style={{ background: 'var(--primary)', color: 'var(--primary-foreground)', fontSize: 'calc(8px * var(--escala-texto))', fontWeight: 'var(--font-weight-semibold)', fontFamily: 'var(--font-family-primary)', lineHeight: 1 }}
               >
                 Nueva
               </span>
@@ -538,7 +538,7 @@ function PhotoSection({
               <ImagePlus size={16} style={{ color: 'var(--muted-foreground)' }} />
               <span style={{
                 color: 'var(--muted-foreground)',
-                fontSize: '9px',
+                fontSize: 'calc(9px * var(--escala-texto))',
                 fontFamily: 'var(--font-family-primary)',
               }}>
                 Agregar
@@ -613,7 +613,7 @@ export function ObjetivoFormContent({
                 className="flex items-center gap-3 p-4 rounded-[var(--radius-input)] text-left transition-all"
                 style={{
                   border: `2px solid ${tipo === t ? 'var(--primary)' : 'var(--border)'}`,
-                  background: tipo === t ? 'rgba(229,75,75,0.06)' : 'var(--muted)',
+                  background: tipo === t ? 'color-mix(in srgb, var(--primary) 6%, transparent)' : 'var(--muted)',
                   cursor: ro ? 'default' : 'pointer',
                   opacity: ro ? 0.75 : 1,
                 }}
@@ -624,8 +624,8 @@ export function ObjetivoFormContent({
                     background:
                       tipo === t
                         ? t === 'persona'
-                          ? 'rgba(229,75,75,0.15)'
-                          : 'rgba(255,169,135,0.2)'
+                          ? 'color-mix(in srgb, var(--primary) 15%, transparent)'
+                          : 'color-mix(in srgb, var(--accent) 20%, transparent)'
                         : 'var(--background)',
                   }}
                 >
@@ -652,7 +652,7 @@ export function ObjetivoFormContent({
                   </p>
                   <p style={{
                     color: 'var(--muted-foreground)',
-                    fontSize: '11px',
+                    fontSize: 'calc(11px * var(--escala-texto))',
                     fontFamily: 'var(--font-family-primary)',
                   }}>
                     {t === 'persona' ? 'Persona desaparecida' : 'Bien, vehículo, etc.'}
@@ -879,7 +879,7 @@ export function ObjetivoFormContent({
               />
               {errors.nombre && (
                 <p style={{
-                  color: 'var(--primary)', fontSize: '11px',
+                  color: 'var(--primary)', fontSize: 'calc(11px * var(--escala-texto))',
                   fontFamily: 'var(--font-family-primary)', marginTop: 3,
                 }}>
                   {errors.nombre}

@@ -1,125 +1,200 @@
 @import './fonts.css';
 @custom-variant dark (&:is(.dark *));
 
+/* ── CALÍVAR (diseño final del 23/10, Claude Design «Colores Sistema DUAR») ──────────────
+   Azul noche = menú y texto · turquesa = acciones, estado activo, foco y navegación (con texto
+   azul noche encima) · acero = textos secundarios y bordes · niebla = fondo · blanco = tarjetas.
+   Regla de marca: rojo, amarillo y verde SÓLO para estados, nunca como decoración. */
 :root {
-  --font-size: 16px;
+  /* Accesibilidad · tamaño de texto (data-texto en <html>): todos los tamaños se multiplican por esta escala */
+  --escala-texto: 1;
+  --font-size: calc(16px * var(--escala-texto));
   /* Typography variables */
-  --text-h1: 24px;
-  --text-h2: 20px;
-  --text-h3: 16px;
-  --text-h4: 14px;
-  --text-base: 14px;
-  --text-label: 12px;
+  --text-h1: calc(24px * var(--escala-texto));
+  --text-h2: calc(20px * var(--escala-texto));
+  --text-h3: calc(16px * var(--escala-texto));
+  --text-h4: calc(14px * var(--escala-texto));
+  --text-base: calc(14px * var(--escala-texto));
+  --text-label: calc(12px * var(--escala-texto));
+  --text-small: calc(11px * var(--escala-texto));
+  --text-micro: calc(10px * var(--escala-texto));
   --font-weight-extrabold: 800;
   --font-weight-bold: 700;
   --font-weight-semibold: 600;
   --font-weight-medium: 500;
   --font-weight-normal: 400;
   --font-family-primary: 'Inter', sans-serif;
+  /* Coordenadas, área/perímetro y escala */
+  --font-family-mono: ui-monospace, 'SFMono-Regular', Menlo, monospace;
+  --tracking-overline: 0.05em;
 
-  /* DUAR Palette - #E54B4B | #FFA987 | #F7EBE8 | #444140 */
-  --duar-red: #E54B4B;
-  --duar-salmon: #FFA987;
-  --duar-cream: #F7EBE8;
-  --duar-dark: #444140;
+  /* Marca */
+  --calivar-noche: #0b1e2d;
+  --calivar-turquesa: #00c2b3;
+  --calivar-acero: #5b6b7a;
+  --calivar-niebla: #e6e9ee;
+  --calivar-blanco: #ffffff;
 
-  /* Background: cream */
-  --background: #F7EBE8;
-  /* Text / foreground: dark charcoal */
-  --foreground: #444140;
-  /* Card: pure white */
-  --card: #FFFFFF;
-  --card-foreground: #444140;
-  /* Popovers */
-  --popover: #FFFFFF;
-  --popover-foreground: #444140;
-  /* Primary: DUAR red */
-  --primary: #E54B4B;
-  --primary-foreground: #FFFFFF;
-  /* Secondary: salmon tint */
-  --secondary: rgba(255, 169, 135, 0.18);
-  --secondary-foreground: #444140;
-  /* Muted */
-  --muted: rgba(68, 65, 64, 0.06);
-  --muted-foreground: rgba(68, 65, 64, 0.55);
-  /* Accent: salmon */
-  --accent: #FFA987;
-  --accent-foreground: #444140;
-  /* Destructive */
+  /* Semánticos · tema claro en capas: menú azul noche · fondo niebla · tarjetas blancas con borde acero · detalles turquesa */
+  --background: #dfe4ea;
+  --foreground: #0b1e2d;
+  --card: #ffffff;
+  --card-foreground: #0b1e2d;
+  --card-border: rgba(91, 107, 122, 0.16);
+  --popover: #ffffff;
+  --popover-foreground: #0b1e2d;
+  --primary: #00c2b3;
+  --primary-foreground: #0b1e2d;
+  --secondary: #e6e9ee;
+  --secondary-foreground: #0b1e2d;
+  --muted: rgba(91, 107, 122, 0.09);
+  --muted-foreground: #5b6b7a;
+  --accent: #5b6b7a;
+  --accent-foreground: #ffffff;
+  --accent-strong: #3d4954;
   --destructive: #dc2626;
   --destructive-foreground: #ffffff;
-  /* Borders */
-  --border: rgba(68, 65, 64, 0.15);
-  /* Inputs */
-  --input: rgba(68, 65, 64, 0.08);
-  --input-background: #FFFFFF;
-  /* Focus ring */
-  --ring: #E54B4B;
-  /* Elevation */
-  --elevation-sm: 0px 4px 24px 0px rgba(68, 65, 64, 0.10);
-  --elevation-md: 0px 8px 32px 0px rgba(68, 65, 64, 0.14);
+  --border: rgba(91, 107, 122, 0.26);
+  --input: rgba(91, 107, 122, 0.08);
+  --input-background: #ffffff;
+  --ring: #00c2b3;
+  /* 0% = superficies claras (badges con fondo pastel); 100% = oscuras (tinte translúcido + borde del color de estado) */
+  --tinte-oscuro: 0%;
 
-  /* Charts */
-  --chart-1: #E54B4B;
-  --chart-2: #FFA987;
-  --chart-3: #444140;
-  --chart-4: #c0392b;
-  --chart-5: #d4886a;
+  /* Elevation */
+  --elevation-sm: 0px 1px 2px 0px rgba(11, 30, 45, 0.06), 0px 4px 14px 0px rgba(11, 30, 45, 0.06);
+  --elevation-md: 0px 8px 28px 0px rgba(11, 30, 45, 0.16);
+  --elevation-grupo: 0px 6px 20px 0px rgba(11, 30, 45, 0.16), 0px 1px 3px 0px rgba(11, 30, 45, 0.10);
+  --elevation-modal: 0 24px 64px rgba(0, 0, 0, 0.35);
+
+  /* Colores de estado — SÓLO para estados */
+  --status-green: #16a34a;   --status-green-bg: #dcfce7;  --status-green-fg: #15803d;
+  --status-yellow: #ca8a04;  --status-yellow-bg: #fef9c3; --status-yellow-fg: #a16207;
+  --status-red: #dc2626;     --status-red-bg: #fee2e2;    --status-red-fg: #b91c1c;
+  --status-amber: #d97706;   --status-amber-bg: #fef3c7;  --status-amber-fg: #92400e;
+  --status-blue: #2563eb;    --status-blue-bg: #dbeafe;   --status-blue-fg: #1d4ed8;
+  --status-gray: #6b7280;    --status-gray-bg: #e5e7eb;   --status-gray-fg: #374151;
+  --status-teal: #0d9488;
+  --status-indigo: #4f46e5;
+  --status-cyan: #0891b2;
+
+  /* Marcadores del mapa */
+  --marker-punto-cero: #00c2b3;
+  --marker-punto-cero-bg: #d6f5f2;
+  --marker-puesto-comando: #2563eb;
+  --marker-poi: #ca8a04;
+  --marker-hallazgo: #16a34a;
+
+  /* Paleta de grupos (grupo.model.js PALETA): el color del polígono y sus trazas */
+  --grupo-1: #E0662B; --grupo-2: #2563EB; --grupo-3: #16A34A; --grupo-4: #D97706; --grupo-5: #7C3AED;
+  --grupo-6: #0891B2; --grupo-7: #DB2777; --grupo-8: #65A30D; --grupo-9: #EA580C; --grupo-10: #475569;
+
+  /* Gráficos · series del panel (orden fijo): turquesa, azul noche, petróleo, acero, turquesa claro, niebla oscura */
+  --chart-1: #00c2b3; --chart-2: #0b1e2d; --chart-3: #5b6b7a; --chart-4: #7fded6; --chart-5: #a9b4bf;
+  --serie-1: #00a89b; --serie-2: #0b1e2d; --serie-3: #2f6f8f; --serie-4: #7d8c9a; --serie-5: #7fded6; --serie-6: #b8c2cc;
 
   /* Radius */
   --radius: 10px;
+  --radius-sm: 6px;
+  --radius-md: 8px;
   --radius-button: 8px;
-  --radius-card: 14px;
   --radius-input: 8px;
+  --radius-lg: 12px;
+  --radius-card: 14px;
+  --radius-pill: 999px;
 
-  /* Sidebar: dark charcoal */
-  --sidebar: #444140;
-  --sidebar-foreground: #F7EBE8;
-  --sidebar-primary: #E54B4B;
-  --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: rgba(247, 235, 232, 0.10);
-  --sidebar-accent-foreground: #F7EBE8;
-  --sidebar-border: rgba(247, 235, 232, 0.10);
-  --sidebar-ring: #E54B4B;
+  /* Layout */
+  --sidebar-width: 260px;
+  --sidebar-width-collapsed: 80px;
+  --panel-detail-width: 340px;
+
+  /* Overlays */
+  --scrim: rgba(0, 0, 0, 0.5);
+  --scrim-modal: rgba(0, 0, 0, 0.65);
+  --scrim-hoja: rgba(11, 30, 45, 0.45);
+  --map-hint-bg: rgba(0, 0, 0, 0.55);
+
+  /* Menú (lateral en escritorio, inferior en mobile): azul noche en los dos temas */
+  --sidebar: #0b1e2d;
+  --sidebar-foreground: #ffffff;
+  --sidebar-primary: #00c2b3;
+  --sidebar-primary-foreground: #0b1e2d;
+  --sidebar-activo: #00c2b3;
+  --sidebar-texto: #c9d1d9;
+  --sidebar-texto-activo: #0b1e2d;
+  --sidebar-dim: 0.7;
+  --sidebar-accent: rgba(230, 233, 238, 0.08);
+  --sidebar-accent-foreground: #ffffff;
+  --sidebar-border: rgba(230, 233, 238, 0.10);
+  --sidebar-ring: #00c2b3;
+
+  /* Barra superior mobile/tablet */
+  --cabecera-movil: #ffffff;
+  --cabecera-movil-sombra: 0 2px 4px rgba(11, 30, 45, 0.06), 0 6px 16px -4px rgba(11, 30, 45, 0.12);
 }
 
+/* Tema oscuro «acero» en capas: menú azul noche · fondo acero oscuro · tarjetas un nivel más claro · ventanas un nivel más arriba */
 .dark {
-  --background: #1c1917;
-  --foreground: #F7EBE8;
-  --card: #2a2725;
-  --card-foreground: #F7EBE8;
-  --popover: #2a2725;
-  --popover-foreground: #F7EBE8;
-  --primary: #E54B4B;
-  --primary-foreground: #FFFFFF;
-  --secondary: rgba(255, 169, 135, 0.15);
-  --secondary-foreground: #F7EBE8;
-  --muted: rgba(247, 235, 232, 0.08);
-  --muted-foreground: rgba(247, 235, 232, 0.50);
-  --accent: #FFA987;
-  --accent-foreground: #1c1917;
-  --destructive: #ef4444;
-  --destructive-foreground: #ffffff;
-  --border: rgba(247, 235, 232, 0.12);
-  --input: rgba(247, 235, 232, 0.10);
-  --input-background: #2a2725;
-  --ring: #E54B4B;
-  --elevation-sm: 0px 4px 24px 0px rgba(0, 0, 0, 0.30);
-  --elevation-md: 0px 8px 32px 0px rgba(0, 0, 0, 0.40);
-  --chart-1: #E54B4B;
-  --chart-2: #FFA987;
-  --chart-3: #F7EBE8;
-  --chart-4: #c0392b;
-  --chart-5: #d4886a;
-  --sidebar: #111010;
-  --sidebar-foreground: #F7EBE8;
-  --sidebar-primary: #E54B4B;
-  --sidebar-primary-foreground: #FFFFFF;
-  --sidebar-accent: rgba(247, 235, 232, 0.08);
-  --sidebar-accent-foreground: #F7EBE8;
-  --sidebar-border: rgba(247, 235, 232, 0.08);
-  --sidebar-ring: #E54B4B;
+  --background: #26323d;
+  --foreground: #e6e9ee;
+  --card: #313f4c;
+  --card-foreground: #e6e9ee;
+  --card-border: rgba(160, 176, 191, 0.16);
+  --popover: #3b4a58;
+  --popover-foreground: #e6e9ee;
+  --secondary: rgba(127, 147, 166, 0.16);
+  --secondary-foreground: #e6e9ee;
+  --muted: rgba(127, 147, 166, 0.12);
+  --muted-foreground: #a3b1bd;
+  --accent: #8a9aa8;
+  --accent-foreground: #07141f;
+  --accent-strong: #c3ccd5;
+  --destructive: #f87171;
+  --border: rgba(127, 147, 166, 0.26);
+  --input: rgba(127, 147, 166, 0.12);
+  --input-background: #2a3743;
+  --tinte-oscuro: 100%;
+  --elevation-sm: 0px 1px 0px 0px rgba(255, 255, 255, 0.03) inset, 0px 6px 20px 0px rgba(0, 0, 0, 0.28);
+  --elevation-md: 0px 10px 32px 0px rgba(0, 0, 0, 0.45);
+  --elevation-grupo: 0px 4px 24px 0px rgba(0, 0, 0, 0.32);
+  --cabecera-movil: #5b6b7a;
+  --cabecera-movil-sub: #e6e9ee;
+  --cabecera-movil-sombra: 0 2px 4px rgba(0, 0, 0, 0.18), 0 6px 16px -4px rgba(0, 0, 0, 0.32);
+  --marker-punto-cero-bg: rgba(0, 194, 179, 0.20);
+  --chart-2: #e6e9ee;
+  --serie-1: #00c2b3; --serie-2: #e6e9ee; --serie-3: #4a9cc4; --serie-4: #8a9aa8; --serie-5: #7fded6; --serie-6: #5b6b7a;
 }
+
+/* ── Accesibilidad (WCAG 2.1 AA): tamaño de texto, alto contraste y foco visible ──────────
+   Los atributos los pone src/app/context/accesibilidad.ts en <html>. */
+:root[data-texto="grande"] { --escala-texto: 1.15; }
+:root[data-texto="muy-grande"] { --escala-texto: 1.3; }
+/* Alto contraste (1.4.3 / 1.4.11): textos secundarios, bordes y menú a pleno. Se repite con .dark para ganarle al tema oscuro */
+:root[data-contraste="alto"],
+:root[data-contraste="alto"].dark {
+  --muted-foreground: color-mix(in srgb, var(--foreground) 84%, var(--background));
+  --border: color-mix(in srgb, var(--foreground) 48%, transparent);
+  --card-border: color-mix(in srgb, var(--foreground) 30%, transparent);
+  --input: color-mix(in srgb, var(--foreground) 10%, transparent);
+  --sidebar-dim: 1;
+  --sidebar-texto: var(--sidebar-foreground);
+  --sidebar-border: color-mix(in srgb, var(--sidebar-foreground) 30%, transparent);
+}
+:root[data-contraste="alto"] .status-badge { box-shadow: inset 0 0 0 1px currentColor !important; }
+/* Foco visible (2.4.7), encendido por defecto: doble anillo, color de texto por fuera y turquesa por dentro */
+:root[data-foco="on"] :focus-visible {
+  outline: 2px solid var(--foreground) !important;
+  outline-offset: 2px !important;
+  box-shadow: 0 0 0 3px var(--ring) !important;
+}
+:root[data-foco="on"] aside :focus-visible,
+:root[data-foco="on"] nav[aria-label="Secciones"] :focus-visible { outline-color: var(--sidebar-foreground) !important; }
+
+::selection { background: rgba(0, 194, 179, 0.30); }
+
+/* Barra de scroll: la nativa se oculta y src/app/utils/scrollSuave.ts dibuja una superpuesta, gris suave, sin flechas, que no ocupa lugar */
+* { scrollbar-width: none; }
+*::-webkit-scrollbar { display: none; }
 
 @theme inline {
   --color-background: var(--background);
@@ -142,6 +217,8 @@
   --color-input: var(--input);
   --color-input-background: var(--input-background);
   --color-ring: var(--ring);
+  --color-card-border: var(--card-border);
+  --color-accent-strong: var(--accent-strong);
   --color-chart-1: var(--chart-1);
   --color-chart-2: var(--chart-2);
   --color-chart-3: var(--chart-3);
@@ -164,6 +241,9 @@
   --color-sidebar-ring: var(--sidebar-ring);
   --shadow-elevation-sm: var(--elevation-sm);
   --shadow-elevation-md: var(--elevation-md);
+  --shadow-elevation-grupo: var(--elevation-grupo);
+  --shadow-elevation-modal: var(--elevation-modal);
+  --font-mono: var(--font-family-mono);
 }
 
 @layer base {
@@ -254,16 +334,9 @@ html {
   }
 }
 
-/* ── Tarjeta de grupo (Módulo 4) ────────────────────────────────────────────
-   Su fondo es gris (--muted), igual que el panel "Grupos del operativo" que
-   la contiene: sin una sombra más marcada que --elevation-sm, en modo claro
-   las dos superficies se confunden. En oscuro la sombra por defecto ya
-   se distingue bien (fondo casi negro), así que ahí se deja la de siempre. */
+/* ── Tarjeta de grupo (Módulo 4): sombra propia del diseño CALÍVAR (--elevation-grupo, también en oscuro) */
 .tarjeta-grupo {
-  box-shadow: 0px 6px 20px 0px rgba(68, 65, 64, 0.20), 0px 1px 3px 0px rgba(68, 65, 64, 0.14);
-}
-.dark .tarjeta-grupo {
-  box-shadow: var(--elevation-sm);
+  box-shadow: var(--elevation-grupo);
 }
 
 /* ── Spin animation (used by refresh icons) ────────────────────────────────── */
@@ -299,3 +372,5 @@ html {
 
 /* Chips de estado en modo oscuro: el texto oscuro de los de fondo translúcido no se veía (Testeo 15/10, punto 25). */
 .dark .status-badge { --badge-fg: var(--badge-fg-dark) !important; }
+
+.leaflet-container { font-family: var(--font-family-primary); }

@@ -11,7 +11,7 @@ export default function NoEncontrada() {
     <div className="min-h-screen flex items-center justify-center p-6" style={{ background: 'var(--background)', fontFamily: 'var(--font-family-primary)' }}>
       <div className="flex flex-col items-center text-center gap-4" style={{ maxWidth: 380 }}>
         <div className="w-12 h-12 rounded-2xl flex items-center justify-center" style={{ background: 'var(--primary)' }}>
-          <Shield size={22} color="#fff" />
+          <Shield size={22} color="var(--primary-foreground)" />
         </div>
         <div>
           <h1 style={{ color: 'var(--foreground)', fontSize: 'var(--text-h2)', fontWeight: 'var(--font-weight-semibold)' }}>

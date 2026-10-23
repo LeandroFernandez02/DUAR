@@ -61,7 +61,7 @@ export function RecuperarContrasenaModal({ onClose }: Props) {
       ref={backdropRef}
       onClick={handleBackdropClick}
       className="fixed inset-0 z-50 flex items-center justify-center p-4"
-      style={{ background: 'rgba(68, 65, 64, 0.55)', backdropFilter: 'blur(4px)' }}
+      style={{ background: 'var(--scrim)', backdropFilter: 'blur(4px)' }}
       role="dialog"
       aria-modal="true"
       aria-label="Recuperar contraseña"
@@ -77,7 +77,7 @@ export function RecuperarContrasenaModal({ onClose }: Props) {
         {/* Header stripe */}
         <div
           className="h-1 w-full"
-          style={{ background: 'linear-gradient(90deg, var(--duar-red), var(--duar-salmon))' }}
+          style={{ background: 'linear-gradient(90deg, var(--primary), var(--chart-4))' }}
         />
 
         {/* Close button */}
@@ -98,7 +98,7 @@ export function RecuperarContrasenaModal({ onClose }: Props) {
               {/* Icon */}
               <div
                 className="w-12 h-12 rounded-xl flex items-center justify-center mb-5"
-                style={{ background: 'rgba(229,75,75,0.10)' }}
+                style={{ background: 'color-mix(in srgb, var(--primary) 10%, transparent)' }}
               >
                 <Mail size={22} style={{ color: 'var(--primary)' }} />
               </div>
@@ -269,7 +269,7 @@ export function RecuperarContrasenaModal({ onClose }: Props) {
               {/* Success icon */}
               <div
                 className="w-14 h-14 rounded-2xl flex items-center justify-center mb-5"
-                style={{ background: 'rgba(229,75,75,0.10)' }}
+                style={{ background: 'color-mix(in srgb, var(--primary) 10%, transparent)' }}
               >
                 <CheckCircle size={28} style={{ color: 'var(--primary)' }} />
               </div>
@@ -291,8 +291,8 @@ export function RecuperarContrasenaModal({ onClose }: Props) {
               <div
                 className="rounded-xl p-4 mb-6"
                 style={{
-                  background: 'rgba(229,75,75,0.07)',
-                  border: '1px solid rgba(229,75,75,0.18)',
+                  background: 'color-mix(in srgb, var(--primary) 7%, transparent)',
+                  border: '1px solid color-mix(in srgb, var(--primary) 18%, transparent)',
                 }}
               >
                 <p
@@ -349,7 +349,7 @@ export function RecuperarContrasenaModal({ onClose }: Props) {
           <span
             style={{
               color: 'var(--muted-foreground)',
-              fontSize: '11px',
+              fontSize: 'calc(11px * var(--escala-texto))',
               fontFamily: 'var(--font-family-primary)',
             }}
           >

@@ -102,7 +102,7 @@ export default function InformeModal({ operativoId, onClose }: { operativoId: st
       >
       <div className="flex items-center justify-between gap-3 px-5 py-4 flex-shrink-0" style={{ borderBottom: '1px solid var(--border)' }}>
         <div className="flex items-center gap-3">
-          <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'rgba(229,75,75,0.1)' }}>
+          <div className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0" style={{ background: 'color-mix(in srgb, var(--primary) 10%, transparent)' }}>
             <FileText size={17} style={{ color: 'var(--primary)' }} />
           </div>
           <div>
@@ -126,7 +126,7 @@ export default function InformeModal({ operativoId, onClose }: { operativoId: st
       <div className="p-5 flex flex-col gap-5 overflow-y-auto">
 
       {error && (
-        <div className="flex items-center gap-2 px-4 py-3 rounded-lg" style={{ background: 'rgba(229,75,75,0.08)', color: 'var(--primary)', fontSize: 'var(--text-base)' }}>
+        <div className="flex items-center gap-2 px-4 py-3 rounded-lg" style={{ background: 'color-mix(in srgb, var(--destructive) 8%, transparent)', color: 'var(--destructive)', fontSize: 'var(--text-base)' }}>
           <AlertCircle size={16} /> {error}
         </div>
       )}
@@ -137,7 +137,7 @@ export default function InformeModal({ operativoId, onClose }: { operativoId: st
           <div className="flex flex-col gap-1.5" style={{ minWidth: 0, flex: '1 1 320px' }}>
             <span
               className="self-start px-2 py-0.5 rounded"
-              style={{ border: '1.5px solid var(--primary)', color: 'var(--primary)', fontSize: 11, fontWeight: 700, letterSpacing: '0.08em' }}
+              style={{ border: '1.5px solid var(--primary)', color: 'var(--primary)', fontSize: 'calc(11px * var(--escala-texto))', fontWeight: 700, letterSpacing: '0.08em' }}
             >
               {final ? 'INFORME FINAL' : 'INFORME PARCIAL'}
             </span>

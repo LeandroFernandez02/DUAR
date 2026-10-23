@@ -74,8 +74,8 @@ interface Props {
 }
 
 const cssVar = (n: string, f: string) => getComputedStyle(document.documentElement).getPropertyValue(n).trim() || f;
-const PRI = () => cssVar('--primary', '#E54B4B');
-const FG = () => cssVar('--foreground', '#444140');
+const PRI = () => cssVar('--primary', '#00c2b3');
+const FG = () => cssVar('--foreground', '#0b1e2d');
 
 function iconoPin(tipo: TipoSimbolo, etiqueta: string | null, sel: boolean) {
   const { html, alto } = pinHtml(tipo, etiqueta, sel);
@@ -394,7 +394,7 @@ export default function Lienzo(props: Props) {
   }, [herr, moviendo]);
 
   const sep = <span style={{ width: 1, height: 12, background: 'var(--border)' }} />;
-  const caja = { display: 'flex', alignItems: 'center', padding: '5px 10px', borderRadius: 'var(--radius-md)', background: 'var(--card)', border: '1px solid var(--border)', boxShadow: 'var(--elevation-sm)', color: 'var(--foreground)', fontFamily: 'var(--font-family-mono, monospace)', fontSize: 11 } as const;
+  const caja = { display: 'flex', alignItems: 'center', padding: '5px 10px', borderRadius: 'var(--radius-md)', background: 'var(--card)', border: '1px solid var(--border)', boxShadow: 'var(--elevation-sm)', color: 'var(--foreground)', fontFamily: 'var(--font-family-mono, monospace)', fontSize: 'calc(11px * var(--escala-texto))' } as const;
   return (
     <div style={{ position: 'absolute', inset: 0 }}>
       <style>{ESTILOS}</style>

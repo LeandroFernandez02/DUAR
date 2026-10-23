@@ -21,7 +21,7 @@ export default function LineaTiempo({ periodo, onCambiar, anioMin, iniciadosPorM
   const conteo = iniciadosPorMes(anio);
   const max = Math.max(1, ...conteo);
   const boton = (activo: boolean) => ({
-    background: activo ? 'var(--primary)' : 'var(--muted)', color: activo ? '#fff' : 'var(--foreground)',
+    background: activo ? 'var(--primary)' : 'var(--muted)', color: activo ? 'var(--primary-foreground)' : 'var(--foreground)',
     border: 'none', cursor: 'pointer', fontSize: 'var(--text-label)', fontWeight: 600,
   });
 
@@ -47,7 +47,7 @@ export default function LineaTiempo({ periodo, onCambiar, anioMin, iniciadosPorM
             <ChevronRight size={16} />
           </button>
         </div>
-        <span className="ml-auto" style={{ fontSize: 12, color: 'var(--muted-foreground)' }}>
+        <span className="ml-auto" style={{ fontSize: 'calc(12px * var(--escala-texto))', color: 'var(--muted-foreground)' }}>
           {periodo.tipo === 'hoy' ? 'Mostrando: ahora' : periodo.tipo === 'anio' ? `Mostrando: todo ${anio}` : `Mostrando: ${NOMBRE_MES[periodo.mes]} ${anio}`}
         </span>
       </div>
@@ -63,12 +63,12 @@ export default function LineaTiempo({ periodo, onCambiar, anioMin, iniciadosPorM
             <button key={m} disabled={futuro} onClick={() => onCambiar({ tipo: 'mes', anio, mes: i })}
               title={futuro ? `${m} ${anio}: todavía no` : `${m} ${anio}: ${n} ${n === 1 ? 'operativo iniciado' : 'operativos iniciados'}`}
               className="flex flex-col items-center gap-1 pt-1 pb-0.5 rounded-md disabled:cursor-default"
-              style={{ background: elegido ? 'rgba(229,75,75,0.12)' : 'transparent', border: 'none', cursor: futuro ? 'default' : 'pointer', opacity: futuro ? 0.35 : 1 }}>
+              style={{ background: elegido ? 'color-mix(in srgb, var(--primary) 12%, transparent)' : 'transparent', border: 'none', cursor: futuro ? 'default' : 'pointer', opacity: futuro ? 0.35 : 1 }}>
               <div className="w-full flex items-end justify-center" style={{ height: 22 }}>
                 <div style={{ width: '55%', height: n ? `${Math.max(14, (n / max) * 100)}%` : 2, borderRadius: 2,
                   background: elegido || esHoy ? 'var(--primary)' : 'var(--muted-foreground)', opacity: elegido || esHoy ? 1 : 0.45 }} />
               </div>
-              <span style={{ fontSize: 10, color: elegido || esHoy ? 'var(--primary)' : 'var(--muted-foreground)', fontWeight: elegido || esHoy ? 700 : 500 }}>
+              <span style={{ fontSize: 'calc(10px * var(--escala-texto))', color: elegido || esHoy ? 'var(--primary)' : 'var(--muted-foreground)', fontWeight: elegido || esHoy ? 700 : 500 }}>
                 {m.slice(0, 3)}
               </span>
             </button>

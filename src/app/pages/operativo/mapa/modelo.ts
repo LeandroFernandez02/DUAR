@@ -33,7 +33,7 @@ export function aTrackVista(t: TrackApi, grupos: GrupoApi[]): TrackVista {
   return {
     ...t,
     puntos: (t.geometria?.coordinates ?? []).map(c => [c[1], c[0]] as LatLng),
-    color: colorDeGrupo(grupos, t.grupoId) ?? t.color ?? '#444140',
+    color: colorDeGrupo(grupos, t.grupoId) ?? t.color ?? '#475569',
   };
 }
 

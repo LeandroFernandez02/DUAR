@@ -10,7 +10,7 @@ import type { TipoInstalacionApi } from '../../../services/api';
 
 /* ── Botón ── */
 const VARIANTES: Record<string, { bg: string; fg: string; bd: string; hover: CSSProperties }> = {
-  primary: { bg: 'var(--primary)', fg: '#fff', bd: 'var(--primary)', hover: { opacity: 0.88 } },
+  primary: { bg: 'var(--primary)', fg: 'var(--primary-foreground)', bd: 'var(--primary)', hover: { opacity: 0.88 } },
   muted:   { bg: 'var(--muted)', fg: 'var(--foreground)', bd: 'var(--border)', hover: { background: 'var(--border)' } },
   outline: { bg: 'var(--card)', fg: 'var(--foreground)', bd: 'var(--border)', hover: { borderColor: 'var(--foreground)' } },
   ghost:   { bg: 'transparent', fg: 'var(--muted-foreground)', bd: 'transparent', hover: { color: 'var(--foreground)', background: 'var(--muted)' } },
@@ -73,11 +73,11 @@ export function Modal({ titulo, subtitulo, icono: I, onClose, children, pie, anc
 
 /* ── Campos ── */
 export const rotulo: CSSProperties = {
-  color: 'var(--muted-foreground)', fontSize: 11, fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0,
+  color: 'var(--muted-foreground)', fontSize: 'calc(11px * var(--escala-texto))', fontWeight: 600, textTransform: 'uppercase', letterSpacing: '0.05em', margin: 0,
 };
 const caja = (multi?: boolean, error?: boolean): CSSProperties => ({
   width: '100%', boxSizing: 'border-box', padding: '8px 12px', borderRadius: 'var(--radius-input)', outline: 'none',
-  background: 'var(--input-background)', border: `1px solid ${error ? 'var(--primary)' : 'var(--border)'}`, color: 'var(--foreground)',
+  background: 'var(--input-background)', border: `1px solid ${error ? 'var(--destructive)' : 'var(--border)'}`, color: 'var(--foreground)',
   fontFamily: 'var(--font-family-primary)', fontSize: 'var(--text-base)', lineHeight: multi ? 1.55 : 1.5, resize: 'none',
 });
 
@@ -113,7 +113,7 @@ export function Selector({ etiqueta, valor, onChange, opciones, overline, disabl
 }
 
 export function ErrorTexto({ children }: { children: ReactNode }) {
-  return <p role="alert" style={{ margin: 0, fontSize: 12, color: '#dc2626', lineHeight: 1.5 }}>{children}</p>;
+  return <p role="alert" style={{ margin: 0, fontSize: 'calc(12px * var(--escala-texto))', color: '#dc2626', lineHeight: 1.5 }}>{children}</p>;
 }
 
 /* ── Marcadores (símbolos tácticos) ── */
@@ -129,7 +129,7 @@ const SVG = {
   bandera: '<path d="M4 15s1-1 4-1 5 2 8 2 4-1 4-1V3s-1 1-4 1-5-2-8-2-4 1-4 1z"/><line x1="4" x2="4" y1="22" y2="15"/>',
 };
 export const SIMBOLOS: Record<TipoSimbolo, Simbolo> = {
-  puntoCero: { color: 'var(--primary)', bg: 'rgba(229,75,75,0.12)', label: 'Punto Cero', icono: Crosshair, svg: SVG.crosshair },
+  puntoCero: { color: 'var(--primary)', bg: 'color-mix(in srgb, var(--primary) 12%, transparent)', label: 'Punto Cero', icono: Crosshair, svg: SVG.crosshair },
   POI: { color: '#ca8a04', bg: '#fef9c3', label: 'Punto de interés', icono: MapPin, svg: SVG.mapPin },
   HALLAZGO: { color: '#16a34a', bg: '#dcfce7', label: 'Hallazgo', icono: TriangleAlert, svg: SVG.alerta },
   PUESTO_COMANDO: { ...SCI, label: 'Puesto de Comando', icono: Flag, svg: SVG.bandera, glifo: 'PC' },
@@ -197,8 +197,8 @@ export function SeccionArbol({ titulo, icono: I, insignia, abierta, onToggle, ma
         </span>
         {onMarcar && <input type="checkbox" checked={!!marcada} aria-label={`Mostrar ${titulo}`} onClick={e => e.stopPropagation()} onChange={e => onMarcar(e.target.checked)} style={chk} />}
         <I size={14} color={abierta ? 'var(--primary)' : 'var(--muted-foreground)'} />
-        <span style={{ flex: 1, minWidth: 0, fontSize: 11, fontWeight: 700, letterSpacing: '0.03em', textTransform: 'uppercase', color: 'var(--foreground)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{titulo}</span>
-        {insignia != null && <span style={{ fontSize: 10, fontWeight: 600, padding: '1px 7px', borderRadius: 999, background: abierta ? 'var(--card)' : 'var(--muted)', color: 'var(--muted-foreground)', whiteSpace: 'nowrap' }}>{insignia}</span>}
+        <span style={{ flex: 1, minWidth: 0, fontSize: 'calc(11px * var(--escala-texto))', fontWeight: 700, letterSpacing: '0.03em', textTransform: 'uppercase', color: 'var(--foreground)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{titulo}</span>
+        {insignia != null && <span style={{ fontSize: 'calc(10px * var(--escala-texto))', fontWeight: 600, padding: '1px 7px', borderRadius: 999, background: abierta ? 'var(--card)' : 'var(--muted)', color: 'var(--muted-foreground)', whiteSpace: 'nowrap' }}>{insignia}</span>}
       </div>
       {abierta && <div style={{ padding: '6px 8px 12px', display: 'flex', flexDirection: 'column', gap: 1 }}>{children}</div>}
     </div>
@@ -224,7 +224,7 @@ export function FilaArbol({ etiqueta, meta, muestra, marcada, onMarcar, seleccio
         color: seleccionada ? 'var(--primary)' : fuerte ? 'var(--muted-foreground)' : 'var(--foreground)',
         whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis',
       }}>{etiqueta}</span>
-      {meta != null && <span style={{ fontSize: 10.5, color: 'var(--muted-foreground)', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 5 }}>{meta}</span>}
+      {meta != null && <span style={{ fontSize: 'calc(10.5px * var(--escala-texto))', color: 'var(--muted-foreground)', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 5 }}>{meta}</span>}
     </div>
   );
 }
@@ -240,7 +240,7 @@ function BotonHerramienta({ t, activa, onSelect }: { t: Extract<Herramienta, { i
       onMouseEnter={() => setH(true)} onMouseLeave={() => setH(false)} style={{
         display: 'flex', alignItems: 'center', justifyContent: 'center', height: 36, width: 36, padding: 0,
         borderRadius: 'var(--radius-md)', border: 'none', cursor: t.disabled ? 'not-allowed' : 'pointer', opacity: t.disabled ? 0.4 : 1,
-        background: activa ? 'var(--primary)' : h ? 'var(--muted)' : 'transparent', color: activa ? '#fff' : 'var(--foreground)', transition: 'background .15s',
+        background: activa ? 'var(--primary)' : h ? 'var(--muted)' : 'transparent', color: activa ? 'var(--primary-foreground)' : 'var(--foreground)', transition: 'background .15s',
       }}>
       <I size={16} />
     </button>
@@ -280,12 +280,12 @@ export function Leyenda({ items, abiertaInicial }: { items: ItemLeyenda[]; abier
   return (
     <div style={{ width: 220, background: 'var(--card)', borderRadius: 'var(--radius)', border: '1px solid var(--border)', boxShadow: 'var(--elevation-md)', fontFamily: 'var(--font-family-primary)', overflow: 'hidden' }}>
       <button type="button" onClick={() => setO(!o)} aria-expanded={o} style={{ width: '100%', display: 'flex', alignItems: 'center', justifyContent: 'space-between', gap: 8, padding: '8px 12px', background: 'none', border: 'none', cursor: 'pointer', fontFamily: 'var(--font-family-primary)' }}>
-        <span style={{ fontSize: 10.5, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--muted-foreground)', whiteSpace: 'nowrap' }}>Simbología táctica</span>
+        <span style={{ fontSize: 'calc(10.5px * var(--escala-texto))', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--muted-foreground)', whiteSpace: 'nowrap' }}>Simbología táctica</span>
         {o ? <ChevronDown size={14} color="var(--muted-foreground)" /> : <ChevronUp size={14} color="var(--muted-foreground)" />}
       </button>
       {o && <div style={{ padding: '2px 12px 10px', display: 'flex', flexDirection: 'column', gap: 6 }}>
         {items.map((it, i) => (
-          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 9, fontSize: 11.5, color: 'var(--foreground)' }}>
+          <div key={i} style={{ display: 'flex', alignItems: 'center', gap: 9, fontSize: 'calc(11.5px * var(--escala-texto))', color: 'var(--foreground)' }}>
             <span style={{ width: 18, display: 'flex', justifyContent: 'center' }}><Muestra it={it} /></span>{it.etiqueta}
           </div>
         ))}
@@ -324,7 +324,7 @@ export function PerfilElevacion({ valores, distancias, color }: { valores: numbe
         <path d={`${linea}L${ancho},${alto}L0,${alto}Z`} fill={color} fillOpacity="0.18" />
         <path d={linea} fill="none" stroke={color} strokeWidth="2" vectorEffect="non-scaling-stroke" strokeLinejoin="round" />
       </svg>
-      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4, fontSize: 10, color: 'var(--muted-foreground)', fontFamily: 'var(--font-family-mono, monospace)' }}>
+      <div style={{ display: 'flex', justifyContent: 'space-between', marginTop: 4, fontSize: 'calc(10px * var(--escala-texto))', color: 'var(--muted-foreground)', fontFamily: 'var(--font-family-mono, monospace)' }}>
         <span>0 km</span><span>{Math.round(min).toLocaleString('es-AR')}–{Math.round(max).toLocaleString('es-AR')} m</span>
         <span>{(dmax / 1000).toLocaleString('es-AR', { maximumFractionDigits: 1 })} km</span>
       </div>
@@ -342,9 +342,9 @@ export function Globo({ chip, color, rotuloSup, titulo, subtitulo, onClose, chil
       <div style={{ display: 'flex', gap: 10, padding: '14px 14px 10px', alignItems: centrado ? 'center' : 'flex-start' }}>
         {chip}
         <div style={{ flex: 1, minWidth: 0 }}>
-          <p style={{ margin: 0, fontSize: 10.5, fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color }}>{rotuloSup}</p>
-          {titulo && <p style={{ margin: '1px 0 0', fontSize: 14, fontWeight: 600, lineHeight: 1.3 }}>{titulo}</p>}
-          {subtitulo && <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--muted-foreground)' }}>{subtitulo}</p>}
+          <p style={{ margin: 0, fontSize: 'calc(10.5px * var(--escala-texto))', fontWeight: 700, letterSpacing: '0.05em', textTransform: 'uppercase', color }}>{rotuloSup}</p>
+          {titulo && <p style={{ margin: '1px 0 0', fontSize: 'calc(14px * var(--escala-texto))', fontWeight: 600, lineHeight: 1.3 }}>{titulo}</p>}
+          {subtitulo && <p style={{ margin: '2px 0 0', fontSize: 'calc(11px * var(--escala-texto))', color: 'var(--muted-foreground)' }}>{subtitulo}</p>}
         </div>
         <button type="button" onClick={onClose} aria-label="Cerrar" style={{ background: 'none', border: 'none', padding: 2, cursor: 'pointer', color: 'var(--muted-foreground)', display: 'flex' }}><X size={15} /></button>
       </div>
@@ -363,13 +363,13 @@ export function PanelDetalle({ chip, titulo, insignia, onClose, sub, children, p
         <div style={{ display: 'flex', gap: 12, minWidth: 0 }}>
           <span style={{ marginTop: 2, display: 'flex' }}>{chip}</span>
           <div style={{ minWidth: 0 }}>
-            <p style={{ margin: 0, fontSize: 14, fontWeight: 600, color: 'var(--foreground)', lineHeight: 1.25, wordBreak: 'break-word' }}>{titulo}</p>
+            <p style={{ margin: 0, fontSize: 'calc(14px * var(--escala-texto))', fontWeight: 600, color: 'var(--foreground)', lineHeight: 1.25, wordBreak: 'break-word' }}>{titulo}</p>
             {insignia && <div style={{ marginTop: 5 }}>{insignia}</div>}
           </div>
         </div>
         <button type="button" onClick={onClose} aria-label="Cerrar" style={{ background: 'none', border: 'none', padding: 4, cursor: 'pointer', color: 'var(--muted-foreground)', display: 'flex' }}><X size={16} /></button>
       </div>
-      {sub && <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px', background: 'var(--muted)', borderBottom: '1px solid var(--border)', color: 'var(--muted-foreground)', fontFamily: 'var(--font-family-mono, monospace)', fontSize: 11 }}><Crosshair size={12} />{sub}</div>}
+      {sub && <div style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '8px 16px', background: 'var(--muted)', borderBottom: '1px solid var(--border)', color: 'var(--muted-foreground)', fontFamily: 'var(--font-family-mono, monospace)', fontSize: 'calc(11px * var(--escala-texto))' }}><Crosshair size={12} />{sub}</div>}
       <div style={{ flex: 1, overflowY: 'auto', overflowX: 'hidden', padding: 16, display: 'flex', flexDirection: 'column', gap: 18 }}>{children}</div>
       {pie && <div style={{ padding: 16, borderTop: '1px solid var(--border)', display: 'flex', gap: 8 }}>{pie}</div>}
     </aside>
@@ -380,8 +380,8 @@ export const chipIcono = (I: LucideIcon, color: string) => (
   <span style={{ width: 32, height: 32, borderRadius: 'var(--radius-md)', background: `color-mix(in srgb, ${color} 12%, transparent)`, color, display: 'flex', alignItems: 'center', justifyContent: 'center' }}><I size={14} /></span>
 );
 export const pastilla = (txt: string, color: string) => (
-  <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 999, background: `color-mix(in srgb, ${color} 12%, transparent)`, color, fontSize: 10, fontWeight: 600 }}>{txt}</span>
+  <span style={{ display: 'inline-block', padding: '2px 8px', borderRadius: 999, background: `color-mix(in srgb, ${color} 12%, transparent)`, color, fontSize: 'calc(10px * var(--escala-texto))', fontWeight: 600 }}>{txt}</span>
 );
 export const dato = (l: string, v: ReactNode) => (
-  <div><p style={{ margin: 0, fontSize: 10, fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--muted-foreground)' }}>{l}</p><p style={{ margin: '2px 0 0', fontSize: 13, fontWeight: 700, color: 'var(--foreground)' }}>{v}</p></div>
+  <div><p style={{ margin: 0, fontSize: 'calc(10px * var(--escala-texto))', fontWeight: 600, letterSpacing: '0.05em', textTransform: 'uppercase', color: 'var(--muted-foreground)' }}>{l}</p><p style={{ margin: '2px 0 0', fontSize: 'calc(13px * var(--escala-texto))', fontWeight: 700, color: 'var(--foreground)' }}>{v}</p></div>
 );

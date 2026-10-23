@@ -137,8 +137,8 @@ export default function OperativoHeader({ operativo }: Props) {
             className={`flex items-center gap-1.5 ${relleno} py-1.5 rounded-[var(--radius-button)] transition-all`}
             style={hasObjetivo
               ? {
-                  background: 'rgba(229,75,75,0.1)',
-                  border: '1.5px solid rgba(229,75,75,0.35)',
+                  background: 'color-mix(in srgb, var(--primary) 10%, transparent)',
+                  border: '1.5px solid color-mix(in srgb, var(--primary) 35%, transparent)',
                   color: 'var(--primary)',
                   fontSize: 'var(--text-label)',
                   fontWeight: 'var(--font-weight-semibold)',
@@ -147,18 +147,18 @@ export default function OperativoHeader({ operativo }: Props) {
               : {
                   background: 'var(--primary)',
                   border: '1.5px solid var(--primary)',
-                  color: '#fff',
+                  color: 'var(--primary-foreground)',
                   fontSize: 'var(--text-label)',
                   fontWeight: 'var(--font-weight-semibold)',
                   fontFamily: 'var(--font-family-primary)',
                 }
             }
             onMouseEnter={e => {
-              if (hasObjetivo) (e.currentTarget as HTMLElement).style.background = 'rgba(229,75,75,0.18)';
+              if (hasObjetivo) (e.currentTarget as HTMLElement).style.background = 'color-mix(in srgb, var(--primary) 18%, transparent)';
               else (e.currentTarget as HTMLElement).style.opacity = '0.88';
             }}
             onMouseLeave={e => {
-              if (hasObjetivo) (e.currentTarget as HTMLElement).style.background = 'rgba(229,75,75,0.1)';
+              if (hasObjetivo) (e.currentTarget as HTMLElement).style.background = 'color-mix(in srgb, var(--primary) 10%, transparent)';
               else (e.currentTarget as HTMLElement).style.opacity = '1';
             }}
           >
@@ -227,7 +227,7 @@ export default function OperativoHeader({ operativo }: Props) {
           {/* Día del operativo */}
           <div
             className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg"
-            style={{ background: 'rgba(229,75,75,0.08)' }}
+            style={{ background: 'color-mix(in srgb, var(--primary) 8%, transparent)' }}
           >
             <Clock size={compacto ? 14 : 12} style={{ color: 'var(--primary)' }} />
             <span style={{ color: 'var(--primary)', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)', fontFamily: 'var(--font-family-primary)' }}
@@ -235,7 +235,7 @@ export default function OperativoHeader({ operativo }: Props) {
               {`Día ${diasOperativo + 1}`}
             </span>
             {!compacto && (
-              <span style={{ color: 'var(--muted-foreground)', fontSize: '11px', fontFamily: 'var(--font-family-primary)' }}>
+              <span style={{ color: 'var(--muted-foreground)', fontSize: 'calc(11px * var(--escala-texto))', fontFamily: 'var(--font-family-primary)' }}>
                 del operativo
               </span>
             )}

@@ -141,7 +141,7 @@ export default function LineaTiempoModal({ vista, titulo, subtitulo, cargar, onC
     <Overlay onClose={onClose} ancho={560}>
       <div className="flex items-center justify-between px-5 py-4" style={{ borderBottom: '1px solid var(--border)' }}>
         <div className="flex items-center gap-3">
-          <IconBox bg="rgba(229,75,75,0.1)"><History size={17} style={{ color: 'var(--primary)' }} /></IconBox>
+          <IconBox bg="color-mix(in srgb, var(--primary) 10%, transparent)"><History size={17} style={{ color: 'var(--primary)' }} /></IconBox>
           <div>
             <Titulo>{titulo}</Titulo>
             {subtitulo && <Texto>{subtitulo}</Texto>}
@@ -174,7 +174,7 @@ export default function LineaTiempoModal({ vista, titulo, subtitulo, cargar, onC
             return (
               <li key={e.id}>
                 {mostrarDia && (
-                  <p className="uppercase tracking-wider mt-2 mb-1" style={{ fontSize: 10, color: 'var(--muted-foreground)', fontWeight: 'var(--font-weight-semibold)' }}>{dia}</p>
+                  <p className="uppercase tracking-wider mt-2 mb-1" style={{ fontSize: 'calc(10px * var(--escala-texto))', color: 'var(--muted-foreground)', fontWeight: 'var(--font-weight-semibold)' }}>{dia}</p>
                 )}
                 <div className="grid gap-x-3 py-2" style={{ gridTemplateColumns: '48px 1fr', borderTop: '1px solid var(--border)', opacity: noAplicado ? 0.7 : 1 }}>
                   <span style={{ fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--foreground)', fontVariantNumeric: 'tabular-nums', paddingTop: 1 }}>
@@ -185,8 +185,8 @@ export default function LineaTiempoModal({ vista, titulo, subtitulo, cargar, onC
                       {cfgEstado && <span style={{ width: 7, height: 7, borderRadius: '50%', background: cfgEstado.dot, display: 'inline-block' }} />}
                       {tituloEv}
                     </p>
-                    {detalle && <p style={{ fontSize: 11, color: 'var(--muted-foreground)', lineHeight: 1.4 }}>{detalle}</p>}
-                    <p className="flex items-center gap-1 flex-wrap mt-0.5" style={{ fontSize: 10.5, color: 'var(--muted-foreground)' }}>
+                    {detalle && <p style={{ fontSize: 'calc(11px * var(--escala-texto))', color: 'var(--muted-foreground)', lineHeight: 1.4 }}>{detalle}</p>}
+                    <p className="flex items-center gap-1 flex-wrap mt-0.5" style={{ fontSize: 'calc(10.5px * var(--escala-texto))', color: 'var(--muted-foreground)' }}>
                       <F.icono size={11} />
                       {F.texto}{e.registradoPorNombre && e.fuente !== 'CASCADA' ? ` · ${e.registradoPorNombre}` : ''}
                       {/* Presencia de mando (01/10): ¿lo registró desde el puesto de comando? */}
@@ -200,20 +200,20 @@ export default function LineaTiempoModal({ vista, titulo, subtitulo, cargar, onC
                     {e.confirmaciones.map((c, i) => {
                       const FC = FUENTE[c.fuente as EventoEstadoApi['fuente']] ?? { texto: c.fuente, icono: Smartphone };
                       return (
-                        <p key={i} className="flex items-center gap-1 mt-0.5" style={{ fontSize: 10.5, color: '#15803d' }}>
+                        <p key={i} className="flex items-center gap-1 mt-0.5" style={{ fontSize: 'calc(10.5px * var(--escala-texto))', color: '#15803d' }}>
                           <FC.icono size={11} />
                           También llegó por {FC.texto} · {hora(c.ocurridoEn)}{c.registradoPorNombre ? ` · ${c.registradoPorNombre}` : ''}{!c.horaConfiable ? ' (hora no confiable)' : ''}
                         </p>
                       );
                     })}
                     {e.resultado === 'SUPERADO' && (
-                      <p style={{ fontSize: 10.5, color: '#b45309' }}>Llegó tarde: el grupo ya había pasado a otro estado. Queda en la historia, sin cambiar nada.</p>
+                      <p style={{ fontSize: 'calc(10.5px * var(--escala-texto))', color: '#b45309' }}>Llegó tarde: el grupo ya había pasado a otro estado. Queda en la historia, sin cambiar nada.</p>
                     )}
                     {e.resultado === 'RECHAZADO' && (
-                      <p style={{ fontSize: 10.5, color: '#b91c1c' }}>Rechazado{e.motivo ? `: ${e.motivo}` : ''}.</p>
+                      <p style={{ fontSize: 'calc(10.5px * var(--escala-texto))', color: '#b91c1c' }}>Rechazado{e.motivo ? `: ${e.motivo}` : ''}.</p>
                     )}
                     {!e.horaConfiable && (
-                      <p className="flex items-center gap-1" style={{ fontSize: 10.5, color: '#b45309' }}>
+                      <p className="flex items-center gap-1" style={{ fontSize: 'calc(10.5px * var(--escala-texto))', color: '#b45309' }}>
                         <AlertTriangle size={11} /> La hora del celular no era confiable: se usó la del servidor.
                       </p>
                     )}

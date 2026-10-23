@@ -39,7 +39,7 @@ const AUTOESTADOS: { valor: Autoestado; etiqueta: string; ayuda: string }[] = [
 
 const tarjeta = { background: 'var(--card)', boxShadow: 'var(--elevation-sm)' };
 const rotulo = {
-  color: 'var(--muted-foreground)', fontSize: '10px',
+  color: 'var(--muted-foreground)', fontSize: 'calc(10px * var(--escala-texto))',
   fontWeight: 'var(--font-weight-semibold)', textTransform: 'uppercase' as const, letterSpacing: '0.05em',
 };
 
@@ -184,7 +184,7 @@ export default function PanelTactico() {
       <section className="rounded-[var(--radius-card)] p-4" style={tarjeta} aria-labelledby="mi-estado-titulo">
         <div className="flex items-center justify-between gap-3 mb-3">
           <p id="mi-estado-titulo" style={rotulo}>Mi estado</p>
-          <span style={{ fontSize: 11, color: 'var(--muted-foreground)' }} title={`Desde ${horaExacta(agente.estadoActualizadoEn)}`}>
+          <span style={{ fontSize: 'calc(11px * var(--escala-texto))', color: 'var(--muted-foreground)' }} title={`Desde ${horaExacta(agente.estadoActualizadoEn)}`}>
             {haceCuanto(agente.estadoActualizadoEn)}
           </span>
         </div>
@@ -221,7 +221,7 @@ export default function PanelTactico() {
                     <span style={{ display: 'block', color: cfg.color, fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-semibold)' }}>
                       {op.etiqueta}
                     </span>
-                    <span style={{ display: 'block', color: 'var(--muted-foreground)', fontSize: 11, lineHeight: 1.35 }}>
+                    <span style={{ display: 'block', color: 'var(--muted-foreground)', fontSize: 'calc(11px * var(--escala-texto))', lineHeight: 1.35 }}>
                       {actual ? 'Tu estado actual' : op.ayuda}
                     </span>
                   </button>
@@ -247,7 +247,7 @@ export default function PanelTactico() {
                 </div>
                 <div className="text-right">
                   <StatusBadge estado={grupo.estado.toLowerCase()} size="sm" />
-                  <p className="mt-1" style={{ fontSize: 11, color: 'var(--muted-foreground)' }}
+                  <p className="mt-1" style={{ fontSize: 'calc(11px * var(--escala-texto))', color: 'var(--muted-foreground)' }}
                     title={`Desde ${horaExacta(grupo.estadoActualizadoEn)}`}>
                     {haceCuanto(grupo.estadoActualizadoEn)}
                   </p>
@@ -281,7 +281,7 @@ export default function PanelTactico() {
                         {i.nombre} {i.apellido}
                         {i.esConductor && <span style={{ color: 'var(--muted-foreground)', fontWeight: 'var(--font-weight-normal)' }}> · Conductor</span>}
                       </span>
-                      {cfg && <span style={{ fontSize: 11, color: cfg.color, fontWeight: 'var(--font-weight-semibold)', whiteSpace: 'nowrap' }}>{cfg.label}</span>}
+                      {cfg && <span style={{ fontSize: 'calc(11px * var(--escala-texto))', color: cfg.color, fontWeight: 'var(--font-weight-semibold)', whiteSpace: 'nowrap' }}>{cfg.label}</span>}
                     </li>
                   );
                 })}
@@ -299,7 +299,7 @@ export default function PanelTactico() {
                           style={{
                             border: idx === 0 ? 'none' : '1.5px solid var(--border)',
                             background: idx === 0 ? 'var(--primary)' : 'var(--card)',
-                            color: idx === 0 ? '#fff' : 'var(--foreground)',
+                            color: idx === 0 ? 'var(--primary-foreground)' : 'var(--foreground)',
                             fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-semibold)', cursor: 'pointer',
                           }}>
                           {BOTON_LIDER[a]}
@@ -313,7 +313,7 @@ export default function PanelTactico() {
                         : 'Cuando el coordinador confirme el grupo y les asigne un polígono, vas a poder informar la salida desde acá.'}
                     </p>
                   )}
-                  <p className="flex items-start gap-1.5" style={{ color: 'var(--muted-foreground)', fontSize: 11, lineHeight: 1.45 }}>
+                  <p className="flex items-start gap-1.5" style={{ color: 'var(--muted-foreground)', fontSize: 'calc(11px * var(--escala-texto))', lineHeight: 1.45 }}>
                     <Radio size={12} style={{ flexShrink: 0, marginTop: 1 }} />
                     Si no tenés señal, avisale al coordinador por radio: él lo registra en el sistema.
                   </p>
@@ -340,7 +340,7 @@ export default function PanelTactico() {
       {/* ── Qué pasó con el último aviso ── */}
       {resultado && (
         <div className="flex items-start gap-2 px-3 py-2 rounded-[var(--radius-input)]" aria-live="polite"
-          style={{ background: TONO[resultado.tono].bg, border: `1px solid ${TONO[resultado.tono].borde}`, color: TONO[resultado.tono].color, fontSize: 11.5, lineHeight: 1.45 }}>
+          style={{ background: TONO[resultado.tono].bg, border: `1px solid ${TONO[resultado.tono].borde}`, color: TONO[resultado.tono].color, fontSize: 'calc(11.5px * var(--escala-texto))', lineHeight: 1.45 }}>
           {resultado.tono === 'ok' ? <Check size={13} style={{ flexShrink: 0, marginTop: 1 }} /> : <AlertCircle size={13} style={{ flexShrink: 0, marginTop: 1 }} />}
           <span className="flex-1">{resultado.texto}</span>
           <button type="button" aria-label="Cerrar" onClick={() => setResultado(null)}
@@ -356,7 +356,7 @@ export default function PanelTactico() {
           <div className="px-5 py-5 flex items-start gap-3">
             {confirmar.tipo === 'autoestado' ? (
               <>
-                <IconBox bg={confirmar.valor === 'NO_DISPONIBLE' ? '#fee2e2' : 'rgba(229,75,75,0.1)'}>
+                <IconBox bg={confirmar.valor === 'NO_DISPONIBLE' ? '#fee2e2' : 'color-mix(in srgb, var(--primary) 10%, transparent)'}>
                   <AlertCircle size={17} style={{ color: confirmar.valor === 'NO_DISPONIBLE' ? '#dc2626' : 'var(--primary)' }} />
                 </IconBox>
                 <div>
@@ -370,7 +370,7 @@ export default function PanelTactico() {
               </>
             ) : (
               <>
-                <IconBox bg="rgba(229,75,75,0.1)"><Radio size={17} style={{ color: 'var(--primary)' }} /></IconBox>
+                <IconBox bg="color-mix(in srgb, var(--primary) 10%, transparent)"><Radio size={17} style={{ color: 'var(--primary)' }} /></IconBox>
                 <div>
                   <Titulo>¿{BOTON_LIDER[confirmar.accion]}?</Titulo>
                   <Texto>

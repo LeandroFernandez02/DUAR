@@ -114,13 +114,13 @@ export default function Sidebar({ mobileOpen, onMobileClose }: Props) {
               className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
               style={{ background: 'var(--primary)' }}
             >
-              <Shield size={20} color="#fff" />
+              <Shield size={20} color="var(--primary-foreground)" />
             </div>
             <div className={`min-w-0 ${collapsed ? 'md:hidden' : ''}`}>
               <p style={{ color: 'var(--sidebar-foreground)', fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-bold)', letterSpacing: '0.1em', lineHeight: 1.2 }}>
                 DUAR
               </p>
-              <p className="truncate" style={{ color: 'var(--sidebar-foreground)', fontSize: '10px', opacity: 0.6, lineHeight: 1.2 }}>
+              <p className="truncate" style={{ color: 'var(--sidebar-foreground)', fontSize: 'calc(10px * var(--escala-texto))', opacity: 0.6, lineHeight: 1.2 }}>
                 Búsqueda y Rastreo
               </p>
             </div>
@@ -156,7 +156,7 @@ export default function Sidebar({ mobileOpen, onMobileClose }: Props) {
         <div className={`px-5 pt-5 pb-1 ${collapsed ? 'md:hidden' : ''}`}>
           <p
             className="uppercase tracking-widest"
-            style={{ color: 'var(--sidebar-foreground)', fontSize: '10px', fontWeight: 'var(--font-weight-semibold)', opacity: 0.4 }}
+            style={{ color: 'var(--sidebar-foreground)', fontSize: 'calc(10px * var(--escala-texto))', fontWeight: 'var(--font-weight-semibold)', opacity: 0.4 }}
           >
             {isOperativoContext ? 'Módulos' : 'Navegación'}
           </p>
@@ -175,7 +175,7 @@ export default function Sidebar({ mobileOpen, onMobileClose }: Props) {
                 className={`flex items-center gap-3 px-3 py-2.5 rounded-lg transition-all ${collapsed ? 'md:justify-center' : ''}`}
                 style={{
                   background: active ? 'var(--primary)' : 'transparent',
-                  color: active ? '#fff' : 'var(--sidebar-foreground)',
+                  color: active ? 'var(--primary-foreground)' : 'var(--sidebar-foreground)',
                   opacity: active ? 1 : 0.75,
                   fontSize: 'var(--text-base)',
                   fontWeight: 'var(--font-weight-medium)',
@@ -250,7 +250,7 @@ export default function Sidebar({ mobileOpen, onMobileClose }: Props) {
             >
               <div
                 className="w-8 h-8 rounded-full flex items-center justify-center flex-shrink-0"
-                style={{ background: 'var(--primary)', color: '#fff', fontSize: '11px', fontWeight: 'var(--font-weight-bold)' }}
+                style={{ background: 'var(--primary)', color: 'var(--primary-foreground)', fontSize: 'calc(11px * var(--escala-texto))', fontWeight: 'var(--font-weight-bold)' }}
               >
                 {iniciales}
               </div>
@@ -258,7 +258,7 @@ export default function Sidebar({ mobileOpen, onMobileClose }: Props) {
                 <p className="truncate" style={{ color: 'var(--sidebar-foreground)', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)' }}>
                   {usuario ? `${usuario.nombre} ${usuario.apellido}` : 'Usuario'}
                 </p>
-                <p className="capitalize truncate" style={{ color: 'var(--sidebar-foreground)', fontSize: '10px', opacity: 0.55 }}>
+                <p className="capitalize truncate" style={{ color: 'var(--sidebar-foreground)', fontSize: 'calc(10px * var(--escala-texto))', opacity: 0.55 }}>
                   {usuario?.rol || ''}
                 </p>
               </div>
@@ -284,7 +284,7 @@ export default function Sidebar({ mobileOpen, onMobileClose }: Props) {
                     <p className="truncate" style={{ fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)' }}>
                       {usuario ? `${usuario.nombre} ${usuario.apellido}` : 'Usuario'}
                     </p>
-                    <p className="truncate" style={{ fontSize: '11px', opacity: 0.6, marginTop: 2 }}>
+                    <p className="truncate" style={{ fontSize: 'calc(11px * var(--escala-texto))', opacity: 0.6, marginTop: 2 }}>
                       {usuario?.email}
                     </p>
                   </div>
@@ -295,8 +295,8 @@ export default function Sidebar({ mobileOpen, onMobileClose }: Props) {
                       className="flex items-center gap-2.5 w-full px-3 py-2 rounded-lg text-left transition-colors"
                       style={{ color: 'var(--popover-foreground)', opacity: 0.85, background: 'none', border: 'none', fontSize: 'var(--text-base)' }}
                       onMouseEnter={e => {
-                        (e.currentTarget as HTMLElement).style.background = 'rgba(229,75,75,0.12)';
-                        (e.currentTarget as HTMLElement).style.color = '#E54B4B';
+                        (e.currentTarget as HTMLElement).style.background = 'color-mix(in srgb, var(--primary) 12%, transparent)';
+                        (e.currentTarget as HTMLElement).style.color = 'var(--primary)';
                         (e.currentTarget as HTMLElement).style.opacity = '1';
                       }}
                       onMouseLeave={e => {

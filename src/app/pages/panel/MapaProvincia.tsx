@@ -133,9 +133,11 @@ export default function MapaProvincia({ historial, puntos, etiquetaPuntos, isDar
   const conNombres = k >= ZOOM_MUNICIPIOS;
 
   const rojo = isDark ? '#ff6b6b' : '#d63a3a';
-  const tierra = isDark ? '#2f2b29' : '#f6f1ef';
-  const borde = isDark ? 'rgba(247,235,232,0.35)' : 'rgba(68,65,64,0.35)';
-  const textoCiudad = isDark ? 'rgba(247,235,232,0.6)' : 'rgba(68,65,64,0.6)';
+  // Tierra, trazos y textos salen del color de texto del tema (claro u oscuro), como en el diseño CALÍVAR.
+  const tierra = `color-mix(in srgb, var(--foreground) ${isDark ? 8 : 4}%, var(--card))`;
+  const tinta = (a: number) => `color-mix(in srgb, var(--foreground) ${a}%, transparent)`;
+  const borde = tinta(35);
+  const textoCiudad = tinta(60);
 
   return (
     <div className="flex flex-col lg:h-full min-h-0">
@@ -172,14 +174,14 @@ export default function MapaProvincia({ historial, puntos, etiquetaPuntos, isDar
             <path d={CONTORNO} fill={tierra} stroke="none" />
 
             {/* Localidades (radios de municipios y comunas) y departamentos; los trazos no engordan con el zoom */}
-            <g fill={isDark ? 'rgba(247,235,232,0.07)' : 'rgba(68,65,64,0.07)'} stroke={isDark ? 'rgba(247,235,232,0.3)' : 'rgba(68,65,64,0.3)'} strokeWidth={0.6}>
+            <g fill={tinta(7)} stroke={tinta(30)} strokeWidth={0.6}>
               {LOCALIDADES.map(l => (
                 <path key={l.nombre + l.centro.join()} d={l.d} vectorEffect="non-scaling-stroke">
                   <title>{`${l.nombre} (${l.tipo.toLowerCase()})`}</title>
                 </path>
               ))}
             </g>
-            <g fill="none" stroke={isDark ? 'rgba(247,235,232,0.25)' : 'rgba(68,65,64,0.25)'} strokeWidth={0.8} strokeDasharray="3 2" pointerEvents="none">
+            <g fill="none" stroke={tinta(25)} strokeWidth={0.8} strokeDasharray="3 2" pointerEvents="none">
               {DEPARTAMENTOS.map(d => <path key={d.nombre} d={d.d} vectorEffect="non-scaling-stroke" />)}
             </g>
             <path d={CONTORNO} fill="none" stroke={borde} strokeWidth={1.4} strokeLinejoin="round" vectorEffect="non-scaling-stroke" pointerEvents="none" />
@@ -221,7 +223,7 @@ export default function MapaProvincia({ historial, puntos, etiquetaPuntos, isDar
                   onMouseEnter={() => setSobre({ o, x, y })} onMouseLeave={() => setSobre(null)}>
                   <circle cx={x} cy={y} r={14 / k} fill="transparent" />
                   {activo && <circle cx={x} cy={y} r={11 / k} fill={colorEstado(o.estado)} opacity={0.22} />}
-                  <circle cx={x} cy={y} r={(activo ? 7 : 5.5) / k} fill={colorEstado(o.estado)} stroke={isDark ? '#1c1917' : '#fff'} strokeWidth={2 / k} />
+                  <circle cx={x} cy={y} r={(activo ? 7 : 5.5) / k} fill={colorEstado(o.estado)} stroke="var(--card)" strokeWidth={2 / k} />
                 </g>
               );
             })}
@@ -243,7 +245,7 @@ export default function MapaProvincia({ historial, puntos, etiquetaPuntos, isDar
           {sobre && (
             <div className="absolute pointer-events-none px-2.5 py-1.5 rounded-lg whitespace-nowrap"
               style={{ left: `${((sobre.x * k + enc.x) / W) * 100}%`, top: `${((sobre.y * k + enc.y) / H) * 100}%`, transform: 'translate(-50%, calc(-100% - 12px))', zIndex: 5,
-                background: 'var(--card)', border: '1px solid var(--border)', boxShadow: 'var(--elevation-md)', fontSize: 12, color: 'var(--foreground)' }}>
+                background: 'var(--card)', border: '1px solid var(--border)', boxShadow: 'var(--elevation-md)', fontSize: 'calc(12px * var(--escala-texto))', color: 'var(--foreground)' }}>
               <strong>{sobre.o.titulo}</strong><br />{sobre.o.localidad}
             </div>
           )}
@@ -296,7 +298,7 @@ function Ficha({ o }: { o: OperativoPanel }) {
         <button onClick={() => navigate(`/operativo/${o.id}/dashboard`)} disabled={deEjemplo}
           title={deEjemplo ? 'Operativo de ejemplo: se va a poder entrar cuando el panel use los datos reales' : 'Acceder al panel del operativo'}
           className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg disabled:opacity-60"
-          style={{ color: 'var(--primary)', background: 'rgba(229,75,75,0.08)', border: '1px solid rgba(229,75,75,0.18)',
+          style={{ color: 'var(--primary)', background: 'color-mix(in srgb, var(--primary) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--primary) 18%, transparent)',
             fontFamily: 'var(--font-family-primary)', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)', cursor: deEjemplo ? 'not-allowed' : 'pointer' }}>
           Panel <ArrowRight size={13} />
         </button>
@@ -313,7 +315,7 @@ function ZonasCalientes({ historial }: { historial: OperativoPanel[] }) {
   return (
     <div className="rounded-[var(--radius-card)] p-4" style={{ background: 'var(--muted)' }}>
       <p style={{ fontSize: 'var(--text-base)', fontWeight: 600, color: 'var(--foreground)' }}>Dónde más se busca</p>
-      <p className="mb-3" style={{ fontSize: 12, color: 'var(--muted-foreground)' }}>Localidades con más operativos en el período</p>
+      <p className="mb-3" style={{ fontSize: 'calc(12px * var(--escala-texto))', color: 'var(--muted-foreground)' }}>Localidades con más operativos en el período</p>
       <ul className="flex flex-col gap-2.5">
         {top.map(([loc, n]) => (
           <li key={loc}>

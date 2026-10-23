@@ -111,12 +111,12 @@ export default function SelectorLocalidad({
       </div>
 
       {estado === 'error' && (
-        <p style={{ color: 'var(--muted-foreground)', fontSize: '11px', fontFamily: 'var(--font-family-primary)' }}>
+        <p style={{ color: 'var(--muted-foreground)', fontSize: 'calc(11px * var(--escala-texto))', fontFamily: 'var(--font-family-primary)' }}>
           No se pudo traer la lista de localidades (¿sin conexión?). Escribí la localidad a mano.
         </p>
       )}
       {esTextoAnterior && (
-        <p style={{ color: '#b45309', fontSize: '11px', fontFamily: 'var(--font-family-primary)' }}>
+        <p style={{ color: '#b45309', fontSize: 'calc(11px * var(--escala-texto))', fontFamily: 'var(--font-family-primary)' }}>
           Valor cargado antes de existir la lista: «{value}». Elegí provincia y localidad para reemplazarlo.
         </p>
       )}

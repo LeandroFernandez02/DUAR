@@ -130,7 +130,7 @@ export function CrearGrupoModal({ operativoId, disponibles, nombresUsados, onClo
   return (
     <>
       <Overlay onClose={onClose}>
-        <Encabezado icono={<Users size={17} style={{ color: 'var(--primary)' }} />} fondo="rgba(229,75,75,0.1)"
+        <Encabezado icono={<Users size={17} style={{ color: 'var(--primary)' }} />} fondo="color-mix(in srgb, var(--primary) 10%, transparent)"
           titulo="Nuevo Grupo" subtitulo="Nace En Formación con su Líder adentro. Al resto lo sumás arrastrando." onClose={onClose} />
         <div className="px-5 py-5 flex flex-col gap-4" style={{ overflowY: 'auto' }}>
           <div>
@@ -143,19 +143,19 @@ export function CrearGrupoModal({ operativoId, disponibles, nombresUsados, onClo
                     className="text-left px-3 py-2.5 rounded-[var(--radius-input)]"
                     style={{
                       border: sel ? '2px solid var(--primary)' : '1.5px solid var(--border)',
-                      background: sel ? 'rgba(229,75,75,0.06)' : 'var(--card)', cursor: 'pointer',
+                      background: sel ? 'color-mix(in srgb, var(--primary) 6%, transparent)' : 'var(--card)', cursor: 'pointer',
                     }}>
                     <span style={{ display: 'block', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)', color: sel ? 'var(--primary)' : 'var(--foreground)', fontFamily: 'var(--font-family-primary)' }}>
                       {c.titulo}
                     </span>
-                    <span style={{ display: 'block', fontSize: 11, color: 'var(--muted-foreground)', lineHeight: 1.4, marginTop: 2, fontFamily: 'var(--font-family-primary)' }}>
+                    <span style={{ display: 'block', fontSize: 'calc(11px * var(--escala-texto))', color: 'var(--muted-foreground)', lineHeight: 1.4, marginTop: 2, fontFamily: 'var(--font-family-primary)' }}>
                       {c.detalle}
                     </span>
                   </button>
                 );
               })}
             </div>
-            <p style={{ color: 'var(--muted-foreground)', fontSize: 11, marginTop: 6, fontFamily: 'var(--font-family-primary)' }}>
+            <p style={{ color: 'var(--muted-foreground)', fontSize: 'calc(11px * var(--escala-texto))', marginTop: 6, fontFamily: 'var(--font-family-primary)' }}>
               El tipo no se cambia después: define quién puede integrar el grupo.
             </p>
           </div>
@@ -166,7 +166,7 @@ export function CrearGrupoModal({ operativoId, disponibles, nombresUsados, onClo
               onChange={e => setNombre(filtrarNombre(e.target.value))} placeholder={clase === 'ESPECIAL' ? 'Ej: Dron 1' : 'Ej: Grupo Alfa'}
               className="w-full px-3 py-2 outline-none"
               style={{ ...estiloCampo, border: duplicado ? '1px solid #dc2626' : estiloCampo.border }} />
-            {duplicado && <p style={{ color: '#dc2626', fontSize: 11, marginTop: 4 }}>El nombre del grupo ya está en uso.</p>}
+            {duplicado && <p style={{ color: '#dc2626', fontSize: 'calc(11px * var(--escala-texto))', marginTop: 4 }}>El nombre del grupo ya está en uso.</p>}
           </div>
 
           {clase && (
@@ -190,7 +190,7 @@ export function CrearGrupoModal({ operativoId, disponibles, nombresUsados, onClo
                   ) : candidatos.map(opcion)}
                 </select>
               )}
-              <p style={{ color: 'var(--muted-foreground)', fontSize: 11, marginTop: 6, lineHeight: 1.5, fontFamily: 'var(--font-family-primary)' }}>
+              <p style={{ color: 'var(--muted-foreground)', fontSize: 'calc(11px * var(--escala-texto))', marginTop: 6, lineHeight: 1.5, fontFamily: 'var(--font-family-primary)' }}>
                 {clase === 'RASTRILLAJE'
                   ? 'Sólo agentes del DUAR, Disponibles y sin grupo. Los recursos especiales no lideran grupos de rastrillaje.'
                   : 'Cualquiera Disponible y sin grupo, sea o no del DUAR.'}
@@ -257,7 +257,7 @@ export function EditarGrupoModal({ operativoId, grupo, nombresUsados, onClose, o
   return (
     <>
       <Overlay onClose={onClose}>
-        <Encabezado icono={<Edit2 size={16} style={{ color: 'var(--primary)' }} />} fondo="rgba(229,75,75,0.1)"
+        <Encabezado icono={<Edit2 size={16} style={{ color: 'var(--primary)' }} />} fondo="color-mix(in srgb, var(--primary) 10%, transparent)"
           titulo="Editar Grupo" subtitulo={`${grupo.nombre} · ${especial ? 'grupo especial' : 'grupo de rastrillaje'}`} onClose={onClose} />
         <div className="px-5 py-5 flex flex-col gap-4" style={{ overflowY: 'auto' }}>
           <div>
@@ -266,7 +266,7 @@ export function EditarGrupoModal({ operativoId, grupo, nombresUsados, onClose, o
               onChange={e => setNombre(filtrarNombre(e.target.value))}
               className="w-full px-3 py-2 outline-none"
               style={{ ...estiloCampo, border: duplicado ? '1px solid #dc2626' : estiloCampo.border }} />
-            {duplicado && <p style={{ color: '#dc2626', fontSize: 11, marginTop: 4 }}>El nombre del grupo ya está en uso.</p>}
+            {duplicado && <p style={{ color: '#dc2626', fontSize: 'calc(11px * var(--escala-texto))', marginTop: 4 }}>El nombre del grupo ya está en uso.</p>}
           </div>
 
           <div>
@@ -280,7 +280,7 @@ export function EditarGrupoModal({ operativoId, grupo, nombresUsados, onClose, o
                 </option>
               ))}
             </select>
-            <p style={{ color: 'var(--muted-foreground)', fontSize: 11, marginTop: 6, lineHeight: 1.5, fontFamily: 'var(--font-family-primary)' }}>
+            <p style={{ color: 'var(--muted-foreground)', fontSize: 'calc(11px * var(--escala-texto))', marginTop: 6, lineHeight: 1.5, fontFamily: 'var(--font-family-primary)' }}>
               {liderEditable
                 ? `${especial ? 'Cualquier integrante, sea o no del DUAR.' : 'Integrantes del DUAR.'} Para nombrar a alguien que no está en el grupo, sumalo primero arrastrándolo.`
                 : `El Líder se cambia con el grupo En formación (está ${ETIQUETA_ESTADO_GRUPO[grupo.estado]}). En el terreno, se cambia al retirar al Líder.`}
@@ -300,7 +300,7 @@ export function EditarGrupoModal({ operativoId, grupo, nombresUsados, onClose, o
               </button>
             </div>
           ) : (
-            <p style={{ color: 'var(--muted-foreground)', fontSize: 11, lineHeight: 1.5, fontFamily: 'var(--font-family-primary)' }}>
+            <p style={{ color: 'var(--muted-foreground)', fontSize: 'calc(11px * var(--escala-texto))', lineHeight: 1.5, fontFamily: 'var(--font-family-primary)' }}>
               El estado no se edita acá: se cambia con los botones de la tarjeta del grupo.
             </p>
           )}
@@ -391,7 +391,7 @@ export function AccionGrupoModal({ operativoId, grupo, accion, onClose, onHecho 
 
   return (
     <Overlay onClose={onClose}>
-      <Encabezado icono={icono} fondo={esCorreccion ? '#fef3c7' : 'rgba(229,75,75,0.1)'} titulo={titulo} subtitulo={grupo.nombre} onClose={onClose} />
+      <Encabezado icono={icono} fondo={esCorreccion ? '#fef3c7' : 'color-mix(in srgb, var(--primary) 10%, transparent)'} titulo={titulo} subtitulo={grupo.nombre} onClose={onClose} />
       <div className="px-5 py-5 flex flex-col gap-4" style={{ overflowY: 'auto' }}>
         {!esCorreccion && (
           <>
@@ -539,7 +539,7 @@ export function ArmadoAutomaticoModal({ operativoId, disponibles, lideresDuar, r
 
   return (
     <Overlay onClose={onClose}>
-      <Encabezado icono={<Wand2 size={16} style={{ color: 'var(--primary)' }} />} fondo="rgba(229,75,75,0.1)"
+      <Encabezado icono={<Wand2 size={16} style={{ color: 'var(--primary)' }} />} fondo="color-mix(in srgb, var(--primary) 10%, transparent)"
         titulo="Asignación Automática" subtitulo="Arma grupos de rastrillaje nuevos con los agentes sin grupo. Los existentes no se tocan." onClose={onClose} />
       <div className="px-5 py-5 flex flex-col gap-4">
         <div>
@@ -568,7 +568,7 @@ export function ArmadoAutomaticoModal({ operativoId, disponibles, lideresDuar, r
         {disponibles === 1 && (
           <ErrorCaja>Hay un solo agente de rastrillaje disponible: cualquier grupo lo dejaría rastrillando solo.</ErrorCaja>
         )}
-        {!tamanoOk && <p style={{ color: '#dc2626', fontSize: 11 }}>Ingresá un número entre 2 y 50.</p>}
+        {!tamanoOk && <p style={{ color: '#dc2626', fontSize: 'calc(11px * var(--escala-texto))' }}>Ingresá un número entre 2 y 50.</p>}
         {error && <ErrorCaja>{error}</ErrorCaja>}
       </div>
       <Pie>

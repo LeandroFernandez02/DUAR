@@ -56,7 +56,7 @@ const ESTADO_CONFIG: Record<string, { label: string; bg: string; color: string; 
   activo:        { label: 'Activo',        bg: '#dcfce7', color: '#16a34a', dot: '#16a34a' },
   en_proceso:    { label: 'En Proceso',    bg: '#dbeafe', color: '#1d4ed8', dot: '#1d4ed8' },
   planificación: { label: 'Planificación', bg: '#fef9c3', color: '#854d0e', dot: '#ca8a04' },
-  nuevo:         { label: 'Nuevo',         bg: 'rgba(229,75,75,0.1)', color: '#E54B4B', dot: '#E54B4B' },
+  nuevo:         { label: 'Nuevo',         bg: 'color-mix(in srgb, var(--primary) 10%, transparent)', color: 'var(--primary)', dot: 'var(--primary)' },
   inactivo:      { label: 'Finalizado',    bg: '#f3f4f6', color: '#6b7280', dot: '#9ca3af' },
   finalizado:    { label: 'Finalizado',    bg: '#f3f4f6', color: '#6b7280', dot: '#9ca3af' },
 };
@@ -115,7 +115,7 @@ function OperativoCard({
             <div className="flex items-center gap-2 mb-2 flex-wrap">
               <span
                 className="inline-flex items-center gap-1.5 px-2.5 py-1 rounded-full"
-                style={{ background: cfg.bg, color: cfg.color, fontSize: '11px', fontWeight: 'var(--font-weight-semibold)' }}
+                style={{ background: cfg.bg, color: cfg.color, fontSize: 'calc(11px * var(--escala-texto))', fontWeight: 'var(--font-weight-semibold)' }}
               >
                 <span className="w-1.5 h-1.5 rounded-full flex-shrink-0" style={{ background: cfg.dot }} />
                 {cfg.label}
@@ -164,16 +164,16 @@ function OperativoCard({
           {/* Objetivo buscado */}
           {obj && (
             <div>
-              <p className="mb-2 uppercase tracking-wider" style={{ color: 'var(--muted-foreground)', fontSize: '10px', fontWeight: 'var(--font-weight-semibold)' }}>
+              <p className="mb-2 uppercase tracking-wider" style={{ color: 'var(--muted-foreground)', fontSize: 'calc(10px * var(--escala-texto))', fontWeight: 'var(--font-weight-semibold)' }}>
                 Objetivo buscado
               </p>
               <div
                 className="p-3 rounded-xl flex items-start gap-3"
-                style={{ background: 'rgba(229,75,75,0.06)', border: '1px solid rgba(229,75,75,0.2)' }}
+                style={{ background: 'color-mix(in srgb, var(--primary) 6%, transparent)', border: '1px solid color-mix(in srgb, var(--primary) 20%, transparent)' }}
               >
                 <div
                   className="w-8 h-8 rounded-lg flex items-center justify-center flex-shrink-0"
-                  style={{ background: 'rgba(229,75,75,0.1)' }}
+                  style={{ background: 'color-mix(in srgb, var(--primary) 10%, transparent)' }}
                 >
                   {obj.tipo === 'persona'
                     ? <User size={15} style={{ color: 'var(--primary)' }} />
@@ -213,7 +213,7 @@ function OperativoCard({
           {/* Descripción */}
           {op.descripcion && (
             <div>
-              <p className="mb-1.5 uppercase tracking-wider" style={{ color: 'var(--muted-foreground)', fontSize: '10px', fontWeight: 'var(--font-weight-semibold)' }}>
+              <p className="mb-1.5 uppercase tracking-wider" style={{ color: 'var(--muted-foreground)', fontSize: 'calc(10px * var(--escala-texto))', fontWeight: 'var(--font-weight-semibold)' }}>
                 Descripción
               </p>
               <p style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-base)', lineHeight: 1.6 }}>
@@ -373,15 +373,15 @@ export default function AgenteDashboard() {
       {/* Top navigation */}
       <header
         className="sticky top-0 z-30 flex items-center justify-between px-4 py-3 md:px-6"
-        style={{ background: 'var(--duar-dark, #444140)', boxShadow: '0 1px 8px rgba(0,0,0,0.2)' }}
+        style={{ background: 'var(--calivar-noche)', boxShadow: '0 1px 8px rgba(0,0,0,0.2)' }}
       >
         <div className="flex items-center gap-3">
           <div className="w-8 h-8 rounded-lg flex items-center justify-center" style={{ background: 'var(--primary)' }}>
-            <Shield size={17} color="#fff" />
+            <Shield size={17} color="var(--primary-foreground)" />
           </div>
           <div>
             <p style={{ color: '#fff', fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-bold)' }}>DUAR</p>
-            <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: '10px' }}>Portal Agente</p>
+            <p style={{ color: 'rgba(255,255,255,0.5)', fontSize: 'calc(10px * var(--escala-texto))' }}>Portal Agente</p>
           </div>
         </div>
         <button
@@ -404,7 +404,7 @@ export default function AgenteDashboard() {
           <div className="flex items-start gap-4">
             <div
               className="w-14 h-14 rounded-2xl flex items-center justify-center flex-shrink-0"
-              style={{ background: 'var(--primary)', color: '#fff', fontSize: '20px', fontWeight: 'var(--font-weight-bold)' }}
+              style={{ background: 'var(--primary)', color: 'var(--primary-foreground)', fontSize: 'calc(20px * var(--escala-texto))', fontWeight: 'var(--font-weight-bold)' }}
             >
               {usuario.nombre.charAt(0)}{usuario.apellido.charAt(0)}
             </div>
@@ -416,7 +416,7 @@ export default function AgenteDashboard() {
                 <button
                   onClick={abrirEditarPerfil}
                   className="flex items-center gap-1.5 px-2.5 py-1.5 rounded-lg flex-shrink-0"
-                  style={{ color: 'var(--primary)', background: 'rgba(229,75,75,0.08)', border: 'none', cursor: 'pointer', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)', fontFamily: 'var(--font-family-primary)' }}
+                  style={{ color: 'var(--primary)', background: 'color-mix(in srgb, var(--primary) 8%, transparent)', border: 'none', cursor: 'pointer', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)', fontFamily: 'var(--font-family-primary)' }}
                 >
                   <Edit2 size={12} />
                   <span className="hidden sm:inline">Editar mis datos</span>
@@ -441,7 +441,7 @@ export default function AgenteDashboard() {
               <div key={item.label}>
                 <div className="flex items-center gap-1 mb-0.5" style={{ color: 'var(--muted-foreground)' }}>
                   {item.icon}
-                  <span style={{ fontSize: '10px', fontWeight: 'var(--font-weight-semibold)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  <span style={{ fontSize: 'calc(10px * var(--escala-texto))', fontWeight: 'var(--font-weight-semibold)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                     {item.label}
                   </span>
                 </div>
@@ -454,7 +454,7 @@ export default function AgenteDashboard() {
               <div>
                 <div className="flex items-center gap-1 mb-0.5" style={{ color: 'var(--muted-foreground)' }}>
                   <User size={13} />
-                  <span style={{ fontSize: '10px', fontWeight: 'var(--font-weight-semibold)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
+                  <span style={{ fontSize: 'calc(10px * var(--escala-texto))', fontWeight: 'var(--font-weight-semibold)', textTransform: 'uppercase', letterSpacing: '0.05em' }}>
                     Teléfono
                   </span>
                 </div>
@@ -498,7 +498,7 @@ export default function AgenteDashboard() {
                 </p>
 
                 {errorReenvio && (
-                  <p className="mt-2" style={{ color: '#b91c1c', fontSize: '11px' }}>{errorReenvio}</p>
+                  <p className="mt-2" style={{ color: '#b91c1c', fontSize: 'calc(11px * var(--escala-texto))' }}>{errorReenvio}</p>
                 )}
 
                 <div className="flex items-center gap-3 mt-3 flex-wrap">
@@ -592,7 +592,7 @@ export default function AgenteDashboard() {
               </h2>
               <span
                 className="px-2 py-0.5 rounded-full"
-                style={{ background: 'var(--muted)', color: 'var(--muted-foreground)', fontSize: '11px', fontWeight: 'var(--font-weight-semibold)' }}
+                style={{ background: 'var(--muted)', color: 'var(--muted-foreground)', fontSize: 'calc(11px * var(--escala-texto))', fontWeight: 'var(--font-weight-semibold)' }}
               >
                 {historial.length}
               </span>
@@ -605,7 +605,7 @@ export default function AgenteDashboard() {
           </div>
         )}
 
-        <p className="text-center pb-4" style={{ color: 'var(--muted-foreground)', fontSize: '11px' }}>
+        <p className="text-center pb-4" style={{ color: 'var(--muted-foreground)', fontSize: 'calc(11px * var(--escala-texto))' }}>
           © 2026 DUAR Córdoba · Sistema v2.0
         </p>
       </div>
@@ -658,7 +658,7 @@ export default function AgenteDashboard() {
                       border: erroresPerfil[f.key] ? '1px solid #dc2626' : '1px solid var(--border)',
                     }}
                   />
-                  {erroresPerfil[f.key] && <p style={{ color: '#dc2626', fontSize: '11px', marginTop: '4px' }}>{erroresPerfil[f.key]}</p>}
+                  {erroresPerfil[f.key] && <p style={{ color: '#dc2626', fontSize: 'calc(11px * var(--escala-texto))', marginTop: '4px' }}>{erroresPerfil[f.key]}</p>}
                 </div>
               ))}
 
@@ -684,8 +684,8 @@ export default function AgenteDashboard() {
                   }}
                 />
                 {erroresPerfil.telefono
-                  ? <p style={{ color: '#dc2626', fontSize: '11px', marginTop: '4px' }}>{erroresPerfil.telefono}</p>
-                  : <p style={{ color: 'var(--muted-foreground)', fontSize: '11px', marginTop: '4px', lineHeight: 1.4 }}>{AYUDA_TELEFONO}</p>}
+                  ? <p style={{ color: '#dc2626', fontSize: 'calc(11px * var(--escala-texto))', marginTop: '4px' }}>{erroresPerfil.telefono}</p>
+                  : <p style={{ color: 'var(--muted-foreground)', fontSize: 'calc(11px * var(--escala-texto))', marginTop: '4px', lineHeight: 1.4 }}>{AYUDA_TELEFONO}</p>}
               </div>
 
               <div>
@@ -703,7 +703,7 @@ export default function AgenteDashboard() {
                     border: erroresPerfil.fechaNacimiento ? '1px solid #dc2626' : '1px solid var(--border)',
                   }}
                 />
-                {erroresPerfil.fechaNacimiento && <p style={{ color: '#dc2626', fontSize: '11px', marginTop: '4px' }}>{erroresPerfil.fechaNacimiento}</p>}
+                {erroresPerfil.fechaNacimiento && <p style={{ color: '#dc2626', fontSize: 'calc(11px * var(--escala-texto))', marginTop: '4px' }}>{erroresPerfil.fechaNacimiento}</p>}
               </div>
 
               <div>
@@ -813,7 +813,7 @@ export default function AgenteDashboard() {
               <button
                 onClick={guardarPerfil}
                 disabled={guardandoPerfil}
-                className="px-4 py-2 rounded-[var(--radius-button)] text-white"
+                className="px-4 py-2 rounded-[var(--radius-button)] text-[var(--primary-foreground)]"
                 style={{ background: 'var(--primary)', border: 'none', cursor: guardandoPerfil ? 'not-allowed' : 'pointer', opacity: guardandoPerfil ? 0.7 : 1, fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-semibold)', fontFamily: 'var(--font-family-primary)' }}
               >
                 {guardandoPerfil ? 'Guardando...' : 'Guardar Cambios'}

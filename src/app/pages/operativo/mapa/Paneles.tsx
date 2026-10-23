@@ -62,7 +62,7 @@ function TextoEditable({ titulo, valor, vacio, multilinea, max, soloLectura, onG
         </div>
       </> : valor
         ? <p style={{ margin: 0, fontSize: multilinea ? 12.5 : 13, fontWeight: multilinea ? 400 : 500, color: 'var(--foreground)', lineHeight: 1.55, whiteSpace: 'pre-wrap' }}>{valor}</p>
-        : <p style={{ margin: 0, fontSize: 12, color: 'var(--muted-foreground)' }}>{vacio}</p>}
+        : <p style={{ margin: 0, fontSize: 'calc(12px * var(--escala-texto))', color: 'var(--muted-foreground)' }}>{vacio}</p>}
     </div>
   );
 }
@@ -109,15 +109,15 @@ function GruposDelPoligono({ pol, grupos, soloLectura, onAsignar, onQuitar, onCa
             <div style={{ display: 'flex', alignItems: 'center', gap: 10 }}>
               <span style={{ width: 34, height: 34, borderRadius: 'var(--radius-md)', background: color, color: '#fff', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><I size={16} /></span>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ margin: 0, fontSize: 13.5, fontWeight: 600, color: 'var(--foreground)' }}>{gr.nombre}</p>
-                <p style={{ margin: 0, fontSize: 11, color: 'var(--muted-foreground)' }}>
+                <p style={{ margin: 0, fontSize: 'calc(13.5px * var(--escala-texto))', fontWeight: 600, color: 'var(--foreground)' }}>{gr.nombre}</p>
+                <p style={{ margin: 0, fontSize: 'calc(11px * var(--escala-texto))', color: 'var(--muted-foreground)' }}>
                   {gr.clase === 'ESPECIAL' ? 'Especial' : 'Rastrillaje'}{completo ? ` · ${completo.integrantes.length} integrantes` : ''}
                 </p>
               </div>
               <StatusBadge estado={gr.estado.toLowerCase()} size="sm" />
             </div>
             {gr.liderNombre && (
-              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 12 }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 6, fontSize: 'calc(12px * var(--escala-texto))' }}>
                 <UserRound size={13} color="var(--muted-foreground)" /><span style={{ color: 'var(--muted-foreground)' }}>Líder</span><span style={{ fontWeight: 600, color: 'var(--foreground)' }}>{gr.liderNombre}</span>
               </div>
             )}
@@ -135,7 +135,7 @@ function GruposDelPoligono({ pol, grupos, soloLectura, onAsignar, onQuitar, onCa
               </div>
             )}
             {enTerreno && (
-              <div style={{ display: 'flex', gap: 6, fontSize: 11, color: 'var(--muted-foreground)', lineHeight: 1.45 }}>
+              <div style={{ display: 'flex', gap: 6, fontSize: 'calc(11px * var(--escala-texto))', color: 'var(--muted-foreground)', lineHeight: 1.45 }}>
                 <Info size={12} style={{ marginTop: 2, flexShrink: 0 }} />
                 <span>El grupo está en el terreno: no se cambia. Al pasar a Replegado sale solo del polígono.</span>
               </div>
@@ -146,8 +146,8 @@ function GruposDelPoligono({ pol, grupos, soloLectura, onAsignar, onQuitar, onCa
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: 12, borderRadius: 'var(--radius)', border: '1px dashed var(--border)' }}>
           <Users size={18} color="var(--muted-foreground)" />
           <div>
-            <p style={{ margin: 0, fontSize: 12.5, fontWeight: 600, color: 'var(--foreground)' }}>Sin grupo asignado</p>
-            <p style={{ margin: 0, fontSize: 11, color: 'var(--muted-foreground)' }}>Admite un grupo de rastrillaje y los especiales que hagan falta.</p>
+            <p style={{ margin: 0, fontSize: 'calc(12.5px * var(--escala-texto))', fontWeight: 600, color: 'var(--foreground)' }}>Sin grupo asignado</p>
+            <p style={{ margin: 0, fontSize: 'calc(11px * var(--escala-texto))', color: 'var(--muted-foreground)' }}>Admite un grupo de rastrillaje y los especiales que hagan falta.</p>
           </div>
         </div>
       )}
@@ -188,20 +188,20 @@ const ICONO_EVENTO: Partial<Record<EventoPoligonoApi['tipo'], typeof LogIn>> = {
 };
 
 function HistorialPoligono({ detalle, agenteDe }: { detalle: PoligonoDetalleApi | null; agenteDe: (id: string | null) => string | null }) {
-  if (!detalle) return <p style={{ margin: 0, fontSize: 12, color: 'var(--muted-foreground)' }}>Cargando historial…</p>;
+  if (!detalle) return <p style={{ margin: 0, fontSize: 'calc(12px * var(--escala-texto))', color: 'var(--muted-foreground)' }}>Cargando historial…</p>;
   return (
     <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
       <p style={rotulo}>Historial del polígono</p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
-        <span style={{ fontSize: 11, color: 'var(--muted-foreground)' }}>Grupos que trabajaron</span>
+        <span style={{ fontSize: 'calc(11px * var(--escala-texto))', color: 'var(--muted-foreground)' }}>Grupos que trabajaron</span>
         {detalle.asistieron.length ? (
           <div style={{ display: 'flex', flexWrap: 'wrap', gap: 6 }}>
             {detalle.asistieron.map(g => {
               const c = g.color ?? '#64748b';
-              return <span key={g.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '3px 9px', borderRadius: 999, border: `1px solid color-mix(in srgb, ${c} 40%, transparent)`, background: `color-mix(in srgb, ${c} 8%, transparent)`, fontSize: 11.5, fontWeight: 600, color: 'var(--foreground)' }}><span style={{ width: 8, height: 8, borderRadius: 2, background: c }} />{g.nombre}</span>;
+              return <span key={g.id} style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '3px 9px', borderRadius: 999, border: `1px solid color-mix(in srgb, ${c} 40%, transparent)`, background: `color-mix(in srgb, ${c} 8%, transparent)`, fontSize: 'calc(11.5px * var(--escala-texto))', fontWeight: 600, color: 'var(--foreground)' }}><span style={{ width: 8, height: 8, borderRadius: 2, background: c }} />{g.nombre}</span>;
             })}
           </div>
-        ) : <span style={{ fontSize: 12, color: 'var(--muted-foreground)' }}>Ningún grupo trabajó todavía en este polígono.</span>}
+        ) : <span style={{ fontSize: 'calc(12px * var(--escala-texto))', color: 'var(--muted-foreground)' }}>Ningún grupo trabajó todavía en este polígono.</span>}
       </div>
       <div style={{ display: 'flex', flexDirection: 'column' }}>
         {detalle.historial.map((e, i) => {
@@ -212,8 +212,8 @@ function HistorialPoligono({ detalle, agenteDe }: { detalle: PoligonoDetalleApi 
               {i < detalle.historial.length - 1 && <span style={{ position: 'absolute', left: 10, top: 22, bottom: 0, width: 1, background: 'var(--border)' }} />}
               <span style={{ width: 21, height: 21, borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: `color-mix(in srgb, ${c} 12%, transparent)`, color: c }}><I size={11} /></span>
               <div style={{ flex: 1, minWidth: 0 }}>
-                <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: 'var(--foreground)', lineHeight: 1.35 }}>{textoEvento(e, agenteDe)}</p>
-                <p style={{ margin: '1px 0 0', fontSize: 11, color: 'var(--muted-foreground)' }}>{fechaCorta(e.registradoEn)}{e.registradoPor ? ` · ${e.registradoPor}` : ''}</p>
+                <p style={{ margin: 0, fontSize: 'calc(12px * var(--escala-texto))', fontWeight: 600, color: 'var(--foreground)', lineHeight: 1.35 }}>{textoEvento(e, agenteDe)}</p>
+                <p style={{ margin: '1px 0 0', fontSize: 'calc(11px * var(--escala-texto))', color: 'var(--muted-foreground)' }}>{fechaCorta(e.registradoEn)}{e.registradoPor ? ` · ${e.registradoPor}` : ''}</p>
               </div>
             </div>
           );
@@ -243,14 +243,14 @@ export function PanelPoligono({ pol, detalle, grupos, tracks, soloLectura, brech
         <p style={rotulo}>Cobertura por GPX</p>
         {pol.tracks ? <>
           <BarraCobertura valor={pol.coberturaPct} />
-          <p style={{ margin: 0, fontSize: 11.5, color: 'var(--muted-foreground)', lineHeight: 1.5 }}>
+          <p style={{ margin: 0, fontSize: 'calc(11.5px * var(--escala-texto))', color: 'var(--muted-foreground)', lineHeight: 1.5 }}>
             {fmtDist(pol.coberturaKm * 1000)} recorridos dentro del polígono · franja de 2 m a cada lado del recorrido · calculada {fechaCorta(pol.coberturaCalculadaEn)}
           </p>
-          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 12, color: 'var(--foreground)', cursor: 'pointer' }}>
+          <label style={{ display: 'flex', alignItems: 'center', gap: 8, fontSize: 'calc(12px * var(--escala-texto))', color: 'var(--foreground)', cursor: 'pointer' }}>
             <input type="checkbox" checked={brechas} onChange={onToggleBrechas} style={{ accentColor: 'var(--primary)', margin: 0 }} />Mostrar brechas en el mapa
           </label>
         </> : (
-          <p style={{ margin: 0, fontSize: 12, color: 'var(--muted-foreground)', lineHeight: 1.5 }}>Todavía no hay tracks GPX en este polígono. La cobertura se calcula sola cuando se cargan.</p>
+          <p style={{ margin: 0, fontSize: 'calc(12px * var(--escala-texto))', color: 'var(--muted-foreground)', lineHeight: 1.5 }}>Todavía no hay tracks GPX en este polígono. La cobertura se calcula sola cuando se cargan.</p>
         )}
       </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
@@ -259,10 +259,10 @@ export function PanelPoligono({ pol, detalle, grupos, tracks, soloLectura, brech
           <button key={t.id} type="button" onClick={() => onTrack(t)} style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 10px', borderRadius: 'var(--radius-md)', border: 'none', background: 'var(--muted)', cursor: 'pointer', fontFamily: 'var(--font-family-primary)', textAlign: 'left' }}>
             <Route size={13} color={t.color} />
             <span style={{ flex: 1, minWidth: 0 }}>
-              <span style={{ display: 'block', fontSize: 12, fontWeight: 600, color: 'var(--foreground)' }}>{t.agente}</span>
-              <span style={{ display: 'block', fontSize: 10.5, color: 'var(--muted-foreground)' }}>{t.inicio ? fechaCorta(t.inicio) : 'Sin horas'}{t.cargadoPor !== t.agente ? ` · cargado por ${t.cargadoPor}` : ''}</span>
+              <span style={{ display: 'block', fontSize: 'calc(12px * var(--escala-texto))', fontWeight: 600, color: 'var(--foreground)' }}>{t.agente}</span>
+              <span style={{ display: 'block', fontSize: 'calc(10.5px * var(--escala-texto))', color: 'var(--muted-foreground)' }}>{t.inicio ? fechaCorta(t.inicio) : 'Sin horas'}{t.cargadoPor !== t.agente ? ` · cargado por ${t.cargadoPor}` : ''}</span>
             </span>
-            <span style={{ fontSize: 11, color: 'var(--muted-foreground)' }}>{fmtKm(t.distanciaM)}</span>
+            <span style={{ fontSize: 'calc(11px * var(--escala-texto))', color: 'var(--muted-foreground)' }}>{fmtKm(t.distanciaM)}</span>
           </button>
         ))}
       </div>
@@ -296,10 +296,10 @@ export function PanelTrack({ t, detalle, poligonos, soloLectura, onClose, onGuar
         <UserRound size={15} color="var(--muted-foreground)" />
         <div>
           <p style={rotulo}>Cargado por</p>
-          <p style={{ margin: '2px 0 0', fontSize: 13, fontWeight: 600, color: 'var(--foreground)' }}>{t.cargadoPor}<span style={{ fontWeight: 400, color: 'var(--muted-foreground)', fontSize: 11.5 }}> · {fechaCorta(t.cargadoEn)}</span></p>
+          <p style={{ margin: '2px 0 0', fontSize: 'calc(13px * var(--escala-texto))', fontWeight: 600, color: 'var(--foreground)' }}>{t.cargadoPor}<span style={{ fontWeight: 400, color: 'var(--muted-foreground)', fontSize: 'calc(11.5px * var(--escala-texto))' }}> · {fechaCorta(t.cargadoEn)}</span></p>
         </div>
       </div>
-      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, fontSize: 12 }}>
+      <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 10, fontSize: 'calc(12px * var(--escala-texto))' }}>
         <div><p style={rotulo}>Inicio</p><p style={{ margin: '2px 0 0' }}>{fechaCorta(t.inicio)}</p></div>
         <div><p style={rotulo}>Fin</p><p style={{ margin: '2px 0 0' }}>{fechaCorta(t.fin)}</p></div>
         <div><p style={rotulo}>Distancia</p><p style={{ margin: '2px 0 0' }}>{fmtKm(t.distanciaM)}</p></div>
@@ -307,18 +307,18 @@ export function PanelTrack({ t, detalle, poligonos, soloLectura, onClose, onGuar
         <div><p style={rotulo}>Desnivel</p><p style={{ margin: '2px 0 0' }}>{t.conElevacion ? `↑ ${t.desnivelPositivoM ?? 0} m · ↓ ${t.desnivelNegativoM ?? 0} m` : 'Sin elevación'}</p></div>
         <div><p style={rotulo}>Grupo</p><p style={{ margin: '2px 0 0' }}>{t.grupoNombre ?? '—'}</p></div>
       </div>
-      <p style={{ margin: 0, fontSize: 11, color: 'var(--muted-foreground)', lineHeight: 1.5 }}>
+      <p style={{ margin: 0, fontSize: 'calc(11px * var(--escala-texto))', color: 'var(--muted-foreground)', lineHeight: 1.5 }}>
         El recorrido, las horas y la elevación salen del archivo y no se editan. Se detectó {Math.round(t.deteccionPct)} % de los puntos en {t.poligonoNombre ?? 'el polígono más cercano'}.
       </p>
       <Selector etiqueta="Polígono" overline valor={pol} onChange={setPol} disabled={soloLectura}
         opciones={[{ value: '', label: '— Fuera de polígono —' }, ...poligonos.map(p => ({ value: p.id, label: p.nombre }))]} />
       {soloLectura
-        ? <div><p style={rotulo}>Notas</p><p style={{ margin: '4px 0 0', fontSize: 12.5, whiteSpace: 'pre-wrap' }}>{t.notas || '—'}</p></div>
+        ? <div><p style={rotulo}>Notas</p><p style={{ margin: '4px 0 0', fontSize: 'calc(12.5px * var(--escala-texto))', whiteSpace: 'pre-wrap' }}>{t.notas || '—'}</p></div>
         : <Campo etiqueta="Notas" overline multilinea filas={3} valor={notas} onChange={setNotas} maxLength={NOTAS_MAX} placeholder="Observaciones sobre el recorrido…" />}
       {g.error && <ErrorTexto>{g.error}</ErrorTexto>}
       {detalle?.archivoUrl && (
         <a href={detalle.archivoUrl} target="_blank" rel="noreferrer" download={t.archivoNombre}
-          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 12, fontWeight: 600, color: 'var(--primary)', textDecoration: 'none' }}>
+          style={{ display: 'inline-flex', alignItems: 'center', gap: 6, fontSize: 'calc(12px * var(--escala-texto))', fontWeight: 600, color: 'var(--primary)', textDecoration: 'none' }}>
           <Download size={13} />Descargar el archivo original
         </a>
       )}
@@ -374,20 +374,20 @@ export function PanelMarcador({ m, soloLectura, onClose, onGuardar, onEliminar, 
             const bloqueado = soloLectura || (hallazgo && tp === 'POI');
             return (
               <button key={tp} type="button" disabled={bloqueado} onClick={() => setClase(tp)} title={hallazgo && tp === 'POI' ? 'Un hallazgo es evidencia: no pasa a punto de interés' : undefined}
-                style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '8px 10px', borderRadius: 'var(--radius-md)', cursor: bloqueado ? 'not-allowed' : 'pointer', opacity: bloqueado && !on ? 0.5 : 1, border: on ? `1.5px solid ${k.color}` : '1.5px solid var(--border)', background: on ? k.bg : 'transparent', color: on ? k.color : 'var(--foreground)', fontFamily: 'var(--font-family-primary)', fontSize: 12, fontWeight: 600 }}>
+                style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '8px 10px', borderRadius: 'var(--radius-md)', cursor: bloqueado ? 'not-allowed' : 'pointer', opacity: bloqueado && !on ? 0.5 : 1, border: on ? `1.5px solid ${k.color}` : '1.5px solid var(--border)', background: on ? k.bg : 'transparent', color: on ? k.color : 'var(--foreground)', fontFamily: 'var(--font-family-primary)', fontSize: 'calc(12px * var(--escala-texto))', fontWeight: 600 }}>
                 <I size={13} />{k.label}
               </button>
             );
           })}
         </div>
         {!hallazgo && clase === 'HALLAZGO' && (
-          <p style={{ margin: 0, display: 'flex', gap: 6, fontSize: 11.5, color: '#92400e', lineHeight: 1.45 }}><TriangleAlert size={13} style={{ flexShrink: 0, marginTop: 1 }} />Pasar a hallazgo no se deshace: un hallazgo es evidencia y no se elimina.</p>
+          <p style={{ margin: 0, display: 'flex', gap: 6, fontSize: 'calc(11.5px * var(--escala-texto))', color: '#92400e', lineHeight: 1.45 }}><TriangleAlert size={13} style={{ flexShrink: 0, marginTop: 1 }} />Pasar a hallazgo no se deshace: un hallazgo es evidencia y no se elimina.</p>
         )}
-        {hallazgo && <p style={{ margin: 0, fontSize: 11.5, color: 'var(--muted-foreground)', lineHeight: 1.45 }}>Un hallazgo es evidencia: queda donde se encontró, no se elimina y sus fotos no se quitan. Sus datos sí se corrigen.</p>}
+        {hallazgo && <p style={{ margin: 0, fontSize: 'calc(11.5px * var(--escala-texto))', color: 'var(--muted-foreground)', lineHeight: 1.45 }}>Un hallazgo es evidencia: queda donde se encontró, no se elimina y sus fotos no se quitan. Sus datos sí se corrigen.</p>}
       </div>
       {soloLectura ? <>
-        <div><p style={rotulo}>Descripción</p><p style={{ margin: '4px 0 0', fontSize: 13 }}>{m.descripcion || '—'}</p></div>
-        <div><p style={rotulo}>Detalle / notas de pista</p><p style={{ margin: '4px 0 0', fontSize: 12.5, whiteSpace: 'pre-wrap' }}>{m.detalle || '—'}</p></div>
+        <div><p style={rotulo}>Descripción</p><p style={{ margin: '4px 0 0', fontSize: 'calc(13px * var(--escala-texto))' }}>{m.descripcion || '—'}</p></div>
+        <div><p style={rotulo}>Detalle / notas de pista</p><p style={{ margin: '4px 0 0', fontSize: 'calc(12.5px * var(--escala-texto))', whiteSpace: 'pre-wrap' }}>{m.detalle || '—'}</p></div>
       </> : <>
         <Campo etiqueta="Nombre" overline valor={nombre} onChange={setNombre} maxLength={120} error={!nombre.trim()} />
         <Campo etiqueta="Descripción" overline valor={desc} onChange={setDesc} maxLength={300} placeholder="Descripción breve…" />
@@ -415,14 +415,14 @@ export function PanelMarcador({ m, soloLectura, onClose, onGuardar, onEliminar, 
             <button type="button" disabled={fotos.guardando} onClick={() => input.current?.click()}
               style={{ display: 'flex', flexDirection: 'column', alignItems: 'center', gap: 6, padding: 18, borderRadius: 'var(--radius-lg)', border: '2px dashed var(--border)', background: 'var(--muted)', color: 'var(--muted-foreground)', cursor: 'pointer', fontFamily: 'var(--font-family-primary)' }}>
               {fotos.guardando ? <Loader2 size={22} className="animate-spin" /> : <ImagePlus size={22} style={{ opacity: 0.6 }} />}
-              <span style={{ fontSize: 12 }}>{fotos.guardando ? 'Subiendo…' : 'Agregar fotos (imágenes de hasta 8 MB)'}</span>
+              <span style={{ fontSize: 'calc(12px * var(--escala-texto))' }}>{fotos.guardando ? 'Subiendo…' : 'Agregar fotos (imágenes de hasta 8 MB)'}</span>
             </button>
           </>
         )}
-        {m.fotos.length === 0 && soloLectura && <p style={{ margin: 0, fontSize: 12, color: 'var(--muted-foreground)' }}>Sin fotos.</p>}
+        {m.fotos.length === 0 && soloLectura && <p style={{ margin: 0, fontSize: 'calc(12px * var(--escala-texto))', color: 'var(--muted-foreground)' }}>Sin fotos.</p>}
         {fotos.error && <ErrorTexto>{fotos.error}</ErrorTexto>}
       </div>
-      <p style={{ margin: 0, fontSize: 11, color: 'var(--muted-foreground)' }}>Marcado por {m.creadoPor ?? '—'} · {fechaCorta(m.creadoEn)}</p>
+      <p style={{ margin: 0, fontSize: 'calc(11px * var(--escala-texto))', color: 'var(--muted-foreground)' }}>Marcado por {m.creadoPor ?? '—'} · {fechaCorta(m.creadoEn)}</p>
     </PanelDetalle>
   );
 }
@@ -435,7 +435,7 @@ export function GrillaTiposSci({ valor, onChange, disabled }: { valor: TipoInsta
         const on = valor === tp;
         return (
           <button key={tp} type="button" disabled={disabled} onClick={() => onChange(tp)} aria-pressed={on}
-            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 9px', borderRadius: 'var(--radius-md)', cursor: disabled ? 'default' : 'pointer', textAlign: 'left', border: on ? '1.5px solid #2563eb' : '1.5px solid var(--border)', background: on ? '#dbeafe' : 'transparent', color: on ? '#1d4ed8' : 'var(--foreground)', fontFamily: 'var(--font-family-primary)', fontSize: 11.5, fontWeight: 600, lineHeight: 1.2 }}>
+            style={{ display: 'flex', alignItems: 'center', gap: 8, padding: '7px 9px', borderRadius: 'var(--radius-md)', cursor: disabled ? 'default' : 'pointer', textAlign: 'left', border: on ? '1.5px solid #2563eb' : '1.5px solid var(--border)', background: on ? '#dbeafe' : 'transparent', color: on ? '#1d4ed8' : 'var(--foreground)', fontFamily: 'var(--font-family-primary)', fontSize: 'calc(11.5px * var(--escala-texto))', fontWeight: 600, lineHeight: 1.2 }}>
             <Simbolo tipo={tp} />{TIPOS_INSTALACION[tp]}
           </button>
         );
@@ -469,8 +469,8 @@ export function PanelInstalacion({ m, soloLectura, onClose, onGuardar, onReubica
       </>}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}><p style={rotulo}>Tipo de instalación</p><GrillaTiposSci valor={tipo} onChange={setTipo} disabled={soloLectura} /></div>
       {soloLectura ? <>
-        <div><p style={rotulo}>Responsable</p><p style={{ margin: '4px 0 0', fontSize: 13 }}>{m.responsable || '—'}</p></div>
-        <div><p style={rotulo}>Notas</p><p style={{ margin: '4px 0 0', fontSize: 12.5, whiteSpace: 'pre-wrap' }}>{m.notas || '—'}</p></div>
+        <div><p style={rotulo}>Responsable</p><p style={{ margin: '4px 0 0', fontSize: 'calc(13px * var(--escala-texto))' }}>{m.responsable || '—'}</p></div>
+        <div><p style={rotulo}>Notas</p><p style={{ margin: '4px 0 0', fontSize: 'calc(12.5px * var(--escala-texto))', whiteSpace: 'pre-wrap' }}>{m.notas || '—'}</p></div>
       </> : <>
         <Campo etiqueta="Nombre" overline valor={nombre} onChange={setNombre} maxLength={120} error={!nombre.trim()} />
         <Campo etiqueta="Responsable" overline valor={resp} onChange={setResp} maxLength={120} placeholder="Quién está a cargo" />
@@ -480,7 +480,7 @@ export function PanelInstalacion({ m, soloLectura, onClose, onGuardar, onReubica
       {!soloLectura && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <p style={rotulo}>Ubicación</p>
-          <p style={{ margin: 0, fontSize: 12, color: 'var(--muted-foreground)' }}>Si la instalación se trasladó, reubicala en el mapa. La ubicación anterior queda en la auditoría del operativo.</p>
+          <p style={{ margin: 0, fontSize: 'calc(12px * var(--escala-texto))', color: 'var(--muted-foreground)' }}>Si la instalación se trasladó, reubicala en el mapa. La ubicación anterior queda en la auditoría del operativo.</p>
           <div><Boton variante="outline" icono={Move} onClick={onReubicar}>Reubicar en el mapa</Boton></div>
         </div>
       )}
@@ -495,24 +495,24 @@ export function PanelPuntoCero({ lat, lng, historial, soloLectura, onClose, onAc
   return (
     <PanelDetalle chip={<Simbolo tipo="puntoCero" variante="chip" />} titulo="Punto Cero (LSP)" insignia={pastilla('Último punto de avistamiento', 'var(--primary)')} onClose={onClose} sub={fmtCoord(lat, lng)}
       pie={soloLectura ? undefined : <Boton tam="md" icono={Crosshair} onClick={onActualizar} full>Actualizar Punto Cero</Boton>}>
-      <p style={{ margin: 0, fontSize: 12.5, color: 'var(--foreground)', lineHeight: 1.6 }}>Es el centro del operativo: los radios se dibujan desde acá y lo siguen cuando se mueve.</p>
+      <p style={{ margin: 0, fontSize: 'calc(12.5px * var(--escala-texto))', color: 'var(--foreground)', lineHeight: 1.6 }}>Es el centro del operativo: los radios se dibujan desde acá y lo siguen cuando se mueve.</p>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <p style={{ ...rotulo, display: 'flex', alignItems: 'center', gap: 6 }}><History size={12} />Historial · {historial.length}</p>
         {historial.map((h, i) => (
           <div key={h.id} style={{ display: 'flex', gap: 10, position: 'relative', paddingBottom: i < historial.length - 1 ? 12 : 0 }}>
             {i < historial.length - 1 && <span style={{ position: 'absolute', left: 10, top: 22, bottom: 0, width: 1, background: 'var(--border)' }} />}
-            <span style={{ width: 21, height: 21, borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'rgba(229,75,75,0.12)', color: 'var(--primary)' }}><Crosshair size={11} /></span>
+            <span style={{ width: 21, height: 21, borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'color-mix(in srgb, var(--primary) 12%, transparent)', color: 'var(--primary)' }}><Crosshair size={11} /></span>
             <div style={{ flex: 1, minWidth: 0 }}>
-              <p style={{ margin: 0, fontSize: 12, fontWeight: 600, color: 'var(--foreground)', lineHeight: 1.35 }}>
+              <p style={{ margin: 0, fontSize: 'calc(12px * var(--escala-texto))', fontWeight: 600, color: 'var(--foreground)', lineHeight: 1.35 }}>
                 {h.desdeLat === null ? 'Definido al crear el operativo' : `Movido ${h.distanciaM !== null ? fmtDist(h.distanciaM) : ''}`}
               </p>
-              {h.motivo && <p style={{ margin: '2px 0 0', fontSize: 12, color: 'var(--foreground)', lineHeight: 1.45 }}>{h.motivo}</p>}
-              <p style={{ margin: '2px 0 0', fontSize: 11, color: 'var(--muted-foreground)', fontFamily: 'var(--font-family-mono, monospace)' }}>{fmtCoord(h.hastaLat, h.hastaLng)}</p>
-              <p style={{ margin: '1px 0 0', fontSize: 11, color: 'var(--muted-foreground)' }}>{fechaCorta(h.registradoEn)}{h.registradoPor ? ` · ${h.registradoPor}` : ''}</p>
+              {h.motivo && <p style={{ margin: '2px 0 0', fontSize: 'calc(12px * var(--escala-texto))', color: 'var(--foreground)', lineHeight: 1.45 }}>{h.motivo}</p>}
+              <p style={{ margin: '2px 0 0', fontSize: 'calc(11px * var(--escala-texto))', color: 'var(--muted-foreground)', fontFamily: 'var(--font-family-mono, monospace)' }}>{fmtCoord(h.hastaLat, h.hastaLng)}</p>
+              <p style={{ margin: '1px 0 0', fontSize: 'calc(11px * var(--escala-texto))', color: 'var(--muted-foreground)' }}>{fechaCorta(h.registradoEn)}{h.registradoPor ? ` · ${h.registradoPor}` : ''}</p>
             </div>
           </div>
         ))}
-        {!historial.length && <p style={{ margin: 0, fontSize: 12, color: 'var(--muted-foreground)' }}>Sin movimientos registrados.</p>}
+        {!historial.length && <p style={{ margin: 0, fontSize: 'calc(12px * var(--escala-texto))', color: 'var(--muted-foreground)' }}>Sin movimientos registrados.</p>}
       </div>
     </PanelDetalle>
   );

@@ -20,7 +20,7 @@ function InfoRow({ icon, label, value }: { icon: React.ReactNode; label: string;
       <span className="mt-0.5 flex-shrink-0" style={{ color: 'var(--primary)' }}>{icon}</span>
       <div>
         <span style={{
-          color: 'var(--muted-foreground)', fontSize: '11px',
+          color: 'var(--muted-foreground)', fontSize: 'calc(11px * var(--escala-texto))',
           fontFamily: 'var(--font-family-primary)', display: 'block',
         }}>
           {label}
@@ -84,7 +84,7 @@ export default function OperativoInfoModal({ operativo, onClose }: Props) {
           >
             <div
               className="w-9 h-9 rounded-lg flex items-center justify-center flex-shrink-0"
-              style={{ background: 'rgba(229,75,75,0.1)' }}
+              style={{ background: 'color-mix(in srgb, var(--primary) 10%, transparent)' }}
             >
               <FileText size={17} style={{ color: 'var(--primary)' }} />
             </div>
