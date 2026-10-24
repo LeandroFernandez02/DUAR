@@ -17,7 +17,7 @@ import {
 import StatusBadge from '../../../components/shared/StatusBadge';
 import { Boton, BarraCobertura, Campo, ErrorTexto, PanelDetalle, Selector, Simbolo, SIMBOLOS, chipIcono, pastilla, rotulo } from './piezas';
 import { fmtArea, fmtCoord, fmtDist, fmtKm } from './geo';
-import { colorDeGrupo, duracion, fechaCorta, type PoligonoVista, type TrackVista } from './modelo';
+import { colorDeGrupo, duracion, fechaCorta, PALETA_POLIGONOS, type PoligonoVista, type TrackVista } from './modelo';
 
 const mensaje = (err: unknown, porDefecto: string) => (err instanceof ApiError ? err.message : porDefecto);
 const EN_TERRENO = ['DESPLEGADO', 'RASTRILLANDO'];
@@ -162,6 +162,35 @@ function GruposDelPoligono({ pol, grupos, soloLectura, onAsignar, onQuitar, onCa
   );
 }
 
+/* ── Color del polígono (028): se elige uno de la paleta o se vuelve al del grupo ── */
+function ColorDelPoligono({ pol, soloLectura, onGuardar }: { pol: PoligonoVista; soloLectura: boolean; onGuardar: (d: { color: string | null }) => Promise<unknown> }) {
+  const g = useGuardar();
+  const propio = pol.colorPropio;
+  const elegir = (c: string | null) => g.guardar(() => onGuardar({ color: c }));
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
+      <p style={rotulo}>Color</p>
+      <div role="radiogroup" aria-label="Color del polígono" style={{ display: 'flex', flexWrap: 'wrap', gap: 8, alignItems: 'center' }}>
+        {PALETA_POLIGONOS.map(c => {
+          const on = (propio ?? pol.color).toUpperCase() === c.toUpperCase();
+          return (
+            <button key={c} type="button" role="radio" aria-checked={on} aria-label={`Color ${c}`} title={c} disabled={soloLectura || g.guardando} onClick={() => elegir(c)}
+              style={{ width: 28, height: 28, borderRadius: '50%', background: c, cursor: soloLectura ? 'default' : 'pointer', padding: 0,
+                border: on ? '3px solid var(--card)' : '2px solid transparent', boxShadow: on ? `0 0 0 2px ${c}` : 'none', opacity: g.guardando ? 0.6 : 1 }} />
+          );
+        })}
+        {!soloLectura && propio && (
+          <button type="button" disabled={g.guardando} onClick={() => elegir(null)}
+            style={{ background: 'none', border: 'none', padding: '0 4px', cursor: 'pointer', color: 'var(--primary)', fontWeight: 600, fontFamily: 'var(--font-family-primary)', fontSize: 'calc(11.5px * var(--escala-texto))' }}>
+            Usar el del grupo
+          </button>
+        )}
+      </div>
+      {g.error && <ErrorTexto>{g.error}</ErrorTexto>}
+    </div>
+  );
+}
+
 /* ── Historial del polígono (CU-39) ── */
 function textoEvento(e: EventoPoligonoApi, agenteDe: (trackId: string | null) => string | null): string {
   const d = (e.detalle ?? {}) as Record<string, unknown>;
@@ -170,6 +199,7 @@ function textoEvento(e: EventoPoligonoApi, agenteDe: (trackId: string | null) =>
     case 'CREADO': return 'Polígono dibujado';
     case 'NOMBRE': return `Nombre cambiado: «${d.anterior}» → «${d.nuevo}»`;
     case 'NOTAS': return 'Notas editadas';
+    case 'COLOR': return d.nuevo ? `Color cambiado a ${String(d.nuevo)}` : 'Color vuelto al del grupo';
     case 'GEOMETRIA': return `Forma modificada (${fmtArea(Number(d.areaAnteriorM2))} → ${fmtArea(Number(d.areaNuevaM2))})`;
     case 'ELIMINADO': return 'Polígono eliminado';
     case 'GRUPO_ASIGNADO': return `${g} asignado al polígono`;
@@ -183,7 +213,7 @@ function textoEvento(e: EventoPoligonoApi, agenteDe: (trackId: string | null) =>
   }
 }
 const ICONO_EVENTO: Partial<Record<EventoPoligonoApi['tipo'], typeof LogIn>> = {
-  CREADO: Pentagon, NOMBRE: FilePen, NOTAS: FilePen, GEOMETRIA: Spline, GRUPO_ASIGNADO: LogIn,
+  CREADO: Pentagon, NOMBRE: FilePen, NOTAS: FilePen, COLOR: Pentagon, GEOMETRIA: Spline, GRUPO_ASIGNADO: LogIn,
   TRACK_CARGADO: Upload, TRACK_REASIGNADO: Route, TRACK_ELIMINADO: Trash2,
 };
 
@@ -226,7 +256,7 @@ function HistorialPoligono({ detalle, agenteDe }: { detalle: PoligonoDetalleApi 
 export function PanelPoligono({ pol, detalle, grupos, tracks, soloLectura, brechas, onToggleBrechas, onClose, onGuardar, onAsignar, onQuitar, onCambiar, onEditarForma, onEliminar, onTrack }: {
   pol: PoligonoVista; detalle: PoligonoDetalleApi | null; grupos: GrupoApi[]; tracks: TrackVista[]; soloLectura: boolean;
   brechas: boolean; onToggleBrechas: () => void; onClose: () => void;
-  onGuardar: (d: { nombre?: string; notas?: string | null }) => Promise<unknown>;
+  onGuardar: (d: { nombre?: string; notas?: string | null; color?: string | null }) => Promise<unknown>;
   onAsignar: (grupoId: string) => Promise<unknown>; onQuitar: (grupoId: string, enTerreno: boolean) => void;
   onCambiar: (grupoId: string, nuevoId: string) => Promise<unknown>;
   onEditarForma: () => void; onEliminar: () => void; onTrack: (t: TrackVista) => void;
@@ -238,6 +268,7 @@ export function PanelPoligono({ pol, detalle, grupos, tracks, soloLectura, brech
       sub={`Área ${fmtArea(pol.areaM2)} · Perímetro ${fmtKm(pol.perimetroM)}`}
       pie={soloLectura ? undefined : <><Boton variante="muted" icono={Spline} onClick={onEditarForma} style={{ flex: 1 }}>Editar geometría</Boton><Boton variante="ghost" icono={Trash2} onClick={onEliminar} style={{ color: '#dc2626' }}>Eliminar</Boton></>}>
       <TextoEditable titulo="Nombre" valor={pol.nombre} vacio="" max={120} soloLectura={soloLectura} textoBoton={['Editar nombre', 'Editar nombre']} onGuardar={nombre => onGuardar({ nombre })} />
+      <ColorDelPoligono pol={pol} soloLectura={soloLectura} onGuardar={onGuardar} />
       <GruposDelPoligono pol={pol} grupos={grupos} soloLectura={soloLectura} onAsignar={onAsignar} onQuitar={onQuitar} onCambiar={onCambiar} />
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <p style={rotulo}>Cobertura por GPX</p>

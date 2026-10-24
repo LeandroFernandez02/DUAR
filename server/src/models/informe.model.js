@@ -134,8 +134,8 @@ export async function reunirDatos(operativoId, corteEn) {
               COALESCE((SELECT json_agg(x.nombre ORDER BY x.desde) FROM (
                   SELECT g.nombre, min(pg.asignado_en) AS desde FROM poligono_grupos pg JOIN grupos g ON g.id = pg.grupo_id
                    WHERE pg.poligono_id = p.id GROUP BY g.nombre) x), '[]') AS grupos,
-              (SELECT g.color FROM poligono_grupos pg JOIN grupos g ON g.id = pg.grupo_id
-                WHERE pg.poligono_id = p.id AND g.clase = 'RASTRILLAJE' ORDER BY pg.asignado_en DESC LIMIT 1) AS color
+              COALESCE(p.color, (SELECT g.color FROM poligono_grupos pg JOIN grupos g ON g.id = pg.grupo_id
+                WHERE pg.poligono_id = p.id AND g.clase = 'RASTRILLAJE' ORDER BY pg.asignado_en DESC LIMIT 1)) AS color
          FROM poligonos p WHERE p.operativo_id = $1 AND p.eliminado_en IS NULL
         ORDER BY p.creado_en`),
     q(`SELECT t.id, t.archivo_nombre AS "archivoNombre", g.color, t.grupo_id AS "grupoId",
@@ -208,7 +208,8 @@ export async function reunirDatos(operativoId, corteEn) {
          LEFT JOIN usuarios u ON u.id = pe.registrado_por
         WHERE pe.operativo_id = $1 ORDER BY pe.registrado_en`),
     q(`SELECT a.creado_en AS "creadoEn", a.accion, a.valores_previos->>'estado' AS "estadoPrevio",
-              a.valores_nuevos->>'estado' AS "estadoNuevo", ${nombre('u')} AS "registradoPor"
+              a.valores_nuevos->>'estado' AS "estadoNuevo", a.valores_nuevos->>'motivo' AS motivo,
+              CASE WHEN a.usuario_id IS NULL THEN 'Sistema' ELSE ${nombre('u')} END AS "registradoPor"
          FROM logs_auditoria a LEFT JOIN usuarios u ON u.id = a.usuario_id
         WHERE a.entidad_afectada = 'operativos' AND a.registro_id = $1 AND a.accion = 'MODIFICAR'
           AND a.valores_previos->>'estado' IS DISTINCT FROM a.valores_nuevos->>'estado'
@@ -328,7 +329,7 @@ export function armarCronologia(d) {
   add(d.operativo.creadoEn, 'Operativo', `Se crea el operativo «${d.operativo.titulo}».`, d.operativo.creadoPor);
   for (const a of d.auditoriaOperativo) {
     if (a.estadoNuevo === 'FINALIZADO') continue;
-    add(a.creadoEn, 'Operativo', `El operativo pasa a «${ESTADO_OPERATIVO[a.estadoNuevo] ?? a.estadoNuevo}».`, a.registradoPor);
+    add(a.creadoEn, 'Operativo', `El operativo pasa a «${ESTADO_OPERATIVO[a.estadoNuevo] ?? a.estadoNuevo}»${a.motivo ? `: ${a.motivo}` : ''}.`, a.registradoPor);
   }
   if (d.operativo.fechaHoraFin) {
     const fin = d.auditoriaOperativo.find(a => a.estadoNuevo === 'FINALIZADO');

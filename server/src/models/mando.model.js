@@ -28,7 +28,7 @@
 import { query, withTransaction } from '../config/db.js';
 import { ReglaError } from './reglaError.js';
 
-const ADMITE_PRESENCIA = ['ACTIVO', 'EN_PLANIFICACION'];
+const ADMITE_PRESENCIA = ['ACTIVO', 'EN_PLANIFICACION', 'EN_PROCESO'];
 
 const nombre = u => `${u.nombre} ${u.apellido}`;
 

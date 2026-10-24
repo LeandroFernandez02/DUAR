@@ -18,12 +18,14 @@ interface Props {
   /** Dentro de la barra superior de mobile/tablet (< 1024 px): siempre compacto, sin fondo ni borde
    *  propios y sin el botón de achicar ni «Ver detalles» (diseño CALÍVAR). */
   movil?: boolean;
+  /** Vuelve a pedir el operativo (después de pausarlo o reanudarlo). */
+  onRecargar?: () => void;
 }
 
 /* ─────────────────────────────────────────────────
    Header principal del operativo
 ───────────────────────────────────────────────── */
-export default function OperativoHeader({ operativo, movil = false }: Props) {
+export default function OperativoHeader({ operativo, movil = false, onRecargar }: Props) {
   const today = new Date();
   // `fechaInicio` ya viene como datetime ISO completo (mapearOperativo lee
   // `fechaHoraInicio` de la API) — no es una fecha "pelada" para concatenarle hora.
@@ -266,7 +268,7 @@ export default function OperativoHeader({ operativo, movil = false }: Props) {
 
       {/* Modals */}
       {showInfoModal && (
-        <OperativoInfoModal operativo={operativo} onClose={() => setShowInfoModal(false)} />
+        <OperativoInfoModal operativo={operativo} onClose={() => setShowInfoModal(false)} onCambio={onRecargar} />
       )}
       {showObjetivoModal && (
         <ObjetivoModal operativoId={operativo.id} onClose={() => setShowObjetivoModal(false)} />

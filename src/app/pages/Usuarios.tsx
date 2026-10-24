@@ -12,6 +12,7 @@ import Button from '../components/shared/base/Button';
 import {
   Buscador, SelectorVista, BarraFiltros, BotonTextoFiltro, Vacio, BotonIcono, Dato, TablaFija, tarjetaBase, type VistaListado,
 } from '../components/shared/Listados';
+import { useVistaListado } from '../components/shared/Listados';
 import CampoPassword from '../components/shared/CampoPassword';
 import CampoFecha from '../components/shared/CampoFecha';
 import {
@@ -108,7 +109,7 @@ export default function Usuarios() {
   const [search, setSearch] = useState('');
   const [roles, setRoles] = useState<Rol[]>([]);
   const [estados, setEstados] = useState<EstadoUsuario[]>([]);
-  const [vista, setVista] = useState<VistaListado>('card');
+  const [vista, setVista] = useVistaListado('usuarios', usuarioActual?.id);
 
   /* ── Datos REALES desde la API (CU-04) ──────────────────────────────────
    * Este módulo ya no usa los mocks del contexto: la lista sale de la tabla

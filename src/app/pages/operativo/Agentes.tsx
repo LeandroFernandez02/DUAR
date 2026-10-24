@@ -21,6 +21,8 @@ import {
   Buscador, SelectorVista, BarraFiltros, BotonTextoFiltro, Vacio, BotonIcono, Dato, TablaFija,
   tarjetaBase, type VistaListado,
 } from '../../components/shared/Listados';
+import { useVistaListado } from '../../components/shared/Listados';
+import { useApp } from '../../context/AppContext';
 import { EstadoOperativoAgente, catEspecialidades } from '../../data/mockData';
 
 /** Especialidades en el orden del filtro: primero las de rastrillaje, después los recursos especiales. */
@@ -61,6 +63,7 @@ const INTERVALO_MS = 10_000;
  */
 export default function Agentes() {
   const { operativo } = useOutletContext<OperativoOutletContext>();
+  const { usuario } = useApp();
   // Agentes y Grupos son dos secciones del menú del operativo (diseño CALÍVAR, 23/10): la dirección dice cuál.
   const pestana: 'agentes' | 'grupos' = useLocation().pathname.endsWith('/grupos') ? 'grupos' : 'agentes';
   const soloLectura = operativo.estado === 'finalizado' || operativo.estado === 'eliminado';
@@ -105,7 +108,7 @@ export default function Agentes() {
   }, [pestana, operativo.id]);
 
   // ── Búsqueda + filtros + vista ──
-  const [vista, setVista] = useState<VistaListado>('card');
+  const [vista, setVista] = useVistaListado('agentes', usuario?.id);
   const [query, setQuery] = useState('');
   const [estadosSel, setEstadosSel] = useState<EstadoOperativoAgente[]>([]);
   const [especialidadesSel, setEspecialidadesSel] = useState<string[]>([]);

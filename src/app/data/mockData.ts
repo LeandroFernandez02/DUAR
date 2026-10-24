@@ -1,7 +1,7 @@
 import type { ResultadoOperativo } from '../utils/resultadoOperativo';
 export type Rol = 'administrador' | 'coordinador' | 'agente';
 export type EstadoUsuario = 'activo' | 'inactivo' | 'eliminado' | 'pendiente';
-export type EstadoOperativo = 'activo' | 'planificación' | 'inactivo' | 'nuevo' | 'finalizado' | 'eliminado' | 'en_proceso';
+export type EstadoOperativo = 'iniciado' | 'planificación' | 'inactivo' | 'nuevo' | 'finalizado' | 'eliminado' | 'en_proceso';
 /**
  * Ciclo de vida del grupo — espejo del ENUM `estado_grupo` (8 valores,
  * rediseño del 24/09, migración 010). Las reglas reales viven en el backend
@@ -284,6 +284,10 @@ export interface Operativo {
   punto0?: { lat: number; lng: number }; // LSP – Last Seen Point
   fechaInicio: string;  // ISO 8601 datetime
   fechaFin?: string;
+  /** Por qué tiene el estado actual y si está Inactivo por una pausa manual (ciclo de estados, 24/10). */
+  estadoMotivo?: string;
+  estadoActualizadoEn?: string;
+  pausaManual?: boolean;
   descripcion?: string;
   objetivo?: string;
   /**
@@ -334,7 +338,7 @@ export const initialData: AppData = {
       email: 'admin@duar.cba.gob.ar',
       password: '',
       rol: 'administrador',
-      estado: 'activo',
+      estado: 'iniciado',
       createdAt: '2025-01-10',
       emailConfirmado: true,
     },
@@ -349,7 +353,7 @@ export const initialData: AppData = {
       fechaNacimiento: '1984-06-14',
       telefono: '351-4201234',
       institucionId: '11c7a8ed-de50-4f54-a62a-ff170b67a10f', dotacionId: 'a470cfbc-33bb-4f3e-9e06-df96a40d08d4', // DUAR · Capital
-      estado: 'activo',
+      estado: 'iniciado',
       createdAt: '2025-01-15',
       emailConfirmado: true,
     },
@@ -367,7 +371,7 @@ export const initialData: AppData = {
       grupo_sanguineo: 'A+',
       alergias: 'Ninguna',
       institucionId: '11c7a8ed-de50-4f54-a62a-ff170b67a10f', dotacionId: '183397ca-f4fd-4f79-8dc6-3a33809c2a1e', // DUAR · Otros (no estaba en el catálogo oficial)
-      estado: 'activo',
+      estado: 'iniciado',
       createdAt: '2025-02-01',
       emailConfirmado: true,
     },
@@ -385,7 +389,7 @@ export const initialData: AppData = {
       grupo_sanguineo: 'O+',
       alergias: 'Polen',
       institucionId: 'e9abb177-b4ff-4beb-9200-7c06f07deb5a', // Bomberos Voluntarios
-      estado: 'activo',
+      estado: 'iniciado',
       createdAt: '2025-02-05',
       emailConfirmado: true,
     },
@@ -403,7 +407,7 @@ export const initialData: AppData = {
       grupo_sanguineo: 'B-',
       alergias: 'Ninguna',
       institucionId: '11c7a8ed-de50-4f54-a62a-ff170b67a10f', dotacionId: 'a470cfbc-33bb-4f3e-9e06-df96a40d08d4', // DUAR · Capital
-      estado: 'activo',
+      estado: 'iniciado',
       createdAt: '2025-02-10',
       emailConfirmado: true,
     },
@@ -421,7 +425,7 @@ export const initialData: AppData = {
       grupo_sanguineo: 'AB+',
       alergias: 'Penicilina',
       institucionId: 'e9abb177-b4ff-4beb-9200-7c06f07deb5a', // Bomberos Voluntarios
-      estado: 'activo',
+      estado: 'iniciado',
       createdAt: '2025-02-12',
       emailConfirmado: true,
     },
@@ -439,7 +443,7 @@ export const initialData: AppData = {
       grupo_sanguineo: 'O-',
       alergias: 'Ninguna',
       institucionId: '11c7a8ed-de50-4f54-a62a-ff170b67a10f', dotacionId: '183397ca-f4fd-4f79-8dc6-3a33809c2a1e', // DUAR · Otros (no estaba en el catálogo oficial)
-      estado: 'activo',
+      estado: 'iniciado',
       createdAt: '2025-02-18',
       emailConfirmado: true,
     },
@@ -475,7 +479,7 @@ export const initialData: AppData = {
       grupo_sanguineo: 'B+',
       alergias: 'Ninguna',
       institucionId: 'e9abb177-b4ff-4beb-9200-7c06f07deb5a', // Bomberos Voluntarios
-      estado: 'activo',
+      estado: 'iniciado',
       createdAt: '2025-03-01',
       emailConfirmado: true,
     },
@@ -493,7 +497,7 @@ export const initialData: AppData = {
       grupo_sanguineo: 'A+',
       alergias: 'Ninguna',
       institucionId: '11c7a8ed-de50-4f54-a62a-ff170b67a10f', dotacionId: 'a470cfbc-33bb-4f3e-9e06-df96a40d08d4', // DUAR · Capital
-      estado: 'activo',
+      estado: 'iniciado',
       createdAt: '2025-03-05',
       emailConfirmado: true,
     },
@@ -542,7 +546,7 @@ export const initialData: AppData = {
     {
       id: 'op1',
       nombre: 'Búsqueda Cerro Champaquí',
-      estado: 'activo',
+      estado: 'iniciado',
       ubicacion: 'Cerro Champaquí, Córdoba',
       fechaInicio: '2026-02-28',
       descripcion: 'Búsqueda de excursionista extraviado en la zona del Cerro Champaquí. Última ubicación conocida: Refugio Champaquí.',

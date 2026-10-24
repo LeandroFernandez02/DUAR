@@ -4,6 +4,7 @@
  */
 import * as Operativo from '../models/operativo.model.js';
 import * as Auditoria from '../models/auditoria.model.js';
+import * as Estado from '../models/operativoEstado.model.js';
 import { validarDatosOperativo, RESULTADOS_OPERATIVO } from '../utils/validaciones.js';
 import { conZonaArgentina } from '../utils/fechas.js';
 import * as Informes from '../services/informe.service.js';
@@ -159,7 +160,7 @@ export async function actualizar(req, res, next) {
  */
 export async function activar(req, res, next) {
   try {
-    const operativo = await Operativo.activarSiEsNuevo(req.params.id);
+    const operativo = await Operativo.activarSiEsNuevo(req.params.id, req.usuario.id);
     if (!operativo) return res.status(404).json({ error: 'Operativo no encontrado.' });
     res.json({ operativo });
   } catch (err) { next(err); }
@@ -176,7 +177,7 @@ export async function revisionFinalizar(req, res, next) {
 
 /**
  * POST /api/operativos/:id/finalizar — CU-10
- * Precondición: ACTIVO, EN_PLANIFICACION o EN_PROCESO.
+ * Precondición: Iniciado, En planificación, En proceso o Inactivo (uno pausado también se cierra).
  */
 export async function finalizar(req, res, next) {
   try {
@@ -184,7 +185,7 @@ export async function finalizar(req, res, next) {
     const previo = await Operativo.buscarPorId(id);
     if (!previo) return res.status(404).json({ error: 'Operativo no encontrado.' });
 
-    if (!['ACTIVO', 'EN_PLANIFICACION', 'EN_PROCESO'].includes(previo.estado)) {
+    if (!['ACTIVO', 'EN_PLANIFICACION', 'EN_PROCESO', 'INACTIVO'].includes(previo.estado)) {
       return res.status(409).json({
         error: `No se puede finalizar: el operativo está ${previo.estado.toLowerCase()}.`,
         motivo: 'estado_invalido',
@@ -233,6 +234,48 @@ export async function finalizar(req, res, next) {
     }
 
     res.json({ operativo: finalizado, informeFinal });
+  } catch (err) { next(err); }
+}
+
+const MOTIVO_PAUSA_MIN = 5;
+const MOTIVO_PAUSA_MAX = 300;
+
+/**
+ * POST /api/operativos/:id/pausar — pausa manual (24/10): un Iniciado / En planificación / En proceso
+ * pasa a Inactivo con un motivo obligatorio. No admite ingresos hasta que se reanude.
+ */
+export async function pausar(req, res, next) {
+  try {
+    const previo = await Operativo.buscarPorId(req.params.id);
+    if (!previo) return res.status(404).json({ error: 'Operativo no encontrado.' });
+    const motivo = typeof req.body?.motivo === 'string' ? req.body.motivo.trim() : '';
+    if (motivo.length < MOTIVO_PAUSA_MIN || motivo.length > MOTIVO_PAUSA_MAX) {
+      return res.status(400).json({
+        error: `Escribí el motivo de la pausa (entre ${MOTIVO_PAUSA_MIN} y ${MOTIVO_PAUSA_MAX} caracteres).`,
+        motivo: 'motivo_requerido', errores: { motivo: 'Escribí el motivo de la pausa.' },
+      });
+    }
+    if (!Estado.EN_CURSO.includes(previo.estado)) {
+      return res.status(409).json({
+        error: previo.estado === 'INACTIVO' ? 'El operativo ya está inactivo.' : 'Sólo se puede pausar un operativo que ya está en marcha.',
+        motivo: 'estado_invalido',
+      });
+    }
+    await Estado.pausar(previo.id, motivo, req.usuario.id);
+    res.json({ operativo: await Operativo.buscarPorId(previo.id) });
+  } catch (err) { next(err); }
+}
+
+/** POST /api/operativos/:id/reanudar — vuelve al estado que tenía antes de quedar Inactivo. */
+export async function reanudar(req, res, next) {
+  try {
+    const previo = await Operativo.buscarPorId(req.params.id);
+    if (!previo) return res.status(404).json({ error: 'Operativo no encontrado.' });
+    if (previo.estado !== 'INACTIVO') {
+      return res.status(409).json({ error: 'El operativo no está inactivo.', motivo: 'estado_invalido' });
+    }
+    await Estado.reanudar(previo.id, req.usuario.id);
+    res.json({ operativo: await Operativo.buscarPorId(previo.id) });
   } catch (err) { next(err); }
 }
 

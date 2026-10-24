@@ -23,6 +23,7 @@ import {
   Buscador, SelectorVista, BarraFiltros, BotonTextoFiltro, Vacio, BotonIcono, ListaFija,
   tarjetaBase, estiloTitulosColumna, type VistaListado,
 } from '../components/shared/Listados';
+import { useVistaListado } from '../components/shared/Listados';
 import {
   validarTitulo, validarFiscal, filtrarFiscal,
   TITULO_MAX, FISCAL_MAX, DESCRIPCION_MAX, NOTA_FINAL_MAX,
@@ -46,7 +47,7 @@ import {
  * AgenteDashboard.tsx, que ya lo tenía bien.
  */
 function esVigente(estado: EstadoOperativo): boolean {
-  return estado === 'nuevo' || estado === 'planificación' || estado === 'en_proceso' || estado === 'activo';
+  return estado === 'nuevo' || estado === 'planificación' || estado === 'en_proceso' || estado === 'iniciado' || estado === 'inactivo';
 }
 
 /**
@@ -58,18 +59,18 @@ function esVigente(estado: EstadoOperativo): boolean {
 function mandoDe(op: Operativo): { texto: string; alerta: boolean } {
   const m = op.mandoPreview;
   if (m?.vigente) return { texto: `${m.nombre} ${m.apellido}`.trim(), alerta: false };
-  return { texto: 'Sin coordinador a cargo', alerta: op.estado === 'activo' };
+  return { texto: 'Sin coordinador a cargo', alerta: op.estado === 'iniciado' || op.estado === 'planificación' || op.estado === 'en_proceso' };
 }
 
 type ModalType = 'create' | 'edit' | 'qr' | 'delete' | 'finalize' | null;
 type ViewMode = VistaListado;
-/** "Vigentes": todavía no se cerró (nuevo, en planificación, en proceso o activo). Es el filtro de entrada. */
-const VIGENTES: EstadoOperativo[] = ['nuevo', 'planificación', 'en_proceso', 'activo'];
+/** "Vigentes": todavía no se cerró (nuevo, en planificación, en proceso, iniciado o inactivo). Es el filtro de entrada. */
+const VIGENTES: EstadoOperativo[] = ['nuevo', 'planificación', 'en_proceso', 'iniciado', 'inactivo'];
 
 /** Estados que se pueden elegir en el filtro, con el color de su punto. */
 const ESTADOS_FILTRO: { value: EstadoOperativo; label: string; dot: string }[] = [
   { value: 'nuevo',         label: 'Nuevo',           dot: 'var(--accent)' },
-  { value: 'activo',        label: 'Iniciado',         dot: '#16a34a' },
+  { value: 'iniciado',      label: 'Iniciado',         dot: '#16a34a' },
   { value: 'planificación', label: 'En Planificación', dot: '#ca8a04' },
   { value: 'en_proceso',    label: 'En Proceso',      dot: '#2563eb' },
   { value: 'inactivo',      label: 'Inactivo',        dot: '#dc2626' },
@@ -206,7 +207,7 @@ export default function Operativos() {
 
   /* ── view / filter state ── */
   const [searchParams, setSearchParams] = useSearchParams();
-  const [viewMode, setViewMode] = useState<ViewMode>('card');
+  const [viewMode, setViewMode] = useVistaListado('operativos', usuario?.id);
   const [searchQuery, setSearchQuery] = useState('');
   // Estados elegidos (selección múltiple, 02/10). Vacío = todos.
   const [estadosSel, setEstadosSel] = useState<EstadoOperativo[]>(() => estadosDesdeUrl(searchParams.get('estado')));
@@ -478,7 +479,7 @@ export default function Operativos() {
 
 
   const estadoColors: Record<string, string> = {
-    activo: '#16a34a',
+    iniciado: '#16a34a',
     'planificación': '#ca8a04',
     inactivo: '#dc2626',
     nuevo: 'var(--accent)',
@@ -799,27 +800,7 @@ export default function Operativos() {
                       {!isEditReadOnly && formErrors.has('fiscal') && <span style={{ color: 'var(--destructive)', fontSize: 'calc(11px * var(--escala-texto))', fontFamily: 'var(--font-family-primary)' }}>Revisá este campo</span>}
                     </div>
 
-                    {/* Estado — solo en edición */}
-                    {modal === 'edit' && (
-                      <div>
-                        <label style={labelStyle()}>Estado</label>
-                        <select
-                          value={form.estado}
-                          disabled={isEditReadOnly}
-                          onChange={isEditReadOnly ? undefined : e => setForm({ ...form, estado: e.target.value as EstadoOperativo })}
-                          className="w-full px-3 py-2.5 rounded-lg border outline-none"
-                          style={isEditReadOnly ? readOnlyInputStyle() : inputStyle()}
-                        >
-                          <option value="nuevo">Nuevo</option>
-                          <option value="planificación">En Planificación</option>
-                          <option value="activo">Iniciado</option>
-                          <option value="en_proceso">En Proceso</option>
-                          <option value="inactivo">Inactivo</option>
-                          <option value="finalizado">Finalizado</option>
-                          <option value="eliminado">Eliminado</option>
-                        </select>
-                      </div>
-                    )}
+                    {/* El estado no se edita acá: cambia con las acciones reales (entrar, pausar, finalizar, eliminar). */}
 
                     {/* Descripción del operativo */}
                     <div>

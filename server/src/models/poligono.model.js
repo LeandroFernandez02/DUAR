@@ -28,6 +28,7 @@ const CAMPOS = `
   p.operativo_id            AS "operativoId",
   p.nombre,
   p.notas,
+  p.color,
   ST_AsGeoJSON(p.geom)::json AS geometria,
   round(p.area_m2)::int      AS "areaM2",
   round(p.perimetro_m)::int  AS "perimetroM",
@@ -177,12 +178,12 @@ export async function crear(operativoId, { nombre, geojson, notas = null, grupoI
 
 /* ── CU-37 · Modificar (forma, nombre, notas) ──────────────────────────── */
 
-export async function actualizar(operativoId, poligonoId, { nombre, notas, geojson }, usuarioId) {
+export async function actualizar(operativoId, poligonoId, { nombre, notas, geojson, color }, usuarioId) {
   try {
     await withTransaction(async (client) => {
       const previo = await Asig.bloquearPoligono(client, operativoId, poligonoId);
       const { rows: [actual] } = await client.query(
-        `SELECT notas, round(area_m2)::int AS "areaM2" FROM poligonos WHERE id = $1`, [poligonoId]);
+        `SELECT notas, color, round(area_m2)::int AS "areaM2" FROM poligonos WHERE id = $1`, [poligonoId]);
 
       if (nombre !== undefined && nombre !== previo.nombre) {
         await client.query(`UPDATE poligonos SET nombre = $2, actualizado_en = CURRENT_TIMESTAMP WHERE id = $1`, [poligonoId, nombre]);
@@ -194,6 +195,13 @@ export async function actualizar(operativoId, poligonoId, { nombre, notas, geojs
         await client.query(`UPDATE poligonos SET notas = $2, actualizado_en = CURRENT_TIMESTAMP WHERE id = $1`, [poligonoId, notas]);
         await Asig.registrarEvento(client, {
           poligonoId, operativoId, tipo: 'NOTAS', detalle: { anterior: actual.notas, nueva: notas }, usuarioId,
+        });
+      }
+      // Color propio (028): null lo devuelve al de su grupo. Queda en el historial del polígono.
+      if (color !== undefined && (color ?? null) !== (actual.color ?? null)) {
+        await client.query(`UPDATE poligonos SET color = $2, actualizado_en = CURRENT_TIMESTAMP WHERE id = $1`, [poligonoId, color]);
+        await Asig.registrarEvento(client, {
+          poligonoId, operativoId, tipo: 'COLOR', detalle: { anterior: actual.color, nuevo: color }, usuarioId,
         });
       }
       if (geojson !== undefined) {

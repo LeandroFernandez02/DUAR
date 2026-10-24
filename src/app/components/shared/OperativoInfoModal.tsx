@@ -1,8 +1,12 @@
+import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import {
   X, MapPin, Calendar, Users, User,
-  FileText, Clock, Flag,
+  FileText, Clock, Flag, PauseCircle, PlayCircle, Loader2,
 } from 'lucide-react';
+import { operativosApi, ApiError } from '../../services/api';
+import Button from './base/Button';
+import { haceCuanto } from '../../utils/tiempo';
 import { differenceInDays } from 'date-fns';
 import { Operativo } from '../../data/mockData';
 import { useApp } from '../../context/AppContext';
@@ -12,7 +16,12 @@ import { ETIQUETA_RESULTADO } from '../../utils/resultadoOperativo';
 interface Props {
   operativo: Operativo;
   onClose: () => void;
+  /** Se pausó o reanudó: el que lo abrió vuelve a pedir el operativo. */
+  onCambio?: () => void;
 }
+
+const MOTIVO_MIN = 5;
+const MOTIVO_MAX = 300;
 
 function InfoRow({ icon, label, value }: { icon: React.ReactNode; label: string; value: string }) {
   return (
@@ -36,8 +45,29 @@ function InfoRow({ icon, label, value }: { icon: React.ReactNode; label: string;
   );
 }
 
-export default function OperativoInfoModal({ operativo, onClose }: Props) {
+export default function OperativoInfoModal({ operativo, onClose, onCambio }: Props) {
   const { data } = useApp();
+  const [pausando, setPausando] = useState(false);
+  const [motivoPausa, setMotivoPausa] = useState('');
+  const [trabajando, setTrabajando] = useState(false);
+  const [errorEstado, setErrorEstado] = useState('');
+  const enCurso = ['iniciado', 'planificación', 'en_proceso'].includes(operativo.estado);
+
+  const pausar = async () => {
+    setTrabajando(true); setErrorEstado('');
+    try {
+      await operativosApi.pausar(operativo.id, motivoPausa.trim());
+      setPausando(false); setMotivoPausa('');
+      onCambio?.();
+    } catch (err) { setErrorEstado(err instanceof ApiError ? err.message : 'No se pudo pausar. Intentá de nuevo.'); }
+    finally { setTrabajando(false); }
+  };
+  const reanudar = async () => {
+    setTrabajando(true); setErrorEstado('');
+    try { await operativosApi.reanudar(operativo.id); onCambio?.(); }
+    catch (err) { setErrorEstado(err instanceof ApiError ? err.message : 'No se pudo reanudar. Intentá de nuevo.'); }
+    finally { setTrabajando(false); }
+  };
   const navigate = useNavigate();
   /** Finalizar va por el flujo real del listado (revisión previa, reseña y resultado, CU-10). Antes este
    * botón sólo cambiaba los datos de ejemplo del navegador y el operativo seguía abierto en la base. */
@@ -211,8 +241,61 @@ export default function OperativoInfoModal({ operativo, onClose }: Props) {
               </div>
             )}
 
-            {/* Finalizar operativo: sólo lo que el servidor deja finalizar (activo, en planificación o en proceso). */}
-            {['activo', 'planificación', 'en_proceso'].includes(operativo.estado) && (
+            {/* Estado y su motivo; pausar y reanudar (ciclo de estados, 24/10). */}
+            {operativo.estado !== 'nuevo' && operativo.estado !== 'finalizado' && operativo.estado !== 'eliminado' && (
+              <div className="flex flex-col gap-2">
+                <h3 style={{ color: 'var(--foreground)', fontSize: 'var(--text-h3)', fontWeight: 'var(--font-weight-semibold)', fontFamily: 'var(--font-family-primary)' }}>
+                  Estado
+                </h3>
+                <div className="flex items-center gap-2 flex-wrap" style={{ fontFamily: 'var(--font-family-primary)' }}>
+                  <StatusBadge estado={operativo.estado} size="sm" />
+                  {operativo.estadoActualizadoEn && (
+                    <span style={{ color: 'var(--muted-foreground)', fontSize: 'calc(11.5px * var(--escala-texto))' }}>{haceCuanto(operativo.estadoActualizadoEn)}</span>
+                  )}
+                </div>
+                {operativo.estadoMotivo && (
+                  <p style={{ margin: 0, color: 'var(--muted-foreground)', fontSize: 'var(--text-label)', lineHeight: 1.5, fontFamily: 'var(--font-family-primary)' }}>
+                    {operativo.estadoMotivo}
+                  </p>
+                )}
+                {errorEstado && <p role="alert" style={{ margin: 0, color: 'var(--destructive)', fontSize: 'var(--text-label)' }}>{errorEstado}</p>}
+
+                {operativo.estado === 'inactivo' && (
+                  <>
+                    <p style={{ margin: 0, color: 'var(--muted-foreground)', fontSize: 'var(--text-label)', lineHeight: 1.5, fontFamily: 'var(--font-family-primary)' }}>
+                      {operativo.pausaManual
+                        ? 'Está en pausa: no admite ingresos hasta que se reanude.'
+                        : 'Pasó a Inactivo por falta de actividad. Vuelve solo cuando alguien ingresa o se registra algo; también podés reanudarlo ahora.'}
+                    </p>
+                    <div><Button variant="muted" size="md" icon={trabajando ? Loader2 : PlayCircle} disabled={trabajando} onClick={reanudar}>Reanudar operativo</Button></div>
+                  </>
+                )}
+
+                {enCurso && !pausando && (
+                  <div><Button variant="muted" size="md" icon={PauseCircle} onClick={() => setPausando(true)}>Pausar operativo</Button></div>
+                )}
+                {enCurso && pausando && (
+                  <div className="flex flex-col gap-2">
+                    <label style={{ color: 'var(--foreground)', fontSize: 'var(--text-label)', fontWeight: 600, fontFamily: 'var(--font-family-primary)' }} htmlFor="motivo-pausa">
+                      Motivo de la pausa
+                    </label>
+                    <textarea id="motivo-pausa" rows={3} maxLength={MOTIVO_MAX} value={motivoPausa} onChange={e => setMotivoPausa(e.target.value)}
+                      placeholder="Ej.: se suspende por tormenta eléctrica"
+                      style={{ width: '100%', boxSizing: 'border-box', padding: '8px 12px', borderRadius: 'var(--radius-input)', border: '1px solid var(--border)', background: 'var(--input-background)', color: 'var(--foreground)', fontFamily: 'var(--font-family-primary)', fontSize: 'var(--text-base)', resize: 'vertical' }} />
+                    <p style={{ margin: 0, color: 'var(--muted-foreground)', fontSize: 'calc(11.5px * var(--escala-texto))', lineHeight: 1.45 }}>
+                      Mientras esté pausado no se admiten ingresos (QR ni altas manuales). Queda registrado con tu nombre.
+                    </p>
+                    <div className="flex gap-2">
+                      <Button variant="outline" size="md" disabled={trabajando} onClick={() => { setPausando(false); setMotivoPausa(''); setErrorEstado(''); }}>Cancelar</Button>
+                      <Button size="md" icon={trabajando ? Loader2 : PauseCircle} disabled={trabajando || motivoPausa.trim().length < MOTIVO_MIN} onClick={pausar}>Pausar</Button>
+                    </div>
+                  </div>
+                )}
+              </div>
+            )}
+
+            {/* Finalizar operativo: sólo lo que el servidor deja finalizar (iniciado, en planificación, en proceso o inactivo). */}
+            {['iniciado', 'planificación', 'en_proceso', 'inactivo'].includes(operativo.estado) && (
               <div
                 className="flex flex-col gap-2 pt-2"
                 style={{ borderTop: '1px solid var(--border)' }}

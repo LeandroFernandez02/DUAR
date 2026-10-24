@@ -266,9 +266,9 @@ export default function Mapa() {
     setAbiertas(a => ({ ...a, poligonos: true }));
     await despues(`Polígono «${r.poligono.nombre}» creado`);
   };
-  const guardarPoligono = async (id: string, d: { nombre?: string; notas?: string | null }) => {
+  const guardarPoligono = async (id: string, d: { nombre?: string; notas?: string | null; color?: string | null }) => {
     await poligonosApi.actualizar(opId, id, d);
-    await despues(d.notas !== undefined ? 'Nota guardada' : 'Nombre guardado');
+    await despues(d.color !== undefined ? 'Color actualizado' : d.notas !== undefined ? 'Nota guardada' : 'Nombre guardado');
   };
   const guardarForma = async () => {
     if (!editVerts) return;

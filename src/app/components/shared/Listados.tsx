@@ -29,6 +29,23 @@ export function Buscador({ value, onChange, placeholder }: { value: string; onCh
 
 export type VistaListado = 'card' | 'list';
 
+/**
+ * Vista de un listado (Operativos, Usuarios, Agentes): por defecto «Lista». Si la persona la cambia, se
+ * recuerda para sus próximas sesiones (en este navegador, por usuario y por listado).
+ */
+export function useVistaListado(listado: string, usuarioId?: string): [VistaListado, (v: VistaListado) => void] {
+  const clave = `duar-vista:${usuarioId ?? 'anonimo'}:${listado}`;
+  const leer = (): VistaListado => {
+    try { const v = localStorage.getItem(clave); return v === 'card' || v === 'list' ? v : 'list'; } catch { return 'list'; }
+  };
+  const [vista, setVista] = useState<VistaListado>(leer);
+  const elegir = (v: VistaListado) => {
+    setVista(v);
+    try { localStorage.setItem(clave, v); } catch { /* sin almacenamiento: vale sólo en esta sesión */ }
+  };
+  return [vista, elegir];
+}
+
 /** Tarjetas / Lista. En < 600 px queda sólo con los íconos. */
 export function SelectorVista({ value, onChange }: { value: VistaListado; onChange: (v: VistaListado) => void }) {
   return (

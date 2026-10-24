@@ -77,7 +77,7 @@ export async function obtenerOEmitir(operativoId, generadoPor = null) {
  * Null si no existe, fue revocado, venció, o el operativo ya no admite ingresos.
  *
  * La condición sobre el estado del operativo es la precondición del CU-16: sólo
- * se puede entrar a uno ACTIVO o EN_PLANIFICACION. Un QR viejo de un operativo
+ * se puede entrar a uno Iniciado, En planificación, En proceso o Inactivo por falta de actividad (no a uno pausado a mano). Un QR viejo de un operativo
  * ya finalizado no debe dejar entrar a nadie.
  */
 export async function validar(token) {
@@ -95,7 +95,7 @@ export async function validar(token) {
         AND t.revocado = false
         AND t.expira_en > CURRENT_TIMESTAMP
         AND o.eliminado_en IS NULL
-        AND o.estado IN ('ACTIVO', 'EN_PLANIFICACION')`,
+        AND (o.estado IN ('ACTIVO', 'EN_PLANIFICACION', 'EN_PROCESO') OR (o.estado = 'INACTIVO' AND NOT o.pausa_manual))`,
     [token]
   );
   return rows[0] ?? null;

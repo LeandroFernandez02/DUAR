@@ -3,7 +3,8 @@ import { OperativoApi } from '../services/api';
 
 export const ESTADO_API_A_MOCK: Record<string, EstadoOperativo> = {
   NUEVO: 'nuevo',
-  ACTIVO: 'activo',
+  ACTIVO: 'iniciado',
+  INICIADO: 'iniciado',
   INACTIVO: 'inactivo',
   EN_PLANIFICACION: 'planificación',
   EN_PROCESO: 'en_proceso',
@@ -27,6 +28,9 @@ export function mapearOperativo(o: OperativoApi): Operativo {
     punto0: { lat: o.puntoCeroLat, lng: o.puntoCeroLng },
     fechaInicio: o.fechaHoraInicio,
     fechaFin: o.fechaHoraFin ?? undefined,
+    estadoMotivo: o.estadoMotivo ?? undefined,
+    estadoActualizadoEn: o.estadoActualizadoEn,
+    pausaManual: o.pausaManual,
     descripcion: o.descripcion ?? undefined,
     notaFinal: o.notaFinal ?? undefined,
     resultado: o.resultado ?? undefined,

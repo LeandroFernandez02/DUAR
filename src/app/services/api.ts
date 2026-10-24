@@ -340,6 +340,11 @@ export interface OperativoApi {
   /** Resultado elegido al finalizar (CU-10, migración 025); null si no está finalizado o se cerró antes. */
   resultado?: ResultadoOperativo | null;
   estado: string;
+  /** Por qué tiene el estado actual (ciclo de estados, 24/10). */
+  estadoMotivo?: string | null;
+  estadoActualizadoEn?: string;
+  /** Inactivo por pausa manual: sólo se reanuda a mano. */
+  pausaManual?: boolean;
   fechaHoraInicio: string;
   fechaHoraFin: string | null;
   coordinadorId: string;
@@ -391,8 +396,12 @@ export const operativosApi = {
   /** CU-09. Si se mueve el Punto Cero con el operativo en curso, `motivoPuntoCero` es obligatorio (CU-36). */
   actualizar: (id: string, datos: Partial<CrearOperativoPayload> & { motivoPuntoCero?: string }) =>
     api.put<{ operativo: OperativoApi }>(`/operativos/${id}`, datos),
-  /** CU-08 paso 8: transición NUEVO → ACTIVO al entrar. Idempotente. */
+  /** CU-08 paso 8: transición Nuevo → Iniciado al entrar. Idempotente. */
   activar: (id: string) => api.post<{ operativo: OperativoApi }>(`/operativos/${id}/activar`),
+  /** Pausa manual (24/10): queda Inactivo con el motivo; no admite ingresos hasta reanudar. */
+  pausar: (id: string, motivo: string) => api.post<{ operativo: OperativoApi }>(`/operativos/${id}/pausar`, { motivo }),
+  /** Vuelve al estado que tenía antes de quedar Inactivo. */
+  reanudar: (id: string) => api.post<{ operativo: OperativoApi }>(`/operativos/${id}/reanudar`),
   /** CU-10 5.1: tracks cargados y agentes que siguen en actividad, para avisar antes de cerrar. */
   revisionFinalizar: (id: string) =>
     api.get<{ tracksCargados: number; agentesEnActividad: { nombre: string; apellido: string; estado: string }[] }>(`/operativos/${id}/finalizar/revision`),
@@ -638,6 +647,8 @@ export interface PoligonoApi {
   operativoId: string;
   nombre: string;
   notas: string | null;
+  /** Color propio (#RRGGBB, migración 028); null = el de su grupo de rastrillaje. */
+  color?: string | null;
   geometria: GeometriaPoligono;
   areaM2: number;
   perimetroM: number;
@@ -654,7 +665,7 @@ export interface PoligonoApi {
 
 export interface EventoPoligonoApi {
   id: string;
-  tipo: 'CREADO' | 'NOMBRE' | 'GEOMETRIA' | 'NOTAS' | 'ELIMINADO'
+  tipo: 'CREADO' | 'NOMBRE' | 'GEOMETRIA' | 'NOTAS' | 'COLOR' | 'ELIMINADO'
     | 'GRUPO_ASIGNADO' | 'GRUPO_CAMBIADO' | 'GRUPO_QUITADO' | 'GRUPO_REPLEGADO' | 'GRUPO_SALIO'
     | 'TRACK_CARGADO' | 'TRACK_REASIGNADO' | 'TRACK_ELIMINADO';
   registradoEn: string;
@@ -684,7 +695,7 @@ export const poligonosApi = {
   crear: (operativoId: string, datos: { nombre: string; geometria: GeometriaPoligono; notas?: string; grupoId?: string }) =>
     api.post<{ poligono: PoligonoDetalleApi }>(`/operativos/${operativoId}/poligonos`, datos),
   /** CU-37: nombre, notas y/o forma */
-  actualizar: (operativoId: string, poligonoId: string, datos: { nombre?: string; notas?: string | null; geometria?: GeometriaPoligono }) =>
+  actualizar: (operativoId: string, poligonoId: string, datos: { nombre?: string; notas?: string | null; color?: string | null; geometria?: GeometriaPoligono }) =>
     api.put<{ poligono: PoligonoDetalleApi }>(`/operativos/${operativoId}/poligonos/${poligonoId}`, datos),
   /** CU-38: baja con registro (no se puede con un grupo en el terreno) */
   eliminar: (operativoId: string, poligonoId: string) =>

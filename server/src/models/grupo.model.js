@@ -34,6 +34,7 @@ import { query, withTransaction } from '../config/db.js';
 import * as Est from './estados.js';
 import * as Evento from './evento.model.js';
 import * as Asig from './poligonoAsignacion.js';
+import * as EstadoOperativo from './operativoEstado.model.js';
 import { ReglaError } from './reglaError.js';
 
 export { ReglaError };
@@ -561,6 +562,8 @@ export async function transicionar(operativoId, grupoId, accion, opts, usuarioId
     if (ctx.poligono) base.nota = ctx.poligono.nombre;
     eventoId = await aplicar(client, grupo, accion, hacia, { t, confiable, base, usuarioId, poligono: ctx.poligono });
     resultado = 'APLICADO';
+    // El operativo pasa a «En proceso» cuando hay un grupo trabajando en el terreno (24/10).
+    if (EstadoOperativo.GRUPO_EN_TERRENO.includes(hacia)) await EstadoOperativo.porGrupoEnTerreno(operativoId, { client, usuarioId });
   });
 
   const despues = await buscar(operativoId, grupoId);

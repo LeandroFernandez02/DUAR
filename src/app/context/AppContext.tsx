@@ -111,10 +111,10 @@ function sanitizeData(raw: AppData): AppData {
 
   // ── Enforce one-active-operativo per agent ──────────────────────────────────
   // "Active" estados where an agent can only belong to ONE at a time.
-  const ACTIVE_ESTADOS = new Set(['activo', 'en_proceso', 'planificación', 'nuevo']);
+  const ACTIVE_ESTADOS = new Set(['iniciado', 'en_proceso', 'planificación', 'nuevo']);
 
   // Priority order: activo > en_proceso > planificación > nuevo (first in sorted list wins)
-  const PRIORITY: Record<string, number> = { activo: 0, en_proceso: 1, planificación: 2, nuevo: 3 };
+  const PRIORITY: Record<string, number> = { iniciado: 0, en_proceso: 1, planificación: 2, nuevo: 3 };
   const sortedActive = [...rawOperativos]
     .filter(op => ACTIVE_ESTADOS.has(op.estado))
     .sort((a, b) => (PRIORITY[a.estado] ?? 9) - (PRIORITY[b.estado] ?? 9));
@@ -626,7 +626,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
    */
   const addAgenteToOperativo = useCallback((operativoId: string, agenteId: string) => {
     setData(d => {
-      const ACTIVE_ESTADOS = new Set(['activo', 'en_proceso', 'planificación', 'nuevo']);
+      const ACTIVE_ESTADOS = new Set(['iniciado', 'en_proceso', 'planificación', 'nuevo']);
       const ahora = new Date().toISOString();
 
       const operativos = d.operativos.map(o => {

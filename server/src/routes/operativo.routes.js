@@ -33,6 +33,8 @@ router.post('/',              requiereSesion, gestores, operativos.crear);      
 router.get( '/:id',           requiereSesion, gestores, operativos.obtener);
 router.put( '/:id',           requiereSesion, gestores, operativos.actualizar); // CU-09
 router.post('/:id/activar',   requiereSesion, gestores, operativos.activar);    // CU-08 paso 8
+router.post('/:id/pausar',    requiereSesion, gestores, operativos.pausar);     // pausa manual (24/10)
+router.post('/:id/reanudar',  requiereSesion, gestores, operativos.reanudar);   // reanudar (24/10)
 router.get( '/:id/finalizar/revision', requiereSesion, gestores, operativos.revisionFinalizar); // CU-10 5.1
 router.post('/:id/finalizar', requiereSesion, gestores, operativos.finalizar);  // CU-10
 router.delete('/:id',         requiereSesion, gestores, operativos.eliminar);

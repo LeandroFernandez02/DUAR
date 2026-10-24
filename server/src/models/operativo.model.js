@@ -10,6 +10,7 @@ import { query, withTransaction } from '../config/db.js';
 import * as Mando from './mando.model.js';
 import * as Asig from './poligonoAsignacion.js';
 import * as PuntoCero from './puntoCero.model.js';
+import * as Estado from './operativoEstado.model.js';
 
 const CAMPOS = `
   o.id,
@@ -20,6 +21,9 @@ const CAMPOS = `
   o.nota_final          AS "notaFinal",
   o.resultado::text     AS resultado,
   o.estado::text        AS estado,
+  o.estado_motivo       AS "estadoMotivo",
+  o.estado_actualizado_en AS "estadoActualizadoEn",
+  o.pausa_manual        AS "pausaManual",
   o.fecha_hora_inicio   AS "fechaHoraInicio",
   o.fecha_hora_fin      AS "fechaHoraFin",
   o.coordinador_id      AS "coordinadorId",
@@ -47,6 +51,8 @@ const CAMPOS_CON_OBJETIVO = `
 const ESTADOS_SOLO_LECTURA = ['FINALIZADO', 'ELIMINADO'];
 
 export async function buscarPorId(id) {
+  // Antes de leerlo se revisa si pasó a Inactivo (48 h sin actividad) o si volvió la actividad.
+  if (id) await Estado.sincronizar(id).catch(err => console.error('[estado] no se pudo sincronizar:', err.message));
   const { rows } = await query(
     `SELECT ${CAMPOS} FROM operativos o WHERE o.id = $1 AND o.eliminado_en IS NULL`,
     [id]
@@ -54,17 +60,22 @@ export async function buscarPorId(id) {
   return rows[0] ?? null;
 }
 
-/** ¿Admite que entre personal? Precondición de CU-16: ACTIVO o EN_PLANIFICACION. */
+/**
+ * ¿Admite que entre personal? Precondición de CU-16: Iniciado, En planificación o En proceso. Un
+ * operativo Inactivo por falta de actividad también: el ingreso lo reanuda. Uno pausado a mano no.
+ */
 export function admiteIngresos(operativo) {
-  return ['ACTIVO', 'EN_PLANIFICACION'].includes(operativo?.estado);
+  if (!operativo) return false;
+  return Estado.EN_CURSO.includes(operativo.estado) || (operativo.estado === 'INACTIVO' && !operativo.pausaManual);
 }
 
 /**
  * CU-11 · listado con búsqueda por título y filtro por estado.
  * `vigentes` (el filtro por defecto de la pantalla) no es un valor del ENUM:
- * es ACTIVO + EN_PROCESO juntos, así que se resuelve acá, no en el frontend.
+ * son todos los estados que todavía no se cerraron juntos, así que se resuelve acá, no en el frontend.
  */
 export async function listar({ busqueda = '', estado = '' } = {}) {
+  await Estado.sincronizar().catch(err => console.error('[estado] no se pudo sincronizar:', err.message));
   const condiciones = [`o.eliminado_en IS NULL`];
   const valores = [];
 
@@ -73,9 +84,8 @@ export async function listar({ busqueda = '', estado = '' } = {}) {
     condiciones.push(`o.titulo ILIKE $${valores.length}`);
   }
   if (estado === 'vigentes') {
-    // "Vigente" = todavía no se cerró: NUEVO/EN_PLANIFICACION también cuentan,
-    // no sólo lo que ya está en curso.
-    condiciones.push(`o.estado IN ('NUEVO', 'EN_PLANIFICACION', 'EN_PROCESO', 'ACTIVO')`);
+    // "Vigente" = todavía no se cerró: Nuevo, Inactivo (pausado) y los que están en curso.
+    condiciones.push(`o.estado IN ('NUEVO', 'EN_PLANIFICACION', 'EN_PROCESO', '${Estado.INICIADO}', 'INACTIVO')`);
   } else if (estado && estado !== 'all') {
     valores.push(estado.toUpperCase());
     condiciones.push(`o.estado = $${valores.length}::estado_operativo`);
@@ -117,7 +127,7 @@ export async function existeTituloDuplicadoReciente(titulo) {
   return rows.length > 0;
 }
 
-/** CU-08 paso 6: nace en estado NUEVO, nunca ACTIVO directamente. */
+/** CU-08 paso 6: nace en estado NUEVO, nunca Iniciado directamente. */
 export async function crear({
   titulo, localidad, fiscalInstruccion, descripcion = null,
   puntoCeroLat, puntoCeroLng, fechaHoraInicio, coordinadorId,
@@ -185,15 +195,11 @@ export async function actualizar(id, campos, { usuarioId = null, motivoPuntoCero
 }
 
 /**
- * CU-08 paso 8 (Transición Automática): NUEVO → ACTIVO al entrar por primera
- * vez. Idempotente — si ya no está en NUEVO, no hace nada.
+ * CU-08 paso 8 (Transición Automática): NUEVO → Iniciado al entrar por primera
+ * vez. Idempotente — si ya no está en NUEVO, no hace nada. Queda auditado.
  */
-export async function activarSiEsNuevo(id) {
-  await query(
-    `UPDATE operativos SET estado = 'ACTIVO', actualizado_en = CURRENT_TIMESTAMP
-      WHERE id = $1 AND estado = 'NUEVO'`,
-    [id]
-  );
+export async function activarSiEsNuevo(id, usuarioId = null) {
+  await Estado.entrar(id, usuarioId);
   return buscarPorId(id);
 }
 
@@ -227,7 +233,8 @@ export async function finalizar(id, { notaFinal = null, resultado = null, usuari
   return withTransaction(async (client) => {
     await client.query(
       `UPDATE operativos
-          SET estado = 'FINALIZADO', fecha_hora_fin = CURRENT_TIMESTAMP,
+          SET estado = 'FINALIZADO', pausa_manual = false, estado_actualizado_en = CURRENT_TIMESTAMP, estado_motivo = 'Operativo finalizado',
+              fecha_hora_fin = CURRENT_TIMESTAMP,
               nota_final = $2, resultado = $3::resultado_operativo, actualizado_en = CURRENT_TIMESTAMP
         WHERE id = $1`,
       [id, notaFinal, resultado]

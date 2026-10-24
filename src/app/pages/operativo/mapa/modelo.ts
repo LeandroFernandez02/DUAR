@@ -7,12 +7,15 @@ import type { GrupoApi, MarcadorApi, PoligonoApi, TrackApi } from '../../../serv
 import { vertices, type LatLng } from './geo';
 import type { Base, Overlays } from './Lienzo';
 
-export interface PoligonoVista extends PoligonoApi { vertices: LatLng[]; color: string }
+/** `color` es el que se dibuja; `colorPropio` el que se le eligió al polígono (null = sigue al de su grupo). */
+export interface PoligonoVista extends PoligonoApi { vertices: LatLng[]; color: string; colorPropio: string | null }
 export interface TrackVista extends TrackApi { puntos: LatLng[]; color: string }
 
 /** Polígono sin grupo: gris pizarra, punteado. */
 export const COLOR_SIN_GRUPO = '#475569';
 const PALETA_GRUPOS = ['#2563EB', '#16A34A', '#D97706', '#7C3AED', '#DB2777', '#0891B2', '#E0662B', '#0D9488'];
+/** Colores para elegir en el panel del polígono. */
+export const PALETA_POLIGONOS = ['#2563EB', '#16A34A', '#D97706', '#7C3AED', '#DB2777', '#0891B2', '#E0662B', '#00C2B3', '#DC2626', '#475569'];
 export const PALETA_RADIOS = ['#0891B2', '#0D9488', '#DB2777', '#7C3AED', '#EA580C', '#475569'];
 
 /** El color de un grupo: el que tiene guardado o uno fijo de la paleta según su lugar en la lista. */
@@ -25,8 +28,10 @@ export function colorDeGrupo(grupos: GrupoApi[], id: string | null | undefined):
 
 export function aPoligonoVista(p: PoligonoApi, grupos: GrupoApi[]): PoligonoVista {
   // El color del polígono es el de su grupo de rastrillaje (o el primero que tenga).
+  // Si se le eligió un color propio (028), manda ese.
   const principal = p.grupos.find(g => g.clase === 'RASTRILLAJE') ?? p.grupos[0];
-  return { ...p, vertices: vertices(p.geometria), color: principal ? colorDeGrupo(grupos, principal.id) ?? principal.color ?? COLOR_SIN_GRUPO : COLOR_SIN_GRUPO };
+  const delGrupo = principal ? colorDeGrupo(grupos, principal.id) ?? principal.color ?? COLOR_SIN_GRUPO : COLOR_SIN_GRUPO;
+  return { ...p, vertices: vertices(p.geometria), color: p.color ?? delGrupo, colorPropio: p.color ?? null };
 }
 
 export function aTrackVista(t: TrackApi, grupos: GrupoApi[]): TrackVista {

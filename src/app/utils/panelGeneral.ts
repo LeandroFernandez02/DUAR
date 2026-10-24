@@ -22,7 +22,7 @@ export const ETIQUETA_ESTADO: Record<EstadoOperativoPanel, string> = {
 };
 /** El estado con la clave que usa StatusBadge (el mismo badge y color que en la sección Operativos). */
 export const ESTADO_BADGE: Record<EstadoOperativoPanel, string> = {
-  NUEVO: 'nuevo', EN_PLANIFICACION: 'planificación', ACTIVO: 'activo', EN_PROCESO: 'en_proceso',
+  NUEVO: 'nuevo', EN_PLANIFICACION: 'planificación', ACTIVO: 'iniciado', EN_PROCESO: 'en_proceso',
   INACTIVO: 'inactivo', FINALIZADO: 'finalizado',
 };
 const EN_CURSO: EstadoOperativoPanel[] = ['ACTIVO', 'EN_PROCESO'];

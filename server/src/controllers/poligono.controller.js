@@ -122,7 +122,7 @@ export async function crear(req, res, next) {
   } catch (err) { next(err); }
 }
 
-/** PUT /api/operativos/:id/poligonos/:poligonoId — CU-37 (nombre, notas y/o forma). */
+/** PUT /api/operativos/:id/poligonos/:poligonoId — CU-37 (nombre, notas, color y/o forma). */
 export async function actualizar(req, res, next) {
   try {
     if (!esUuid(req.params.poligonoId)) return invalido(res, 'Polígono inválido.', 'valor_invalido');
@@ -137,6 +137,11 @@ export async function actualizar(req, res, next) {
       const no = leerNotas(b.notas);
       if (no.error) return invalido(res, no.error);
       cambios.notas = no.notas;
+    }
+    if (b.color !== undefined) {
+      // Un #RRGGBB, o null para volver al color del grupo.
+      if (b.color !== null && !/^#[0-9a-fA-F]{6}$/.test(String(b.color))) return invalido(res, 'El color tiene que ser un código como #00C2B3.', 'color_invalido');
+      cambios.color = b.color === null ? null : String(b.color).toUpperCase();
     }
     if (b.geometria !== undefined) {
       const g = leerGeometria(b.geometria);

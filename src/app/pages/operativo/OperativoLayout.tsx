@@ -54,8 +54,8 @@ export default function OperativoLayout() {
     <div className="flex flex-col h-full min-h-0" style={{ fontFamily: 'var(--font-family-primary)' }}>
       {/* En mobile/tablet el encabezado del operativo va dentro de la barra superior, con el botón volver */}
       {compacto
-        ? <CabeceraMovil onVolver={() => navigate('/operativos')}><OperativoHeader operativo={operativo} movil /></CabeceraMovil>
-        : <OperativoHeader operativo={operativo} />}
+        ? <CabeceraMovil onVolver={() => navigate('/operativos')}><OperativoHeader operativo={operativo} movil onRecargar={cargar} /></CabeceraMovil>
+        : <OperativoHeader operativo={operativo} onRecargar={cargar} />}
       {/* En < 1024 el mapa sube 20 px por debajo de las esquinas redondeadas de la barra superior */}
       <div className="scroll-contenido flex-1 min-h-0 overflow-y-auto overflow-x-hidden relative"
         style={compacto && pathname.endsWith('/mapa') ? { marginTop: -20 } : undefined}>

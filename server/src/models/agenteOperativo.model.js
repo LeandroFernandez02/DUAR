@@ -6,6 +6,7 @@
  * especialidad con la que trabaja y si maneja. La misma persona puede ser
  * conductor en un operativo y rastrillar en otro.
  */
+import * as Estado from './operativoEstado.model.js';
 import { query, withTransaction } from '../config/db.js';
 import { ESTADOS_AGENTE, ESTADOS_AGENTE_ELEGIBLES, ETIQUETA_AGENTE } from './estados.js';
 import * as Evento from './evento.model.js';
@@ -138,6 +139,10 @@ export async function darDeAlta({
     });
     return rows[0].id;
   });
+
+  // Ciclo de estados del operativo (24/10): el primer agente lo pasa a «En planificación»
+  // y un ingreso en uno Inactivo por falta de actividad lo reanuda.
+  await Estado.despuesDeIngreso(operativoId, autor).catch(err => console.error('[estado] no se pudo actualizar tras el ingreso:', err.message));
 
   return buscarPorId(id);
 }
