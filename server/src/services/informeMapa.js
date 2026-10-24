@@ -21,11 +21,12 @@ const IMAGENES = 'https://server.arcgisonline.com/ArcGIS/rest/services/World_Ima
 const REFERENCIAS = 'https://server.arcgisonline.com/ArcGIS/rest/services/Reference/World_Boundaries_and_Places/MapServer/tile';
 export const ATRIBUCION = 'Imágenes © Esri, Maxar, Earthstar Geographics · Referencias © Esri';
 
-const GRIS = '#c9c2bf';
-const ROJO = '#e54b4b';
-const ROJO_OSCURO = '#b8302f';
-const TINTA = '#2b2827';
+const GRIS = '#b9c2cb';
+const ROJO = '#00c2b3';
+const ROJO_OSCURO = '#0b1e2d';
+const TINTA = '#0b1e2d';
 const BLANCO = '#ffffff';
+const VERDE = '#16a34a';   // hallazgo: el mismo verde que su marcador en la aplicación
 
 const esc = s => String(s ?? '').replace(/[<>&"]/g, c => ({ '<': '&lt;', '>': '&gt;', '&': '&amp;', '"': '&quot;' }[c]));
 const color = c => (/^#[0-9a-f]{6}$/i.test(c ?? '') ? c : GRIS);
@@ -87,7 +88,7 @@ async function fondoSatelital(z, px0, py0, anchoPx, altoPx) {
   });
   // sharp no acepta capas que se salen del lienzo: se arma con margen y después se recorta.
   const m = TESELA;
-  const lienzo = sharp({ create: { width: anchoPx + 2 * m, height: altoPx + 2 * m, channels: 3, background: '#d9d4cf' } })
+  const lienzo = sharp({ create: { width: anchoPx + 2 * m, height: altoPx + 2 * m, channels: 3, background: '#d3dae1' } })
     .composite(capas.map(c => ({ ...c, left: c.left + m, top: c.top + m })));
   const armado = await lienzo.png().toBuffer();
   return sharp(armado).extract({ left: m, top: m, width: anchoPx, height: altoPx }).jpeg({ quality: 78 }).toBuffer();
@@ -147,7 +148,7 @@ export async function mapaSvg({ poligonos, tracks, marcadores, hallazgos, radios
 
   const partes = [fondo
     ? `<image x="0" y="0" width="${ancho}" height="${alto}" preserveAspectRatio="none" href="data:image/jpeg;base64,${fondo.toString('base64')}"/>`
-    : `<rect x="0" y="0" width="${ancho}" height="${alto}" fill="#f1ede9"/>`];
+    : `<rect x="0" y="0" width="${ancho}" height="${alto}" fill="#e9edf1"/>`];
 
   if (puntoCero) {
     const [cx, cy] = P(puntoCero.lng, puntoCero.lat);
@@ -211,7 +212,7 @@ export async function mapaSvg({ poligonos, tracks, marcadores, hallazgos, radios
   }
   hallazgos.forEach((h, i) => {
     const [x, y] = P(h.lng, h.lat);
-    partes.push(`<circle cx="${f(x)}" cy="${f(y)}" r="7" fill="${ROJO}" stroke="${BLANCO}" stroke-width="1.2"/>`);
+    partes.push(`<circle cx="${f(x)}" cy="${f(y)}" r="7" fill="${VERDE}" stroke="${BLANCO}" stroke-width="1.2"/>`);
     partes.push(`<text x="${f(x)}" y="${f(y + 2.4)}" font-size="6.5" font-weight="bold" text-anchor="middle" fill="${BLANCO}">H${i + 1}</text>`);
   });
 

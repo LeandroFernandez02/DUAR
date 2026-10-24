@@ -48,9 +48,11 @@ pdfmake.addFonts({
   },
 });
 
+// Paleta CALÍVAR (23/10): azul noche, acero y turquesa. `duar` (turquesa) va en rellenos y líneas;
+// `duarOscuro` es su versión legible como texto sobre blanco; `alerta` es el tinte de lo destacado.
 const C = {
-  tinta: '#2b2827', tenue: '#6f6866', linea: '#dcd5d2', lineaSuave: '#eee9e7', celda: '#f8f4f3',
-  duar: '#e54b4b', duarOscuro: '#b8302f', alerta: '#fdecec',
+  tinta: '#0b1e2d', tenue: '#5b6b7a', linea: '#cdd5dc', lineaSuave: '#e6e9ee', celda: '#f3f5f8',
+  duar: '#00c2b3', duarOscuro: '#0a7a72', alerta: '#e0f7f5',
 };
 const ZONA = 'America/Argentina/Cordoba';
 const ANCHO = 515;   // A4 (595 pt) menos 40 pt de margen a cada lado
@@ -335,14 +337,14 @@ export async function generarPdf(d, meta) {
     const punto = (c, hueco = false) => `<circle cx="3.5" cy="4.5" r="3" fill="${hueco ? '#ffffff' : c}" stroke="${c}" stroke-width="0.9"/>`;
     const leyenda = [
       ...d.grupos.filter(g => g.color && d.poligonos.some(p => p.color === g.color)).map(g => muestra(cuadro(g.color), g.nombre)),
-      ...(d.poligonos.some(p => !p.color) ? [muestra(`<rect x="0.5" y="1.5" width="6" height="6" fill="#ffffff" stroke="#6f6866" stroke-width="0.8" stroke-dasharray="1.5 1"/>`, 'Sin grupo')] : []),
-      muestra(punto(C.duarOscuro), 'Punto Cero vigente'),
-      ...(anteriores.length ? [muestra(punto('#8a8380', true), 'Punto Cero anterior')] : []),
-      muestra(punto(C.duar), 'Hallazgo'),
+      ...(d.poligonos.some(p => !p.color) ? [muestra(`<rect x="0.5" y="1.5" width="6" height="6" fill="#ffffff" stroke="#5b6b7a" stroke-width="0.8" stroke-dasharray="1.5 1"/>`, 'Sin grupo')] : []),
+      muestra(punto(C.tinta), 'Punto Cero vigente'),
+      ...(anteriores.length ? [muestra(punto('#7d8b98', true), 'Punto Cero anterior')] : []),
+      muestra(punto('#16a34a'), 'Hallazgo'),
       ...(d.marcadores.some(m => m.clase === 'POI') ? [muestra(`<path d="M3.5 1 L7 7.5 L0 7.5 Z" fill="${C.tinta}"/>`, 'Punto de interés')] : []),
       ...(d.marcadores.some(m => m.clase === 'INSTALACION') ? [muestra(`<rect x="0.5" y="1.5" width="6" height="6" fill="${C.tinta}"/>`, 'Instalación')] : []),
       muestra(`<line x1="0" y1="4.5" x2="8" y2="4.5" stroke="${C.tinta}" stroke-width="0.8"/>`, 'Tracks GPX'),
-      ...(d.radios.length ? [muestra(`<line x1="0" y1="4.5" x2="8" y2="4.5" stroke="${C.duarOscuro}" stroke-width="0.8" stroke-dasharray="2 1.5"/>`, 'Radios desde el Punto Cero')] : []),
+      ...(d.radios.length ? [muestra(`<line x1="0" y1="4.5" x2="8" y2="4.5" stroke="${C.duar}" stroke-width="0.8" stroke-dasharray="2 1.5"/>`, 'Radios desde el Punto Cero')] : []),
     ];
     add({
       table: { widths: ['*'], body: [[{ svg: mapa.svg, width: ANCHO - 2 }], [{ stack: [
@@ -372,7 +374,7 @@ export async function generarPdf(d, meta) {
     const totalTracks = d.poligonos.reduce((s, p) => s + p.tracks, 0);
     add(tabla(['Polígono', 'Área', 'Grupos que trabajaron', 'Tracks', 'Km dentro', 'Cobertura'], [
       ...d.poligonos.map(p => [
-        { columns: [{ width: 9, svg: `<svg xmlns="http://www.w3.org/2000/svg" width="9" height="9"><rect x="0.5" y="1.5" width="6" height="6" fill="${p.color ?? '#8a8380'}"/></svg>` }, { width: '*', text: p.nombre }], columnGap: 3 },
+        { columns: [{ width: 9, svg: `<svg xmlns="http://www.w3.org/2000/svg" width="9" height="9"><rect x="0.5" y="1.5" width="6" height="6" fill="${p.color ?? '#7d8b98'}"/></svg>` }, { width: '*', text: p.nombre }], columnGap: 3 },
         { text: km2(p.areaM2), alignment: 'right' },
         p.grupos.length ? p.grupos.join(' · ') : tenue('Ninguno todavía'), { text: num(p.tracks), alignment: 'right' },
         { text: num(p.coberturaKm, 1), alignment: 'right' }, barra(p.coberturaPct ?? 0),
@@ -512,7 +514,7 @@ export async function generarPdf(d, meta) {
       stack: [
         { columns: [
           { width: 22, svg: ESCUDO },
-          { width: '*', stack: [{ text: 'DUAR', font: 'InterNegra', fontSize: 9, characterSpacing: 0.5 }, tenue('Dirección de Unidades de Alto Riesgo', { fontSize: 6.6 })], margin: [6, 1, 0, 0] },
+          { width: '*', stack: [{ text: 'DUAR', font: 'InterNegra', fontSize: 9, characterSpacing: 1.2 }, tenue('Dirección de Unidades de Alto Riesgo', { fontSize: 6.6 })], margin: [6, 1, 0, 0] },
           { width: 'auto', alignment: 'right', fontSize: 6.8, color: C.tenue, stack: [
             { text: `${etiquetaTipo} · ${opCodigo}`, bold: true, color: C.tinta },
             { text: `${op.titulo.length > 60 ? op.titulo.slice(0, 59) + '…' : op.titulo} · ${op.localidad ?? ''}` },
@@ -568,7 +570,12 @@ function linea(ancho, grosor, color) {
   return { svg: `<svg xmlns="http://www.w3.org/2000/svg" width="${ancho}" height="${grosor + 1}"><rect x="0" y="0.5" width="${ancho}" height="${grosor}" fill="${color}"/></svg>` };
 }
 
-const ESCUDO = `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="22" viewBox="0 0 22 22">
-  <rect x="0" y="0" width="22" height="22" rx="6" fill="${C.duar}"/>
-  <path d="M11 17.5s5-2.5 5-6.3V6.8L11 5 6 6.8v4.4c0 3.8 5 6.3 5 6.3z" fill="none" stroke="#ffffff" stroke-width="1.6" stroke-linejoin="round"/>
+/** Símbolo CALÍVAR (el mismo de la aplicación), a color. El texto «DUAR» sigue en el encabezado: la institución no cambia. */
+const ESCUDO = `<svg xmlns="http://www.w3.org/2000/svg" width="22" height="23" viewBox="282.57 106.57 226.87 235.87">
+  <path fill="#11222c" d="M401.25,339.52c-97.89-5.25-134.64-96.13-106.47-159.75,18.62-42.04,60.58-70,107.19-70.33,0,17,.55,25.16.08,40.66-38.32,3.5-70.67,32.35-73.41,71.29-3.36,47.8,34.17,75.87,72.75,78.55"/>
+  <path fill="#162631" d="M471.45,183.42c-15.67-16.02-32.52-28.03-54.51-32.21l.08-40.86c36.43,4.16,68.26,24.56,89.4,55.11l-34.98,17.97Z"/>
+  <path fill="#162631" d="M417.68,337.19c-.74-12.82-.74-24.48-1.21-39.33,22.24-5.43,39.54-17.8,54.77-34.5l34.43,15.98c-19.01,30.14-49.6,51.28-87.99,57.85Z"/>
+  <path fill="#162631" d="M402.01,247.99c.27,5.49-1.42,10.79-.22,17.76l77.43-45.55-77.06-36.87c-1.93,5.57-.22,10.38-.03,15.1"/>
+  <polygon fill="#2aa7a7" points="402.01 247.99 352.3 224.71 402.13 198.43 402.01 247.99"/>
+  <polygon fill="#87becb" points="402.01 247.99 402.13 198.43 408.51 224.54 402.01 247.99"/>
 </svg>`;
