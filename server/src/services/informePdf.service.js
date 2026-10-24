@@ -544,7 +544,7 @@ export async function generarPdf(d, meta) {
 /* ── Auxiliares ────────────────────────────────────────────────────────── */
 
 const ESTADO = {
-  NUEVO: 'Nuevo', ACTIVO: 'Activo', EN_PLANIFICACION: 'En planificación', EN_PROCESO: 'En proceso',
+  NUEVO: 'Nuevo', ACTIVO: 'Iniciado', EN_PLANIFICACION: 'En planificación', EN_PROCESO: 'En proceso',
   INACTIVO: 'Inactivo', FINALIZADO: 'Finalizado',
 };
 const GENERO = { MASCULINO: 'Masculino', FEMENINO: 'Femenino', OTRO: 'Otro' };

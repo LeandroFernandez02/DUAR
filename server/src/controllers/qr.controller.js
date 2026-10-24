@@ -16,7 +16,7 @@ const ENTIDAD = 'tokens_operativo';
 /** Por qué no hay QR, dicho en castellano (antes: «el operativo está nuevo»). */
 function sinQr(res, operativo) {
   const error = operativo.estado === 'NUEVO'
-    ? 'El operativo todavía no está activo: entrá a su panel para activarlo y después generá el QR.'
+    ? 'El operativo todavía no está iniciado: entrá a su panel para iniciarlo y después generá el QR.'
     : `No se puede generar un QR: el operativo está ${operativo.estado.toLowerCase().replace(/_/g, ' ')}.`;
   return res.status(409).json({ error, motivo: 'operativo_cerrado' });
 }

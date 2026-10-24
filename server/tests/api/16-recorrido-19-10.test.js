@@ -69,11 +69,11 @@ describe('Recorrido del 19/10', () => {
     assert.equal(o.resultado, 'SUSPENDIDA');
   });
 
-  test('CU-16 · el QR de un operativo Nuevo explica que hay que activarlo desde su panel', async () => {
+  test('CU-16 · el QR de un operativo Nuevo explica que hay que iniciarlo desde su panel', async () => {
     const c = await nuevoOperativo();
     motivo(c, 201);
     const r = await ctx.api('GET', `/operativos/${c.json.operativo.id}/qr`);
     motivo(r, 409, 'operativo_cerrado');
-    assert.match(r.json.error, /todavía no está activo: entrá a su panel para activarlo/);
+    assert.match(r.json.error, /todavía no está iniciado: entrá a su panel para iniciarlo/);
   });
 });

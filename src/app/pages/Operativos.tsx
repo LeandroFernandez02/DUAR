@@ -69,7 +69,7 @@ const VIGENTES: EstadoOperativo[] = ['nuevo', 'planificación', 'en_proceso', 'a
 /** Estados que se pueden elegir en el filtro, con el color de su punto. */
 const ESTADOS_FILTRO: { value: EstadoOperativo; label: string; dot: string }[] = [
   { value: 'nuevo',         label: 'Nuevo',           dot: 'var(--accent)' },
-  { value: 'activo',        label: 'Activo',          dot: '#16a34a' },
+  { value: 'activo',        label: 'Iniciado',         dot: '#16a34a' },
   { value: 'planificación', label: 'En Planificación', dot: '#ca8a04' },
   { value: 'en_proceso',    label: 'En Proceso',      dot: '#2563eb' },
   { value: 'inactivo',      label: 'Inactivo',        dot: '#dc2626' },
@@ -583,7 +583,7 @@ export default function Operativos() {
           accion={<Button size="md" icon={Plus} onClick={openCreate}>Crear operativo</Button>} />
       ) : filteredOperativos.length === 0 ? (
         <Vacio icono={Search} titulo="No hay operativos vigentes"
-          texto={searchQuery ? `No se encontraron resultados para "${searchQuery}".` : 'No hay operativos activos o en proceso para el filtro seleccionado.'}
+          texto={searchQuery ? `No se encontraron resultados para "${searchQuery}".` : 'No hay operativos iniciados o en proceso para el filtro seleccionado.'}
           accion={<Button variant="muted" size="md" icon={X} onClick={() => { setSearchQuery(''); setEstadosSel(VIGENTES); }}>Limpiar filtros</Button>} />
       ) : viewMode === 'card' ? (
         /* ═══════ TARJETAS ═══════ */
@@ -812,7 +812,7 @@ export default function Operativos() {
                         >
                           <option value="nuevo">Nuevo</option>
                           <option value="planificación">En Planificación</option>
-                          <option value="activo">Activo</option>
+                          <option value="activo">Iniciado</option>
                           <option value="en_proceso">En Proceso</option>
                           <option value="inactivo">Inactivo</option>
                           <option value="finalizado">Finalizado</option>

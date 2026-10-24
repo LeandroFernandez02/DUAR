@@ -17,7 +17,7 @@ import { ETIQUETA_RESULTADO, RESULTADOS_RESUELTOS as RESUELTOS, type ResultadoOp
 export { ETIQUETA_RESULTADO, type ResultadoOperativo };
 
 export const ETIQUETA_ESTADO: Record<EstadoOperativoPanel, string> = {
-  NUEVO: 'Nuevo', EN_PLANIFICACION: 'En planificación', ACTIVO: 'Activo', EN_PROCESO: 'En proceso',
+  NUEVO: 'Nuevo', EN_PLANIFICACION: 'En planificación', ACTIVO: 'Iniciado', EN_PROCESO: 'En proceso',
   INACTIVO: 'Inactivo', FINALIZADO: 'Finalizado',
 };
 /** El estado con la clave que usa StatusBadge (el mismo badge y color que en la sección Operativos). */
