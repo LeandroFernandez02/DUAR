@@ -46,7 +46,7 @@ async function operativoTemporal(client) {
   const { rows } = await client.query(
     `INSERT INTO operativos (titulo, localidad, fiscal_instruccion, punto_cero, fecha_hora_inicio, coordinador_id, estado)
      VALUES ('Operativo temporal de prueba', 'Córdoba', 'Pruebas',
-             extensions.ST_SetSRID(extensions.ST_MakePoint(-64.18, -31.42), 4326), now(), $1, 'ACTIVO')
+             extensions.ST_SetSRID(extensions.ST_MakePoint(-64.18, -31.42), 4326), now(), $1, 'INICIADO')
      RETURNING id`, [adminId]);
   return rows[0].id;
 }

@@ -11,21 +11,21 @@
  * Nunca se cuentan los operativos eliminados ni los de prueba.
  */
 
-export type EstadoOperativoPanel = 'NUEVO' | 'EN_PLANIFICACION' | 'ACTIVO' | 'EN_PROCESO' | 'INACTIVO' | 'FINALIZADO';
+export type EstadoOperativoPanel = 'NUEVO' | 'EN_PLANIFICACION' | 'INICIADO' | 'EN_PROCESO' | 'INACTIVO' | 'FINALIZADO';
 
 import { ETIQUETA_RESULTADO, RESULTADOS_RESUELTOS as RESUELTOS, type ResultadoOperativo } from './resultadoOperativo';
 export { ETIQUETA_RESULTADO, type ResultadoOperativo };
 
 export const ETIQUETA_ESTADO: Record<EstadoOperativoPanel, string> = {
-  NUEVO: 'Nuevo', EN_PLANIFICACION: 'En planificación', ACTIVO: 'Iniciado', EN_PROCESO: 'En proceso',
+  NUEVO: 'Nuevo', EN_PLANIFICACION: 'En planificación', INICIADO: 'Iniciado', EN_PROCESO: 'En proceso',
   INACTIVO: 'Inactivo', FINALIZADO: 'Finalizado',
 };
 /** El estado con la clave que usa StatusBadge (el mismo badge y color que en la sección Operativos). */
 export const ESTADO_BADGE: Record<EstadoOperativoPanel, string> = {
-  NUEVO: 'nuevo', EN_PLANIFICACION: 'planificación', ACTIVO: 'iniciado', EN_PROCESO: 'en_proceso',
+  NUEVO: 'nuevo', EN_PLANIFICACION: 'planificación', INICIADO: 'iniciado', EN_PROCESO: 'en_proceso',
   INACTIVO: 'inactivo', FINALIZADO: 'finalizado',
 };
-const EN_CURSO: EstadoOperativoPanel[] = ['ACTIVO', 'EN_PROCESO'];
+const EN_CURSO: EstadoOperativoPanel[] = ['INICIADO', 'EN_PROCESO'];
 const SIN_ACTIVAR: EstadoOperativoPanel[] = ['NUEVO', 'EN_PLANIFICACION'];
 
 export interface OperativoPanel {

@@ -3,7 +3,7 @@ import { OperativoApi } from '../services/api';
 
 export const ESTADO_API_A_MOCK: Record<string, EstadoOperativo> = {
   NUEVO: 'nuevo',
-  ACTIVO: 'iniciado',
+  ACTIVO: 'iniciado',   // nombre anterior (hasta la 027)
   INICIADO: 'iniciado',
   INACTIVO: 'inactivo',
   EN_PLANIFICACION: 'planificación',

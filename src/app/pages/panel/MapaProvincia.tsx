@@ -275,7 +275,7 @@ function Ficha({ o }: { o: OperativoPanel }) {
   // Los datos de ejemplo no existen en la base: el botón queda visible pero sin entrar hasta tener la API del panel.
   const deEjemplo = o.id.startsWith('mock-');
   // Igual que mandoDe() en Operativos.tsx: en ámbar sólo si está activo y nadie está a cargo.
-  const alerta = !o.coordinador && o.estado === 'ACTIVO';
+  const alerta = !o.coordinador && o.estado === 'INICIADO';
   const fila = (I: typeof Users, texto: React.ReactNode, color = 'var(--muted-foreground)') => (
     <div className="flex items-center gap-2">
       <I size={13} style={{ color: color === 'var(--muted-foreground)' ? 'var(--primary)' : color, flexShrink: 0 }} />

@@ -18,8 +18,8 @@
 import { query } from '../config/db.js';
 import * as Auditoria from './auditoria.model.js';
 
-// El valor interno de «Iniciado» es 'ACTIVO' hasta la migración 027, que renombra el ENUM al publicar.
-export const INICIADO = 'ACTIVO';
+// «Iniciado» se llamaba 'ACTIVO' hasta la migración 027 (24/10), que renombró el valor del ENUM.
+export const INICIADO = 'INICIADO';
 export const EN_CURSO = [INICIADO, 'EN_PLANIFICACION', 'EN_PROCESO'];
 export const HORAS_SIN_ACTIVIDAD = 48;
 /** Un grupo en alguno de estos estados está trabajando fuera del puesto de comando. */

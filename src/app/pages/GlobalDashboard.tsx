@@ -58,7 +58,7 @@ export default function GlobalDashboard() {
   const finalizados = enPeriodo.filter(o => o.estado === 'FINALIZADO' && o.fin
     && isoDia(new Date(o.fin)) >= rango.desde && isoDia(new Date(o.fin)) <= rango.hasta).length;
   const { agentes } = d.actual;
-  const enCurso = useMemo(() => todos.filter(o => o.estado === 'ACTIVO' || o.estado === 'EN_PROCESO'), [todos]);
+  const enCurso = useMemo(() => todos.filter(o => o.estado === 'INICIADO' || o.estado === 'EN_PROCESO'), [todos]);
   // Recursos críticos (Canes, Dron, Paramédico, Buzos, Caballería) trabajando ahora en todos los operativos en curso.
   const recursosCriticos = useMemo(() => RECURSOS_CRITICOS
     .map(nombre => ({ nombre, valor: enCurso.reduce((s, o) => s + (o.recursosCriticos?.[nombre] ?? 0), 0) }))
@@ -105,7 +105,7 @@ export default function GlobalDashboard() {
 
       {/* Operativos por estado en el período */}
       <div className="grid gap-4" style={{ gridTemplateColumns: columnas }}>
-        <Indicador valor={cuenta('ACTIVO')} etiqueta="Operativos activos" detalle={detalleEstado} icono={Radio} color={colorDeEstado(ESTADO_BADGE.ACTIVO)} />
+        <Indicador valor={cuenta('INICIADO')} etiqueta="Operativos activos" detalle={detalleEstado} icono={Radio} color={colorDeEstado(ESTADO_BADGE.INICIADO)} />
         <Indicador valor={cuenta('NUEVO', 'EN_PLANIFICACION')} etiqueta="Operativos nuevos" detalle="Todavía sin activar" icono={FilePlus2} color={colorDeEstado(ESTADO_BADGE.NUEVO)} />
         <Indicador valor={cuenta('EN_PROCESO')} etiqueta="Operativos en proceso" detalle={detalleEstado} icono={CalendarRange} color={colorDeEstado(ESTADO_BADGE.EN_PROCESO)} />
         <Indicador valor={finalizados} etiqueta="Operativos finalizados" detalle={esHoy ? 'Hoy' : rango.etiqueta} icono={Flag} color={colorDeEstado(ESTADO_BADGE.FINALIZADO)} />

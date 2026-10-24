@@ -185,7 +185,7 @@ export async function finalizar(req, res, next) {
     const previo = await Operativo.buscarPorId(id);
     if (!previo) return res.status(404).json({ error: 'Operativo no encontrado.' });
 
-    if (!['ACTIVO', 'EN_PLANIFICACION', 'EN_PROCESO', 'INACTIVO'].includes(previo.estado)) {
+    if (!['INICIADO', 'EN_PLANIFICACION', 'EN_PROCESO', 'INACTIVO'].includes(previo.estado)) {
       return res.status(409).json({
         error: `No se puede finalizar: el operativo está ${previo.estado.toLowerCase()}.`,
         motivo: 'estado_invalido',

@@ -10,6 +10,7 @@
 import { describe, test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { preparar, terminar } from '../ayudantes/entorno.js';
+import { INICIADO } from '../../src/models/operativoEstado.model.js';
 
 let ctx;
 const motivo = (r, status, mot) => {
@@ -62,7 +63,7 @@ describe('Recorrido del 19/10', () => {
       const r = await ctx.api('POST', `/operativos/${id}/finalizar`, body);
       motivo(r, 400, 'resultado_requerido');
     }
-    assert.equal((await ctx.api('GET', `/operativos/${id}`)).json.operativo.estado, 'ACTIVO', 'sigue abierto');
+    assert.equal((await ctx.api('GET', `/operativos/${id}`)).json.operativo.estado, INICIADO, 'sigue abierto');
     motivo(await ctx.api('POST', `/operativos/${id}/finalizar`, { resultado: 'SUSPENDIDA' }), 200);
     const o = (await ctx.api('GET', `/operativos/${id}`)).json.operativo;
     assert.equal(o.estado, 'FINALIZADO');

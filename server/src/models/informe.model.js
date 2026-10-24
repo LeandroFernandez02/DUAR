@@ -299,7 +299,7 @@ const MEDIO = {
 };
 
 const ESTADO_OPERATIVO = {
-  NUEVO: 'Nuevo', ACTIVO: 'Iniciado', EN_PLANIFICACION: 'En planificación', EN_PROCESO: 'En proceso',
+  NUEVO: 'Nuevo', INICIADO: 'Iniciado', ACTIVO: 'Iniciado', EN_PLANIFICACION: 'En planificación', EN_PROCESO: 'En proceso',
   INACTIVO: 'Inactivo', FINALIZADO: 'Finalizado', ELIMINADO: 'Eliminado',
 };
 

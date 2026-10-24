@@ -95,7 +95,7 @@ export async function validar(token) {
         AND t.revocado = false
         AND t.expira_en > CURRENT_TIMESTAMP
         AND o.eliminado_en IS NULL
-        AND (o.estado IN ('ACTIVO', 'EN_PLANIFICACION', 'EN_PROCESO') OR (o.estado = 'INACTIVO' AND NOT o.pausa_manual))`,
+        AND (o.estado IN ('INICIADO', 'EN_PLANIFICACION', 'EN_PROCESO') OR (o.estado = 'INACTIVO' AND NOT o.pausa_manual))`,
     [token]
   );
   return rows[0] ?? null;

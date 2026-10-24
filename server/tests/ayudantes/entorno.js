@@ -18,6 +18,7 @@
  *
  * Credenciales: server/.env (TEST_*), que no se sube al repositorio.
  */
+import { INICIADO } from '../../src/models/operativoEstado.model.js';
 import { query, pool } from '../../src/config/db.js';
 import * as TokenEmail from '../../src/models/tokenEmail.model.js';
 
@@ -192,7 +193,7 @@ async function asegurarOperativo(admin) {
     if (r.status !== 201) throw new Error(`No se pudo crear el operativo de pruebas: ${JSON.stringify(r.json)}`);
     op = r.json.operativo;
   }
-  if (op.estado !== 'ACTIVO') {
+  if (op.estado !== INICIADO) {
     const r = await api('POST', `/operativos/${op.id}/activar`, {}, admin);
     if (r.status !== 200) throw new Error(`No se pudo activar el operativo de pruebas: ${JSON.stringify(r.json)}`);
   }

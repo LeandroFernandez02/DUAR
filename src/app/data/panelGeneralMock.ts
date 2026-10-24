@@ -98,7 +98,7 @@ function generar(): OperativoPanel[] {
     });
   }
   // Tres en curso ahora (uno sin coordinador a cargo) y uno nuevo sin activar.
-  const actuales: [number, number, boolean, EstadoOperativoPanel][] = [[0, 1.2, true, 'ACTIVO'], [1, 3.5, false, 'ACTIVO'], [6, 0.4, true, 'EN_PROCESO'], [4, 0.1, true, 'NUEVO']];
+  const actuales: [number, number, boolean, EstadoOperativoPanel][] = [[0, 1.2, true, 'INICIADO'], [1, 3.5, false, 'INICIADO'], [6, 0.4, true, 'EN_PROCESO'], [4, 0.1, true, 'NUEVO']];
   for (const [zi, dias, conCoord, estado] of actuales) {
     const zz = ZONAS[zi];
     const enCurso = estado !== 'NUEVO';
@@ -131,7 +131,7 @@ function generar(): OperativoPanel[] {
   const z = ZONAS[3];
   ops.push({
     id: 'mock-largo', titulo: `Turista desaparecido — ${z.localidad}`, localidad: `${z.localidad}, Córdoba`,
-    estado: 'ACTIVO', inicio: new Date(ahora - 41 * DIA).toISOString(), fin: null, resultado: null,
+    estado: 'INICIADO', inicio: new Date(ahora - 41 * DIA).toISOString(), fin: null, resultado: null,
     conCoordinador: false, agentes: { terreno: 3, base: 4, noDisponible: 1 }, agentesAsignados: 8,
     instituciones: ['DUAR', 'Policía de Córdoba'], especialidades: ['Canes', 'Dron'],
     areas: [area(z.lat, z.lng, 2.5), area(z.lat + 0.02, z.lng - 0.02, 1.8)],
@@ -145,5 +145,5 @@ function generar(): OperativoPanel[] {
 
 export const OPERATIVOS_PANEL_MOCK: OperativoPanel[] = generar();
 
-/** Usuarios en estado ACTIVO en el sistema (ejemplo). Con datos reales: usuarios.estado = 'ACTIVO'. */
+/** Usuarios en estado ACTIVO en el sistema (ejemplo). Con datos reales: usuarios.estado = 'INICIADO'. */
 export const USUARIOS_ACTIVOS_MOCK = { total: 152, agentes: 140, coordinadores: 10, administradores: 2 };
