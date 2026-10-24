@@ -1,5 +1,5 @@
 import { useCallback, useEffect, useState } from 'react';
-import { Outlet, useParams, Navigate, useNavigate } from 'react-router';
+import { Outlet, useParams, Navigate, useNavigate, useLocation } from 'react-router';
 import { Operativo } from '../../data/mockData';
 import { operativosApi, ApiError } from '../../services/api';
 import { mapearOperativo } from '../../utils/mapearOperativo';
@@ -19,6 +19,7 @@ export default function OperativoLayout() {
   const [loading, setLoading] = useState(true);
   const compacto = useEsCompacto();
   const navigate = useNavigate();
+  const { pathname } = useLocation();
 
   const cargar = useCallback(async () => {
     if (!id) return;
@@ -57,7 +58,7 @@ export default function OperativoLayout() {
         : <OperativoHeader operativo={operativo} />}
       {/* En < 1024 el mapa sube 20 px por debajo de las esquinas redondeadas de la barra superior */}
       <div className="scroll-contenido flex-1 min-h-0 overflow-y-auto overflow-x-hidden relative"
-        style={compacto && location.pathname.endsWith('/mapa') ? { marginTop: -20 } : undefined}>
+        style={compacto && pathname.endsWith('/mapa') ? { marginTop: -20 } : undefined}>
         <Outlet context={{ operativo, recargarOperativo: cargar } satisfies OperativoOutletContext} />
       </div>
     </div>

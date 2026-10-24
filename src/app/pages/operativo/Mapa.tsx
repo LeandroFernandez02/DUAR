@@ -379,7 +379,7 @@ export default function Mapa() {
     { id: 'full', icono: inmersivo ? Minimize : Maximize, etiqueta: inmersivo ? 'Salir de pantalla completa' : 'Pantalla completa' },
   ];
   const panel = !!(selPol || selTr || selMk || sel?.tipo === 'puntoCero') && !editVerts && !moviendo;
-  const derecha = panel && !compacto ? 352 : 12;
+  const derecha = panel ? 352 : 12;
   // Un solo panel a la vez en < 1024: al abrir un detalle (también desde el árbol) se cierra el árbol.
   useEffect(() => { if (compacto && panel) setIzquierda(false); }, [compacto, panel]);
   const panelAbierto = compacto && (panel || izquierda);
@@ -398,7 +398,7 @@ export default function Mapa() {
     <div ref={raiz} className={[compacto && 'mapa-compacto', chico && 'mapa-movil', panelAbierto && 'mapa-panel'].filter(Boolean).join(' ')}
       style={{ height: '100%', minHeight: compacto ? 0 : 520, display: 'flex', position: 'relative', background: 'var(--background)', ['--mapa-izq' as string]: `${corrimiento}px` }}>
       {izquierda && (
-        <div style={compacto ? { position: 'absolute', left: 0, top: 0, bottom: 0, width: 320, maxWidth: '100%', zIndex: 1000, boxShadow: 'var(--elevation-md)' } : { display: 'contents' }}>
+        <div style={compacto ? { position: 'absolute', left: 0, top: 0, bottom: 0, width: 320, maxWidth: '100%', zIndex: 1100, boxShadow: 'var(--elevation-md)' } : { display: 'contents' }}>
         <Arbol compacto={compacto} q={q} setQ={setQ} abiertas={abiertas} setAbiertas={setAbiertas} overlays={prefs.overlays} setOv={setOv}
           ocultos={ocultos} alternar={alternar} mostrar={mostrar} radios={radios} puntoCero={puntoCero}
           poligonos={poligonos} tracks={tracks} marcadores={marcadores} esSel={esSel} soloLectura={soloLectura} actualizado={actualizado}
