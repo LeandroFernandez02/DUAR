@@ -139,7 +139,11 @@ export function MarcoAcceso({ children, pie, arriba }: { children: ReactNode; pi
   return (
     <div className="flex items-center justify-center" style={{ minHeight: '100dvh', padding: '32px 20px', background: 'var(--background)', fontFamily: 'var(--font-family-primary)', color: 'var(--foreground)' }}>
       <div className="w-full flex flex-col items-center gap-6" style={{ maxWidth: 420 }}>
-        <Logo variante="vertical" tono="auto" ancho={160} alto={100} />
+        <div className="flex flex-col items-center" style={{ gap: 8 }}>
+          <Logo variante="vertical" tono="auto" ancho={160} alto={100} />
+          {/* «DUAR» es texto, no parte de la imagen. El padding-left iguala al letter-spacing para que quede centrado. */}
+          <span style={{ fontFamily: 'var(--font-family-primary)', fontSize: 'var(--text-base)', fontWeight: 500, letterSpacing: '0.6em', paddingLeft: '0.6em', color: 'var(--muted-foreground)' }}>DUAR</span>
+        </div>
         {arriba}
         <div className="w-full flex flex-col gap-4" style={{ background: 'var(--card)', border: '1px solid var(--card-border)', borderRadius: 'var(--radius-card)', boxShadow: 'var(--elevation-sm)', padding: 28 }}>
           {children}
