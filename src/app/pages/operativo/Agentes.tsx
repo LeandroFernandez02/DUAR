@@ -6,6 +6,7 @@ import {
   agentesOperativoApi, gruposApi, usuariosApi, ApiError,
   PersonalOperativoApi, UsuarioApi,
 } from '../../services/api';
+import { toast } from 'sonner';
 import { formatearDni } from '../../utils/validacionUsuario';
 import { haceCuanto } from '../../utils/tiempo';
 import TableroGrupos, { type TableroGruposHandle } from './TableroGrupos';
@@ -82,6 +83,9 @@ export default function Agentes() {
   }, [operativo.id]);
 
   useEffect(() => { cargarAgentes(); }, [cargarAgentes]);
+  /** Los agentes ya vistos (para avisar sólo de los que llegan por QR entre consultas). */
+  const idsVistos = useRef<Set<string>>(new Set());
+  useEffect(() => { idsVistos.current = new Set(agentes.map(a => a.id)); }, [agentes]);
 
   // Consulta periódica sin el spinner de carga: un agente que se marca
   // No disponible desde su portal aparece acá en ≤10 s.
@@ -89,7 +93,13 @@ export default function Agentes() {
     if (pestana !== 'agentes') return;
     const id = setInterval(async () => {
       if (document.visibilityState !== 'visible') return;
-      try { setAgentes((await agentesOperativoApi.listar(operativo.id)).personal); } catch { /* se reintenta en el próximo ciclo */ }
+      try {
+        const { personal } = await agentesOperativoApi.listar(operativo.id);
+        // Quien aparece entre una consulta y otra se sumó solo (alta por QR, CU-16): se avisa.
+        const antes = idsVistos.current;
+        personal.filter(a => !antes.has(a.id)).forEach(a => toast(`Nuevo agente dado de alta por QR: ${a.nombre} ${a.apellido}`));
+        setAgentes(personal);
+      } catch { /* se reintenta en el próximo ciclo */ }
     }, INTERVALO_MS);
     return () => clearInterval(id);
   }, [pestana, operativo.id]);

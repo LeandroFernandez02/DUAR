@@ -103,7 +103,7 @@ export function ModalCargarGpx({ operativoId, personal, grupos, onCancel, onCarg
         <input ref={archivoRef} type="file" accept=".gpx,application/gpx+xml" style={{ display: 'none' }} onChange={ev => elegir(ev.target.files?.[0])} aria-label="Archivo GPX" />
         {archivo && analisis ? (
           <div style={{ display: 'flex', alignItems: 'center', gap: 12, padding: 12, borderRadius: 'var(--radius)', background: 'rgba(22,163,74,0.08)', border: '1px solid rgba(22,163,74,0.3)' }}>
-            <span style={{ width: 36, height: 36, borderRadius: 'var(--radius-md)', background: '#dcfce7', color: '#15803d', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><FileCheck size={17} /></span>
+            <span style={{ width: 36, height: 36, borderRadius: 'var(--radius-md)', background: 'color-mix(in srgb, #16a34a calc(12% + var(--tinte-oscuro, 0%) * 0.1), transparent)', color: 'color-mix(in srgb, #86efac var(--tinte-oscuro, 0%), #15803d)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><FileCheck size={17} /></span>
             <div style={{ flex: 1, minWidth: 0 }}>
               <p style={{ margin: 0, fontSize: 'calc(13px * var(--escala-texto))', fontWeight: 600, color: 'var(--foreground)', wordBreak: 'break-all' }}>{archivo.name}</p>
               <p style={{ margin: 0, fontSize: 'calc(11.5px * var(--escala-texto))', color: 'var(--muted-foreground)' }}>
@@ -124,7 +124,7 @@ export function ModalCargarGpx({ operativoId, personal, grupos, onCancel, onCarg
           </div>
         )}
         {analisis && (
-          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 'var(--radius)', marginTop: -4, background: analisis.poligono ? 'var(--muted)' : '#fef3c7', border: `1px solid ${analisis.poligono ? 'var(--border)' : '#fcd34d'}` }}>
+          <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '10px 12px', borderRadius: 'var(--radius)', marginTop: -4, background: analisis.poligono ? 'var(--muted)' : 'color-mix(in srgb, #d97706 calc(10% + var(--tinte-oscuro, 0%) * 0.08), transparent)', border: `1px solid ${analisis.poligono ? 'var(--border)' : '#fcd34d'}` }}>
             {analisis.poligono ? <Pentagon size={15} color="var(--primary)" /> : <TriangleAlert size={15} color="#b45309" />}
             <div style={{ flex: 1, minWidth: 0 }}>
               <p style={{ ...rotulo }}>Polígono detectado por coordenadas</p>
@@ -296,7 +296,7 @@ export function ModalEliminar({ tipo, nombre, extra, onCancel, onConfirmar }: {
     <Modal titulo={`Eliminar ${tipo}`} onClose={onCancel} ancho={440}
       pie={<><Boton variante="outline" tam="md" onClick={onCancel}>Cancelar</Boton><Boton variante="danger" tam="md" icono={Trash2} disabled={e.enviando} onClick={() => e.enviar(onConfirmar, 'No se pudo eliminar.')}>{e.enviando ? 'Eliminando…' : 'Eliminar'}</Boton></>}>
       <div style={{ display: 'flex', gap: 12 }}>
-        <span style={{ width: 36, height: 36, borderRadius: 'var(--radius-md)', background: '#fee2e2', color: '#dc2626', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><TriangleAlert size={17} /></span>
+        <span style={{ width: 36, height: 36, borderRadius: 'var(--radius-md)', background: 'color-mix(in srgb, var(--destructive) calc(10% + var(--tinte-oscuro, 0%) * 0.1), transparent)', color: '#dc2626', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><TriangleAlert size={17} /></span>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <p style={{ margin: 0, fontSize: 'calc(14px * var(--escala-texto))', color: 'var(--foreground)', lineHeight: 1.55 }}>¿Eliminar <strong>{nombre}</strong> del mapa?</p>
           <p style={{ margin: 0, fontSize: 'calc(12px * var(--escala-texto))', color: 'var(--muted-foreground)', lineHeight: 1.55 }}>{extra}</p>

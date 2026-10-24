@@ -535,13 +535,13 @@ export default function Operativos() {
       {errorApi && (
         <div
           className="flex items-start gap-2.5 p-3 rounded-lg mb-4"
-          style={{ background: '#fee2e2', border: '1px solid #fecaca', color: '#b91c1c', fontSize: 'var(--text-base)' }}
+          style={{ background: 'color-mix(in srgb, var(--destructive) calc(10% + var(--tinte-oscuro, 0%) * 0.1), transparent)', border: '1px solid color-mix(in srgb, var(--destructive) 30%, transparent)', color: 'color-mix(in srgb, #fca5a5 var(--tinte-oscuro, 0%), #b91c1c)', fontSize: 'var(--text-base)' }}
         >
           <AlertCircle size={16} style={{ marginTop: 1, flexShrink: 0 }} />
           <span>{errorApi}</span>
           <button
             onClick={() => setErrorApi('')}
-            style={{ marginLeft: 'auto', background: 'none', border: 'none', color: '#b91c1c', cursor: 'pointer' }}
+            style={{ marginLeft: 'auto', background: 'none', border: 'none', color: 'color-mix(in srgb, #fca5a5 var(--tinte-oscuro, 0%), #b91c1c)', cursor: 'pointer' }}
             aria-label="Cerrar aviso"
           >
             <X size={14} />
@@ -1005,7 +1005,7 @@ export default function Operativos() {
                 {finalizeStep === 'confirm' ? (
                   <div
                     className="w-9 h-9 rounded-xl flex items-center justify-center flex-shrink-0"
-                    style={{ background: '#fef3c7' }}
+                    style={{ background: 'color-mix(in srgb, #d97706 calc(10% + var(--tinte-oscuro, 0%) * 0.08), transparent)' }}
                   >
                     <Flag size={18} style={{ color: '#b45309' }} />
                   </div>
@@ -1262,7 +1262,7 @@ export default function Operativos() {
             className="w-full max-w-[380px] rounded-[var(--radius-card)] p-6"
             style={{ background: 'var(--card)', boxShadow: 'var(--elevation-md)' }}
           >
-            <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-4" style={{ background: '#fee2e2' }}>
+            <div className="w-12 h-12 rounded-xl flex items-center justify-center mb-4" style={{ background: 'color-mix(in srgb, var(--destructive) calc(10% + var(--tinte-oscuro, 0%) * 0.1), transparent)' }}>
               <Trash2 size={22} color="#dc2626" />
             </div>
             <h2 className="mb-2" style={{ color: 'var(--foreground)', fontSize: 'var(--text-h3)', fontWeight: 'var(--font-weight-semibold)' }}>

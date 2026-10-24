@@ -82,7 +82,7 @@ const iniciales = (u: Usuario) => `${u.nombre.charAt(0)}${u.apellido.charAt(0)}`
 
 function Dotacion({ u }: { u: Usuario }) {
   return (
-    <span className="inline-flex items-center gap-1 min-w-0">
+    <span className="inline-flex items-center gap-1 min-w-0 max-w-full align-bottom" title={institucionLabel(u)}>
       {esDelDuar(u) && <ShieldCheck size={12} style={{ color: 'var(--primary)', flexShrink: 0 }} />}
       <span className="truncate">{institucionLabel(u)}</span>
     </span>
@@ -713,7 +713,7 @@ export default function Usuarios() {
               <div
                 role="alert"
                 className="flex items-start gap-2.5 p-3 rounded-lg mt-5"
-                style={{ background: '#fee2e2', border: '1px solid #fecaca', color: '#b91c1c', fontSize: 'var(--text-base)' }}
+                style={{ background: 'color-mix(in srgb, var(--destructive) calc(10% + var(--tinte-oscuro, 0%) * 0.1), transparent)', border: '1px solid color-mix(in srgb, var(--destructive) 30%, transparent)', color: 'color-mix(in srgb, #fca5a5 var(--tinte-oscuro, 0%), #b91c1c)', fontSize: 'var(--text-base)' }}
               >
                 <AlertCircle size={16} style={{ marginTop: 1, flexShrink: 0 }} />
                 <span>{errorModal}</span>
@@ -742,7 +742,7 @@ export default function Usuarios() {
             {selected.id === usuarioActual?.id ? (
               /* ── Bloqueo: autoeliminación ── */
               <>
-                <div className="w-11 h-11 rounded-xl flex items-center justify-center mb-4" style={{ background: '#fef3c7' }}>
+                <div className="w-11 h-11 rounded-xl flex items-center justify-center mb-4" style={{ background: 'color-mix(in srgb, #d97706 calc(10% + var(--tinte-oscuro, 0%) * 0.08), transparent)' }}>
                   <Shield size={20} color="#b45309" />
                 </div>
                 <h2 className="mb-2" style={{ color: 'var(--foreground)', fontSize: 'var(--text-h3)', fontWeight: 'var(--font-weight-semibold)' }}>
@@ -764,7 +764,7 @@ export default function Usuarios() {
             ) : (
               /* ── Confirmación normal ── */
               <>
-                <div className="w-11 h-11 rounded-xl flex items-center justify-center mb-4" style={{ background: '#fee2e2' }}>
+                <div className="w-11 h-11 rounded-xl flex items-center justify-center mb-4" style={{ background: 'color-mix(in srgb, var(--destructive) calc(10% + var(--tinte-oscuro, 0%) * 0.1), transparent)' }}>
                   <Trash2 size={20} color="#dc2626" />
                 </div>
                 <h2 className="mb-2" style={{ color: 'var(--foreground)', fontSize: 'var(--text-h3)', fontWeight: 'var(--font-weight-semibold)' }}>

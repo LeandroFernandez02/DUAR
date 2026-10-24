@@ -381,7 +381,7 @@ export function PanelMarcador({ m, soloLectura, onClose, onGuardar, onEliminar, 
           })}
         </div>
         {!hallazgo && clase === 'HALLAZGO' && (
-          <p style={{ margin: 0, display: 'flex', gap: 6, fontSize: 'calc(11.5px * var(--escala-texto))', color: '#92400e', lineHeight: 1.45 }}><TriangleAlert size={13} style={{ flexShrink: 0, marginTop: 1 }} />Pasar a hallazgo no se deshace: un hallazgo es evidencia y no se elimina.</p>
+          <p style={{ margin: 0, display: 'flex', gap: 6, fontSize: 'calc(11.5px * var(--escala-texto))', color: 'color-mix(in srgb, #fcd34d var(--tinte-oscuro, 0%), #92400e)', lineHeight: 1.45 }}><TriangleAlert size={13} style={{ flexShrink: 0, marginTop: 1 }} />Pasar a hallazgo no se deshace: un hallazgo es evidencia y no se elimina.</p>
         )}
         {hallazgo && <p style={{ margin: 0, fontSize: 'calc(11.5px * var(--escala-texto))', color: 'var(--muted-foreground)', lineHeight: 1.45 }}>Un hallazgo es evidencia: queda donde se encontró, no se elimina y sus fotos no se quitan. Sus datos sí se corrigen.</p>}
       </div>
