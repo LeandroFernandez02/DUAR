@@ -315,3 +315,21 @@ export async function cambiarGrupo(operativoId, poligonoId, grupoId, nuevoGrupoI
   });
   return detalle(operativoId, poligonoId);
 }
+
+/**
+ * Portal del agente («Mi sector», diseño CALÍVAR del 23/10): sólo lo que el agente necesita para
+ * ubicarse — nombre, forma, área, perímetro, notas y cobertura —, sin el historial ni los tracks ajenos.
+ */
+export async function paraAgente(operativoId, poligonoId) {
+  const { rows } = await query(
+    `SELECT p.id, p.nombre, p.notas,
+            ST_AsGeoJSON(p.geom)::json AS geometria,
+            round(p.area_m2)::int      AS "areaM2",
+            round(p.perimetro_m)::int  AS "perimetroM",
+            p.cobertura_pct::float     AS "coberturaPct"
+       FROM poligonos p
+      WHERE p.id = $1 AND p.operativo_id = $2 AND p.eliminado_en IS NULL`,
+    [poligonoId, operativoId]
+  );
+  return rows[0] ?? null;
+}

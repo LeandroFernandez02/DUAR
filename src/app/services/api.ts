@@ -963,7 +963,22 @@ export const portalApi = {
   /** CU-31: queda «recorrido de» y «cargado por» uno mismo. */
   cargarMiTrack: (archivo: File, notas?: string) =>
     requestFormData<{ track: TrackApi }>('/mis-tracks', formularioGpx(archivo, { notas })),
+  /** «Mi sector»: el polígono de mi grupo (null sin grupo o sin polígono). */
+  miSector: () => api.get<{ sector: MiSectorApi | null }>('/mi-sector'),
+  /** «Objetivo buscado» del operativo en el que estoy (CU-14, sólo lectura). */
+  miObjetivo: () => api.get<{ objetivo: ObjetivoApi | null }>('/mi-objetivo'),
 };
+
+export interface MiSectorApi {
+  id: string;
+  nombre: string;
+  notas: string | null;
+  /** GeoJSON Polygon (lng, lat). */
+  geometria: { type: 'Polygon'; coordinates: number[][][] };
+  areaM2: number;
+  perimetroM: number;
+  coberturaPct: number | null;
+}
 
 /* ── Objetivo Buscado (Módulo 3 · CU-12..14) ─────────────────────────────── */
 

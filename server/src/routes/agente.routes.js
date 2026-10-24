@@ -22,6 +22,10 @@ router.get( '/mi-grupo',         requiereSesion, portal.miGrupo);
 router.post('/mi-grupo/eventos', requiereSesion, portal.eventosMiGrupo);
 router.put( '/mi-estado',        requiereSesion, portal.miEstado);
 
+// Portal CALÍVAR (23/10): «Mi sector» y «Objetivo buscado», sólo lectura y sólo del operativo propio.
+router.get( '/mi-sector',        requiereSesion, portal.miSector);
+router.get( '/mi-objetivo',      requiereSesion, portal.miObjetivo);
+
 // Módulo 5 · el agente carga el GPX de su propio recorrido (CU-31, flujo principal).
 router.get( '/mis-tracks',          requiereSesion, tracks.misTracksListar);
 router.post('/mis-tracks/analizar', requiereSesion, subirGpxMiddleware, tracks.misTracksAnalizar);

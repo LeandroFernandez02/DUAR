@@ -18,10 +18,11 @@ import {
 } from '../shared/grupos/piezas';
 import { fechaHoraArgentina } from '../../utils/fechaArgentina';
 import { horaCorta } from '../../utils/tiempo';
+import { tarjetaBase } from '../shared/Listados';
 
 const NOTAS_MAX = 2000;
 
-const tarjeta = { background: 'var(--card)', boxShadow: 'var(--elevation-sm)' };
+const tarjeta = tarjetaBase;
 const rotulo = {
   color: 'var(--muted-foreground)', fontSize: 'calc(10px * var(--escala-texto))',
   fontWeight: 'var(--font-weight-semibold)', textTransform: 'uppercase' as const, letterSpacing: '0.05em',
@@ -130,7 +131,7 @@ export default function MisRecorridos() {
       {error && <ErrorCaja>{error}</ErrorCaja>}
       {aviso && (
         <div className="flex items-start gap-2 px-3 py-2 rounded-[var(--radius-input)]" aria-live="polite"
-          style={{ background: '#dcfce7', border: '1px solid #bbf7d0', color: '#15803d', fontSize: 'calc(11.5px * var(--escala-texto))', lineHeight: 1.45 }}>
+          style={{ background: 'color-mix(in srgb, #16a34a calc(10% + var(--tinte-oscuro, 0%) * 0.1), transparent)', border: '1px solid color-mix(in srgb, #16a34a 30%, transparent)', color: 'color-mix(in srgb, #86efac var(--tinte-oscuro, 0%), #15803d)', fontSize: 'calc(11.5px * var(--escala-texto))', lineHeight: 1.45 }}>
           <Check size={13} style={{ flexShrink: 0, marginTop: 1 }} />
           <span className="flex-1">{aviso}</span>
           <button type="button" aria-label="Cerrar" onClick={() => setAviso(null)}
@@ -192,8 +193,8 @@ export default function MisRecorridos() {
           <div className="px-5 pt-4 flex flex-col gap-3">
             <div className="flex items-start gap-2 px-3 py-2.5 rounded-[var(--radius-input)]"
               style={analisis.poligono
-                ? { background: '#dcfce7', border: '1px solid #bbf7d0', color: '#15803d' }
-                : { background: '#fef3c7', border: '1px solid #fde68a', color: '#92400e' }}>
+                ? { background: 'color-mix(in srgb, #16a34a calc(10% + var(--tinte-oscuro, 0%) * 0.1), transparent)', border: '1px solid color-mix(in srgb, #16a34a 30%, transparent)', color: 'color-mix(in srgb, #86efac var(--tinte-oscuro, 0%), #15803d)' }
+                : { background: 'color-mix(in srgb, #d97706 calc(10% + var(--tinte-oscuro, 0%) * 0.08), transparent)', border: '1px solid color-mix(in srgb, #d97706 32%, transparent)', color: 'color-mix(in srgb, #fcd34d var(--tinte-oscuro, 0%), #92400e)' }}>
               {analisis.poligono ? <MapPin size={14} style={{ flexShrink: 0, marginTop: 2 }} /> : <AlertCircle size={14} style={{ flexShrink: 0, marginTop: 2 }} />}
               <span style={{ fontSize: 'var(--text-label)', lineHeight: 1.45 }}>
                 {analisis.poligono

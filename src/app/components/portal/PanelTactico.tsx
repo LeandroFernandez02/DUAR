@@ -14,13 +14,16 @@
  */
 import { useCallback, useEffect, useState } from 'react';
 import {
-  Users, ShieldCheck, AlertCircle, AlertTriangle, Loader2, MapPin, CloudOff, Radio, Check, X,
+  Users, ShieldCheck, AlertCircle, AlertTriangle, Loader2, MapPin, CloudOff, Radio, Check, X, Footprints, Truck,
 } from 'lucide-react';
 import {
   portalApi, ApiError, type AccionTerreno, type GrupoApi, type MiEstadoApi,
 } from '../../services/api';
 import StatusBadge, { colorDeEstado } from '../shared/StatusBadge';
 import { ESTADO_OP_CONFIG } from '../shared/EditarAgenteModal';
+import EstadoAgenteBadge from '../shared/EstadoAgenteBadge';
+import AvatarAgente from '../shared/AvatarAgente';
+import { tarjetaBase } from '../shared/Listados';
 import {
   Overlay, IconBox, Titulo, Texto, BotonSecundario, BotonPrimario, ErrorCaja,
   ACCION_INFO, ACCIONES_TERRENO, BOTON_LIDER,
@@ -37,11 +40,21 @@ const AUTOESTADOS: { valor: Autoestado; etiqueta: string; ayuda: string }[] = [
   { valor: 'NO_DISPONIBLE', etiqueta: 'No disponible', ayuda: 'Por cualquier razón no puedo rastrillar' },
 ];
 
-const tarjeta = { background: 'var(--card)', boxShadow: 'var(--elevation-sm)' };
-const rotulo = {
-  color: 'var(--muted-foreground)', fontSize: 'calc(10px * var(--escala-texto))',
-  fontWeight: 'var(--font-weight-semibold)', textTransform: 'uppercase' as const, letterSpacing: '0.05em',
+const tarjeta = tarjetaBase;
+export const rotuloPortal = {
+  margin: 0, color: 'var(--muted-foreground)', fontSize: 'calc(10.5px * var(--escala-texto))',
+  fontWeight: 600, textTransform: 'uppercase' as const, letterSpacing: '0.05em',
 };
+const rotulo = rotuloPortal;
+
+/** Sección de integrantes («LÍDER · 1», «AGENTES · 3», «CONDUCTOR · 1») con su ícono. */
+function SeccionIntegrantes({ icono: I, texto, n }: { icono: typeof Users; texto: string; n: number }) {
+  return (
+    <p className="flex items-center" style={{ ...rotulo, gap: 6, margin: '6px 2px 0' }}>
+      <I size={12} />{texto}<span style={{ fontWeight: 700, opacity: 0.8 }}>· {n}</span>
+    </p>
+  );
+}
 
 /** Lo que provoca cada aviso, dicho para el Líder. */
 const EFECTO_LIDER: Record<AccionTerreno, string> = {
@@ -68,10 +81,16 @@ function idAviso(): string {
 
 type Resultado = { texto: string; tono: 'ok' | 'info' | 'error' };
 
+/** Avisos que siguen el tema (en oscuro se aclaran texto y tinte). */
+const tono = (c: string, claro: string, oscuro: string) => ({
+  bg: `color-mix(in srgb, ${c} calc(10% + var(--tinte-oscuro, 0%) * 0.1), transparent)`,
+  borde: `color-mix(in srgb, ${c} 30%, transparent)`,
+  color: `color-mix(in srgb, ${oscuro} var(--tinte-oscuro, 0%), ${claro})`,
+});
 const TONO = {
-  ok:    { bg: '#dcfce7', borde: '#bbf7d0', color: '#15803d' },
-  info:  { bg: 'rgba(8,145,178,0.1)', borde: 'rgba(8,145,178,0.3)', color: '#0e7490' },
-  error: { bg: '#fee2e2', borde: '#fecaca', color: '#b91c1c' },
+  ok: tono('#16a34a', '#15803d', '#86efac'),
+  info: tono('#0891b2', '#0e7490', '#67e8f9'),
+  error: tono('#dc2626', '#b91c1c', '#fca5a5'),
 } as const;
 
 export default function PanelTactico() {
@@ -154,15 +173,36 @@ export default function PanelTactico() {
 
   if (cargando) {
     return (
-      <div className="rounded-[var(--radius-card)] p-6 flex justify-center" style={tarjeta}>
+      <div className="p-6 flex justify-center" style={tarjeta}>
         <Loader2 size={18} className="animate-spin" style={{ color: 'var(--muted-foreground)' }} />
       </div>
     );
   }
   if (!agente) return null;
 
-  const cfgMio = ESTADO_OP_CONFIG[agente.estado.toLowerCase() as EstadoOperativoAgente];
   const enGrupo = !!agente.grupoId;
+  const lider = grupo ? grupo.integrantes.filter(i => i.id === grupo.liderId) : [];
+  const resto = grupo ? grupo.integrantes.filter(i => i.id !== grupo.liderId) : [];
+  const agentesG = resto.filter(i => !i.esConductor);
+  const conductores = resto.filter(i => i.esConductor);
+  /** Fila de un integrante: la propia, resaltada con «(vos)». */
+  const fila = (i: (typeof resto)[number]) => {
+    const yo = i.id === agente.id;
+    const esLider = i.id === grupo?.liderId;
+    return (
+      <li key={i.id} className="flex items-center gap-2.5" style={{
+        padding: '8px 10px', borderRadius: 'var(--radius-md)', minHeight: 48, boxSizing: 'border-box',
+        background: yo ? 'color-mix(in srgb, var(--primary) 16%, var(--card))' : 'var(--muted)',
+        border: yo ? '1px solid color-mix(in srgb, var(--primary) 45%, transparent)' : '1px solid transparent',
+      }}>
+        <AvatarAgente esDuar={i.esDuar} esConductor={i.esConductor} esRecursoCritico={i.esRecursoCritico} tamano={30} />
+        {esLider && <ShieldCheck size={14} style={{ color: 'var(--primary)', flexShrink: 0 }} aria-label="Líder" />}
+        <span className="flex-1 min-w-0 truncate" style={{ fontSize: 'var(--text-label)', color: 'var(--foreground)', fontWeight: 600 }}>
+          {i.nombre} {i.apellido}{yo && ' (vos)'}
+        </span>
+      </li>
+    );
+  };
 
   return (
     <div className="flex flex-col gap-4">
@@ -171,7 +211,7 @@ export default function PanelTactico() {
       {/* ── Conexión ── */}
       {sinConexion && (
         <div className="flex items-start gap-2 p-3 rounded-[var(--radius-input)]"
-          style={{ background: '#fef3c7', border: '1px solid #fde68a', color: '#92400e', fontSize: 'var(--text-label)', lineHeight: 1.45 }}>
+          style={{ background: 'color-mix(in srgb, #d97706 calc(10% + var(--tinte-oscuro, 0%) * 0.08), transparent)', border: '1px solid color-mix(in srgb, #d97706 32%, transparent)', color: 'color-mix(in srgb, #fcd34d var(--tinte-oscuro, 0%), #92400e)', fontSize: 'var(--text-label)', lineHeight: 1.45 }}>
           <CloudOff size={15} style={{ flexShrink: 0, marginTop: 1 }} />
           <span>
             Sin conexión con el servidor. Lo que ves es de {ultimoDato ? haceCuanto(ultimoDato) : 'antes'}.
@@ -181,21 +221,17 @@ export default function PanelTactico() {
       )}
 
       {/* ── Mi estado ── */}
-      <section className="rounded-[var(--radius-card)] p-4" style={tarjeta} aria-labelledby="mi-estado-titulo">
-        <div className="flex items-center justify-between gap-3 mb-3">
+      <section className="p-4" style={tarjeta} aria-labelledby="mi-estado-titulo">
+        <div className="flex items-center justify-between gap-3" style={{ marginBottom: 10 }}>
           <p id="mi-estado-titulo" style={rotulo}>Mi estado</p>
-          <span style={{ fontSize: 'calc(11px * var(--escala-texto))', color: 'var(--muted-foreground)' }} title={`Desde ${horaExacta(agente.estadoActualizadoEn)}`}>
-            {haceCuanto(agente.estadoActualizadoEn)}
+          <span className="flex items-center gap-2" title={`Desde ${horaExacta(agente.estadoActualizadoEn)}`}>
+            <span style={{ fontSize: 'calc(10.5px * var(--escala-texto))', color: 'var(--muted-foreground)' }}>{haceCuanto(agente.estadoActualizadoEn)}</span>
+            <EstadoAgenteBadge estado={agente.estado.toLowerCase() as EstadoOperativoAgente} size="sm" />
           </span>
         </div>
-        {cfgMio && (
-          <p className="mb-3" style={{ color: cfgMio.color, fontSize: 'var(--text-h3)', fontWeight: 'var(--font-weight-bold)' }}>
-            ● {cfgMio.label}
-          </p>
-        )}
         {enGrupo ? (
-          <p style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-label)', lineHeight: 1.5 }}>
-            Mientras integres un grupo, tu estado lo define el grupo{grupo ? ` (${grupo.nombre})` : ''}.
+          <p style={{ margin: 0, color: 'var(--muted-foreground)', fontSize: 'var(--text-label)', lineHeight: 1.5 }}>
+            Estás en un grupo: tu estado lo maneja el grupo{grupo ? ` (${grupo.nombre})` : ''}.
             Si no podés seguir, avisale {grupo?.soyLider ? 'al coordinador' : 'a tu Líder o al coordinador'} para que te retiren.
           </p>
         ) : (
@@ -210,15 +246,16 @@ export default function PanelTactico() {
                 const actual = agente.estado === op.valor;
                 const cfg = ESTADO_OP_CONFIG[op.valor.toLowerCase() as EstadoOperativoAgente];
                 return (
-                  <button key={op.valor} type="button" disabled={actual}
+                  <button key={op.valor} type="button" disabled={actual} aria-pressed={actual}
                     onClick={() => setConfirmar({ tipo: 'autoestado', valor: op.valor })}
-                    className="text-left px-3 py-3 rounded-[var(--radius-input)]"
+                    className="text-left px-3 py-3"
                     style={{
+                      borderRadius: 'var(--radius-md)', minHeight: 56, fontFamily: 'var(--font-family-primary)',
                       border: actual ? `2px solid ${cfg.color}` : '1.5px solid var(--border)',
-                      background: actual ? cfg.bg : 'var(--card)',
+                      background: actual ? `color-mix(in srgb, ${cfg.color} calc(10% + var(--tinte-oscuro, 0%) * 0.1), var(--card))` : 'var(--card)',
                       cursor: actual ? 'default' : 'pointer',
                     }}>
-                    <span style={{ display: 'block', color: cfg.color, fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-semibold)' }}>
+                    <span style={{ display: 'block', color: 'var(--foreground)', fontSize: 'var(--text-base)', fontWeight: 600 }}>
                       {op.etiqueta}
                     </span>
                     <span style={{ display: 'block', color: 'var(--muted-foreground)', fontSize: 'calc(11px * var(--escala-texto))', lineHeight: 1.35 }}>
@@ -233,19 +270,23 @@ export default function PanelTactico() {
       </section>
 
       {/* ── Mi grupo ── */}
-      <section className="rounded-[var(--radius-card)] overflow-hidden" style={tarjeta} aria-labelledby="mi-grupo-titulo">
+      <section className="overflow-hidden" style={tarjeta} aria-labelledby="mi-grupo-titulo">
         {grupo ? (
           <>
             <div style={{ height: 4, background: colorDeEstado(grupo.estado.toLowerCase()) }} />
             <div className="p-4 flex flex-col gap-3">
               <div className="flex items-start justify-between gap-3">
-                <div>
-                  <p id="mi-grupo-titulo" style={rotulo}>Mi grupo{grupo.clase === 'ESPECIAL' ? ' especial' : ''}{grupo.soyLider ? ' · sos el Líder' : ''}</p>
-                  <p className="mt-1" style={{ color: 'var(--foreground)', fontSize: 'var(--text-h3)', fontWeight: 'var(--font-weight-bold)' }}>
-                    {grupo.nombre}
+                <div className="min-w-0">
+                  <p id="mi-grupo-titulo" style={rotulo}>Mi grupo{grupo.soyLider ? ' · sos el Líder' : ''}</p>
+                  <p className="flex items-center gap-2" style={{ margin: '4px 0 0', color: 'var(--foreground)', fontSize: 'var(--text-h3)', fontWeight: 700 }}>
+                    <span style={{ width: 12, height: 12, borderRadius: 3, flexShrink: 0, background: grupo.color || colorDeEstado(grupo.estado.toLowerCase()) }} />
+                    <span className="truncate">{grupo.nombre}</span>
+                  </p>
+                  <p style={{ margin: '2px 0 0', fontSize: 'calc(11.5px * var(--escala-texto))', color: 'var(--muted-foreground)' }}>
+                    {grupo.clase === 'ESPECIAL' ? 'Grupo especial' : 'Grupo de rastrillaje'} · {grupo.integrantes.length} integrante{grupo.integrantes.length !== 1 ? 's' : ''}
                   </p>
                 </div>
-                <div className="text-right">
+                <div className="text-right shrink-0">
                   <StatusBadge estado={grupo.estado.toLowerCase()} size="sm" />
                   <p className="mt-1" style={{ fontSize: 'calc(11px * var(--escala-texto))', color: 'var(--muted-foreground)' }}
                     title={`Desde ${horaExacta(grupo.estadoActualizadoEn)}`}>
@@ -263,29 +304,18 @@ export default function PanelTactico() {
 
               {grupo.alertaBinomio && (
                 <p className="flex items-start gap-1.5 px-2.5 py-2 rounded-[var(--radius-input)]"
-                  style={{ background: '#fee2e2', color: '#b91c1c', fontSize: 'var(--text-label)', lineHeight: 1.4, fontWeight: 'var(--font-weight-semibold)' }}>
+                  style={{ background: TONO.error.bg, border: `1px solid ${TONO.error.borde}`, color: TONO.error.color, fontSize: 'var(--text-label)', lineHeight: 1.4, fontWeight: 'var(--font-weight-semibold)' }}>
                   <AlertTriangle size={14} style={{ flexShrink: 0, marginTop: 1 }} />
                   Queda una sola persona rastrillando: nadie debe rastrillar solo.
                 </p>
               )}
 
-              <ul className="flex flex-col gap-1.5">
-                {grupo.integrantes.map(i => {
-                  const cfg = ESTADO_OP_CONFIG[i.estado.toLowerCase() as EstadoOperativoAgente];
-                  return (
-                    <li key={i.id} className="flex items-center gap-2 px-2.5 py-2 rounded-[var(--radius-input)]" style={{ background: 'var(--muted)' }}>
-                      {i.id === grupo.liderId
-                        ? <ShieldCheck size={13} style={{ color: 'var(--primary)', flexShrink: 0 }} aria-label="Líder" />
-                        : <span style={{ width: 13, flexShrink: 0 }} />}
-                      <span className="flex-1 min-w-0" style={{ fontSize: 'var(--text-label)', color: 'var(--foreground)', fontWeight: 'var(--font-weight-medium)' }}>
-                        {i.nombre} {i.apellido}
-                        {i.esConductor && <span style={{ color: 'var(--muted-foreground)', fontWeight: 'var(--font-weight-normal)' }}> · Conductor</span>}
-                      </span>
-                      {cfg && <span style={{ fontSize: 'calc(11px * var(--escala-texto))', color: cfg.color, fontWeight: 'var(--font-weight-semibold)', whiteSpace: 'nowrap' }}>{cfg.label}</span>}
-                    </li>
-                  );
-                })}
-              </ul>
+              {/* Integrantes: líder → agentes → conductores; la fila propia resaltada */}
+              <div className="flex flex-col gap-1.5">
+                {lider.length > 0 && <><SeccionIntegrantes icono={ShieldCheck} texto="Líder" n={lider.length} /><ul className="flex flex-col gap-1.5">{lider.map(fila)}</ul></>}
+                {agentesG.length > 0 && <><SeccionIntegrantes icono={Footprints} texto="Agentes" n={agentesG.length} /><ul className="flex flex-col gap-1.5">{agentesG.map(fila)}</ul></>}
+                {conductores.length > 0 && <><SeccionIntegrantes icono={Truck} texto={conductores.length === 1 ? 'Conductor' : 'Conductores'} n={conductores.length} /><ul className="flex flex-col gap-1.5">{conductores.map(fila)}</ul></>}
+              </div>
 
               {/* ── Avisos del Líder ── */}
               {grupo.soyLider && (
@@ -295,12 +325,13 @@ export default function PanelTactico() {
                     <div className="flex flex-col gap-2">
                       {accionesLider.map((a, idx) => (
                         <button key={a} type="button" onClick={() => setConfirmar({ tipo: 'terreno', accion: a })}
-                          className="px-4 py-3.5 rounded-[var(--radius-input)]"
+                          className="px-4 py-3.5"
                           style={{
                             border: idx === 0 ? 'none' : '1.5px solid var(--border)',
                             background: idx === 0 ? 'var(--primary)' : 'var(--card)',
                             color: idx === 0 ? 'var(--primary-foreground)' : 'var(--foreground)',
                             fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-semibold)', cursor: 'pointer',
+                            borderRadius: 'var(--radius-md)', fontFamily: 'var(--font-family-primary)',
                           }}>
                           {BOTON_LIDER[a]}
                         </button>
@@ -356,8 +387,8 @@ export default function PanelTactico() {
           <div className="px-5 py-5 flex items-start gap-3">
             {confirmar.tipo === 'autoestado' ? (
               <>
-                <IconBox bg={confirmar.valor === 'NO_DISPONIBLE' ? '#fee2e2' : 'color-mix(in srgb, var(--primary) 10%, transparent)'}>
-                  <AlertCircle size={17} style={{ color: confirmar.valor === 'NO_DISPONIBLE' ? '#dc2626' : 'var(--primary)' }} />
+                <IconBox bg={confirmar.valor === 'NO_DISPONIBLE' ? TONO.error.bg : 'color-mix(in srgb, var(--primary) 10%, transparent)'}>
+                  <AlertCircle size={17} style={{ color: confirmar.valor === 'NO_DISPONIBLE' ? 'var(--destructive)' : 'var(--primary)' }} />
                 </IconBox>
                 <div>
                   <Titulo>¿Marcarte {AUTOESTADOS.find(a => a.valor === confirmar.valor)!.etiqueta}?</Titulo>

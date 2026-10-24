@@ -17,6 +17,9 @@
 import * as Grupo from '../models/grupo.model.js';
 import * as AgenteOperativo from '../models/agenteOperativo.model.js';
 import * as Auditoria from '../models/auditoria.model.js';
+import * as Poligono from '../models/poligono.model.js';
+import * as Objetivo from '../models/objetivo.model.js';
+import * as Storage from '../services/storage.service.js';
 import { ESTADOS_AGENTE_ELEGIBLES } from '../models/estados.js';
 
 const RE_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -131,5 +134,35 @@ export async function miEstado(req, res, next) {
         estadoActualizadoEn: agente.estadoActualizadoEn, grupoId: agente.grupoId,
       },
     });
+  } catch (err) { next(err); }
+}
+
+/**
+ * GET /api/mi-sector — «Mi sector» del portal (diseño CALÍVAR, 23/10): el polígono asignado a MI grupo,
+ * con sus vértices para ubicarse. Sólo lectura y sólo el de mi grupo; sin grupo o sin polígono → null.
+ */
+export async function miSector(req, res, next) {
+  try {
+    const alta = await AgenteOperativo.altaActivaDe(req.usuario.id);
+    if (!alta?.grupoId) return res.json({ sector: null });
+    const grupo = await Grupo.grupoDelAgente(alta);
+    if (!grupo?.poligonoId) return res.json({ sector: null });
+    res.json({ sector: await Poligono.paraAgente(alta.operativoId, grupo.poligonoId) });
+  } catch (err) { next(err); }
+}
+
+/**
+ * GET /api/mi-objetivo — «Objetivo buscado» del portal (CU-14 consultado por el agente): la ficha del
+ * objetivo del operativo en el que estoy, con las fotos por URL firmada. Sólo lectura; cargarlo y
+ * editarlo sigue siendo del coordinador (CU-12/13).
+ */
+export async function miObjetivo(req, res, next) {
+  try {
+    const alta = await AgenteOperativo.altaActivaDe(req.usuario.id);
+    if (!alta) return res.json({ objetivo: null });
+    const objetivo = await Objetivo.buscarPorOperativo(alta.operativoId);
+    if (!objetivo) return res.json({ objetivo: null });
+    const fotos = await Promise.all((objetivo.fotos ?? []).map(async f => ({ id: f.id, url: await Storage.generarUrlFirmada(f.path) })));
+    res.json({ objetivo: { ...objetivo, fotos } });
   } catch (err) { next(err); }
 }
