@@ -4,7 +4,7 @@
  * logo vertical arriba y una tarjeta centrada de 420 px.
  */
 import { useState, type ReactNode, type InputHTMLAttributes } from 'react';
-import { AlertCircle, ChevronDown, Eye, EyeOff, type LucideIcon } from 'lucide-react';
+import { AlertCircle, ChevronDown, Eye, EyeOff, Lock, type LucideIcon } from 'lucide-react';
 import Logo from '../layout/Logo';
 import CampoFecha from '../shared/CampoFecha';
 
@@ -48,18 +48,19 @@ export function CampoAcceso({ label, icono: I, value, onChange, requerido, error
   );
 }
 
-/** Contraseña con el ojito para verla (Testeo 15/10, puntos 21 y 26). */
-export function CampoContrasenaAcceso(props: Omit<PropsCampo, 'type' | 'derecha'> & { icono?: LucideIcon }) {
+/** Contraseña con candado a la izquierda; el ojito para verla aparece recién al escribir (Testeo 15/10, puntos 21 y 26). */
+export function CampoContrasenaAcceso({ icono = Lock, ...props }: Omit<PropsCampo, 'type' | 'derecha'> & { icono?: LucideIcon }) {
   const [ver, setVer] = useState(false);
+  const hayTexto = props.value.length > 0;
   return (
-    <CampoAcceso {...props} type={ver ? 'text' : 'password'}
-      derecha={
+    <CampoAcceso {...props} icono={icono} type={ver && hayTexto ? 'text' : 'password'}
+      derecha={hayTexto ? (
         <button type="button" onClick={() => setVer(v => !v)} aria-label={ver ? 'Ocultar contraseña' : 'Mostrar contraseña'} title={ver ? 'Ocultar contraseña' : 'Mostrar contraseña'}
           className="absolute flex items-center justify-center"
           style={{ right: 6, top: '50%', transform: 'translateY(-50%)', width: 34, height: 34, border: 'none', background: 'none', cursor: 'pointer', color: 'var(--muted-foreground)', borderRadius: 8 }}>
           {ver ? <EyeOff size={16} /> : <Eye size={16} />}
         </button>
-      } />
+      ) : undefined} />
   );
 }
 
