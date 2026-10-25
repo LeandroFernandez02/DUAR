@@ -36,21 +36,33 @@ const transporte = GMAIL_USER && GMAIL_APP_PASSWORD
     })
   : null;
 
-function layout(tituloInterno, cuerpoHtml) {
+/**
+ * Marca de los correos (diseño CALÍVAR, 25/10): la aplicación es CALÍVAR y la institución sigue
+ * siendo el DUAR, así que el remitente y el encabezado dicen «CALÍVAR - DUAR».
+ * Paleta del diseño: azul noche #0B1E2D, turquesa #00C2B3, acero #5B6B7A, niebla #E6E9EE.
+ * El logo va por URL pública (los clientes de correo no muestran SVG ni imágenes locales) y
+ * siempre desde producción, aunque el correo salga desde un servidor local.
+ */
+const NOMBRE_MARCA = 'CALÍVAR - DUAR';
+const LOGO_URL = 'https://tesis-duar.vercel.app/calivar/calivar-icono-180.png';
+const FUENTE = "'Segoe UI',Helvetica,Arial,sans-serif";
+
+export function layout(tituloInterno, cuerpoHtml) {
   return `<!DOCTYPE html>
 <html lang="es">
 <head><meta charset="UTF-8"><title>${tituloInterno}</title></head>
-<body style="margin:0;padding:0;background:#f5f0ee;font-family:'Inter',Arial,sans-serif;">
-  <table width="100%" cellpadding="0" cellspacing="0" style="background:#f5f0ee;padding:32px 16px;">
+<body style="margin:0;padding:0;background:#E6E9EE;font-family:${FUENTE};">
+  <table width="100%" cellpadding="0" cellspacing="0" style="background:#E6E9EE;padding:32px 16px;">
     <tr><td align="center">
-      <table width="480" cellpadding="0" cellspacing="0" style="background:#ffffff;border-radius:12px;overflow:hidden;box-shadow:0 2px 12px rgba(0,0,0,0.08);">
-        <tr><td style="background:#444140;padding:24px 32px;">
+      <table width="480" cellpadding="0" cellspacing="0" style="width:100%;max-width:480px;background:#ffffff;border-radius:14px;overflow:hidden;box-shadow:0 2px 12px rgba(11,30,45,0.10);">
+        <tr><td style="background:#0B1E2D;padding:22px 32px;border-bottom:3px solid #00C2B3;">
           <table cellpadding="0" cellspacing="0"><tr>
-            <td style="background:#E54B4B;border-radius:8px;padding:8px 12px;">
-              <span style="color:#fff;font-size:18px;font-weight:bold;">DUAR</span>
+            <td style="vertical-align:middle;">
+              <img src="${LOGO_URL}" width="44" height="44" alt="CALÍVAR" style="display:block;border:0;border-radius:10px;">
             </td>
-            <td style="padding-left:12px;color:rgba(255,255,255,0.7);font-size:13px;">
-              Sistema de Búsqueda y Rastreo · Córdoba
+            <td style="padding-left:14px;vertical-align:middle;">
+              <div style="color:#ffffff;font-size:19px;font-weight:bold;letter-spacing:0.5px;">${NOMBRE_MARCA}</div>
+              <div style="color:#B9C3CD;font-size:12px;margin-top:2px;">Sistema de Búsqueda y Rastreo · Córdoba</div>
             </td>
           </tr></table>
         </td></tr>
@@ -62,15 +74,15 @@ function layout(tituloInterno, cuerpoHtml) {
 </html>`;
 }
 
-function botonHtml(url, texto) {
+export function botonHtml(url, texto) {
   return `<div style="text-align:center;margin:28px 0;">
-    <a href="${url}" style="background:#E54B4B;color:#fff;padding:14px 32px;border-radius:8px;text-decoration:none;font-weight:bold;font-size:15px;display:inline-block;">
+    <a href="${url}" style="background:#00C2B3;color:#0B1E2D;padding:14px 32px;border-radius:10px;text-decoration:none;font-weight:bold;font-size:15px;display:inline-block;">
       ${texto}
     </a>
   </div>
-  <p style="color:#888;font-size:12px;line-height:1.6;margin:0;">
+  <p style="color:#5B6B7A;font-size:12px;line-height:1.6;margin:0;">
     Si no podés usar el botón, copiá este enlace en tu navegador:<br>
-    <a href="${url}" style="color:#E54B4B;word-break:break-all;">${url}</a>
+    <a href="${url}" style="color:#0A7A72;word-break:break-all;">${url}</a>
   </p>`;
 }
 
@@ -92,7 +104,7 @@ async function enviar({ para, asunto, html }) {
   }
   try {
     await transporte.sendMail({
-      from: `"DUAR — Búsqueda y Rastreo" <${GMAIL_USER}>`,
+      from: `"${NOMBRE_MARCA}" <${GMAIL_USER}>`,
       to: para,
       subject: asunto,
       html,
@@ -107,42 +119,42 @@ async function enviar({ para, asunto, html }) {
 /** CU-02 paso 7. */
 export function enviarConfirmacion({ para, nombre, url, operativoNombre }) {
   const operativoLinea = operativoNombre
-    ? `<p style="color:#555;font-size:14px;">Te registraste para participar en el operativo: <strong>${operativoNombre}</strong></p>`
+    ? `<p style="color:#33414E;font-size:14px;">Te registraste para participar en el operativo: <strong>${operativoNombre}</strong></p>`
     : '';
-  const html = layout('Confirmá tu cuenta DUAR', `
-    <h2 style="color:#444140;margin:0 0 8px;font-size:22px;">Confirmá tu cuenta</h2>
-    <p style="color:#555;font-size:15px;line-height:1.6;margin:0 0 16px;">
+  const html = layout('Confirmá tu cuenta — CALÍVAR - DUAR', `
+    <h2 style="color:#0B1E2D;margin:0 0 8px;font-size:22px;">Confirmá tu cuenta</h2>
+    <p style="color:#33414E;font-size:15px;line-height:1.6;margin:0 0 16px;">
       Hola <strong>${nombre}</strong>,<br>
-      Para activar tu cuenta en el sistema DUAR, hacé clic en el botón a continuación.
+      Para activar tu cuenta en el sistema CALÍVAR del DUAR, hacé clic en el botón a continuación.
     </p>
     ${operativoLinea}
     ${botonHtml(url, 'Confirmar mi cuenta')}
-    <hr style="border:none;border-top:1px solid #eee;margin:24px 0;">
-    <p style="color:#aaa;font-size:11px;margin:0;">
+    <hr style="border:none;border-top:1px solid #E6E9EE;margin:24px 0;">
+    <p style="color:#5B6B7A;font-size:11px;margin:0;">
       Este enlace expira en 24 horas. Si no creaste esta cuenta, ignorá este correo.<br>
-      © 2026 DUAR Córdoba · Dirección de Unidades de Alto Riesgo
+      © 2026 CALÍVAR - DUAR Córdoba · Dirección de Unidades de Alto Riesgo
     </p>
   `);
   // Se dispara sin esperar la respuesta HTTP: el registro y el alta en el
   // operativo son lo urgente en un rescate real, el correo puede tardar unos
   // segundos de más sin que el agente lo note.
-  return enviar({ para, asunto: 'Confirmá tu cuenta DUAR', html });
+  return enviar({ para, asunto: 'Confirmá tu cuenta CALÍVAR - DUAR', html });
 }
 
 /** CU-03 paso 5. */
 export function enviarRecuperacion({ para, nombre, url }) {
-  const html = layout('Recuperá tu contraseña — DUAR', `
-    <h2 style="color:#444140;margin:0 0 8px;font-size:22px;">Recuperá tu contraseña</h2>
-    <p style="color:#555;font-size:15px;line-height:1.6;margin:0 0 16px;">
+  const html = layout('Recuperá tu contraseña — CALÍVAR - DUAR', `
+    <h2 style="color:#0B1E2D;margin:0 0 8px;font-size:22px;">Recuperá tu contraseña</h2>
+    <p style="color:#33414E;font-size:15px;line-height:1.6;margin:0 0 16px;">
       Hola <strong>${nombre}</strong>,<br>
-      Recibimos un pedido para restablecer tu contraseña del sistema DUAR. Si no fuiste vos, podés ignorar este correo.
+      Recibimos un pedido para restablecer tu contraseña del sistema CALÍVAR del DUAR. Si no fuiste vos, podés ignorar este correo.
     </p>
     ${botonHtml(url, 'Elegir nueva contraseña')}
-    <hr style="border:none;border-top:1px solid #eee;margin:24px 0;">
-    <p style="color:#aaa;font-size:11px;margin:0;">
+    <hr style="border:none;border-top:1px solid #E6E9EE;margin:24px 0;">
+    <p style="color:#5B6B7A;font-size:11px;margin:0;">
       Este enlace expira en 60 minutos y sólo puede usarse una vez.<br>
-      © 2026 DUAR Córdoba · Dirección de Unidades de Alto Riesgo
+      © 2026 CALÍVAR - DUAR Córdoba · Dirección de Unidades de Alto Riesgo
     </p>
   `);
-  return enviar({ para, asunto: 'Recuperá tu contraseña — DUAR', html });
+  return enviar({ para, asunto: 'Recuperá tu contraseña — CALÍVAR - DUAR', html });
 }
