@@ -116,7 +116,8 @@ export async function reunirDatos(operativoId, corteEn) {
     eventosPoligono, auditoriaOperativo, informesPrevios,
   ] = await Promise.all([
     q(`SELECT ob.*, ob.tipo::text AS tipo, ob.genero::text AS genero,
-              COALESCE((SELECT json_agg(f.url_foto ORDER BY f.creado_en) FROM fotos_objetivo f WHERE f.objetivo_id = ob.id), '[]') AS fotos
+              COALESCE((SELECT json_agg(f.url_foto ORDER BY f.creado_en) FROM fotos_objetivo f
+                         WHERE f.objetivo_id = ob.id AND f.eliminado_en IS NULL), '[]') AS fotos   -- Testeo 25/10, punto 38
          FROM objetivo_buscado ob WHERE ob.operativo_id = $1`),
     q(`SELECT m.id, m.nombre, m.descripcion, m.detalle, m.creado_en AS "creadoEn",
               ST_Y(m.geom) AS lat, ST_X(m.geom) AS lng, ${nombre('u')} AS "registradoPor",
@@ -219,7 +220,7 @@ export async function reunirDatos(operativoId, corteEn) {
         WHERE i.operativo_id = $1 ORDER BY i.generado_en`),
   ]);
 
-  const [bajas, otrosMarcadores] = await Promise.all([
+  const [bajas, otrosMarcadores, cambiosCaratula] = await Promise.all([
     q(`SELECT 'Track' AS clase, t.archivo_nombre AS nombre, t.eliminado_en AS "eliminadoEn", ${nombre('u')} AS "eliminadoPor", t.notas AS motivo
          FROM tracks_gpx t LEFT JOIN usuarios u ON u.id = t.eliminado_por WHERE t.operativo_id = $1 AND t.eliminado_en IS NOT NULL
        UNION ALL
@@ -232,6 +233,18 @@ export async function reunirDatos(operativoId, corteEn) {
     q(`SELECT m.clase, m.tipo_instalacion AS "tipoInstalacion", m.nombre, m.creado_en AS "creadoEn", ${nombre('u')} AS "registradoPor"
          FROM marcadores m LEFT JOIN usuarios u ON u.id = m.creado_por
         WHERE m.operativo_id = $1 AND m.clase <> 'HALLAZGO' ORDER BY m.creado_en`),
+    // CU-09 paso 6 (Testeo 25/10, punto 33): cambios de la carátula. El controlador audita el
+    // operativo completo antes y después; acá se toma sólo lo que cambió.
+    q(`SELECT a.creado_en AS "creadoEn",
+              a.valores_previos->>'titulo' AS "tituloPrevio", a.valores_nuevos->>'titulo' AS "tituloNuevo",
+              a.valores_previos->>'fiscalInstruccion' AS "fiscalPrevio", a.valores_nuevos->>'fiscalInstruccion' AS "fiscalNuevo",
+              a.valores_previos->>'localidad' AS "localidadPrevia", a.valores_nuevos->>'localidad' AS "localidadNueva",
+              (a.valores_previos->>'descripcion') IS DISTINCT FROM (a.valores_nuevos->>'descripcion') AS "cambiaDescripcion",
+              ${nombre('u')} AS "registradoPor"
+         FROM logs_auditoria a JOIN usuarios u ON u.id = a.usuario_id
+        WHERE a.entidad_afectada = 'operativos' AND a.registro_id = $1 AND a.accion = 'MODIFICAR'
+          AND a.valores_nuevos ? 'titulo'
+        ORDER BY a.creado_en`),
   ]);
 
   return {
@@ -245,7 +258,7 @@ export async function reunirDatos(operativoId, corteEn) {
     bajasPersonal: eventosAgente.filter(e => e.accion === 'retiro' || (e.accion === 'baja' && e.motivo !== 'Operativo finalizado')),
     cronologia: armarCronologia({
       operativo, objetivo: objetivo[0], hallazgos, puntoCero, grupos, eventosGrupo, eventosAgente,
-      mandos, presencias, eventosPoligono, otrosMarcadores, bajas, auditoriaOperativo, informesPrevios,
+      mandos, presencias, eventosPoligono, otrosMarcadores, bajas, auditoriaOperativo, informesPrevios, cambiosCaratula,
     }),
   };
 }
@@ -335,6 +348,19 @@ export function armarCronologia(d) {
     const fin = d.auditoriaOperativo.find(a => a.estadoNuevo === 'FINALIZADO');
     add(d.operativo.fechaHoraFin, 'Operativo', 'Se finaliza el operativo: se libera al personal y se disuelven los grupos.', fin?.registradoPor,
       d.operativo.resultado ? { nota: `Resultado: ${RESULTADOS_OPERATIVO[d.operativo.resultado] ?? d.operativo.resultado}.` } : {});
+  }
+  for (const c of d.cambiosCaratula ?? []) {
+    const cambios = [];
+    if (c.tituloPrevio !== c.tituloNuevo) cambios.push(`Se cambia el título de «${c.tituloPrevio}» a «${c.tituloNuevo}».`);
+    const fp = c.fiscalPrevio ?? null, fn = c.fiscalNuevo ?? null;
+    if (fp !== fn) {
+      cambios.push(!fp ? `Se asigna el fiscal de instrucción ${fn}.`
+        : !fn ? `Se quita el fiscal de instrucción ${fp}.`
+        : `Se cambia el fiscal de instrucción de ${fp} a ${fn}.`);
+    }
+    if (c.localidadPrevia !== c.localidadNueva) cambios.push(`Se cambia la localidad de ${c.localidadPrevia} a ${c.localidadNueva}.`);
+    if (c.cambiaDescripcion) cambios.push('Se modifica la descripción.');
+    if (cambios.length) add(c.creadoEn, 'Operativo', cambios.join(' '), c.registradoPor);
   }
   if (d.objetivo) add(d.objetivo.creado_en, 'Operativo', `Se carga la ficha ${d.objetivo.tipo === 'OBJETO' ? 'del objeto' : 'de la persona'} buscada.`, null);
 

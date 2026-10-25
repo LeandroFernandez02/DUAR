@@ -554,6 +554,16 @@ function PhotoSection({
 /* ─────────────────────────────────────────────────
    Main component props
 ───────────────────────────────────────────────── */
+/**
+ * Texto del aviso de arriba del formulario cuando hay campos con error (Testeo 25/10, punto 37):
+ * el detalle ya está debajo de cada campo, así que arriba se resume en vez de repetirlo.
+ */
+export function resumenErrores(errors: Record<string, string>): string {
+  const n = Object.keys(errors).length;
+  return n === 1 ? 'Hay un campo con error. Revisalo más abajo para poder guardar.'
+    : `Hay ${n} campos con error. Revisalos más abajo para poder guardar.`;
+}
+
 export interface ObjetivoFormContentProps {
   tipo: TipoObjetivo | '';
   onTipoChange: (t: TipoObjetivo) => void;

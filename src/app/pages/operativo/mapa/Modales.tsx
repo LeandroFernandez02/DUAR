@@ -307,20 +307,3 @@ export function ModalEliminar({ tipo, nombre, extra, onCancel, onConfirmar }: {
     </Modal>
   );
 }
-
-/* ── CU-30: quitar un grupo que está en el terreno ── */
-export function ModalQuitarGrupo({ grupo, estado, poligono, onCancel, onConfirmar }: {
-  grupo: string; estado: string; poligono: string; onCancel: () => void; onConfirmar: () => Promise<unknown>;
-}) {
-  const e = useEnvio();
-  return (
-    <Modal titulo="Quitar grupo del polígono" icono={TriangleAlert} onClose={onCancel} ancho={440}
-      pie={<><Boton variante="outline" tam="md" onClick={onCancel}>Cancelar</Boton><Boton variante="danger" tam="md" icono={X} disabled={e.enviando} onClick={() => e.enviar(onConfirmar, 'No se pudo quitar el grupo.')}>{e.enviando ? 'Quitando…' : 'Quitar igualmente'}</Boton></>}>
-      <p style={{ margin: 0, fontSize: 'calc(13px * var(--escala-texto))', color: 'var(--muted-foreground)', lineHeight: 1.55 }}>
-        <strong style={{ color: 'var(--foreground)' }}>{grupo}</strong> está <strong style={{ color: 'var(--foreground)' }}>{estado.toLowerCase()}</strong> en {poligono}.
-        Si lo quitás, el grupo sigue en el terreno pero el polígono queda sin él. Queda registrado en el historial del polígono.
-      </p>
-      {e.error && <div style={{ marginTop: 10 }}><ErrorTexto>{e.error}</ErrorTexto></div>}
-    </Modal>
-  );
-}

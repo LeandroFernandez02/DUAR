@@ -16,7 +16,6 @@ import { query, withTransaction } from '../config/db.js';
 import { ReglaError } from './reglaError.js';
 import * as Asig from './poligonoAsignacion.js';
 import * as Grupo from './grupo.model.js';
-import * as Evento from './evento.model.js';
 
 /** CU-40: lo que ve una persona a cada lado de su recorrido (decisión del 12/10: 2 m, 4 m en total). */
 export const ANCHO_BARRIDO_M = 2;
@@ -272,35 +271,27 @@ export async function asignarGrupo(operativoId, poligonoId, grupoId, usuarioId) 
   return detalle(operativoId, poligonoId);
 }
 
+const ETIQUETA_EN_POLIGONO = { DESPLEGADO: 'Desplegado', RASTRILLANDO: 'Rastrillando' };
+
 /**
  * Quitar un grupo del polígono.
  *   · Asignado (todavía no salió) → vuelve a Confirmado, libre para otro polígono.
- *   · En el terreno → sólo con `confirmar`: el polígono queda sin ese grupo
- *     mientras el personal sigue afuera; el grupo conserva su estado.
+ *   · En el terreno (Desplegado / Rastrillando) → no se puede: primero se registra su regreso.
+ *     Antes se permitía con confirmación y el grupo seguía Desplegado sin sector, podía pasar a
+ *     Rastrillando sin polígono y su tarjeta mostraba el anterior (Testeo 25/10, punto 43).
  */
-export async function quitarGrupo(operativoId, poligonoId, grupoId, { confirmar = false } = {}, usuarioId) {
+export async function quitarGrupo(operativoId, poligonoId, grupoId, usuarioId) {
   await withTransaction(async (client) => {
     const poligono = await Asig.bloquearPoligono(client, operativoId, poligonoId);
     const grupo = (await Asig.gruposVigentes(client, poligonoId)).find(g => g.id === grupoId);
     if (!grupo) throw new ReglaError(404, 'grupo_no_asignado', 'Ese grupo no está en este polígono.');
 
-    if (grupo.estado === 'ASIGNADO') {
-      await Grupo.accionCoordinadorCon(client, operativoId, grupoId, 'desasignar',
-        { motivo: `Quitado de ${poligono.nombre}` }, usuarioId);
-      return;
+    if (grupo.estado !== 'ASIGNADO') {
+      throw new ReglaError(409, 'grupo_en_terreno',
+        `${grupo.nombre} está en el terreno (${ETIQUETA_EN_POLIGONO[grupo.estado] ?? grupo.estado}): registrá su regreso antes de sacarlo del polígono.`);
     }
-    if (!confirmar) {
-      throw new ReglaError(409, 'requiere_confirmacion',
-        `${grupo.nombre} está en el terreno. Si lo quitás, el polígono queda sin ese grupo mientras el personal sigue afuera.`);
-    }
-    const t = new Date();
-    await Asig.cerrarAsignacionDeGrupo(client, grupo, { motivo: 'QUITADO', usuarioId, t });
-    // La línea de tiempo del grupo también lo cuenta (el estado no cambia).
-    await Evento.registrar(client, {
-      operativoId, entidad: 'GRUPO', grupoId, accion: 'quitar_poligono',
-      estadoAnterior: grupo.estado, estadoNuevo: grupo.estado, ocurridoEn: t,
-      registradoPor: usuarioId, fuente: 'COORDINADOR', motivo: `Quitado de ${poligono.nombre} estando en el terreno`,
-    });
+    await Grupo.accionCoordinadorCon(client, operativoId, grupoId, 'desasignar',
+      { motivo: `Quitado de ${poligono.nombre}` }, usuarioId);
   });
   return detalle(operativoId, poligonoId);
 }

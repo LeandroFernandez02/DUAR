@@ -318,7 +318,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
       setUsuario(mapearUsuarioApi(u));
       return 'ok';
     } catch (err) {
-      if (err instanceof ApiError) {
+      if (err instanceof ApiError && err.motivo !== 'sin_conexion') {
         if (err.motivo === 'inactive') return 'inactive';
         if (err.motivo === 'bloqueado') return 'bloqueado';   // demasiados intentos fallidos (02/10)
         return 'credentials';

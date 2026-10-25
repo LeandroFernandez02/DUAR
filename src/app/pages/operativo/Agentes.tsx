@@ -53,6 +53,20 @@ function EstadoConTiempo({ agente }: { agente: PersonalOperativoApi }) {
   );
 }
 
+/**
+ * Orden de los resultados de una búsqueda (Testeo 25/10, punto 34): primero los que tienen un
+ * nombre o apellido que empieza con lo buscado, después los que lo contienen en el nombre, y al
+ * final los que coinciden por DNI, dotación o especialidad. Dentro de cada grupo, por apellido.
+ */
+function ordenarPorNombre<T extends { nombre: string; apellido: string }>(lista: T[], q: string): T[] {
+  const puntaje = (p: T) => {
+    const palabras = `${p.nombre} ${p.apellido}`.toLowerCase().split(/\s+/);
+    if (palabras.some(w => w.startsWith(q)) || `${p.nombre} ${p.apellido}`.toLowerCase().startsWith(q)) return 0;
+    return `${p.nombre} ${p.apellido}`.toLowerCase().includes(q) ? 1 : 2;
+  };
+  return [...lista].sort((a, b) => puntaje(a) - puntaje(b) || a.apellido.localeCompare(b.apellido, 'es') || a.nombre.localeCompare(b.nombre, 'es'));
+}
+
 /** Refresco de la grilla: mismo ritmo que el tablero de grupos (decisión del 22/09). */
 const INTERVALO_MS = 10_000;
 
@@ -123,12 +137,12 @@ export default function Agentes() {
     }
     if (query.trim()) {
       const q = query.trim().toLowerCase();
-      list = list.filter(a =>
+      list = ordenarPorNombre(list.filter(a =>
         `${a.nombre} ${a.apellido}`.toLowerCase().includes(q) ||
         a.dni.toLowerCase().includes(q) ||
         (a.especialidadNombre ?? '').toLowerCase().includes(q) ||
         (a.institucionNombre ?? '').toLowerCase().includes(q)
-      );
+      ), q);
     }
     return list;
   }, [agentes, estadosSel, especialidadesSel, query]);
@@ -147,6 +161,7 @@ export default function Agentes() {
     setBusquedaUsuario('');
     setSeleccionados(new Set());
     setErroresAgregar({});
+    setATrasladar({});
     setLoadingUsuarios(true);
     try {
       const { usuarios: lista } = await usuariosApi.listar();
@@ -170,12 +185,12 @@ export default function Agentes() {
   const disponiblesFiltrados = useMemo(() => {
     const q = busquedaUsuario.trim().toLowerCase();
     if (!q) return disponibles;
-    return disponibles.filter(u =>
+    return ordenarPorNombre(disponibles.filter(u =>
       `${u.nombre} ${u.apellido}`.toLowerCase().includes(q) ||
       u.dni.toLowerCase().includes(q) ||
       (u.institucionNombre ?? '').toLowerCase().includes(q) ||
       (u.especialidadNombre ?? '').toLowerCase().includes(q)
-    );
+    ), q);
   }, [disponibles, busquedaUsuario]);
 
   const toggleSeleccion = (usuarioId: string) => {
@@ -187,21 +202,34 @@ export default function Agentes() {
     });
   };
 
+  /**
+   * Regla de Ubicuidad (CU-18): el que ya está en otro operativo vuelve con el aviso y queda
+   * seleccionado; el siguiente «Agregar» lo traslada (abandonarAnterior). Antes el aviso
+   * preguntaba pero no había forma de confirmar (Testeo 25/10, punto 39).
+   */
+  const [aTrasladar, setATrasladar] = useState<Record<string, string>>({});   // usuarioId → título del operativo actual
+
   const handleAgregar = async () => {
     setAgregando(true);
     const pendientes = Array.from(seleccionados);
     const fallidos = new Set<string>();
     const erroresNuevos: Record<string, string> = {};
+    const trasladosNuevos: Record<string, string> = {};
     for (const usuarioId of pendientes) {
       try {
-        await agentesOperativoApi.agregar(operativo.id, { usuarioId });
+        await agentesOperativoApi.agregar(operativo.id, { usuarioId, ...(aTrasladar[usuarioId] ? { abandonarAnterior: true } : {}) });
       } catch (err) {
         fallidos.add(usuarioId);
-        erroresNuevos[usuarioId] = err instanceof ApiError ? err.message : 'No se pudo agregar.';
+        if (err instanceof ApiError && err.motivo === 'regla_ubicuidad') {
+          trasladosNuevos[usuarioId] = String((err.datos.operativoActual as { titulo?: string } | undefined)?.titulo ?? 'otro operativo');
+        } else {
+          erroresNuevos[usuarioId] = err instanceof ApiError ? err.message : 'No se pudo agregar.';
+        }
       }
     }
     setSeleccionados(fallidos);
     setErroresAgregar(erroresNuevos);
+    setATrasladar(trasladosNuevos);
     setAgregando(false);
     await cargarAgentes();
     if (fallidos.size === 0) setModalAdd(false);
@@ -388,7 +416,9 @@ export default function Agentes() {
           </p>
           <Button variant="outline" size="md" onClick={() => !agregando && setModalAdd(false)}>Cancelar</Button>
           <Button size="md" icon={agregando ? Loader2 : undefined} onClick={handleAgregar} disabled={seleccionados.size === 0 || agregando}>
-            {seleccionados.size > 1 ? `Agregar ${seleccionados.size} agentes` : 'Agregar agente'}
+            {Array.from(seleccionados).some(id => aTrasladar[id])
+              ? 'Confirmar traslado'
+              : seleccionados.size > 1 ? `Agregar ${seleccionados.size} agentes` : 'Agregar agente'}
           </Button>
         </>}>
         <div className="mb-3"><Buscador value={busquedaUsuario} onChange={setBusquedaUsuario} placeholder="Buscar por nombre, apellido, DNI, dotación, especialidad…" /></div>
@@ -417,7 +447,7 @@ export default function Agentes() {
                     style={{
                       display: 'flex', alignItems: 'center', gap: 12, padding: '10px 12px', width: '100%', textAlign: 'left', cursor: 'pointer',
                       borderRadius: 'var(--radius-input)', fontFamily: 'var(--font-family-primary)',
-                      border: error ? '1.5px solid var(--destructive)' : isSelected ? '1.5px solid var(--primary)' : '1.5px solid var(--border)',
+                      border: error ? '1.5px solid var(--destructive)' : aTrasladar[u.id] && isSelected ? '1.5px solid #d97706' : isSelected ? '1.5px solid var(--primary)' : '1.5px solid var(--border)',
                       background: isSelected ? 'color-mix(in srgb, var(--primary) 6%, transparent)' : 'var(--background)',
                       transition: 'border-color .13s, background .13s',
                     }}>
@@ -433,6 +463,11 @@ export default function Agentes() {
                     </div>
                   </button>
                   {error && <p className="mt-1" style={{ fontSize: 'calc(11px * var(--escala-texto))', color: 'var(--destructive)', paddingLeft: 12 }}>{error}</p>}
+                  {aTrasladar[u.id] && isSelected && (
+                    <p className="mt-1" style={{ fontSize: 'calc(11px * var(--escala-texto))', color: 'color-mix(in srgb, #fcd34d var(--tinte-oscuro, 0%), #92400e)', paddingLeft: 12 }}>
+                      Ya está en el operativo «{aTrasladar[u.id]}». Si confirmás, deja ese operativo y pasa a este.
+                    </p>
+                  )}
                 </div>
               );
             })}

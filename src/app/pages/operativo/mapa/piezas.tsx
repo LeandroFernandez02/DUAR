@@ -5,6 +5,7 @@
  * cobertura, perfil de elevación, globo y panel de detalle.
  */
 import { useState, type CSSProperties, type ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { Crosshair, MapPin, TriangleAlert, Flag, X, Plus, Minus, ChevronDown, ChevronUp, type LucideIcon } from 'lucide-react';
 import type { TipoInstalacionApi } from '../../../services/api';
 
@@ -43,10 +44,15 @@ export function Boton({ variante = 'primary', tam = 'sm', icono: I, children, di
 }
 
 /* ── Modal ── */
+/**
+ * Se dibuja en `document.body`: el mapa es una capa aislada (`isolation: isolate`, para que sus
+ * z-index de Leaflet no tapen la hoja de Perfil en mobile, Testeo 25/10 punto 45) y un modal
+ * dentro de esa capa quedaría debajo del menú inferior.
+ */
 export function Modal({ titulo, subtitulo, icono: I, onClose, children, pie, ancho = 520 }: {
   titulo: string; subtitulo?: ReactNode; icono?: LucideIcon; onClose: () => void; children: ReactNode; pie?: ReactNode; ancho?: number;
 }) {
-  return (
+  return createPortal(
     <div role="dialog" aria-modal="true" aria-label={titulo}
       style={{ position: 'fixed', inset: 0, zIndex: 9999, background: 'rgba(0,0,0,0.5)', display: 'flex', alignItems: 'center', justifyContent: 'center', padding: 16 }}>
       <div style={{
@@ -67,7 +73,8 @@ export function Modal({ titulo, subtitulo, icono: I, onClose, children, pie, anc
         <div style={{ padding: 20, overflowY: 'auto', overflowX: 'hidden', flex: 1 }}>{children}</div>
         {pie && <div style={{ display: 'flex', justifyContent: 'flex-end', alignItems: 'center', gap: 8, padding: '14px 20px', borderTop: '1px solid var(--border)' }}>{pie}</div>}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 

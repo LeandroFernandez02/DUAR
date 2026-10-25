@@ -11,7 +11,7 @@ import { objetivoApi, ObjetivoApi, CrearObjetivoPayload, ApiError } from '../../
 import {
   ObjetivoFormContent,
   PersonaForm, ObjetoForm, FotoExistente,
-  buildPersonaForm, buildObjetoForm, validarObjetivoForm,
+  buildPersonaForm, buildObjetoForm, validarObjetivoForm, resumenErrores,
 } from './ObjetivoFormContent';
 
 /* ─── Types ─── */
@@ -761,7 +761,7 @@ export default function ObjetivoModal({ operativoId, onClose }: Props) {
                   >
                     <AlertCircle size={14} style={{ color: 'var(--destructive)', flexShrink: 0 }} />
                     <p style={{ color: 'var(--destructive)', fontSize: 'var(--text-label)', fontFamily: 'var(--font-family-primary)' }}>
-                      {errorGeneral || Object.values(errors)[0]}
+                      {errorGeneral || resumenErrores(errors)}
                     </p>
                   </div>
                 )}

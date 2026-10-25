@@ -6,11 +6,14 @@ import * as Operativo from '../models/operativo.model.js';
 import * as Auditoria from '../models/auditoria.model.js';
 import * as Estado from '../models/operativoEstado.model.js';
 import { validarDatosOperativo, RESULTADOS_OPERATIVO } from '../utils/validaciones.js';
-import { conZonaArgentina } from '../utils/fechas.js';
 import * as Informes from '../services/informe.service.js';
 
 const ENTIDAD = 'operativos';
 const MOTIVO_PUNTO_CERO_MAX = 500;
+const TITULO_DUPLICADO = {
+  error: 'Ya existe un operativo con ese título. Usá un título distinto.',
+  motivo: 'titulo_duplicado',
+};
 
 /** GET /api/operativos — CU-11, con ?busqueda= y ?estado= */
 export async function listar(req, res, next) {
@@ -32,12 +35,13 @@ export async function obtener(req, res, next) {
 /**
  * POST /api/operativos — CU-08
  * Paso 5: campos obligatorios. Observaciones: bloquea carátulas duplicadas
- * dentro de las últimas 24 h.
+ * (con cualquier operativo no eliminado). La fecha y hora de inicio la pone el
+ * servidor: si viene en el cuerpo se ignora (Testeo 25/10, punto 26).
  */
 export async function crear(req, res, next) {
   try {
     const b = req.body ?? {};
-    const faltantes = ['titulo', 'localidad', 'fechaHoraInicio']
+    const faltantes = ['titulo', 'localidad']
       .filter(campo => !String(b[campo] ?? '').trim());
     if (faltantes.length || b.puntoCeroLat === undefined || b.puntoCeroLng === undefined) {
       return res.status(400).json({ error: 'Faltan campos obligatorios.', campos: faltantes });
@@ -57,12 +61,7 @@ export async function crear(req, res, next) {
       return res.status(400).json({ error: 'Longitud inválida (–180 a 180).' });
     }
 
-    if (await Operativo.existeTituloDuplicadoReciente(b.titulo)) {
-      return res.status(409).json({
-        error: 'Ya existe un operativo con ese título creado en las últimas 24 horas.',
-        motivo: 'titulo_duplicado',
-      });
-    }
+    if (await Operativo.existeTituloDuplicado(b.titulo)) return res.status(409).json(TITULO_DUPLICADO);
 
     const creado = await Operativo.crear({
       titulo: b.titulo.trim(),
@@ -71,7 +70,6 @@ export async function crear(req, res, next) {
       descripcion: b.descripcion || null,
       puntoCeroLat: lat,
       puntoCeroLng: lng,
-      fechaHoraInicio: conZonaArgentina(b.fechaHoraInicio),
       coordinadorId: req.usuario.id,
     });
 
@@ -133,7 +131,13 @@ export async function actualizar(req, res, next) {
       motivoPuntoCero = b.motivoPuntoCero.trim() || null;
     }
 
-    let datos = b.fechaHoraInicio ? { ...b, fechaHoraInicio: conZonaArgentina(b.fechaHoraInicio) } : b;
+    if (typeof b.titulo === 'string' && await Operativo.existeTituloDuplicado(b.titulo, id)) {
+      return res.status(409).json(TITULO_DUPLICADO);
+    }
+
+    // La fecha y hora de inicio no se edita (Testeo 25/10, punto 26): si viene, se ignora.
+    const { fechaHoraInicio: _ignorada, ...resto } = b;
+    let datos = resto;
     // Fiscal opcional: borrarlo lo deja en NULL, no en texto vacío.
     if (datos.fiscalInstruccion !== undefined) datos = { ...datos, fiscalInstruccion: String(datos.fiscalInstruccion ?? '').trim() || null };
     const actualizado = await Operativo.actualizar(id, datos, { usuarioId: req.usuario.id, motivoPuntoCero });

@@ -95,6 +95,9 @@ const SELECT_GRUPO = `
            (SELECT e.nota FROM eventos_estado e
              WHERE e.grupo_id = g.id AND e.entidad = 'GRUPO' AND e.estado_nuevo = 'ASIGNADO'
                AND e.resultado = 'APLICADO' AND g.estado::text IN ('ASIGNADO', 'DESPLEGADO', 'RASTRILLANDO')
+               -- Sólo grupos de antes del Módulo 5: si alguna vez tuvo polígono y ya salió, no se
+               -- muestra el viejo (Testeo 25/10, punto 43: la tarjeta seguía nombrándolo).
+               AND NOT EXISTS (SELECT 1 FROM poligono_grupos pg2 WHERE pg2.grupo_id = g.id)
              ORDER BY e.ocurrido_en DESC LIMIT 1)
          ) AS "zonaAsignada",
          COALESCE(

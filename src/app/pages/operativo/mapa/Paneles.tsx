@@ -71,7 +71,7 @@ function TextoEditable({ titulo, valor, vacio, multilinea, max, soloLectura, onG
 function GruposDelPoligono({ pol, grupos, soloLectura, onAsignar, onQuitar, onCambiar }: {
   pol: PoligonoVista; grupos: GrupoApi[]; soloLectura: boolean;
   onAsignar: (grupoId: string) => Promise<unknown>;
-  onQuitar: (grupoId: string, enTerreno: boolean) => void;
+  onQuitar: (grupoId: string) => void;
   onCambiar: (grupoId: string, nuevoId: string) => Promise<unknown>;
 }) {
   const [nuevo, setNuevo] = useState('');
@@ -121,10 +121,10 @@ function GruposDelPoligono({ pol, grupos, soloLectura, onAsignar, onQuitar, onCa
                 <UserRound size={13} color="var(--muted-foreground)" /><span style={{ color: 'var(--muted-foreground)' }}>Líder</span><span style={{ fontWeight: 600, color: 'var(--foreground)' }}>{gr.liderNombre}</span>
               </div>
             )}
-            {!soloLectura && cambiando !== gr.id && (
+            {!soloLectura && cambiando !== gr.id && gr.estado === 'ASIGNADO' && (
               <div style={{ display: 'flex', gap: 6 }}>
-                {gr.estado === 'ASIGNADO' && <Boton variante="outline" icono={Repeat} onClick={() => { setCambiando(gr.id); setReemplazo(''); }}>Cambiar grupo</Boton>}
-                <Boton variante="ghost" icono={X} onClick={() => onQuitar(gr.id, enTerreno)}>Quitar</Boton>
+                <Boton variante="outline" icono={Repeat} onClick={() => { setCambiando(gr.id); setReemplazo(''); }}>Cambiar grupo</Boton>
+                <Boton variante="ghost" icono={X} onClick={() => onQuitar(gr.id)}>Quitar</Boton>
               </div>
             )}
             {cambiando === gr.id && (
@@ -137,7 +137,8 @@ function GruposDelPoligono({ pol, grupos, soloLectura, onAsignar, onQuitar, onCa
             {enTerreno && (
               <div style={{ display: 'flex', gap: 6, fontSize: 'calc(11px * var(--escala-texto))', color: 'var(--muted-foreground)', lineHeight: 1.45 }}>
                 <Info size={12} style={{ marginTop: 2, flexShrink: 0 }} />
-                <span>El grupo está en el terreno: no se cambia. Al pasar a Replegado sale solo del polígono.</span>
+                {/* Testeo 25/10, punto 43: en el terreno tampoco se quita (quedaba sin sector y seguía operando). */}
+                <span>El grupo está en el terreno: no se cambia ni se quita. Al registrar su regreso (Replegado) sale solo del polígono.</span>
               </div>
             )}
           </div>
@@ -257,7 +258,7 @@ export function PanelPoligono({ pol, detalle, grupos, tracks, soloLectura, brech
   pol: PoligonoVista; detalle: PoligonoDetalleApi | null; grupos: GrupoApi[]; tracks: TrackVista[]; soloLectura: boolean;
   brechas: boolean; onToggleBrechas: () => void; onClose: () => void;
   onGuardar: (d: { nombre?: string; notas?: string | null; color?: string | null }) => Promise<unknown>;
-  onAsignar: (grupoId: string) => Promise<unknown>; onQuitar: (grupoId: string, enTerreno: boolean) => void;
+  onAsignar: (grupoId: string) => Promise<unknown>; onQuitar: (grupoId: string) => void;
   onCambiar: (grupoId: string, nuevoId: string) => Promise<unknown>;
   onEditarForma: () => void; onEliminar: () => void; onTrack: (t: TrackVista) => void;
 }) {

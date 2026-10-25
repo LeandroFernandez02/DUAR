@@ -114,7 +114,7 @@ export default function PanelTactico() {
       setUltimoDato(new Date().toISOString());
     } catch (err) {
       // Sin señal en el terreno: se conserva lo último que se vio, con su "hace X".
-      if (!(err instanceof ApiError) || err.status >= 500) setSinConexion(true);
+      if (!(err instanceof ApiError) || err.status >= 500 || err.status === 0) setSinConexion(true);
     } finally {
       setCargando(false);
     }

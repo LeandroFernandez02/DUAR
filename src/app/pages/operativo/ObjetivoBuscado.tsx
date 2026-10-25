@@ -12,7 +12,7 @@ import { formatearDni } from '../../utils/validacionUsuario';
 import { objetivoApi, ObjetivoApi, CrearObjetivoPayload, ApiError } from '../../services/api';
 import {
   ObjetivoFormContent, PersonaForm, ObjetoForm, FotoExistente,
-  buildPersonaForm, buildObjetoForm, validarObjetivoForm,
+  buildPersonaForm, buildObjetoForm, validarObjetivoForm, resumenErrores,
 } from '../../components/shared/ObjetivoFormContent';
 
 /* ─── Constants (display only) ─── */
@@ -222,7 +222,7 @@ function EditModal({
                   fontSize: 'var(--text-label)',
                   fontFamily: 'var(--font-family-primary)',
                 }}>
-                  {errorGeneral || Object.values(errors)[0]}
+                  {errorGeneral || resumenErrores(errors)}
                 </p>
               </div>
             )}

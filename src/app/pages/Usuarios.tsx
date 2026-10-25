@@ -143,6 +143,12 @@ export default function Usuarios() {
   const [erroresForm, setErroresForm] = useState<Record<string, string>>({});
   /** Error del servidor al guardar: se muestra dentro del modal, no detrás (Testeo 13/10, punto 6). */
   const [errorModal, setErrorModal] = useState('');
+  /**
+   * Testeo 25/10, punto 44: el servidor avisa que la persona está en un operativo (dónde y en
+   * qué estado). El siguiente «Guardar» con el mismo rol elegido confirma el cambio.
+   */
+  const [avisoRol, setAvisoRol] = useState<{ rol: string; mensaje: string } | null>(null);
+  const confirmaRol = !!avisoRol && avisoRol.rol === form.rol;
 
   const openCreate = () => {
     setForm(emptyForm);
@@ -184,6 +190,7 @@ export default function Usuarios() {
     });
     setErroresForm({});
     setErrorModal('');
+    setAvisoRol(null);
     setModal('edit');
   };
 
@@ -273,6 +280,7 @@ export default function Usuarios() {
           ...(form.password ? { password: form.password } : {}),
           // Pendiente no se elige a mano: no se manda (Testeo 13/10, puntos 3 y 4).
           ...(editandoPendiente ? {} : { estado: form.estado.toUpperCase() }),
+          ...(confirmaRol ? { confirmarCambioRol: true } : {}),
         });
         if (r.cambioEmail) avisarCorreo(r.usuario.email, r.correoEnviado);
       }
@@ -280,7 +288,9 @@ export default function Usuarios() {
       await cargarUsuarios();
     } catch (err) {
       // Duplicado de DNI/correo (CU-05 3.1, CU-06 5.1) u otro rechazo del servidor: dentro del modal.
-      if (err instanceof ApiError) {
+      if (err instanceof ApiError && err.motivo === 'cambio_rol_en_operativo') {
+        setAvisoRol({ rol: form.rol, mensaje: err.message });
+      } else if (err instanceof ApiError) {
         const campos = err.datos.errores as Record<string, string> | undefined;
         if (campos) setErroresForm(prev => ({ ...prev, ...campos }));
         setErrorModal(err.message);
@@ -436,14 +446,14 @@ export default function Usuarios() {
 
       {/* Create / Edit Modal */}
       {(modal === 'create' || modal === 'edit') && (
-        // `m-auto` en el hijo (y no `items-center`) centra cuando entra y deja que se desplace desde
-        // arriba cuando no: con `items-center` el borde superior quedaba cortado (Testeo 15/10, punto 20).
-        <div className="fixed inset-0 z-50 flex p-4 overflow-y-auto" style={{ background: 'var(--scrim-modal)' }}>
+        // Título y botones fijos, y en el medio sólo se desplazan los campos: en una ventana baja
+        // los botones quedaban fuera de la vista (Testeo 15/10 punto 20 y 25/10 punto 40).
+        <div className="fixed inset-0 z-50 flex items-center justify-center p-4" style={{ background: 'var(--scrim-modal)' }}>
           <div
-            className="w-full max-w-[540px] rounded-[var(--radius-card)] p-4 sm:p-6 m-auto"
-            style={{ background: 'var(--card)', boxShadow: 'var(--elevation-md)' }}
+            className="w-full max-w-[540px] rounded-[var(--radius-card)] flex flex-col overflow-hidden"
+            style={{ background: 'var(--card)', boxShadow: 'var(--elevation-md)', maxHeight: 'calc(100dvh - 2rem)' }}
           >
-            <div className="flex items-center justify-between mb-5">
+            <div className="flex items-center justify-between px-4 sm:px-6 py-4 shrink-0" style={{ borderBottom: '1px solid var(--border)' }}>
               <h2 style={{ color: 'var(--foreground)', fontSize: 'var(--text-h2)', fontWeight: 'var(--font-weight-semibold)' }}>
                 {modal === 'create' ? 'Nuevo Usuario' : 'Editar Usuario'}
               </h2>
@@ -452,6 +462,7 @@ export default function Usuarios() {
               </button>
             </div>
 
+            <div className="flex-1 min-h-0 overflow-y-auto px-4 sm:px-6 py-4">
             <div className="grid grid-cols-1 sm:grid-cols-2 gap-3">
               {[
                 {
@@ -709,11 +720,20 @@ export default function Usuarios() {
                 </div>
               )}
             </div>
+            </div>
 
+            <div className="shrink-0 px-4 sm:px-6 pb-4" style={{ borderTop: '1px solid var(--border)' }}>
+            {confirmaRol && avisoRol && (
+              <div role="alert" className="flex items-start gap-2.5 p-3 rounded-lg mt-4"
+                style={{ background: 'color-mix(in srgb, #f59e0b calc(12% + var(--tinte-oscuro, 0%) * 0.1), transparent)', border: '1px solid color-mix(in srgb, #f59e0b 40%, transparent)', color: 'color-mix(in srgb, #fcd34d var(--tinte-oscuro, 0%), #92400e)', fontSize: 'var(--text-base)' }}>
+                <AlertCircle size={16} style={{ marginTop: 1, flexShrink: 0 }} />
+                <span>{avisoRol.mensaje}</span>
+              </div>
+            )}
             {errorModal && (
               <div
                 role="alert"
-                className="flex items-start gap-2.5 p-3 rounded-lg mt-5"
+                className="flex items-start gap-2.5 p-3 rounded-lg mt-4"
                 style={{ background: 'color-mix(in srgb, var(--destructive) calc(10% + var(--tinte-oscuro, 0%) * 0.1), transparent)', border: '1px solid color-mix(in srgb, var(--destructive) 30%, transparent)', color: 'color-mix(in srgb, #fca5a5 var(--tinte-oscuro, 0%), #b91c1c)', fontSize: 'var(--text-base)' }}
               >
                 <AlertCircle size={16} style={{ marginTop: 1, flexShrink: 0 }} />
@@ -721,15 +741,16 @@ export default function Usuarios() {
               </div>
             )}
 
-            <div className="flex justify-end gap-3 mt-5">
+            <div className="flex justify-end gap-3 mt-4">
               <button onClick={() => setModal(null)} className="px-4 py-2 rounded-[var(--radius-button)] border" style={{ color: 'var(--foreground)', borderColor: 'var(--border)', background: 'transparent', fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-semibold)' }}>
                 Cancelar
               </button>
               <button onClick={handleSave} disabled={guardando} className="px-4 py-2 rounded-[var(--radius-button)] text-[var(--primary-foreground)] disabled:cursor-wait" style={{ background: 'var(--primary)', fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-semibold)', opacity: guardando ? 0.7 : 1 }}>
                 {guardando
                   ? (modal === 'create' ? 'Creando…' : 'Guardando…')
-                  : (modal === 'create' ? 'Crear Usuario' : 'Guardar Cambios')}
+                  : (modal === 'create' ? 'Crear Usuario' : confirmaRol ? 'Sí, cambiar el rol' : 'Guardar Cambios')}
               </button>
+            </div>
             </div>
           </div>
         </div>

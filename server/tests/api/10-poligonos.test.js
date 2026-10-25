@@ -110,16 +110,17 @@ describe('Módulo 5 · Polígonos y sus grupos (CU-29, 30, 37, 38, 39)', () => {
     assert.equal(g.poligonoId, null);
   });
 
-  test('CU-30 A2.2 · quitar un grupo en el terreno pide confirmación; confirmado, el grupo sigue en el terreno sin polígono', async () => {
+  test('CU-30 A2.2 · un grupo en el terreno no se puede quitar del polígono: primero se registra su regreso (Testeo 25/10, punto 43)', async () => {
     await asignar(P1, A);
     await ctx.accion(A, { accion: 'salir' });
-    motivo(await pol('POST', `/${P1}/grupos/${A}/quitar`, {}), 409, 'requiere_confirmacion');
-    motivo(await pol('POST', `/${P1}/grupos/${A}/quitar`, { confirmar: true }), 200);
+    const r = await pol('POST', `/${P1}/grupos/${A}/quitar`, {});
+    motivo(r, 409, 'grupo_en_terreno');
+    assert.match(r.json.error, /registrá su regreso/);
+    // Tampoco con la confirmación que antes lo permitía.
+    motivo(await pol('POST', `/${P1}/grupos/${A}/quitar`, { confirmar: true }), 409, 'grupo_en_terreno');
     const g = await grupo(A);
     assert.equal(g.estado, 'DESPLEGADO');
-    assert.equal(g.poligonoId, null);
-    const linea = (await ctx.api('GET', `/operativos/${ctx.op}/grupos/${A}/linea-tiempo`)).json;
-    assert.ok(JSON.stringify(linea).includes('quitar_poligono'), 'queda en la línea de tiempo del grupo');
+    assert.equal(g.poligonoId, P1, 'sigue en su polígono');
   });
 
   test('CU-30 A3 · al pasar a Replegado el grupo sale solo del polígono', async () => {

@@ -85,8 +85,24 @@ async function request<T>(ruta: string, opciones: RequestInit = {}): Promise<T> 
   };
   if (token) headers.Authorization = `Bearer ${token}`;
 
-  const res = await fetch(`/api${ruta}`, { ...opciones, headers });
+  const res = await conectar(`/api${ruta}`, { ...opciones, headers });
   return manejarRespuesta<T>(res);
+}
+
+/** Mensaje cuando el pedido ni siquiera llegó al servidor (Testeo 25/10, punto 32). */
+export const MENSAJE_SIN_CONEXION = 'Sin conexión: revisá tu internet e intentá de nuevo. No se guardó nada.';
+
+/**
+ * `fetch` sólo falla (TypeError) cuando no hay conexión o no se llega al servidor. Se convierte
+ * en un ApiError (status 0, motivo `sin_conexion`) para que cada pantalla muestre el aviso con
+ * su manejo de errores habitual, en vez de un genérico o nada.
+ */
+async function conectar(url: string, init: RequestInit): Promise<Response> {
+  try {
+    return await fetch(url, init);
+  } catch {
+    throw new ApiError(MENSAJE_SIN_CONEXION, 0, 'sin_conexion');
+  }
 }
 
 /**
@@ -100,7 +116,7 @@ async function requestFormData<T>(ruta: string, formData: FormData, method: 'POS
   const headers: Record<string, string> = {};
   if (token) headers.Authorization = `Bearer ${token}`;
 
-  const res = await fetch(`/api${ruta}`, { method, headers, body: formData });
+  const res = await conectar(`/api${ruta}`, { method, headers, body: formData });
   return manejarRespuesta<T>(res);
 }
 
@@ -378,7 +394,7 @@ export interface CrearOperativoPayload {
   descripcion?: string;
   puntoCeroLat: number;
   puntoCeroLng: number;
-  fechaHoraInicio: string;
+  // Sin fechaHoraInicio: la pone el servidor al crear y no se modifica (Testeo 25/10, punto 26).
 }
 
 export const operativosApi = {
@@ -418,7 +434,8 @@ export const usuariosApi = {
     // `correoEnviado`: salió el correo de confirmación de la cuenta nueva (CU-05 paso 5).
     api.post<{ usuario: UsuarioApi; reactivado: boolean; correoEnviado: boolean }>('/usuarios', datos),
   /** CU-06. Si cambia el correo, la cuenta vuelve a Pendiente y se manda la confirmación a la dirección nueva. */
-  actualizar: (id: string, datos: Partial<CrearUsuarioPayload>) =>
+  /** `confirmarCambioRol`: cambia el rol aunque esté afectado a un operativo (409 `cambio_rol_en_operativo`). */
+  actualizar: (id: string, datos: Partial<CrearUsuarioPayload> & { confirmarCambioRol?: boolean }) =>
     api.put<{ usuario: UsuarioApi; cambioEmail: boolean; correoEnviado: boolean }>(`/usuarios/${id}`, datos),
   eliminar: (id: string) => api.del<void>(`/usuarios/${id}`),
   auditoria: (id: string) =>
@@ -703,9 +720,9 @@ export const poligonosApi = {
   /** CU-30: sólo grupos Confirmados */
   asignarGrupo: (operativoId: string, poligonoId: string, grupoId: string) =>
     api.post<{ poligono: PoligonoDetalleApi }>(`/operativos/${operativoId}/poligonos/${poligonoId}/grupos`, { grupoId }),
-  /** CU-30: con el grupo en el terreno hace falta `confirmar: true` */
-  quitarGrupo: (operativoId: string, poligonoId: string, grupoId: string, confirmar = false) =>
-    api.post<{ poligono: PoligonoDetalleApi }>(`/operativos/${operativoId}/poligonos/${poligonoId}/grupos/${grupoId}/quitar`, { confirmar }),
+  /** CU-30: sólo un grupo Asignado; en el terreno responde 409 `grupo_en_terreno` (Testeo 25/10, punto 43). */
+  quitarGrupo: (operativoId: string, poligonoId: string, grupoId: string) =>
+    api.post<{ poligono: PoligonoDetalleApi }>(`/operativos/${operativoId}/poligonos/${poligonoId}/grupos/${grupoId}/quitar`, {}),
   /** CU-30: sólo si el actual todavía no salió (Asignado) */
   cambiarGrupo: (operativoId: string, poligonoId: string, grupoId: string, nuevoGrupoId: string) =>
     api.post<{ poligono: PoligonoDetalleApi }>(`/operativos/${operativoId}/poligonos/${poligonoId}/grupos/${grupoId}/cambiar`, { nuevoGrupoId }),

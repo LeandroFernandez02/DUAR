@@ -4,6 +4,12 @@ import {
   fechaParaMostrar, fechaDesdeTexto, digitosAntesDelCursor, reponerCursor, FECHA_NACIMIENTO_MIN,
 } from '../../utils/validacionUsuario';
 
+/** «AAAA-MM-DD» de hoy en la hora de la computadora (no UTC: a la noche toISOString ya da mañana). */
+function hoyLocal(): string {
+  const d = new Date();
+  return `${d.getFullYear()}-${String(d.getMonth() + 1).padStart(2, '0')}-${String(d.getDate()).padStart(2, '0')}`;
+}
+
 interface Props {
   id?: string;
   /** «AAAA-MM-DD» si la fecha está completa y existe; si no, los dígitos escritos (ver `fechaDesdeTexto`). */
@@ -61,14 +67,16 @@ export default function CampoFecha({ id, value, onChange, className = '', style 
       >
         <CalendarDays size={16} />
       </button>
-      {/* El calendario del navegador, sin tope superior: si elige a un menor, el error lo dice
-          el formulario («La edad mínima…») y no el cartel «Fuera de rango» del navegador. */}
+      {/* El calendario del navegador llega hasta hoy (Testeo 25/10, punto 35: ofrecía años
+          futuros). No se topea en la edad mínima: si elige a un menor, el error lo dice el
+          formulario («La edad mínima…») y no el cartel «Fuera de rango» del navegador. */}
       <input
         ref={calendario}
         type="date"
         tabIndex={-1}
         aria-hidden="true"
         min={FECHA_NACIMIENTO_MIN}
+        max={hoyLocal()}
         value={iso}
         onChange={e => { if (e.target.value) onChange(e.target.value); }}
         style={{ position: 'absolute', right: 0, bottom: 0, width: 1, height: 1, opacity: 0, pointerEvents: 'none' }}

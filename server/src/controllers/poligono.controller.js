@@ -191,15 +191,14 @@ export async function asignarGrupo(req, res, next) {
   } catch (err) { next(err); }
 }
 
-/** POST .../poligonos/:poligonoId/grupos/:grupoId/quitar — CU-30 { confirmar? } (en el terreno pide confirmación). */
+/** POST .../poligonos/:poligonoId/grupos/:grupoId/quitar — CU-30 (sólo un grupo Asignado; en el terreno, 409). */
 export async function quitarGrupo(req, res, next) {
   try {
     const { poligonoId, grupoId } = req.params;
     if (!esUuid(poligonoId) || !esUuid(grupoId)) return invalido(res, 'Polígono o grupo inválido.', 'valor_invalido');
     if (!(await operativoEditable(req, res))) return;
-    const confirmar = req.body?.confirmar === true;
-    const poligono = await Poligono.quitarGrupo(req.params.id, poligonoId, grupoId, { confirmar }, req.usuario.id);
-    await auditarGrupos(req, 'quitar', { grupoId, confirmar });
+    const poligono = await Poligono.quitarGrupo(req.params.id, poligonoId, grupoId, req.usuario.id);
+    await auditarGrupos(req, 'quitar', { grupoId });
     res.json({ poligono });
   } catch (err) { next(err); }
 }

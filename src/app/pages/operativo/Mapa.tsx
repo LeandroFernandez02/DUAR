@@ -30,7 +30,7 @@ import { BarraHerramientas, Boton, Leyenda, type Herramienta, type ItemLeyenda }
 import { GloboInstalacion, GloboMarcador, GloboPuntoCero, GloboTrack } from './mapa/Globos';
 import { PanelInstalacion, PanelMarcador, PanelPoligono, PanelPuntoCero, PanelTrack } from './mapa/Paneles';
 import {
-  ModalCargarGpx, ModalEliminar, ModalNuevaInstalacion, ModalNuevoMarcador, ModalNuevoPoligono, ModalPuntoCero, ModalQuitarGrupo,
+  ModalCargarGpx, ModalEliminar, ModalNuevaInstalacion, ModalNuevoMarcador, ModalNuevoPoligono, ModalPuntoCero,
 } from './mapa/Modales';
 import { aPoligono, fmtDist, fmtRadio, formaArrastre, largo, type LatLng } from './mapa/geo';
 import {
@@ -49,8 +49,7 @@ type ModalMapa =
   | { tipo: 'marcador'; ll: LatLng }
   | { tipo: 'instalacion'; ll: LatLng }
   | { tipo: 'puntoCero'; hasta: LatLng }
-  | { tipo: 'eliminar'; que: 'poligono' | 'track' | 'marcador'; id: string; nombre: string; titulo: string; extra: string }
-  | { tipo: 'quitarGrupo'; poligonoId: string; grupoId: string; grupo: string; estado: string; poligono: string };
+  | { tipo: 'eliminar'; que: 'poligono' | 'track' | 'marcador'; id: string; nombre: string; titulo: string; extra: string };
 
 const LEYENDA: ItemLeyenda[] = [
   { tipo: 'linea', color: '#2563EB', etiqueta: 'Track GPX (color del grupo)' },
@@ -396,7 +395,13 @@ export default function Mapa() {
 
   return (
     <div ref={raiz} className={[compacto && 'mapa-compacto', chico && 'mapa-movil', panelAbierto && 'mapa-panel'].filter(Boolean).join(' ')}
-      style={{ height: '100%', minHeight: compacto ? 0 : 520, display: 'flex', position: 'relative', background: 'var(--background)', ['--mapa-izq' as string]: `${corrimiento}px` }}>
+      style={{
+        height: '100%', minHeight: compacto ? 0 : 520, display: 'flex', position: 'relative',
+        // Los z-index de Leaflet (400–1100) quedan dentro del mapa y no tapan la hoja de Perfil ni el
+        // menú inferior en mobile (Testeo 25/10, punto 45). Los modales del mapa van por portal.
+        isolation: 'isolate',
+        background: 'var(--background)', ['--mapa-izq' as string]: `${corrimiento}px`,
+      }}>
       {izquierda && (
         <div style={compacto ? { position: 'absolute', left: 0, top: 0, bottom: 0, width: 320, maxWidth: '100%', zIndex: 1100, boxShadow: 'var(--elevation-md)' } : { display: 'contents' }}>
         <Arbol compacto={compacto} q={q} setQ={setQ} abiertas={abiertas} setAbiertas={setAbiertas} overlays={prefs.overlays} setOv={setOv}
@@ -497,9 +502,8 @@ export default function Mapa() {
             brechas={prefs.overlays.brechas} onToggleBrechas={() => setOv('brechas', !prefs.overlays.brechas)} onClose={() => setSel(null)}
             onGuardar={d => guardarPoligono(selPol.id, d)}
             onAsignar={async gid => { await poligonosApi.asignarGrupo(opId, selPol.id, gid); await despues(`${grupos.find(g => g.id === gid)?.nombre ?? 'Grupo'} asignado a ${selPol.nombre}`); }}
-            onQuitar={async (gid, enTerreno) => {
+            onQuitar={async gid => {
               const g = selPol.grupos.find(x => x.id === gid)!;
-              if (enTerreno) { setModal({ tipo: 'quitarGrupo', poligonoId: selPol.id, grupoId: gid, grupo: g.nombre, estado: g.estado, poligono: selPol.nombre }); return; }
               try { await poligonosApi.quitarGrupo(opId, selPol.id, gid); await despues(`${g.nombre} quitado de ${selPol.nombre}: vuelve a Confirmado`); }
               catch (err) { avisar(mensaje(err, 'No se pudo quitar el grupo.'), true); }
             }}
@@ -590,14 +594,6 @@ export default function Mapa() {
       )}
       {modal?.tipo === 'eliminar' && (
         <ModalEliminar tipo={modal.titulo} nombre={modal.nombre} extra={modal.extra} onCancel={() => setModal(null)} onConfirmar={() => confirmarEliminar(modal)} />
-      )}
-      {modal?.tipo === 'quitarGrupo' && (
-        <ModalQuitarGrupo grupo={modal.grupo} estado={modal.estado} poligono={modal.poligono} onCancel={() => setModal(null)}
-          onConfirmar={async () => {
-            await poligonosApi.quitarGrupo(opId, modal.poligonoId, modal.grupoId, true);
-            setModal(null);
-            await despues(`${modal.grupo} quitado de ${modal.poligono}`);
-          }} />
       )}
     </div>
   );

@@ -15,7 +15,7 @@ import { Operativo, EstadoOperativo } from '../data/mockData';
 import { operativosApi, ApiError } from '../services/api';
 import { mapearOperativo } from '../utils/mapearOperativo';
 import { ETIQUETA_RESULTADO, opcionesResultado, type ResultadoOperativo } from '../utils/resultadoOperativo';
-import { ahoraEnArgentina, campoDesdeIso, fechaHoraArgentina } from '../utils/fechaArgentina';
+import { fechaHoraArgentina } from '../utils/fechaArgentina';
 import SelectorLocalidad from '../components/shared/SelectorLocalidad';
 import FiltroDesplegable from '../components/shared/FiltroDesplegable';
 import Button from '../components/shared/base/Button';
@@ -98,7 +98,6 @@ const emptyForm = {
   fiscal: '',
   punto0lat: '',
   punto0lng: '',
-  fechaInicio: '',   // se completa con la hora de Argentina al abrir "Nuevo operativo"
   descripcion: '',
   motivoPuntoCero: '',   // CU-36: sólo al mover el Punto 0 con el operativo en curso
 };
@@ -131,6 +130,13 @@ function errStyle(base: React.CSSProperties, hasError: boolean): React.CSSProper
   return hasError
     ? { ...base, border: '1.5px solid var(--primary)', background: 'color-mix(in srgb, var(--primary) 4%, transparent)' }
     : base;
+}
+
+/** Leyenda bajo Latitud/Longitud (Testeo 25/10, punto 31): vacía es «Obligatorio»; fuera de rango, «Coordenada inválida». */
+function errorCoordenada(valor: string, max: number): string {
+  if (!valor.trim()) return 'Obligatorio';
+  const n = parseFloat(valor);
+  return Number.isNaN(n) || n < -max || n > max ? `Coordenada inválida: entre −${max} y ${max}` : 'Revisá este campo';
 }
 
 function readOnlyInputStyle(): React.CSSProperties {
@@ -221,10 +227,11 @@ export default function Operativos() {
   /** Lo que conviene revisar antes de cerrar (CU-10 5.1): sin tracks GPX o con agentes todavía en actividad. */
   const [revision, setRevision] = useState<{ tracksCargados: number; agentesEnActividad: { nombre: string; apellido: string; estado: string }[] } | null>(null);
   const [revisando, setRevisando] = useState(false);
+  const [finalizando, setFinalizando] = useState(false);
 
   /* ── open/close helpers ── */
   const openCreate = () => {
-    setForm({ ...emptyForm, fechaInicio: ahoraEnArgentina() });
+    setForm({ ...emptyForm });
     setSelected(null);
     setFormErrors(new Set());
     setFormErrorMsg('');
@@ -242,7 +249,6 @@ export default function Operativos() {
       fiscal: op.fiscal || '',
       punto0lat: op.punto0 ? String(op.punto0.lat) : '',
       punto0lng: op.punto0 ? String(op.punto0.lng) : '',
-      fechaInicio: campoDesdeIso(op.fechaInicio),
       descripcion: op.descripcion || '',
       motivoPuntoCero: '',
     });
@@ -323,11 +329,13 @@ export default function Operativos() {
   };
 
   const handleFinalizeExec = async () => {
-    if (!selected) return;
+    // Un segundo clic mientras se procesa mandaba otro pedido: salían dos avisos, el de éxito y
+    // «ya está finalizado» (Testeo 25/10, punto 42).
+    if (!selected || !finalizeResultado || finalizando) return;
+    setFinalizando(true);
     try {
       // CU-10 paso 7: el backend libera a TODO el personal asignado en la
       // misma operación — no es sólo cambiar el estado del operativo.
-      if (!finalizeResultado) return;
       await operativosApi.finalizar(selected.id, finalizeResultado, finalizeNota.trim() || undefined);
       setModal(null);
       await cargarOperativos();
@@ -344,6 +352,8 @@ export default function Operativos() {
     } catch (err) {
       setModal(null);
       toast.error(err instanceof ApiError ? err.message : 'No se pudo finalizar el operativo.');
+    } finally {
+      setFinalizando(false);
     }
   };
 
@@ -362,7 +372,6 @@ export default function Operativos() {
     if (!form.ubicacion.trim())   errors.add('ubicacion');
     if (!form.punto0lat.trim())   errors.add('punto0lat');
     if (!form.punto0lng.trim())   errors.add('punto0lng');
-    if (!form.fechaInicio.trim()) errors.add('fechaInicio');
     if (errors.size > 0) {
       setFormErrors(errors);
       setFormErrorMsg('Completá los campos obligatorios para continuar.');
@@ -384,12 +393,12 @@ export default function Operativos() {
         descripcion: form.descripcion || undefined,
         puntoCeroLat: lat,
         puntoCeroLng: lng,
-        fechaHoraInicio: form.fechaInicio,
+        // La fecha y hora de inicio la pone el servidor al crear (Testeo 25/10, punto 26).
       });
       setModal(null);
       await cargarOperativos();
     } catch (err) {
-      // Incluye el 409 de carátula duplicada en 24h (CU-08 Observaciones).
+      // Incluye el 409 de título repetido (CU-08 Observaciones).
       setFormErrorMsg(err instanceof ApiError ? err.message : 'No se pudo crear el operativo.');
     }
   };
@@ -434,7 +443,6 @@ export default function Operativos() {
           puntoCeroLng: lngVal,
           motivoPuntoCero: form.motivoPuntoCero.trim() || undefined,
         } : {}),
-        fechaHoraInicio: form.fechaInicio,
       });
       setModal(null);
       await cargarOperativos();
@@ -690,7 +698,8 @@ export default function Operativos() {
                 </h2>
                 {modal === 'create' && (
                   <p style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-label)', fontFamily: 'var(--font-family-primary)', marginTop: 2 }}>
-                    Estado inicial: <span style={{ color: 'var(--accent-strong)', fontWeight: 'var(--font-weight-semibold)' }}>Nuevo</span> — se activará al ingresar al panel
+                    Estado inicial: <span style={{ color: 'var(--accent-strong)', fontWeight: 'var(--font-weight-semibold)' }}>Nuevo</span> — se activará al ingresar al panel.
+                    La fecha y hora de inicio se registra al guardar.
                   </p>
                 )}
               </div>
@@ -770,19 +779,16 @@ export default function Operativos() {
                       {!isEditReadOnly && formErrors.has('ubicacion') && <span style={{ color: 'var(--destructive)', fontSize: 'calc(11px * var(--escala-texto))', fontFamily: 'var(--font-family-primary)' }}>Elegí provincia y localidad</span>}
                     </div>
 
-                    {/* Fecha y Hora */}
-                    <div>
-                        <label style={labelStyle()}>Fecha y Hora *</label>
-                        <input
-                          type="datetime-local"
-                          value={form.fechaInicio}
-                          readOnly={isEditReadOnly}
-                          onChange={isEditReadOnly ? undefined : e => { setForm({ ...form, fechaInicio: e.target.value }); setFormErrors(p => { const n = new Set(p); n.delete('fechaInicio'); return n; }); }}
-                          className="w-full px-3 py-2.5 rounded-lg border outline-none"
-                          style={isEditReadOnly ? readOnlyInputStyle() : errStyle(inputStyle(), formErrors.has('fechaInicio'))}
-                        />
-                        {!isEditReadOnly && formErrors.has('fechaInicio') && <span style={{ color: 'var(--destructive)', fontSize: 'calc(11px * var(--escala-texto))', fontFamily: 'var(--font-family-primary)' }}>Obligatorio</span>}
-                    </div>
+                    {/* Fecha y hora de inicio: la del momento de crearlo, hora de Argentina; no se elige ni se
+                        modifica (Testeo 25/10, punto 26). Al crear no hay campo; al editar se muestra fija. */}
+                    {modal === 'edit' && selected && (
+                      <div>
+                        <label style={labelStyle()}>Fecha y hora de inicio</label>
+                        <div className="w-full px-3 py-2.5 rounded-lg border flex items-center gap-2" style={readOnlyInputStyle()}>
+                          <Lock size={13} style={{ flexShrink: 0 }} />{fechaHoraArgentina(selected.fechaInicio)}
+                        </div>
+                      </div>
+                    )}
 
                     {/* Fiscal de Instrucción */}
                     <div>
@@ -861,7 +867,7 @@ export default function Operativos() {
                             className="w-full px-3 py-2.5 rounded-lg border outline-none"
                             style={isEditReadOnly ? readOnlyInputStyle() : errStyle(inputStyle(), formErrors.has('punto0lat'))}
                           />
-                          {!isEditReadOnly && formErrors.has('punto0lat') && <span style={{ color: 'var(--destructive)', fontSize: 'calc(11px * var(--escala-texto))', fontFamily: 'var(--font-family-primary)' }}>Obligatorio</span>}
+                          {!isEditReadOnly && formErrors.has('punto0lat') && <span style={{ color: 'var(--destructive)', fontSize: 'calc(11px * var(--escala-texto))', fontFamily: 'var(--font-family-primary)' }}>{errorCoordenada(form.punto0lat, 90)}</span>}
                         </div>
                         <div>
                           <label style={labelStyle()}>Longitud *</label>
@@ -877,7 +883,7 @@ export default function Operativos() {
                             className="w-full px-3 py-2.5 rounded-lg border outline-none"
                             style={isEditReadOnly ? readOnlyInputStyle() : errStyle(inputStyle(), formErrors.has('punto0lng'))}
                           />
-                          {!isEditReadOnly && formErrors.has('punto0lng') && <span style={{ color: 'var(--destructive)', fontSize: 'calc(11px * var(--escala-texto))', fontFamily: 'var(--font-family-primary)' }}>Obligatorio</span>}
+                          {!isEditReadOnly && formErrors.has('punto0lng') && <span style={{ color: 'var(--destructive)', fontSize: 'calc(11px * var(--escala-texto))', fontFamily: 'var(--font-family-primary)' }}>{errorCoordenada(form.punto0lng, 180)}</span>}
                         </div>
                       </div>
 
@@ -1114,7 +1120,7 @@ export default function Operativos() {
                   </button>
                   <button
                     onClick={handleFinalizeConfirm}
-                    disabled={revisando}
+                    disabled={revisando || finalizando}
                     className="flex items-center gap-2 px-4 py-2 rounded-[var(--radius-button)]"
                     style={{
                       background: '#b45309',
@@ -1129,7 +1135,7 @@ export default function Operativos() {
                     onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = '#b45309'}
                   >
                     <CheckCircle2 size={15} />
-                    {revisando ? 'Revisando…' : 'Confirmar Finalización'}
+                    {revisando ? 'Revisando…' : finalizando ? 'Finalizando…' : 'Confirmar Finalización'}
                   </button>
                 </div>
               </>
@@ -1147,7 +1153,12 @@ export default function Operativos() {
                     <AlertCircle size={18} style={{ color: 'var(--destructive)', flexShrink: 0, marginTop: 1 }} />
                     <div>
                       <p style={{ color: 'var(--foreground)', fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-semibold)', fontFamily: 'var(--font-family-primary)' }}>
-                        Atención: hay cosas sin resolver en este operativo.
+                        {/* Dice qué falta en vez de un genérico (Testeo 25/10, punto 41). */}
+                        {revision.tracksCargados === 0 && revision.agentesEnActividad.length > 0
+                          ? 'Antes de finalizar: no hay recorridos GPX cargados y hay agentes en actividad.'
+                          : revision.tracksCargados === 0
+                            ? 'Antes de finalizar: no hay recorridos GPX cargados.'
+                            : 'Antes de finalizar: hay agentes que siguen en actividad.'}
                       </p>
                       <p style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-label)', fontFamily: 'var(--font-family-primary)', marginTop: 5, lineHeight: 1.55 }}>
                         Una vez finalizado no se puede cargar ni corregir nada. Si forzás el cierre, lo que falte <strong>queda sin registrar</strong>.
@@ -1213,6 +1224,7 @@ export default function Operativos() {
                   </button>
                   <button
                     onClick={handleFinalizeExec}
+                    disabled={finalizando}
                     className="flex items-center gap-2 px-4 py-2 rounded-[var(--radius-button)]"
                     style={{
                       background: 'var(--primary)',
@@ -1220,14 +1232,13 @@ export default function Operativos() {
                       fontSize: 'var(--text-base)',
                       fontWeight: 'var(--font-weight-semibold)',
                       fontFamily: 'var(--font-family-primary)',
-                      cursor: 'pointer',
+                      cursor: finalizando ? 'wait' : 'pointer',
+                      opacity: finalizando ? 0.7 : 1,
                       border: 'none',
                     }}
-                    onMouseEnter={e => (e.currentTarget as HTMLElement).style.background = '#c0392b'}
-                    onMouseLeave={e => (e.currentTarget as HTMLElement).style.background = 'var(--primary)'}
                   >
                     <AlertCircle size={15} />
-                    Forzar Cierre
+                    {finalizando ? 'Finalizando…' : 'Forzar Cierre'}
                   </button>
                 </div>
               </>

@@ -27,6 +27,27 @@ const FRONTEND_URL = process.env.FRONTEND_URL ?? 'http://localhost:5173';
 
 const ADMIN = 'administrador';
 
+const ETIQUETA_ESTADO_AGENTE = {
+  EN_ESPERA: 'En espera', DISPONIBLE: 'Disponible', NO_DISPONIBLE: 'No disponible', AGRUPADO: 'Agrupado',
+  DESPLEGADO: 'Desplegado', RASTRILLANDO: 'Rastrillando', REPLEGADO: 'Replegado',
+};
+
+/**
+ * ¿Dónde está afectada hoy esta persona? Su alta vigente como agente o su presencia en el
+ * puesto de comando de un operativo no finalizado. Null si no está en ninguno.
+ */
+async function afectacionEnOperativo(usuarioId) {
+  const alta = await AgenteOperativo.altaActivaDe(usuarioId);
+  if (alta) {
+    return { id: alta.operativoId, titulo: alta.operativoTitulo, como: `agente (${ETIQUETA_ESTADO_AGENTE[alta.estado] ?? alta.estado})` };
+  }
+  const { rows } = await query(
+    `SELECT o.id, o.titulo FROM presencias_mando p JOIN operativos o ON o.id = p.operativo_id
+      WHERE p.usuario_id = $1 AND p.egreso_en IS NULL AND o.eliminado_en IS NULL AND o.estado NOT IN ('FINALIZADO', 'ELIMINADO')
+      LIMIT 1`, [usuarioId]);
+  return rows[0] ? { ...rows[0], como: 'coordinador en el puesto de comando' } : null;
+}
+
 /** Mensajes de duplicado (Testeo 13/10, punto 7): iguales al crear y al editar. */
 const DUPLICADO = {
   dni: 'Ya existe un usuario registrado con el DNI ingresado. Verificá los datos e intentá nuevamente.',
@@ -203,6 +224,7 @@ export async function actualizar(req, res, next) {
 
     const campos = { ...b };
     delete campos.emailConfirmado;   // sólo lo cambia el sistema (confirmación o cambio de correo)
+    delete campos.confirmarCambioRol;
 
     // Este PUT genérico NO es la vía para dar de baja a alguien: eso es CU-07
     // (DELETE), que valida autobloqueo y último administrador. Si se dejara
@@ -257,6 +279,18 @@ export async function actualizar(req, res, next) {
         error: 'Es el único administrador activo del sistema: no se lo puede desactivar ni quitarle el rol.',
         motivo: 'ultimo_admin',
       });
+    }
+    // Testeo 25/10, punto 44: si está afectado a un operativo (como agente o en un puesto de
+    // comando), se avisa dónde y en qué estado, y el cambio sigue sólo si se confirma.
+    if (cambiaRol && !b.confirmarCambioRol) {
+      const afectacion = await afectacionEnOperativo(id);
+      if (afectacion) {
+        return res.status(409).json({
+          error: `${previo.nombre} ${previo.apellido} está en el operativo «${afectacion.titulo}» como ${afectacion.como}. ¿Cambiar el rol igual?`,
+          motivo: 'cambio_rol_en_operativo',
+          operativoActual: afectacion,
+        });
+      }
     }
     if (rolNuevo) campos.rolId = rolNuevo.id;
 

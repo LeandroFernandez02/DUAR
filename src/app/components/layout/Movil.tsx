@@ -75,7 +75,10 @@ export function BarraInferior({ items, activo, perfilAbierto, onPerfil, onNavega
   } as const;
   return (
     <nav aria-label="Secciones" className="flex items-stretch shrink-0 relative"
-      style={{ zIndex: 60, background: 'var(--sidebar)', borderTop: '1px solid var(--sidebar-border)', padding: '0 6px env(safe-area-inset-bottom)' }}>
+      style={{
+        // Debajo de los modales (z-index 50): con 60 tapaba sus botones en el celular (Testeo 25/10, punto 47).
+        // Sigue encima de la hoja de Perfil (46/47), que sube desde arriba del menú.
+        zIndex: 48, background: 'var(--sidebar)', borderTop: '1px solid var(--sidebar-border)', padding: '0 6px env(safe-area-inset-bottom)' }}>
       {items.map(it => {
         const on = activo(it.path);
         return (
@@ -119,9 +122,9 @@ export function HojaPerfil({ onCerrar, onVerDatos, onSalir, sinFoco = false }: {
   } as const;
   return (
     <>
-      <div onClick={onCerrar} className="fixed inset-0" style={{ zIndex: 55, background: 'var(--scrim-hoja)' }} aria-hidden="true" />
+      <div onClick={onCerrar} className="fixed inset-0" style={{ zIndex: 46, background: 'var(--scrim-hoja)' }} aria-hidden="true" />
       <div role="dialog" aria-label="Perfil" className="fixed left-0 right-0 overflow-y-auto"
-        style={{ zIndex: 56, bottom: 'calc(57px + env(safe-area-inset-bottom))', background: 'var(--popover)', color: 'var(--popover-foreground)', borderRadius: '20px 20px 0 0', boxShadow: 'var(--elevation-md)', padding: '8px 12px 12px', maxHeight: '88%', maxWidth: 560, margin: '0 auto' }}>
+        style={{ zIndex: 47, bottom: 'calc(57px + env(safe-area-inset-bottom))', background: 'var(--popover)', color: 'var(--popover-foreground)', borderRadius: '20px 20px 0 0', boxShadow: 'var(--elevation-md)', padding: '8px 12px 12px', maxHeight: '88%', maxWidth: 560, margin: '0 auto' }}>
         <div style={{ width: 40, height: 4, borderRadius: 999, background: 'var(--border)', margin: '2px auto 14px' }} />
         <div className="flex items-center gap-3" style={{ padding: '0 14px 14px', borderBottom: '1px solid var(--border)' }}>
           <button type="button" onClick={onVerDatos} aria-label="Ver mis datos" className="flex-1 min-w-0 flex items-center gap-3 text-left"

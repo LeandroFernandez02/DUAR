@@ -114,23 +114,27 @@ export async function listar({ busqueda = '', estado = '' } = {}) {
 /**
  * CU-08 Observaciones · "Restricción de Integridad": no se puede abrir el
  * mismo incidente dos veces por error. Compara título (sin mayúsc./espacios)
- * contra lo creado en las últimas 24 h.
+ * contra todos los operativos no eliminados (Testeo 25/10, punto 29: antes
+ * eran sólo las últimas 24 h). Al editar, `exceptoId` excluye al propio.
  */
-export async function existeTituloDuplicadoReciente(titulo) {
+export async function existeTituloDuplicado(titulo, exceptoId = null) {
   const { rows } = await query(
     `SELECT id FROM operativos
       WHERE eliminado_en IS NULL
         AND lower(trim(titulo)) = lower(trim($1))
-        AND creado_en > CURRENT_TIMESTAMP - interval '24 hours'`,
-    [titulo]
+        AND ($2::uuid IS NULL OR id <> $2::uuid)`,
+    [titulo, exceptoId]
   );
   return rows.length > 0;
 }
 
-/** CU-08 paso 6: nace en estado NUEVO, nunca Iniciado directamente. */
+/**
+ * CU-08 paso 6: nace en estado NUEVO, nunca Iniciado directamente. La fecha y hora
+ * de inicio es la del momento de crearlo (Testeo 25/10, punto 26): no se elige.
+ */
 export async function crear({
   titulo, localidad, fiscalInstruccion, descripcion = null,
-  puntoCeroLat, puntoCeroLng, fechaHoraInicio, coordinadorId,
+  puntoCeroLat, puntoCeroLng, coordinadorId,
 }) {
   const id = await withTransaction(async (client) => {
     const { rows } = await client.query(
@@ -138,10 +142,10 @@ export async function crear({
          (titulo, localidad, fiscal_instruccion, descripcion, punto_cero,
           fecha_hora_inicio, coordinador_id, estado)
        VALUES ($1,$2,$3,$4, extensions.ST_SetSRID(extensions.ST_MakePoint($5,$6),4326),
-               $7,$8,'NUEVO')
+               CURRENT_TIMESTAMP,$7,'NUEVO')
        RETURNING id`,
       [titulo, localidad, fiscalInstruccion, descripcion,
-       puntoCeroLng, puntoCeroLat, fechaHoraInicio, coordinadorId]
+       puntoCeroLng, puntoCeroLat, coordinadorId]
     );
     // CU-36: el historial del Punto Cero arranca con su definición.
     await PuntoCero.registrarInicial(client, rows[0].id, coordinadorId);
@@ -162,7 +166,7 @@ export async function actualizar(id, campos, { usuarioId = null, motivoPuntoCero
     localidad: 'localidad',
     fiscalInstruccion: 'fiscal_instruccion',
     descripcion: 'descripcion',
-    fechaHoraInicio: 'fecha_hora_inicio',
+    // fecha_hora_inicio no se modifica: es la de creación (Testeo 25/10, punto 26).
   };
 
   const sets = [];
