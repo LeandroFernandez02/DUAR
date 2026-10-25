@@ -131,7 +131,6 @@ export default function OperativoInfoModal({ operativo, onClose, onCambio }: Pro
                 >
                   {operativo.nombre}
                 </h2>
-                <StatusBadge estado={operativo.estado} size="sm" />
               </div>
             </div>
             <button
