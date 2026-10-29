@@ -11,6 +11,8 @@ import { QRModal } from '../../components/shared/QRModal';
 import InformeModal from '../../components/shared/InformeModal';
 import PuestoComando from '../../components/shared/PuestoComando';
 import { Operativo } from '../../data/mockData';
+import { useApp } from '../../context/AppContext';
+import { puedeGestionar } from '../../utils/permisos';
 import { climaMock } from '../../data/mockData';
 
 interface Props {
@@ -33,6 +35,9 @@ export default function OperativoHeader({ operativo, movil = false, onRecargar }
   const diasOperativo = Math.max(0, differenceInDays(today, inicio));
   const { actual } = climaMock;
 
+  // El Jefe de operativo (29/10) mira todo y extrae informes: sin QR ni registros en el puesto de comando.
+  const { usuario } = useApp();
+  const gestiona = puedeGestionar(usuario);
   const [showInfoModal, setShowInfoModal] = useState(false);
   const [showObjetivoModal, setShowObjetivoModal] = useState(false);
   const [showQRModal, setShowQRModal] = useState(false);
@@ -136,7 +141,8 @@ export default function OperativoHeader({ operativo, movil = false, onRecargar }
 
           {/* Puesto de comando: coordinadores presentes y quién está a cargo (01/10). */}
           <PuestoComando operativoId={operativo.id} compacto={compacto}
-            soloLectura={operativo.estado === 'finalizado' || operativo.estado === 'eliminado'} />
+            soloLectura={!gestiona || operativo.estado === 'finalizado' || operativo.estado === 'eliminado'}
+            cerrado={operativo.estado === 'finalizado' || operativo.estado === 'eliminado'} />
 
           {/* Objetivo Buscado */}
           <button
@@ -175,7 +181,7 @@ export default function OperativoHeader({ operativo, movil = false, onRecargar }
           </button>
 
           {/* QR Agentes */}
-          <button
+          {gestiona && <button
             onClick={() => setShowQRModal(true)}
             title="Código QR para registro de agentes"
             className={`flex items-center gap-1.5 ${relleno} py-1.5 rounded-[var(--radius-button)] transition-all`}
@@ -198,7 +204,7 @@ export default function OperativoHeader({ operativo, movil = false, onRecargar }
           >
             <QrCode size={icono} />
             {!compacto && <span>QR Agentes</span>}
-          </button>
+          </button>}
 
           {/* Informe (CU-41). Pasó del sidebar a botón según la Lista de Casos
               de Uso del 21/09, que además sacó el Portal de Familia (ex CU-44)

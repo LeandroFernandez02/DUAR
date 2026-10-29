@@ -10,6 +10,11 @@
  * que no existe) y no puede crear ni ascender a nadie a administrador. Además,
  * nadie cambia su propio rol ni se desactiva a sí mismo, y el último
  * administrador activo no se puede desactivar, degradar ni eliminar.
+ *
+ * Jefe de operativo (29/10): sólo consulta (listar, ver, auditoría) — lo
+ * aplican las rutas. Como el de administrador, ese rol lo crea y lo asigna
+ * sólo un administrador. Para el jefe, igual que para el coordinador, los
+ * administradores no existen.
  */
 import bcrypt from 'bcryptjs';
 import * as Usuario from '../models/usuario.model.js';
@@ -17,6 +22,7 @@ import * as Sesion from '../models/sesion.model.js';
 import * as Auditoria from '../models/auditoria.model.js';
 import * as AgenteOperativo from '../models/agenteOperativo.model.js';
 import * as TokenEmail from '../models/tokenEmail.model.js';
+import * as Mando from '../models/mando.model.js';
 import { enviarConfirmacion } from '../services/email.service.js';
 import { validarDatosPersonales, normalizarDatosPersonales, exigirFechaNacimiento } from '../utils/validaciones.js';
 import { dominioDelCorreoExiste, MENSAJE_DOMINIO_INEXISTENTE } from '../utils/dominioCorreo.js';
@@ -26,6 +32,8 @@ const ENTIDAD = 'usuarios';
 const FRONTEND_URL = process.env.FRONTEND_URL ?? 'http://localhost:5173';
 
 const ADMIN = 'administrador';
+/** Roles que sólo un administrador crea o asigna. */
+const ROLES_SOLO_ADMIN = { administrador: 'administradores', jefe_operativo: 'jefes de operativo' };
 
 const ETIQUETA_ESTADO_AGENTE = {
   EN_ESPERA: 'En espera', DISPONIBLE: 'Disponible', NO_DISPONIBLE: 'No disponible', AGRUPADO: 'Agrupado',
@@ -45,7 +53,7 @@ async function afectacionEnOperativo(usuarioId) {
     `SELECT o.id, o.titulo FROM presencias_mando p JOIN operativos o ON o.id = p.operativo_id
       WHERE p.usuario_id = $1 AND p.egreso_en IS NULL AND o.eliminado_en IS NULL AND o.estado NOT IN ('FINALIZADO', 'ELIMINADO')
       LIMIT 1`, [usuarioId]);
-  return rows[0] ? { ...rows[0], como: 'coordinador en el puesto de comando' } : null;
+  return rows[0] ? { ...rows[0], como: 'parte del puesto de comando' } : null;
 }
 
 /** Mensajes de duplicado (Testeo 13/10, punto 7): iguales al crear y al editar. */
@@ -149,8 +157,8 @@ export async function crear(req, res, next) {
 
     const rol = await resolverRol(b);
     if (!rol) return res.status(400).json({ error: 'Rol inválido.' });
-    if (rol.nombre === ADMIN && !esAdmin(req)) {
-      return res.status(403).json({ error: 'Sólo un administrador puede crear administradores.', motivo: 'rol_no_permitido' });
+    if (ROLES_SOLO_ADMIN[rol.nombre] && !esAdmin(req)) {
+      return res.status(403).json({ error: `Sólo un administrador puede crear ${ROLES_SOLO_ADMIN[rol.nombre]}.`, motivo: 'rol_no_permitido' });
     }
 
     const datosAlta = { ...b, rolId: rol.id, passwordHash: await bcrypt.hash(b.password, 10) };
@@ -269,8 +277,11 @@ export async function actualizar(req, res, next) {
     if (cambiaRol && propio) {
       return res.status(409).json({ error: 'No podés cambiar tu propio rol.', motivo: 'propio_rol' });
     }
-    if (cambiaRol && rolNuevo.nombre === ADMIN && !esAdmin(req)) {
-      return res.status(403).json({ error: 'Sólo un administrador puede asignar el rol de administrador.', motivo: 'rol_no_permitido' });
+    if (cambiaRol && ROLES_SOLO_ADMIN[rolNuevo.nombre] && !esAdmin(req)) {
+      return res.status(403).json({ error: `Sólo un administrador puede asignar ese rol (${ROLES_SOLO_ADMIN[rolNuevo.nombre]}).`, motivo: 'rol_no_permitido' });
+    }
+    if (cambiaRol && ROLES_SOLO_ADMIN[(previo.rol ?? '').toLowerCase()] && !esAdmin(req)) {
+      return res.status(403).json({ error: 'Sólo un administrador puede cambiarle el rol a un jefe de operativo.', motivo: 'rol_no_permitido' });
     }
     // El sistema nunca se queda sin un administrador activo.
     if ((previo.rol ?? '').toLowerCase() === ADMIN && previo.estado === 'ACTIVO' && (cambiaRol || desactiva)
@@ -303,6 +314,12 @@ export async function actualizar(req, res, next) {
     }
 
     let actualizado = await Usuario.actualizar(id, campos);
+
+    // Con otro rol ya no corresponde a su puesto de comando (29/10: cada puesto exige
+    // un rol): si estaba de turno en alguno, se cierra ese turno.
+    if (cambiaRol) {
+      await withTransaction(c => Mando.cerrarPresenciaDeCon(c, id, req.usuario.id, 'Cambió su rol en el sistema'));
+    }
 
     // Cambio de contraseña: se hashea aparte, nunca viaja ni se devuelve.
     if (b.password) {

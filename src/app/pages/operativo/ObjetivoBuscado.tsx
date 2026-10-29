@@ -1,4 +1,6 @@
 import { useCallback, useEffect, useRef, useState } from 'react';
+import { useApp } from '../../context/AppContext';
+import { puedeGestionar } from '../../utils/permisos';
 import { useOutletContext } from 'react-router';
 import {
   User, Package, Hash, Info, Tag, Ruler, Palette,
@@ -940,7 +942,9 @@ export default function ObjetivoBuscado() {
   const [deleteFotoId, setDeleteFotoId] = useState<string | null>(null);
 
   // CU-12/13: el operativo cerrado sigue permitiendo CONSULTAR (CU-14), no cargar/editar.
-  const soloLectura = operativo.estado === 'finalizado' || operativo.estado === 'eliminado';
+  // El Jefe de operativo (29/10) también sólo consulta.
+  const { usuario } = useApp();
+  const soloLectura = !puedeGestionar(usuario) || operativo.estado === 'finalizado' || operativo.estado === 'eliminado';
 
   const cargarObjetivo = useCallback(async () => {
     setLoading(true);
@@ -1103,7 +1107,7 @@ export default function ObjetivoBuscado() {
               marginTop: 6, marginBottom: 20, textAlign: 'center', maxWidth: 320,
             }}>
               {soloLectura
-                ? 'Este operativo se cerró sin cargar los datos del objetivo.'
+                ? 'No hay datos del objetivo cargados para este operativo.'
                 : 'Todavía no hay datos del objetivo para este operativo. Cargá la información para poder visualizarla.'}
             </p>
             {!soloLectura && (

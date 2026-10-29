@@ -12,6 +12,7 @@
  * navegador o la pestaña (Testeo 15/10, punto 19). Cada pestaña tiene su propia sesión.
  */
 import type { ResultadoOperativo } from '../utils/resultadoOperativo';
+import type { PuestoMando } from '../utils/permisos';
 
 const TOKEN_KEY = 'duar-token';
 
@@ -378,13 +379,8 @@ export interface OperativoApi {
   objetivoTipo?: 'PERSONA' | 'OBJETO' | null;
   objetivoNombre?: string | null;
   objetivoApellido?: string | null;
-  /**
-   * Presencia de mando (01/10), sólo en `listar()`: el último período a cargo.
-   * Con `mandoHasta` vacío, está a cargo ahora; si no, es el último que estuvo.
-   */
-  mandoNombre?: string | null;
-  mandoApellido?: string | null;
-  mandoHasta?: string | null;
+  /** Quiénes están de turno en el puesto de comando y en qué puesto (29/10, migración 029). */
+  puestoComando?: { nombre: string; apellido: string; puesto: PuestoMando }[];
 }
 
 export interface CrearOperativoPayload {
@@ -597,55 +593,40 @@ export interface ArmadoAutomaticoApi {
   limitadoPorLideres: boolean;
 }
 
-/* ── Puesto de comando: presencia de mando (CU-15; 01/10, migración 016) ── */
+/* ── Puesto de comando (CU-15; 01/10, migración 016; puestos desde el 29/10, migración 029) ── */
 
-/** Un coordinador presente (o un período ya cerrado, en el historial). */
+/** Un turno en el puesto de comando: vigente (en `presentes`) o ya cerrado (en el historial). */
 export interface PresenciaMandoApi {
   id: string;
   usuarioId: string;
   nombre: string;
   apellido: string;
+  puesto: PuestoMando;
   desde: string;
   hasta: string | null;
   motivo: string | null;
-  /** Quién registró el ingreso (puede ser otro coordinador o un administrador). */
+  /** Quién registró el ingreso (un coordinador o un administrador). */
   ingresoPor: string;
   ingresoPorNombre: string;
   egresoPorNombre: string | null;
-  /** Sólo en `presentes`. */
-  aCargo?: boolean;
-}
-
-/** Un período a cargo del operativo. */
-export interface PeriodoMandoApi {
-  id: string;
-  usuarioId: string;
-  nombre: string;
-  apellido: string;
-  desde: string;
-  hasta: string | null;
-  motivo: string | null;
-  asignadoPorNombre: string;
 }
 
 export interface MandoOperativoApi {
-  aCargo: PeriodoMandoApi | null;
   presentes: PresenciaMandoApi[];
   historialPresencias: PresenciaMandoApi[];
-  historialMando: PeriodoMandoApi[];
 }
 
 export const mandoApi = {
   estado: (operativoId: string) => api.get<MandoOperativoApi>(`/operativos/${operativoId}/mando`),
   /** Sin `usuarioId`, el coordinador se registra a sí mismo. `trasladar` lo saca de otro operativo. */
-  ingresar: (operativoId: string, datos: { usuarioId?: string; trasladar?: boolean } = {}) =>
-    api.post<{ quedoACargo: boolean; mando: MandoOperativoApi }>(`/operativos/${operativoId}/mando/ingreso`, datos),
-  /** El retiro de OTRO exige motivo; si se retira el que está a cargo y quedan otros, `sucesorId`. */
-  retirar: (operativoId: string, datos: { usuarioId?: string; motivo?: string; sucesorId?: string } = {}) =>
-    api.post<{ quedaSinMando: boolean; mando: MandoOperativoApi }>(`/operativos/${operativoId}/mando/retiro`, datos),
-  /** Traspaso (lo hace quien está a cargo o un administrador) o designación si nadie está a cargo. */
-  asignar: (operativoId: string, usuarioId: string) =>
-    api.post<{ mando: MandoOperativoApi }>(`/operativos/${operativoId}/mando/a-cargo`, { usuarioId }),
+  ingresar: (operativoId: string, datos: { usuarioId?: string; puesto: PuestoMando; trasladar?: boolean }) =>
+    api.post<{ mando: MandoOperativoApi }>(`/operativos/${operativoId}/mando/ingreso`, datos),
+  /** Egreso del turno, con motivo. */
+  retirar: (operativoId: string, datos: { usuarioId?: string; motivo: string }) =>
+    api.post<{ mando: MandoOperativoApi }>(`/operativos/${operativoId}/mando/retiro`, datos),
+  /** Coordinador ↔ Encargado: cierra el turno y abre el nuevo con la misma hora. */
+  cambiarPuesto: (operativoId: string, datos: { usuarioId?: string; puesto: PuestoMando }) =>
+    api.post<{ mando: MandoOperativoApi }>(`/operativos/${operativoId}/mando/cambiar-puesto`, datos),
 };
 
 /* ── Módulo 5 · Polígonos del mapa (CU-29, 30, 37, 38, 39) ─────────────── */

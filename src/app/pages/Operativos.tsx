@@ -11,6 +11,7 @@ import { AccionCabecera } from '../components/layout/Movil';
 import { MapPickerModal } from '../components/shared/MapPickerModal';
 import { QRModal } from '../components/shared/QRModal';
 import { useApp } from '../context/AppContext';
+import { ETIQUETA_PUESTO, puedeGestionar } from '../utils/permisos';
 import { Operativo, EstadoOperativo } from '../data/mockData';
 import { operativosApi, ApiError } from '../services/api';
 import { mapearOperativo } from '../utils/mapearOperativo';
@@ -51,15 +52,21 @@ function esVigente(estado: EstadoOperativo): boolean {
 }
 
 /**
- * Coordinador a cargo del puesto de comando (presencia de mando, 01/10), para
- * la tarjeta y la fila del listado: sólo su nombre, o "Sin coordinador a cargo".
- * En ámbar sólo cuando el operativo está activo y nadie está a cargo (el
- * historial de quién estuvo a cargo está en el puesto de comando del operativo).
+ * Puesto de comando (29/10, migración 029) para la tarjeta y la fila del listado:
+ * el Coordinador de turno (si no hay, el primero que esté en algún puesto) y
+ * "+N" por los demás, o "Sin nadie en el puesto de comando". En ámbar sólo
+ * cuando el operativo está en curso y no hay ningún Coordinador de turno.
  */
-function mandoDe(op: Operativo): { texto: string; alerta: boolean } {
-  const m = op.mandoPreview;
-  if (m?.vigente) return { texto: `${m.nombre} ${m.apellido}`.trim(), alerta: false };
-  return { texto: 'Sin coordinador a cargo', alerta: op.estado === 'iniciado' || op.estado === 'planificación' || op.estado === 'en_proceso' };
+function puestoDe(op: Operativo): { texto: string; alerta: boolean; detalle: string } {
+  const turno = op.puestoComando ?? [];
+  const enCurso = op.estado === 'iniciado' || op.estado === 'planificación' || op.estado === 'en_proceso';
+  const coord = turno.find(p => p.puesto === 'COORDINADOR');
+  const primero = coord ?? turno[0];
+  const detalle = turno.map(p => `${ETIQUETA_PUESTO[p.puesto]}: ${p.nombre} ${p.apellido}`).join(' · ');
+  if (!primero) return { texto: 'Sin nadie en el puesto de comando', alerta: enCurso, detalle: 'Puesto de comando' };
+  const mas = turno.length > 1 ? ` +${turno.length - 1}` : '';
+  const prefijo = primero.puesto === 'COORDINADOR' ? '' : `${ETIQUETA_PUESTO[primero.puesto]}: `;
+  return { texto: `${prefijo}${primero.nombre} ${primero.apellido}`.trim() + mas, alerta: enCurso && !coord, detalle };
 }
 
 type ModalType = 'create' | 'edit' | 'qr' | 'delete' | 'finalize' | null;
@@ -181,6 +188,8 @@ function BotonPanel({ onClick }: { onClick: () => void }) {
 export default function Operativos() {
   const navigate = useNavigate();
   const { usuario } = useApp();
+  /** El Jefe de operativo (29/10) sólo mira: sin crear, modificar, finalizar, eliminar ni QR. */
+  const gestiona = puedeGestionar(usuario);
 
   /* ── Datos REALES desde la API (CU-11) ──────────────────────────────────
    * Igual patrón que Usuarios.tsx: se pide la lista completa y el filtrado
@@ -266,7 +275,7 @@ export default function Operativos() {
    * estar cumplida.
    */
   /** Acciones rápidas de cada operativo: QR, Modificar, Finalizar (si no terminó) y Eliminar (sólo los Nuevos). */
-  const accionesDe = (op: Operativo) => (
+  const accionesDe = (op: Operativo) => !gestiona ? <div /> : (
     <div className="flex items-center gap-1">
       <BotonIcono icono={QrCode} title="Código QR" onClick={() => openQr(op)} />
       <BotonIcono icono={Edit2} title="Modificar" onClick={() => openEdit(op)} />
@@ -276,7 +285,7 @@ export default function Operativos() {
   );
 
   const entrarAOperativo = async (op: Operativo) => {
-    if (op.estado === 'nuevo') {
+    if (op.estado === 'nuevo' && gestiona) {
       try { await operativosApi.activar(op.id); } catch { /* no bloquea la navegación */ }
     }
     navigate(`/operativo/${op.id}/dashboard`);
@@ -479,7 +488,7 @@ export default function Operativos() {
         (o.descripcion ?? '').toLowerCase().includes(q) ||
         (o.objetivoPreview?.nombre ?? '').toLowerCase().includes(q) ||
         (o.objetivoPreview?.apellido ?? '').toLowerCase().includes(q) ||
-        `${o.mandoPreview?.nombre ?? ''} ${o.mandoPreview?.apellido ?? ''}`.toLowerCase().includes(q)
+        (o.puestoComando ?? []).some(p => `${p.nombre} ${p.apellido}`.toLowerCase().includes(q))
       );
     }
     return list;
@@ -522,7 +531,7 @@ export default function Operativos() {
             </p>
           </div>
           {/* En mobile/tablet va a la barra superior (diseño CALÍVAR) */}
-          <AccionCabecera>
+          {gestiona && <AccionCabecera>
             <button
               onClick={openCreate}
               aria-label="Nuevo Operativo"
@@ -532,7 +541,7 @@ export default function Operativos() {
               <Plus size={16} />
               Nuevo Operativo
             </button>
-          </AccionCabecera>
+          </AccionCabecera>}
         </div>
 
         {/* Stats strip */}
@@ -588,8 +597,9 @@ export default function Operativos() {
       {cargando ? (
         <div className="flex items-center justify-center py-20" style={{ ...tarjetaBase, color: 'var(--muted-foreground)' }}>Cargando operativos…</div>
       ) : operativos.length === 0 ? (
-        <Vacio icono={Plus} titulo="No hay operativos vigentes" texto="Creá el primer operativo para comenzar."
-          accion={<Button size="md" icon={Plus} onClick={openCreate}>Crear operativo</Button>} />
+        <Vacio icono={Plus} titulo="No hay operativos vigentes"
+          texto={gestiona ? 'Creá el primer operativo para comenzar.' : 'Todavía no hay operativos para consultar.'}
+          accion={gestiona ? <Button size="md" icon={Plus} onClick={openCreate}>Crear operativo</Button> : undefined} />
       ) : filteredOperativos.length === 0 ? (
         <Vacio icono={Search} titulo="No hay operativos vigentes"
           texto={searchQuery ? `No se encontraron resultados para "${searchQuery}".` : 'No hay operativos iniciados o en proceso para el filtro seleccionado.'}
@@ -598,7 +608,7 @@ export default function Operativos() {
         /* ═══════ TARJETAS ═══════ */
         <div className="grid gap-5" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(min(300px, 100%), 1fr))' }}>
           {filteredOperativos.map(op => {
-            const m = mandoDe(op);
+            const m = puestoDe(op);
             return (
               <div key={op.id} className="flex flex-col overflow-hidden" style={{ ...tarjetaBase, transition: 'box-shadow .15s' }}
                 onMouseEnter={e => (e.currentTarget.style.boxShadow = 'var(--elevation-md)')}
@@ -614,8 +624,8 @@ export default function Operativos() {
                     <MetaFila icono={MapPin}>{op.ubicacion}</MetaFila>
                     <MetaFila icono={Calendar}>{fechaHoraArgentina(op.fechaInicio)}</MetaFila>
                     <MetaFila icono={Users}>{op.agenteIds.length} agente{op.agenteIds.length !== 1 ? 's' : ''} asignado{op.agenteIds.length !== 1 ? 's' : ''}</MetaFila>
-                    {/* Coordinador a cargo del puesto de comando (01/10): reemplaza al objetivo buscado. */}
-                    <MetaFila icono={RadioTower} alerta={m.alerta} title="Coordinador a cargo del puesto de comando">{m.texto}</MetaFila>
+                    {/* Quién está de turno en el puesto de comando (29/10): reemplaza al objetivo buscado. */}
+                    <MetaFila icono={RadioTower} alerta={m.alerta} title={m.detalle}>{m.texto}</MetaFila>
                   </div>
                 </div>
                 <div className="flex items-center justify-between" style={{ padding: '10px 16px', borderTop: '1px solid var(--border)', background: 'var(--muted)' }}>
@@ -635,7 +645,7 @@ export default function Operativos() {
             </div>
           }>
           {filteredOperativos.map((op, idx) => {
-            const m = mandoDe(op);
+            const m = puestoDe(op);
             return (
               <div key={op.id} className={`grid items-center gap-3 transition-colors ${COLUMNAS_LISTA}`}
                 style={{ padding: '14px 20px', borderBottom: idx < filteredOperativos.length - 1 ? '1px solid var(--border)' : 'none' }}
@@ -647,7 +657,7 @@ export default function Operativos() {
                     <p className="truncate" style={{ margin: 0, color: 'var(--foreground)', fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-semibold)' }}>{op.nombre}</p>
                     <div className="flex items-center gap-3 mt-0.5 flex-wrap" style={{ fontSize: 'calc(11px * var(--escala-texto))', color: 'var(--muted-foreground)' }}>
                       <span className="flex items-center gap-1"><Users size={10} />{op.agenteIds.length} agente{op.agenteIds.length !== 1 ? 's' : ''}</span>
-                      <span className="flex items-center gap-1" title="Coordinador a cargo del puesto de comando" style={{ color: m.alerta ? '#b45309' : undefined }}><RadioTower size={10} />{m.texto}</span>
+                      <span className="flex items-center gap-1" title={m.detalle} style={{ color: m.alerta ? '#b45309' : undefined }}><RadioTower size={10} />{m.texto}</span>
                     </div>
                   </div>
                 </div>

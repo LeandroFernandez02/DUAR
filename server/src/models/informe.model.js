@@ -17,6 +17,9 @@ import { RESULTADOS_OPERATIVO } from '../utils/validaciones.js';
 import { query } from '../config/db.js';
 import { ETIQUETA_GRUPO, EN_OPERACION } from './estados.js';
 
+/** Puestos del puesto de comando (migración 029). */
+export const ETIQUETA_PUESTO = { JEFE_OPERATIVO: 'Jefe de operativo', COORDINADOR: 'Coordinador', ENCARGADO: 'Encargado' };
+
 /* ── Registro de informes emitidos ─────────────────────────────────────── */
 
 const CAMPOS = `
@@ -195,7 +198,7 @@ export async function reunirDatos(operativoId, corteEn) {
     q(`SELECT ${nombre('u')} AS nombre, m.desde, m.hasta, m.motivo_fin AS motivo, ${nombre('ua')} AS "asignadoPor"
          FROM mando_operativo m JOIN usuarios u ON u.id = m.usuario_id LEFT JOIN usuarios ua ON ua.id = m.asignado_por
         WHERE m.operativo_id = $1 ORDER BY m.desde`),
-    q(`SELECT ${nombre('u')} AS nombre, p.ingreso_en AS desde, p.egreso_en AS hasta, p.motivo_egreso AS motivo,
+    q(`SELECT ${nombre('u')} AS nombre, p.puesto::text AS puesto, p.ingreso_en AS desde, p.egreso_en AS hasta, p.motivo_egreso AS motivo,
               ${nombre('ui')} AS "ingresoPor", ${nombre('ue')} AS "egresoPor"
          FROM presencias_mando p JOIN usuarios u ON u.id = p.usuario_id
          LEFT JOIN usuarios ui ON ui.id = p.ingreso_por LEFT JOIN usuarios ue ON ue.id = p.egreso_por
@@ -364,10 +367,12 @@ export function armarCronologia(d) {
   }
   if (d.objetivo) add(d.objetivo.creado_en, 'Operativo', `Se carga la ficha ${d.objetivo.tipo === 'OBJETO' ? 'del objeto' : 'de la persona'} buscada.`, null);
 
+  // «A cargo» se registró hasta el 29/10 (migración 029); los operativos de antes lo conservan.
   for (const m of d.mandos) add(m.desde, 'Mando', `${m.nombre} queda a cargo del puesto de comando.`, m.asignadoPor);
   for (const p of d.presencias) {
-    add(p.desde, 'Mando', `${p.nombre} ingresa al puesto de comando.`, p.ingresoPor);
-    if (p.hasta) add(p.hasta, 'Mando', `${p.nombre} se retira del puesto de comando.`, p.egresoPor, p.motivo ? { nota: `Motivo: ${p.motivo}` } : {});
+    const puesto = ETIQUETA_PUESTO[p.puesto] ?? 'Coordinador';
+    add(p.desde, 'Mando', `${p.nombre} ingresa al puesto de comando como ${puesto}.`, p.ingresoPor);
+    if (p.hasta) add(p.hasta, 'Mando', `${p.nombre} egresa del puesto ${puesto}.`, p.egresoPor, p.motivo ? { nota: `Motivo: ${p.motivo}` } : {});
   }
 
   // Altas: agrupadas por hora y fuente.

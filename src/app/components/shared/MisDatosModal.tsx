@@ -9,6 +9,7 @@
  * editan acá: quedan reservados al panel de Usuarios (CU-06).
  */
 import { useState, type ReactNode } from 'react';
+import { ETIQUETA_ROL } from '../../utils/permisos';
 import { ArrowLeft, Pencil, X, User, Phone, Shield, HeartPulse, AlertCircle, Loader2, Check } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import { institucionLabel, especialidadNombrePorId, catInstituciones, catEspecialidades, catAlergias, dotacionesDe } from '../../data/mockData';
@@ -86,7 +87,7 @@ export default function MisDatosModal({ pantalla = false, inicial = 'ver', onClo
   if (!usuario) return null;
 
   const ini = `${usuario.nombre.charAt(0)}${usuario.apellido.charAt(0)}`.toUpperCase();
-  const rol = usuario.rol ? usuario.rol[0].toUpperCase() + usuario.rol.slice(1) : '—';
+  const rol = usuario.rol ? ETIQUETA_ROL[usuario.rol] ?? usuario.rol : '—';
   const institucion = institucionLabel(usuario);
   const alergias = catAlergias.filter(a => (usuario.alergiaIds ?? []).includes(a.id)).map(a => a.nombre).join(', ');
   const cols = pantalla ? 'grid-cols-1' : 'grid-cols-2';

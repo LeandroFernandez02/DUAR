@@ -3,7 +3,7 @@
  *
  * No hay una base aparte (decisión del usuario): las pruebas corren sobre la
  * base compartida, pero SÓLO sobre lo suyo:
- *   · 9 usuarios propios, auto.<nombre>@prueba.duar (7 agentes y 2 coordinadores);
+ *   · 10 usuarios propios, auto.<nombre>@prueba.duar (7 agentes, 2 coordinadores y 1 jefe de operativo);
  *   · un operativo propio, "PRUEBAS AUTOMÁTICAS - no tocar".
  *
  * Cada archivo de pruebas arranca con preparar(), que deja ese operativo en un
@@ -35,6 +35,7 @@ const MOTIVO_REINICIO = 'Reinicio de las pruebas automáticas';
  *   · foxtrot              → del DUAR, recurso especial (Dron).
  *   · golf                 → conductor (no rastrilla, entra a cualquier grupo).
  *   · hotel, india         → coordinadores: van al puesto de comando, no al tablero.
+ *   · juliett              → jefe de operativo (29/10): sólo mira y extrae informes.
  */
 export const USUARIOS = [
   { clave: 'alfa',    institucion: 'DUAR',                 especialidad: 'Bombero' },
@@ -46,6 +47,7 @@ export const USUARIOS = [
   { clave: 'golf',    institucion: 'Bomberos Voluntarios', especialidad: 'Bombero', conductor: true },
   { clave: 'hotel',   institucion: 'DUAR',                 rol: 'coordinador' },
   { clave: 'india',   institucion: 'DUAR',                 rol: 'coordinador' },
+  { clave: 'juliett', institucion: 'DUAR',                 rol: 'jefe_operativo' },
 ];
 export const AGENTES = USUARIOS.filter(u => !u.rol).map(u => u.clave);
 
@@ -229,11 +231,10 @@ async function verificarAislamiento(op) {
   }
 }
 
-/** Vacía el puesto de comando: primero los presentes que no están a cargo, al final el que está a cargo (ya solo). */
+/** Vacía el puesto de comando: egreso de todos los que están de turno. */
 async function limpiarMando(admin, op) {
   const { presentes } = (await api('GET', `/operativos/${op}/mando`, undefined, admin)).json;
-  const orden = [...presentes.filter(p => !p.aCargo), ...presentes.filter(p => p.aCargo)];
-  for (const p of orden) {
+  for (const p of presentes) {
     const r = await api('POST', `/operativos/${op}/mando/retiro`, { usuarioId: p.usuarioId, motivo: MOTIVO_REINICIO }, admin);
     if (r.status !== 200) throw new Error(`No se pudo vaciar el puesto de comando: ${JSON.stringify(r.json)}`);
   }

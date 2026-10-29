@@ -38,6 +38,14 @@ export async function requiereSesion(req, res, next) {
   }
 }
 
+/** Roles del sistema (cat_roles.nombre). */
+export const ROL = {
+  ADMINISTRADOR: 'administrador',
+  COORDINADOR: 'coordinador',
+  JEFE_OPERATIVO: 'jefe_operativo',
+  AGENTE: 'agente',
+};
+
 /**
  * Exige uno de los roles indicados.
  * Uso: router.post('/', requiereSesion, requiereRol('administrador'), ctrl.crear)
@@ -52,3 +60,12 @@ export function requiereRol(...rolesPermitidos) {
     next();
   };
 }
+
+/** Quienes gestionan operativos y usuarios: crean, modifican y operan. */
+export const gestores = requiereRol(ROL.ADMINISTRADOR, ROL.COORDINADOR);
+
+/**
+ * Quienes pueden VER todo el sistema: los gestores y el Jefe de operativo
+ * (relevamiento del 29/10: sólo visualización y extraer informes).
+ */
+export const lectores = requiereRol(ROL.ADMINISTRADOR, ROL.COORDINADOR, ROL.JEFE_OPERATIVO);

@@ -23,6 +23,7 @@ import {
 } from '../../components/shared/Listados';
 import { useVistaListado } from '../../components/shared/Listados';
 import { useApp } from '../../context/AppContext';
+import { puedeGestionar } from '../../utils/permisos';
 import { EstadoOperativoAgente, catEspecialidades } from '../../data/mockData';
 
 /** Especialidades en el orden del filtro: primero las de rastrillaje, después los recursos especiales. */
@@ -80,7 +81,9 @@ export default function Agentes() {
   const { usuario } = useApp();
   // Agentes y Grupos son dos secciones del menú del operativo (diseño CALÍVAR, 23/10): la dirección dice cuál.
   const pestana: 'agentes' | 'grupos' = useLocation().pathname.endsWith('/grupos') ? 'grupos' : 'agentes';
-  const soloLectura = operativo.estado === 'finalizado' || operativo.estado === 'eliminado';
+  // El Jefe de operativo (29/10) sólo mira: sin agregar, editar ni quitar agentes, ni tocar los grupos.
+  const gestiona = puedeGestionar(usuario);
+  const soloLectura = !gestiona || operativo.estado === 'finalizado' || operativo.estado === 'eliminado';
   const tableroRef = useRef<TableroGruposHandle>(null);
   const [cantGrupos, setCantGrupos] = useState<number | null>(null);
 
@@ -262,8 +265,8 @@ export default function Agentes() {
   const acciones = (a: PersonalOperativoApi) => (
     <div className="flex items-center gap-0.5 shrink-0">
       <BotonIcono icono={History} title="Línea de tiempo" onClick={() => setHistoria(a)} />
-      <BotonIcono icono={Pencil} title="Editar datos operativos" onClick={() => setEditUsuarioId(a.usuarioId)} />
-      <BotonIcono icono={X} tono="peligro" title="Quitar del operativo" onClick={() => { setQuitarTarget(a); setErrorQuitar(null); }} />
+      {gestiona && <BotonIcono icono={Pencil} title="Editar datos operativos" onClick={() => setEditUsuarioId(a.usuarioId)} />}
+      {gestiona && <BotonIcono icono={X} tono="peligro" title="Quitar del operativo" onClick={() => { setQuitarTarget(a); setErrorQuitar(null); }} />}
     </div>
   );
 
@@ -282,7 +285,7 @@ export default function Agentes() {
           <p style={{ fontSize: 'var(--text-label)', color: 'var(--muted-foreground)' }}>{subtitulo}</p>
         </div>
 
-        {pestana === 'agentes' ? (
+        {pestana === 'agentes' ? gestiona && (
           <Button size="lg" icon={UserPlus} onClick={abrirModalAdd} aria-label="Agregar Agente">Agregar Agente</Button>
         ) : !soloLectura && (
           <Button size="lg" icon={Plus} onClick={() => tableroRef.current?.abrirCrear()} aria-label="Nuevo Grupo">Nuevo Grupo</Button>
@@ -331,8 +334,9 @@ export default function Agentes() {
             <Loader2 size={20} className="animate-spin mr-2" /> Cargando agentes…
           </div>
         ) : agentes.length === 0 ? (
-          <Vacio icono={Users} titulo="Sin agentes asignados" texto="Agregá agentes al operativo o compartí el QR de acceso."
-            accion={<Button size="md" icon={UserPlus} onClick={abrirModalAdd}>Agregar Agente</Button>} />
+          <Vacio icono={Users} titulo="Sin agentes asignados"
+            texto={gestiona ? 'Agregá agentes al operativo o compartí el QR de acceso.' : 'Todavía no ingresó ningún agente.'}
+            accion={gestiona ? <Button size="md" icon={UserPlus} onClick={abrirModalAdd}>Agregar Agente</Button> : undefined} />
         ) : filtrados.length === 0 ? (
           <Vacio icono={Search} titulo="Sin resultados" texto="Ningún agente coincide con los filtros aplicados."
             accion={<Button variant="muted" size="md" icon={X} onClick={limpiar}>Limpiar filtros</Button>} />

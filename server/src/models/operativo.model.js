@@ -91,19 +91,19 @@ export async function listar({ busqueda = '', estado = '' } = {}) {
     condiciones.push(`o.estado = $${valores.length}::estado_operativo`);
   }
 
-  // Quién está a cargo (presencia de mando, 01/10): el último período de mando.
-  // Con `hasta` vacío está a cargo ahora; si no, es el último que estuvo.
+  // Quiénes están de turno en el puesto de comando (29/10, migración 029), en el
+  // orden Jefe de operativo, Coordinador, Encargado y por hora de ingreso.
   const { rows } = await query(
     `SELECT ${CAMPOS_CON_OBJETIVO},
-            mc.nombre AS "mandoNombre", mc.apellido AS "mandoApellido", mc.hasta AS "mandoHasta"
+            COALESCE(pc.turno, '[]'::json) AS "puestoComando"
        FROM operativos o
        LEFT JOIN objetivo_buscado ob2 ON ob2.operativo_id = o.id
        LEFT JOIN LATERAL (
-         SELECT u.nombre, u.apellido, m.hasta
-           FROM mando_operativo m JOIN usuarios u ON u.id = m.usuario_id
-          WHERE m.operativo_id = o.id
-          ORDER BY m.desde DESC LIMIT 1
-       ) mc ON true
+         SELECT json_agg(json_build_object('nombre', u.nombre, 'apellido', u.apellido, 'puesto', p.puesto)
+                         ORDER BY p.puesto, p.ingreso_en) AS turno
+           FROM presencias_mando p JOIN usuarios u ON u.id = p.usuario_id
+          WHERE p.operativo_id = o.id AND p.egreso_en IS NULL
+       ) pc ON true
       WHERE ${condiciones.join(' AND ')}
       ORDER BY o.fecha_hora_inicio DESC`,
     valores

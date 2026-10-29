@@ -6,6 +6,8 @@ import {
   Hash, AlertCircle, ImageOff, Lock, Loader2,
 } from 'lucide-react';
 import { TipoObjetivo } from '../../data/mockData';
+import { useApp } from '../../context/AppContext';
+import { puedeGestionar } from '../../utils/permisos';
 import { formatearDni } from '../../utils/validacionUsuario';
 import { objetivoApi, ObjetivoApi, CrearObjetivoPayload, ApiError } from '../../services/api';
 import {
@@ -405,6 +407,9 @@ function ObjetoView({ objetivo, fotos, onOpenLightbox }: {
    Main ObjetivoModal — CU-14 (vista rápida) + CU-12/13 (edición)
 ───────────────────────────────────────────────── */
 export default function ObjetivoModal({ operativoId, onClose }: Props) {
+  // El Jefe de operativo (29/10) sólo consulta la ficha.
+  const { usuario } = useApp();
+  const gestiona = puedeGestionar(usuario);
   const [objetivo, setObjetivo] = useState<ObjetivoApi | null>(null);
   const [loading, setLoading] = useState(true);
   const [errorGeneral, setErrorGeneral] = useState('');
@@ -603,7 +608,7 @@ export default function ObjetivoModal({ operativoId, onClose }: Props) {
                   <div className="flex items-center gap-1.5 mt-0.5">
                     <Lock size={10} style={{ color: 'var(--muted-foreground)' }} />
                     <span style={{ color: 'var(--muted-foreground)', fontSize: 'calc(11px * var(--escala-texto))', fontFamily: 'var(--font-family-primary)' }}>
-                      Solo lectura — presioná Editar para modificar
+                      {gestiona ? 'Solo lectura — presioná Editar para modificar' : 'Solo lectura'}
                     </span>
                   </div>
                 )}
@@ -617,7 +622,7 @@ export default function ObjetivoModal({ operativoId, onClose }: Props) {
 
             {/* Header actions */}
             <div className="flex items-center gap-2">
-              {mode === 'view' && !loading && (
+              {mode === 'view' && !loading && gestiona && (
                 <button
                   onClick={enterEdit}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-[var(--radius-button)] transition-opacity hover:opacity-88"

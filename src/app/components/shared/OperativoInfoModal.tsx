@@ -10,6 +10,7 @@ import { haceCuanto } from '../../utils/tiempo';
 import { differenceInDays } from 'date-fns';
 import { Operativo } from '../../data/mockData';
 import { useApp } from '../../context/AppContext';
+import { puedeGestionar } from '../../utils/permisos';
 import StatusBadge from './StatusBadge';
 import { ETIQUETA_RESULTADO } from '../../utils/resultadoOperativo';
 
@@ -46,7 +47,9 @@ function InfoRow({ icon, label, value }: { icon: React.ReactNode; label: string;
 }
 
 export default function OperativoInfoModal({ operativo, onClose, onCambio }: Props) {
-  const { data } = useApp();
+  const { data, usuario } = useApp();
+  /** El Jefe de operativo (29/10) ve el estado, pero no pausa, reanuda ni finaliza. */
+  const gestiona = puedeGestionar(usuario);
   const [pausando, setPausando] = useState(false);
   const [motivoPausa, setMotivoPausa] = useState('');
   const [trabajando, setTrabajando] = useState(false);
@@ -266,14 +269,14 @@ export default function OperativoInfoModal({ operativo, onClose, onCambio }: Pro
                         ? 'Está en pausa: no admite ingresos hasta que se reanude.'
                         : 'Pasó a Inactivo por falta de actividad. Vuelve solo cuando alguien ingresa o se registra algo; también podés reanudarlo ahora.'}
                     </p>
-                    <div><Button variant="muted" size="md" icon={trabajando ? Loader2 : PlayCircle} disabled={trabajando} onClick={reanudar}>Reanudar operativo</Button></div>
+                    {gestiona && <div><Button variant="muted" size="md" icon={trabajando ? Loader2 : PlayCircle} disabled={trabajando} onClick={reanudar}>Reanudar operativo</Button></div>}
                   </>
                 )}
 
-                {enCurso && !pausando && (
+                {gestiona && enCurso && !pausando && (
                   <div><Button variant="muted" size="md" icon={PauseCircle} onClick={() => setPausando(true)}>Pausar operativo</Button></div>
                 )}
-                {enCurso && pausando && (
+                {gestiona && enCurso && pausando && (
                   <div className="flex flex-col gap-2">
                     <label style={{ color: 'var(--foreground)', fontSize: 'var(--text-label)', fontWeight: 600, fontFamily: 'var(--font-family-primary)' }} htmlFor="motivo-pausa">
                       Motivo de la pausa
@@ -294,7 +297,7 @@ export default function OperativoInfoModal({ operativo, onClose, onCambio }: Pro
             )}
 
             {/* Finalizar operativo: sólo lo que el servidor deja finalizar (iniciado, en planificación, en proceso o inactivo). */}
-            {['iniciado', 'planificación', 'en_proceso', 'inactivo'].includes(operativo.estado) && (
+            {gestiona && ['iniciado', 'planificación', 'en_proceso', 'inactivo'].includes(operativo.estado) && (
               <div
                 className="flex flex-col gap-2 pt-2"
                 style={{ borderTop: '1px solid var(--border)' }}

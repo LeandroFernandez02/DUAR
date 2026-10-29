@@ -16,7 +16,7 @@ import pdfmake from 'pdfmake';
 import sharp from 'sharp';
 import * as Storage from './storage.service.js';
 import { mapaSvg, ATRIBUCION } from './informeMapa.js';
-import { coord, fmtDistancia, codigoOperativo } from '../models/informe.model.js';
+import { coord, fmtDistancia, codigoOperativo, ETIQUETA_PUESTO } from '../models/informe.model.js';
 import { ETIQUETA_GRUPO } from '../models/estados.js';
 import { RESULTADOS_OPERATIVO } from '../utils/validaciones.js';
 
@@ -219,7 +219,14 @@ export async function generarPdf(d, meta) {
   }
 
   /* 1 · Datos del operativo */
-  const aCargo = d.mandos.find(m => !m.hasta) ?? d.mandos[d.mandos.length - 1];
+  // Puesto de comando (29/10): quiénes están de turno al corte, o quiénes pasaron, si ya cerró.
+  const enPuesto = final ? d.presencias : d.presencias.filter(p => !p.hasta);
+  const turno = Object.entries(ETIQUETA_PUESTO)
+    .map(([k, etiqueta]) => {
+      const nombres = [...new Set(enPuesto.filter(p => (p.puesto ?? 'COORDINADOR') === k).map(p => p.nombre))];
+      return nombres.length ? `${etiqueta}: ${nombres.join(', ')}` : null;
+    })
+    .filter(Boolean).join(' · ');
   const pcVigente = d.puntoCero[d.puntoCero.length - 1];
   add(seccion('Datos del operativo'), ficha([
     ['N.º de operativo', opCodigo],
@@ -229,7 +236,7 @@ export async function generarPdf(d, meta) {
     ['Fiscal de instrucción', op.fiscalInstruccion || 'Sin asignar'],
     [final ? 'Fin' : 'Duración al corte', final ? fechaHora(op.fechaHoraFin) : duracion(op.fechaHoraInicio ?? op.creadoEn, d.corteEn)],
     ['Creado por', op.creadoPor],
-    [final ? 'A cargo al cierre' : 'A cargo al corte', aCargo?.nombre ?? 'Nadie registrado'],
+    [final ? 'Puesto de comando (pasaron)' : 'Puesto de comando al corte', turno || 'Nadie registrado', true],
     ['Punto Cero vigente', { text: [mono(coords(op.puntoCeroLat, op.puntoCeroLng)), tenue(pcVigente?.registradoEn ? `  ·  desde ${fechaCorta(pcVigente.registradoEn)}` : '')] }, true],
     ['Descripción', { text: op.descripcion || '—' }, true],
     // La reseña del cierre (CU-10) en su propia fila: antes pisaba la descripción (migración 024).
@@ -251,7 +258,7 @@ export async function generarPdf(d, meta) {
     [num(d.hallazgos.length), d.hallazgos.length === 1 ? 'hallazgo registrado' : 'hallazgos registrados'],
     [`${num(kmTotal, 1)} km`, 'recorridos dentro de los polígonos'],
     [`${areaTotal ? num(revisada / areaTotal * 100) : 0} %`, 'del área total revisada según los tracks GPX'],
-    [num(new Set(d.mandos.map(m => m.nombre)).size), 'coordinadores estuvieron a cargo'],
+    [num(new Set(d.presencias.map(p => p.nombre)).size), 'personas de turno en el puesto de comando'],
     [num(d.retiros.length), d.retiros.length === 1 ? 'agente retirado de su grupo' : 'agentes retirados de su grupo'],
   ];
   add(seccion('Resumen al corte'), {
@@ -399,15 +406,18 @@ export async function generarPdf(d, meta) {
 
   /* 9 · Puesto de comando */
   add(seccion('Puesto de comando'), {
-    columns: [
-      d.mandos.length
-        ? tabla(['A cargo', 'Desde', 'Hasta'], d.mandos.map(m => [m.nombre, mono(fechaCorta(m.desde)), m.hasta ? mono(fechaCorta(m.hasta)) : tenue('al corte')]), ['*', 54, 54])
-        : vacio('Nadie quedó registrado a cargo.'),
+    stack: [
       d.presencias.length
-        ? tabla(['Presentes', 'Ingreso', 'Retiro'], d.presencias.map(p => [p.nombre, mono(fechaCorta(p.desde)), p.hasta ? mono(fechaCorta(p.hasta)) : tenue('al corte')]), ['*', 54, 54])
-        : vacio('No se registraron presencias en el puesto de comando.'),
+        ? tabla(['De turno', 'Puesto', 'Ingreso', 'Egreso'], d.presencias.map(p => [
+            p.nombre, ETIQUETA_PUESTO[p.puesto] ?? 'Coordinador', mono(fechaCorta(p.desde)), p.hasta ? mono(fechaCorta(p.hasta)) : tenue('al corte'),
+          ]), ['*', 96, 54, 54])
+        : vacio('No se registraron turnos en el puesto de comando.'),
+      // «A cargo» se registró hasta el 29/10 (migración 029): sólo aparece en los operativos de antes.
+      ...(d.mandos.length
+        ? [{ text: 'A cargo (registro anterior al 29/10)', fontSize: 7.6, bold: true, margin: [0, 8, 0, 3] },
+           tabla(['A cargo', 'Desde', 'Hasta'], d.mandos.map(m => [m.nombre, mono(fechaCorta(m.desde)), m.hasta ? mono(fechaCorta(m.hasta)) : tenue('al corte')]), ['*', 54, 54])]
+        : []),
     ],
-    columnGap: 16,
   });
 
   /* 10 · Baja de personal (Testeo 15/10, punto 18: antes «Novedades del personal y bajas de elementos») */

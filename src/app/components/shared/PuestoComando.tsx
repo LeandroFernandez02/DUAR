@@ -1,19 +1,22 @@
 /**
- * Puesto de comando: presencia de mando (CU-15; 01/10, migración 016).
+ * Puesto de comando (CU-15; 01/10, migración 016; puestos desde el 29/10, migración 029).
  *
- * Un indicador en el encabezado del operativo ("Puesto de comando: Fierro +2",
- * o "Sin coordinador a cargo" en ámbar) y, al tocarlo, el detalle: quién está
- * a cargo, quiénes están presentes, los movimientos y el historial.
+ * Un indicador en el encabezado del operativo (el Coordinador de turno, o "Sin
+ * coordinador en el puesto" en ámbar) y, al tocarlo, el detalle: quién está de
+ * turno en cada puesto, el registro de ingresos y egresos y el historial.
  *
- * Los coordinadores NO son agentes: no aparecen en la pestaña Agentes ni en el
- * tablero. Reglas (mando.model.js): el primero que llega queda a cargo; el
- * mando lo pasa quien está a cargo (o un administrador); cualquier gestor
- * registra el ingreso o el retiro de otro (con motivo); si se retira el que
- * está a cargo y quedan otros, elige sucesor. Un administrador puede hacer
- * todo, pero no figura él mismo como presente.
+ * Puestos (relevamiento del 29/10):
+ *   · Jefe de operativo → usuarios con rol Jefe de operativo.
+ *   · Coordinador       → usuarios con rol Coordinador.
+ *   · Encargado         → usuarios con rol Coordinador (es el que está en el campo).
+ * Ya no hay un «coordinador a cargo». Ingresos y egresos los registran
+ * coordinadores y administradores; el Jefe de operativo sólo mira. Una persona
+ * está en un solo puesto a la vez: «Cambiar puesto» la pasa de Coordinador a
+ * Encargado (o al revés) con la misma hora. Los de este puesto NO son agentes:
+ * no aparecen en Agentes ni en el tablero.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
-import { RadioTower, X, Crown, LogIn, LogOut, UserPlus, History, AlertTriangle, ArrowRightLeft, Loader2, User } from 'lucide-react';
+import { RadioTower, X, LogIn, LogOut, UserPlus, History, AlertTriangle, ArrowRightLeft, Loader2, User } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
 import {
   mandoApi, usuariosApi, ApiError,
@@ -21,27 +24,33 @@ import {
 } from '../../services/api';
 import { Overlay, IconBox, Titulo, Texto, Etiqueta, ErrorCaja, estiloCampo, BotonPrimario, BotonSecundario } from './grupos/piezas';
 import { haceCuanto, horaCorta } from '../../utils/tiempo';
+import { PUESTOS, ETIQUETA_PUESTO, type PuestoMando } from '../../utils/permisos';
 
 /** El puesto de comando cambia poco: alcanza con mirar cada 30 s (y al volver a la pestaña). */
 const INTERVALO_MS = 30_000;
 
 const nombreDe = (p: { nombre: string; apellido: string }) => `${p.nombre} ${p.apellido}`;
 
-/** Motivos del retiro del puesto de comando. "Otros" pide el detalle. Lo que se guarda es el texto. */
-const MOTIVOS_RETIRO = [
+/** Motivos del egreso del turno. "Otros" pide el detalle. Lo que se guarda es el texto. */
+const MOTIVOS_EGRESO = [
   'Finalización de turno', 'Decisión administrativa', 'Lesión o problema de salud',
-  'Emergencia personal', 'No registró su retiro', 'Otros',
+  'Emergencia personal', 'No registró su egreso', 'Otros',
 ] as const;
+
+/** Coordinador ↔ Encargado: el otro puesto al que se puede pasar (el Jefe de operativo tiene uno solo). */
+const OTRO_PUESTO: Partial<Record<PuestoMando, PuestoMando>> = { COORDINADOR: 'ENCARGADO', ENCARGADO: 'COORDINADOR' };
 
 interface Props {
   operativoId: string;
-  /** Operativo finalizado o eliminado: sólo se mira el historial. */
+  /** No se registra nada: operativo cerrado, o quien mira es el Jefe de operativo. */
   soloLectura: boolean;
-  /** Encabezado achicado: sólo el ícono (el nombre queda en el título al pasar el mouse). */
+  /** Operativo finalizado o eliminado: el aviso ámbar no corresponde. */
+  cerrado?: boolean;
+  /** Encabezado achicado: sólo el ícono (el detalle queda en el título al pasar el mouse). */
   compacto?: boolean;
 }
 
-export default function PuestoComando({ operativoId, soloLectura, compacto = false }: Props) {
+export default function PuestoComando({ operativoId, soloLectura, cerrado = soloLectura, compacto = false }: Props) {
   const [mando, setMando] = useState<MandoOperativoApi | null>(null);
   const [abierto, setAbierto] = useState(false);
 
@@ -56,33 +65,38 @@ export default function PuestoComando({ operativoId, soloLectura, compacto = fal
   }, [cargar]);
 
   if (!mando) return null;
-  const sinMando = !mando.aCargo && !soloLectura;
+  const coordinadores = mando.presentes.filter(p => p.puesto === 'COORDINADOR');
+  const sinCoordinador = !coordinadores.length && !cerrado;
+  const texto = coordinadores.length
+    ? `${nombreDe(coordinadores[0])}${mando.presentes.length > 1 ? ` +${mando.presentes.length - 1}` : ''}`
+    : 'Sin coordinador en el puesto';
+  const detalle = mando.presentes.length
+    ? mando.presentes.map(p => `${ETIQUETA_PUESTO[p.puesto]}: ${nombreDe(p)}`).join(' · ')
+    : 'nadie de turno';
 
   return (
     <>
       <button
         type="button"
         onClick={() => setAbierto(true)}
-        title={compacto
-          ? `Puesto de comando · ${mando.aCargo ? `a cargo: ${nombreDe(mando.aCargo)}` : 'sin coordinador a cargo'}`
-          : 'Puesto de comando: quién está presente y quién está a cargo'}
-        aria-label={`Puesto de comando: ${mando.aCargo ? nombreDe(mando.aCargo) : 'sin coordinador a cargo'}`}
+        title={`Puesto de comando · ${detalle}`}
+        aria-label={`Puesto de comando: ${detalle}`}
         className={`flex items-center gap-1.5 ${compacto ? 'px-2.5' : 'px-3'} py-1.5 rounded-[var(--radius-button)] transition-all`}
         style={{
-          background: sinMando ? 'color-mix(in srgb, #d97706 calc(10% + var(--tinte-oscuro, 0%) * 0.08), transparent)' : 'var(--muted)',
-          border: `1.5px solid ${sinMando ? '#fcd34d' : 'var(--border)'}`,
-          color: sinMando ? '#92400e' : 'var(--foreground)',
+          background: sinCoordinador ? 'color-mix(in srgb, #d97706 calc(10% + var(--tinte-oscuro, 0%) * 0.08), transparent)' : 'var(--muted)',
+          border: `1.5px solid ${sinCoordinador ? '#fcd34d' : 'var(--border)'}`,
+          color: sinCoordinador ? '#92400e' : 'var(--foreground)',
           fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)', fontFamily: 'var(--font-family-primary)',
           cursor: 'pointer', maxWidth: '100%',
         }}
       >
         <RadioTower size={compacto ? 15 : 13} style={{ flexShrink: 0 }} />
-        {/* Sólo el nombre de quien está a cargo; el resto de los presentes, al abrirlo. */}
-        {!compacto && <span className="truncate">{mando.aCargo ? nombreDe(mando.aCargo) : 'Sin coordinador a cargo'}</span>}
+        {/* El Coordinador de turno; el resto, al abrirlo. */}
+        {!compacto && <span className="truncate">{texto}</span>}
       </button>
 
       {abierto && (
-        <PuestoComandoModal operativoId={operativoId} mando={mando} soloLectura={soloLectura}
+        <PuestoComandoModal operativoId={operativoId} mando={mando} soloLectura={soloLectura} cerrado={cerrado}
           onCambio={setMando} onClose={() => setAbierto(false)} />
       )}
     </>
@@ -91,61 +105,61 @@ export default function PuestoComando({ operativoId, soloLectura, compacto = fal
 
 /* ── Detalle del puesto de comando ─────────────────────────────────────── */
 
-function PuestoComandoModal({ operativoId, mando, soloLectura, onCambio, onClose }: {
+function PuestoComandoModal({ operativoId, mando, soloLectura, cerrado, onCambio, onClose }: {
   operativoId: string;
   mando: MandoOperativoApi;
   soloLectura: boolean;
+  cerrado: boolean;
   onCambio: (m: MandoOperativoApi) => void;
   onClose: () => void;
 }) {
   const { usuario } = useApp();
   const yoId = usuario?.id ?? '';
-  const soyAdmin = usuario?.rol === 'administrador';
-  const yoPresente = mando.presentes.find(p => p.usuarioId === yoId);
-  const yoACargo = mando.aCargo?.usuarioId === yoId;
 
   const [ocupado, setOcupado] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  /** Ubicuidad: el coordinador está en otro operativo; se pide confirmar el traslado. */
-  const [traslado, setTraslado] = useState<{ usuarioId?: string; mensaje: string } | null>(null);
-  /** Retiro desplegado justo debajo de la fila de ese coordinador. */
-  const [retirando, setRetirando] = useState<PresenciaMandoApi | null>(null);
+  /** Ubicuidad: la persona está de turno en otro operativo; se pide confirmar el traslado. */
+  const [traslado, setTraslado] = useState<{ usuarioId: string; puesto: PuestoMando; mensaje: string } | null>(null);
+  /** Egreso desplegado justo debajo de la fila de esa persona. */
+  const [egresando, setEgresando] = useState<PresenciaMandoApi | null>(null);
   const [motivoOpcion, setMotivoOpcion] = useState('');
   const [motivoOtro, setMotivoOtro] = useState('');
-  const [sucesorId, setSucesorId] = useState('');
-  /** Selector "Registrar ingreso de un coordinador" desplegado. */
+  /** Formulario "Registrar ingreso" desplegado: primero el puesto, después la persona. */
   const [ingresando, setIngresando] = useState(false);
-  const [coordinadores, setCoordinadores] = useState<UsuarioApi[] | null>(null);
+  const [puestoElegido, setPuestoElegido] = useState<PuestoMando | ''>('');
   const [elegido, setElegido] = useState('');
+  const [usuarios, setUsuarios] = useState<UsuarioApi[] | null>(null);
   const [verHistorial, setVerHistorial] = useState(false);
 
-  // Los coordinadores que se pueden registrar: activos, que no estén ya presentes acá.
+  // Los usuarios activos que pueden ocupar algún puesto (rol Jefe de operativo o Coordinador).
   useEffect(() => {
     if (soloLectura) return;
     usuariosApi.listar()
-      .then(({ usuarios }) => setCoordinadores(usuarios.filter(u =>
-        u.rol.toLowerCase() === 'coordinador' && u.estado.toUpperCase() === 'ACTIVO')))
-      .catch(() => setCoordinadores([]));
+      .then(({ usuarios: lista }) => setUsuarios(lista.filter(u =>
+        ['jefe_operativo', 'coordinador'].includes(u.rol.toLowerCase()) && u.estado.toUpperCase() === 'ACTIVO')))
+      .catch(() => setUsuarios([]));
   }, [soloLectura]);
-  const registrables = (coordinadores ?? []).filter(u =>
-    u.id !== yoId && !mando.presentes.some(p => p.usuarioId === u.id));
 
-  const ejecutar = async (fn: () => Promise<{ mando: MandoOperativoApi }>, usuarioIdIngreso?: string) => {
+  // Para el puesto elegido: los usuarios con el rol que exige y que no estén ya de turno acá.
+  const rolDelPuesto = PUESTOS.find(p => p.value === puestoElegido)?.rol;
+  const registrables = (usuarios ?? []).filter(u =>
+    u.rol.toLowerCase() === rolDelPuesto && !mando.presentes.some(p => p.usuarioId === u.id));
+
+  const limpiar = () => {
+    setEgresando(null); setIngresando(false); setTraslado(null);
+    setMotivoOpcion(''); setMotivoOtro(''); setPuestoElegido(''); setElegido('');
+  };
+
+  const ejecutar = async (fn: () => Promise<{ mando: MandoOperativoApi }>, ingreso?: { usuarioId: string; puesto: PuestoMando }) => {
     setOcupado(true);
     setError(null);
     try {
       const r = await fn();
       onCambio(r.mando);
-      setRetirando(null);
-      setIngresando(false);
-      setTraslado(null);
-      setMotivoOpcion('');
-      setMotivoOtro('');
-      setSucesorId('');
-      setElegido('');
+      limpiar();
     } catch (err) {
-      if (err instanceof ApiError && err.motivo === 'presente_en_otro_operativo') {
-        setTraslado({ usuarioId: usuarioIdIngreso, mensaje: err.message });
+      if (ingreso && err instanceof ApiError && err.motivo === 'presente_en_otro_operativo') {
+        setTraslado({ ...ingreso, mensaje: err.message });
       } else {
         setError(err instanceof ApiError ? err.message : 'No se pudo registrar. Intentá de nuevo.');
       }
@@ -154,99 +168,85 @@ function PuestoComandoModal({ operativoId, mando, soloLectura, onCambio, onClose
     }
   };
 
-  const ingresar = (usuarioId?: string, trasladar = false) =>
-    ejecutar(() => mandoApi.ingresar(operativoId, { usuarioId, trasladar }), usuarioId);
-  const pasarMando = (usuarioId: string) => ejecutar(() => mandoApi.asignar(operativoId, usuarioId));
+  const ingresar = (usuarioId: string, puesto: PuestoMando, trasladar = false) =>
+    ejecutar(() => mandoApi.ingresar(operativoId, {
+      usuarioId: usuarioId === yoId ? undefined : usuarioId, puesto, trasladar,
+    }), { usuarioId, puesto });
+  const cambiarPuesto = (p: PresenciaMandoApi, puesto: PuestoMando) =>
+    ejecutar(() => mandoApi.cambiarPuesto(operativoId, { usuarioId: p.usuarioId === yoId ? undefined : p.usuarioId, puesto }));
 
-  // Formulario de retiro
-  const propio = retirando?.usuarioId === yoId;
-  const otrosPresentes = retirando ? mando.presentes.filter(p => p.usuarioId !== retirando.usuarioId) : [];
-  const pideSucesor = !!retirando?.aCargo && otrosPresentes.length > 0;
+  // Formulario de egreso
   const motivoOk = !!motivoOpcion && (motivoOpcion !== 'Otros' || motivoOtro.trim().length >= 3);
-  const retiroOk = !!retirando && motivoOk && (!pideSucesor || !!sucesorId);
-  const confirmarRetiro = () => {
-    if (!retirando || !retiroOk) return;
+  const confirmarEgreso = () => {
+    if (!egresando || !motivoOk) return;
     ejecutar(() => mandoApi.retirar(operativoId, {
-      usuarioId: propio ? undefined : retirando.usuarioId,
+      usuarioId: egresando.usuarioId === yoId ? undefined : egresando.usuarioId,
       motivo: motivoOpcion === 'Otros' ? `Otros: ${motivoOtro.trim()}` : motivoOpcion,
-      sucesorId: pideSucesor ? sucesorId : undefined,
     }));
   };
-  const abrirRetiro = (p: PresenciaMandoApi) => {
-    // Un solo desplegable a la vez; tocar de nuevo el mismo Retiro lo cierra.
-    if (retirando?.id === p.id) { setRetirando(null); return; }
-    setRetirando(p); setIngresando(false); setMotivoOpcion(''); setMotivoOtro(''); setSucesorId(''); setError(null);
+  const abrirEgreso = (p: PresenciaMandoApi) => {
+    // Un solo desplegable a la vez; tocar de nuevo el mismo Egreso lo cierra.
+    if (egresando?.id === p.id) { setEgresando(null); return; }
+    limpiar(); setEgresando(p); setError(null);
   };
   const abrirIngreso = () => {
     if (ingresando) { setIngresando(false); return; }
-    setIngresando(true); setRetirando(null); setElegido(''); setTraslado(null); setError(null);
+    limpiar(); setIngresando(true); setError(null);
   };
 
-  /** El retiro, justo debajo de la fila del coordinador que se retira. */
-  const formularioRetiro = (p: PresenciaMandoApi) => (
+  /** El egreso, justo debajo de la fila de quien egresa. */
+  const formularioEgreso = (
     <div className="flex flex-col gap-2 px-3 py-3 rounded-[var(--radius-input)] mt-1" style={{ border: '1px solid var(--border)', background: 'var(--card)' }}>
       <div>
-        <Etiqueta htmlFor="retiro-motivo">Motivo del retiro</Etiqueta>
-        <select id="retiro-motivo" value={motivoOpcion} onChange={e => setMotivoOpcion(e.target.value)}
+        <Etiqueta htmlFor="egreso-motivo">Motivo del egreso</Etiqueta>
+        <select id="egreso-motivo" value={motivoOpcion} onChange={e => setMotivoOpcion(e.target.value)}
           className="w-full px-3 py-2 outline-none" style={estiloCampo}>
           <option value="">Elegí un motivo</option>
-          {MOTIVOS_RETIRO.map(m => <option key={m} value={m}>{m}</option>)}
+          {MOTIVOS_EGRESO.map(m => <option key={m} value={m}>{m}</option>)}
         </select>
       </div>
       {motivoOpcion === 'Otros' && (
         <div>
-          <Etiqueta htmlFor="retiro-otro">Contá el motivo</Etiqueta>
-          <input id="retiro-otro" value={motivoOtro} maxLength={150} onChange={e => setMotivoOtro(e.target.value)}
+          <Etiqueta htmlFor="egreso-otro">Contá el motivo</Etiqueta>
+          <input id="egreso-otro" value={motivoOtro} maxLength={150} onChange={e => setMotivoOtro(e.target.value)}
             className="w-full px-3 py-2 outline-none" style={estiloCampo} autoFocus />
         </div>
       )}
-      {pideSucesor && (
-        <div>
-          <Etiqueta htmlFor="retiro-sucesor">{propio ? 'Estás a cargo' : 'Está a cargo'}: ¿a quién le deja el mando?</Etiqueta>
-          <select id="retiro-sucesor" value={sucesorId} onChange={e => setSucesorId(e.target.value)}
-            className="w-full px-3 py-2 outline-none" style={estiloCampo}>
-            <option value="">Elegí un coordinador presente</option>
-            {otrosPresentes.map(o => <option key={o.usuarioId} value={o.usuarioId}>{nombreDe(o)}</option>)}
-          </select>
-        </div>
-      )}
-      {p.aCargo && !pideSucesor && (
-        <p style={{ fontSize: 'calc(11px * var(--escala-texto))', color: 'color-mix(in srgb, #fcd34d var(--tinte-oscuro, 0%), #92400e)' }}>No queda otro coordinador presente: el operativo va a quedar sin coordinador a cargo.</p>
-      )}
       {error && <ErrorCaja>{error}</ErrorCaja>}
       <div className="flex justify-end gap-2">
-        <BotonSecundario onClick={() => setRetirando(null)}>Cancelar</BotonSecundario>
-        <BotonPrimario onClick={confirmarRetiro} habilitado={retiroOk && !ocupado}>
-          {ocupado ? 'Registrando…' : 'Registrar retiro'}
+        <BotonSecundario onClick={() => setEgresando(null)}>Cancelar</BotonSecundario>
+        <BotonPrimario onClick={confirmarEgreso} habilitado={motivoOk && !ocupado}>
+          {ocupado ? 'Registrando…' : 'Registrar egreso'}
         </BotonPrimario>
       </div>
     </div>
   );
 
-  const avisoTraslado = (
-    traslado && (
-      <div className="flex flex-col gap-2 p-3 rounded-[var(--radius-input)]" style={{ background: 'color-mix(in srgb, #d97706 calc(10% + var(--tinte-oscuro, 0%) * 0.08), transparent)', border: '1px solid color-mix(in srgb, #d97706 32%, transparent)' }}>
-        <p style={{ fontSize: 'var(--text-label)', color: 'color-mix(in srgb, #fcd34d var(--tinte-oscuro, 0%), #92400e)', lineHeight: 1.5 }}>{traslado.mensaje}</p>
-        <div className="flex justify-end gap-2">
-          <BotonSecundario onClick={() => setTraslado(null)}>Cancelar</BotonSecundario>
-          <BotonPrimario onClick={() => ingresar(traslado.usuarioId, true)} habilitado={!ocupado}>Sí, trasladar</BotonPrimario>
-        </div>
+  const avisoTraslado = traslado && (
+    <div className="flex flex-col gap-2 p-3 rounded-[var(--radius-input)]" style={{ background: 'color-mix(in srgb, #d97706 calc(10% + var(--tinte-oscuro, 0%) * 0.08), transparent)', border: '1px solid color-mix(in srgb, #d97706 32%, transparent)' }}>
+      <p style={{ fontSize: 'var(--text-label)', color: 'color-mix(in srgb, #fcd34d var(--tinte-oscuro, 0%), #92400e)', lineHeight: 1.5 }}>{traslado.mensaje}</p>
+      <div className="flex justify-end gap-2">
+        <BotonSecundario onClick={() => setTraslado(null)}>Cancelar</BotonSecundario>
+        <BotonPrimario onClick={() => ingresar(traslado.usuarioId, traslado.puesto, true)} habilitado={!ocupado}>Sí, trasladar</BotonPrimario>
       </div>
-    )
+    </div>
   );
 
-  // Quién puede dejar a cargo a quién (el backend lo vuelve a validar).
-  const puedeDesignar = (p: PresenciaMandoApi) =>
-    !soloLectura && !p.aCargo && (!mando.aCargo || yoACargo || soyAdmin);
+  const botonChico = (activo = false) => ({
+    fontSize: 'calc(11px * var(--escala-texto))', border: '1px solid var(--border)',
+    background: activo ? 'var(--muted)' : 'var(--card)', color: 'var(--foreground)', cursor: 'pointer',
+  });
+
+  const sinCoordinador = !cerrado && !mando.presentes.some(p => p.puesto === 'COORDINADOR');
 
   return (
-    <Overlay onClose={onClose} ancho={520}>
+    <Overlay onClose={onClose} ancho={540}>
       <div className="flex items-center justify-between px-5 py-4 flex-shrink-0" style={{ borderBottom: '1px solid var(--border)' }}>
         <div className="flex items-center gap-3 min-w-0">
           <IconBox bg="color-mix(in srgb, var(--primary) 10%, transparent)"><RadioTower size={16} style={{ color: 'var(--primary)' }} /></IconBox>
           <div className="min-w-0">
             <Titulo>Puesto de comando</Titulo>
-            <Texto>Coordinadores presentes en el operativo y quién está a cargo.</Texto>
+            <Texto>Quién está de turno y en qué puesto.</Texto>
           </div>
         </div>
         <button type="button" onClick={onClose} aria-label="Cerrar" className="p-1.5 rounded-lg"
@@ -256,123 +256,115 @@ function PuestoComandoModal({ operativoId, mando, soloLectura, onCambio, onClose
       </div>
 
       <div className="px-5 py-4 flex flex-col gap-4 overflow-y-auto" style={{ fontFamily: 'var(--font-family-primary)' }}>
-        {/* ── A cargo ── */}
-        {mando.aCargo ? (
-          <div className="flex items-start gap-3 p-3 rounded-[var(--radius-input)]" style={{ background: 'color-mix(in srgb, var(--primary) 6%, transparent)', border: '1px solid color-mix(in srgb, var(--primary) 25%, transparent)' }}>
-            <Crown size={16} style={{ color: 'var(--primary)', flexShrink: 0, marginTop: 2 }} />
-            <div className="min-w-0">
-              <p style={{ fontSize: 'var(--text-label)', color: 'var(--muted-foreground)' }}>A cargo del operativo</p>
-              <p style={{ fontSize: 'var(--text-base)', color: 'var(--foreground)', fontWeight: 'var(--font-weight-semibold)' }}>
-                {nombreDe(mando.aCargo)}{mando.aCargo.usuarioId === yoId ? ' (vos)' : ''}
-              </p>
-              <p style={{ fontSize: 'calc(11px * var(--escala-texto))', color: 'var(--muted-foreground)' }}>
-                Desde las {horaCorta(mando.aCargo.desde)} ({haceCuanto(mando.aCargo.desde)}) · lo designó {mando.aCargo.asignadoPorNombre}
-              </p>
-            </div>
-          </div>
-        ) : (
+        {(cerrado || sinCoordinador) && (
           <div className="flex items-start gap-2 p-3 rounded-[var(--radius-input)]" style={{ background: 'color-mix(in srgb, #d97706 calc(10% + var(--tinte-oscuro, 0%) * 0.08), transparent)', border: '1px solid color-mix(in srgb, #d97706 32%, transparent)', color: 'color-mix(in srgb, #fcd34d var(--tinte-oscuro, 0%), #92400e)', fontSize: 'var(--text-label)', lineHeight: 1.5 }}>
             <AlertTriangle size={15} style={{ flexShrink: 0, marginTop: 1 }} />
-            <span>
-              {soloLectura ? 'El operativo está cerrado: el puesto de comando ya no tiene a nadie.'
-                : mando.presentes.length ? 'Sin coordinador a cargo. Designá a uno de los presentes.'
-                : 'Sin coordinador a cargo: no hay nadie registrado en el puesto de comando.'}
-            </span>
+            <span>{cerrado ? 'El operativo está cerrado: el puesto de comando ya no tiene a nadie de turno.' : 'No hay ningún Coordinador de turno en el puesto de comando.'}</span>
           </div>
         )}
 
-        {/* ── Presentes ── */}
-        <div>
-          <div className="flex items-center justify-between gap-2 mb-1.5">
-            <p className="uppercase tracking-wider" style={{ fontSize: 'calc(10px * var(--escala-texto))', color: 'var(--muted-foreground)', fontWeight: 'var(--font-weight-semibold)' }}>
-              Presentes · {mando.presentes.length}
-            </p>
-            {!soloLectura && (
-              <button type="button" onClick={abrirIngreso} disabled={ocupado}
-                className="flex items-center gap-1 px-2 py-1 rounded-md shrink-0"
-                style={{ fontSize: 'calc(11px * var(--escala-texto))', border: '1px solid var(--border)', background: ingresando ? 'var(--muted)' : 'var(--card)', color: 'var(--foreground)', cursor: 'pointer', fontWeight: 'var(--font-weight-semibold)' }}>
-                <UserPlus size={11} /> Registrar ingreso
-              </button>
+        {/* ── Registrar ingreso: puesto y persona ── */}
+        {!soloLectura && (
+          <div>
+            <button type="button" onClick={abrirIngreso} disabled={ocupado}
+              className="flex items-center gap-1.5 px-3 py-2 rounded-[var(--radius-button)]"
+              style={{ ...botonChico(ingresando), fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)' }}>
+              <LogIn size={13} /> Registrar ingreso al turno
+            </button>
+            {ingresando && (
+              <div className="flex flex-col gap-2 px-3 py-3 rounded-[var(--radius-input)] mt-1.5" style={{ border: '1px solid var(--border)', background: 'var(--card)' }}>
+                <div>
+                  <Etiqueta htmlFor="ingreso-puesto">Puesto</Etiqueta>
+                  <select id="ingreso-puesto" value={puestoElegido}
+                    onChange={e => { setPuestoElegido(e.target.value as PuestoMando | ''); setElegido(''); setTraslado(null); setError(null); }}
+                    className="w-full px-3 py-2 outline-none" style={estiloCampo}>
+                    <option value="">Elegí el puesto</option>
+                    {PUESTOS.map(p => <option key={p.value} value={p.value}>{p.label}</option>)}
+                  </select>
+                  {puestoElegido && (
+                    <p className="mt-1" style={{ fontSize: 'calc(11px * var(--escala-texto))', color: 'var(--muted-foreground)' }}>
+                      {PUESTOS.find(p => p.value === puestoElegido)?.ayuda}
+                    </p>
+                  )}
+                </div>
+                {puestoElegido && (
+                  <div>
+                    <Etiqueta htmlFor="ingreso-persona">¿Quién ingresa?</Etiqueta>
+                    <div className="flex gap-2">
+                      <select id="ingreso-persona" value={elegido} onChange={e => setElegido(e.target.value)}
+                        className="flex-1 min-w-0 px-3 py-2 outline-none" style={estiloCampo} disabled={usuarios === null}>
+                        <option value="">{usuarios === null ? 'Cargando…' : registrables.length ? 'Elegí a la persona' : 'No hay nadie más para registrar en este puesto'}</option>
+                        {registrables.map(u => <option key={u.id} value={u.id}>{nombreDe(u)}{u.id === yoId ? ' (vos)' : ''}</option>)}
+                      </select>
+                      <button type="button" disabled={!elegido || ocupado} onClick={() => puestoElegido && ingresar(elegido, puestoElegido)}
+                        className="flex items-center gap-1 px-3 rounded-[var(--radius-button)] shrink-0"
+                        style={{ fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)', border: '1.5px solid var(--border)',
+                          background: 'var(--card)', color: elegido ? 'var(--foreground)' : 'var(--muted-foreground)', cursor: elegido ? 'pointer' : 'default' }}>
+                        {ocupado ? <Loader2 size={13} className="animate-spin" /> : <UserPlus size={13} />} Registrar
+                      </button>
+                    </div>
+                  </div>
+                )}
+                {avisoTraslado}
+                {error && <ErrorCaja>{error}</ErrorCaja>}
+              </div>
             )}
           </div>
-
-          {/* Selector del coordinador: se despliega al tocar el botón y se va al registrar. */}
-          {ingresando && (
-            <div className="flex flex-col gap-2 px-3 py-3 rounded-[var(--radius-input)] mb-1.5" style={{ border: '1px solid var(--border)', background: 'var(--card)' }}>
-              <Etiqueta htmlFor="ingreso-otro">¿Qué coordinador ingresa al puesto de comando?</Etiqueta>
-              <div className="flex gap-2">
-                <select id="ingreso-otro" value={elegido} onChange={e => setElegido(e.target.value)}
-                  className="flex-1 min-w-0 px-3 py-2 outline-none" style={estiloCampo} disabled={coordinadores === null}>
-                  <option value="">{coordinadores === null ? 'Cargando…' : registrables.length ? 'Elegí un coordinador' : 'No hay otros coordinadores para registrar'}</option>
-                  {registrables.map(u => <option key={u.id} value={u.id}>{nombreDe(u)}</option>)}
-                </select>
-                <button type="button" disabled={!elegido || ocupado} onClick={() => ingresar(elegido)}
-                  className="flex items-center gap-1 px-3 rounded-[var(--radius-button)] shrink-0"
-                  style={{ fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)', border: '1.5px solid var(--border)',
-                    background: 'var(--card)', color: elegido ? 'var(--foreground)' : 'var(--muted-foreground)', cursor: elegido ? 'pointer' : 'default' }}>
-                  {ocupado ? <Loader2 size={13} className="animate-spin" /> : <UserPlus size={13} />} Registrar
-                </button>
-              </div>
-              {traslado?.usuarioId && avisoTraslado}
-              {error && <ErrorCaja>{error}</ErrorCaja>}
-            </div>
-          )}
-
-          {mando.presentes.length === 0 ? (
-            <p style={{ fontSize: 'var(--text-label)', color: 'var(--muted-foreground)' }}>Nadie registrado ahora.</p>
-          ) : (
-            <div className="flex flex-col gap-1.5">
-              {mando.presentes.map(p => (
-                <div key={p.id}>
-                  <div className="flex items-center gap-2 px-3 py-2 rounded-[var(--radius-input)]" style={{ background: 'var(--muted)' }}>
-                    <div className="min-w-0 flex-1">
-                      <p className="flex items-center gap-1.5" style={{ fontSize: 'var(--text-label)', color: 'var(--foreground)', fontWeight: 'var(--font-weight-semibold)' }}>
-                        <span className="truncate">{nombreDe(p)}{p.usuarioId === yoId ? ' (vos)' : ''}</span>
-                        {p.aCargo && (
-                          <span className="px-1.5 rounded-full shrink-0" style={{ fontSize: 'calc(9.5px * var(--escala-texto))', background: 'color-mix(in srgb, var(--primary) 12%, transparent)', color: 'var(--primary)' }}>A cargo</span>
-                        )}
-                      </p>
-                      <p style={{ fontSize: 'calc(10.5px * var(--escala-texto))', color: 'var(--muted-foreground)' }}>
-                        Desde las {horaCorta(p.desde)}{p.ingresoPor !== p.usuarioId ? ` · registró el ingreso ${p.ingresoPorNombre}` : ''}
-                      </p>
-                    </div>
-                    {puedeDesignar(p) && (
-                      <button type="button" disabled={ocupado} onClick={() => pasarMando(p.usuarioId)}
-                        title={mando.aCargo ? 'Pasarle el mando' : 'Dejarlo a cargo'}
-                        className="flex items-center gap-1 px-2 py-1 rounded-md shrink-0"
-                        style={{ fontSize: 'calc(11px * var(--escala-texto))', border: '1px solid var(--border)', background: 'var(--card)', color: 'var(--foreground)', cursor: 'pointer' }}>
-                        <ArrowRightLeft size={11} />
-                        {p.usuarioId === yoId ? 'Tomar el mando' : mando.aCargo ? 'Pasarle el mando' : 'Dejar a cargo'}
-                      </button>
-                    )}
-                    {!soloLectura && (
-                      <button type="button" disabled={ocupado} onClick={() => abrirRetiro(p)}
-                        title={p.usuarioId === yoId ? 'Me retiro del puesto de comando' : 'Registrar el retiro de este coordinador'}
-                        className="flex items-center gap-1 px-2 py-1 rounded-md shrink-0"
-                        style={{ fontSize: 'calc(11px * var(--escala-texto))', border: '1px solid var(--border)', background: retirando?.id === p.id ? 'var(--muted)' : 'var(--card)', color: 'var(--muted-foreground)', cursor: 'pointer' }}>
-                        <LogOut size={11} /> Retiro
-                      </button>
-                    )}
-                  </div>
-                  {retirando?.id === p.id && formularioRetiro(p)}
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
-
-        {/* Sin ningún desplegable abierto, el traslado o el error se muestran acá. */}
-        {!retirando && !ingresando && avisoTraslado}
-        {!retirando && !ingresando && error && <ErrorCaja>{error}</ErrorCaja>}
-
-        {/* Un coordinador que todavía no está presente puede registrarse él mismo (el administrador no figura como presente). */}
-        {!soloLectura && !soyAdmin && !yoPresente && (
-          <BotonPrimario onClick={() => ingresar()} habilitado={!ocupado}>
-            <span className="inline-flex items-center gap-1.5">
-              {ocupado ? <Loader2 size={13} className="animate-spin" /> : <LogIn size={13} />} Estoy en el puesto de comando
-            </span>
-          </BotonPrimario>
         )}
+
+        {/* ── De turno, por puesto ── */}
+        {PUESTOS.map(puesto => {
+          const deTurno = mando.presentes.filter(p => p.puesto === puesto.value);
+          return (
+            <div key={puesto.value}>
+              <p className="uppercase tracking-wider mb-1.5" style={{ fontSize: 'calc(10px * var(--escala-texto))', color: 'var(--muted-foreground)', fontWeight: 'var(--font-weight-semibold)' }}>
+                {puesto.label} · {deTurno.length}
+              </p>
+              {deTurno.length === 0 ? (
+                <p style={{ fontSize: 'var(--text-label)', color: 'var(--muted-foreground)' }}>Nadie de turno.</p>
+              ) : (
+                <div className="flex flex-col gap-1.5">
+                  {deTurno.map(p => {
+                    const otro = OTRO_PUESTO[p.puesto];
+                    return (
+                      <div key={p.id}>
+                        <div className="flex items-center gap-2 px-3 py-2 rounded-[var(--radius-input)]" style={{ background: 'var(--muted)' }}>
+                          <div className="min-w-0 flex-1">
+                            <p className="truncate" style={{ fontSize: 'var(--text-label)', color: 'var(--foreground)', fontWeight: 'var(--font-weight-semibold)' }}>
+                              {nombreDe(p)}{p.usuarioId === yoId ? ' (vos)' : ''}
+                            </p>
+                            <p style={{ fontSize: 'calc(10.5px * var(--escala-texto))', color: 'var(--muted-foreground)' }}>
+                              Desde las {horaCorta(p.desde)} ({haceCuanto(p.desde)}){p.ingresoPor !== p.usuarioId ? ` · registró ${p.ingresoPorNombre}` : ''}
+                            </p>
+                          </div>
+                          {!soloLectura && otro && (
+                            <button type="button" disabled={ocupado} onClick={() => cambiarPuesto(p, otro)}
+                              title={`Pasarlo al puesto ${ETIQUETA_PUESTO[otro]}`}
+                              className="flex items-center gap-1 px-2 py-1 rounded-md shrink-0" style={botonChico()}>
+                              <ArrowRightLeft size={11} /> {ETIQUETA_PUESTO[otro]}
+                            </button>
+                          )}
+                          {!soloLectura && (
+                            <button type="button" disabled={ocupado} onClick={() => abrirEgreso(p)}
+                              title="Registrar el egreso del turno"
+                              className="flex items-center gap-1 px-2 py-1 rounded-md shrink-0"
+                              style={{ ...botonChico(egresando?.id === p.id), color: 'var(--muted-foreground)' }}>
+                              <LogOut size={11} /> Egreso
+                            </button>
+                          )}
+                        </div>
+                        {egresando?.id === p.id && formularioEgreso}
+                      </div>
+                    );
+                  })}
+                </div>
+              )}
+            </div>
+          );
+        })}
+
+        {/* Sin ningún desplegable abierto, el error se muestra acá (p. ej. al cambiar de puesto). */}
+        {!egresando && !ingresando && error && <ErrorCaja>{error}</ErrorCaja>}
 
         {/* ── Historial ── */}
         <div className="pt-3" style={{ borderTop: '1px solid var(--border)' }}>
@@ -393,9 +385,9 @@ function PuestoComandoModal({ operativoId, mando, soloLectura, onCambio, onClose
 interface EventoPuesto {
   clave: string;
   t: string;
-  /** Desempate entre hechos del mismo instante: primero el retiro, al final quién queda a cargo. */
+  /** Desempate entre hechos del mismo instante: primero el egreso, después el ingreso. */
   orden: number;
-  tipo: 'ingreso' | 'retiro' | 'a_cargo' | 'sin_mando';
+  tipo: 'ingreso' | 'egreso' | 'cambio';
   titulo: string;
   detalle?: string;
   registro?: string;
@@ -404,44 +396,37 @@ interface EventoPuesto {
 const MISMO_INSTANTE_MS = 1000;
 const mismoInstante = (a: string, b: string) => Math.abs(+new Date(a) - +new Date(b)) < MISMO_INSTANTE_MS;
 
-/** Presencias y períodos de mando → una sola línea de tiempo, como la de los grupos. */
+/** Turnos → una sola línea de tiempo, como la de los grupos. Un cambio de puesto (egreso + ingreso a la misma hora) va como un solo hecho. */
 function armarEventos(mando: MandoOperativoApi): EventoPuesto[] {
   const eventos: EventoPuesto[] = [];
-  for (const p of mando.historialPresencias) {
-    eventos.push({
-      clave: `i-${p.id}`, t: p.desde, orden: 2, tipo: 'ingreso',
-      titulo: `${nombreDe(p)} ingresó al puesto de comando`, registro: p.ingresoPorNombre,
-    });
-    if (p.hasta) {
+  const turnos = mando.historialPresencias;
+  for (const p of turnos) {
+    const anterior = turnos.find(x => x.id !== p.id && x.usuarioId === p.usuarioId && x.hasta && mismoInstante(x.hasta, p.desde));
+    if (anterior) {
       eventos.push({
-        clave: `r-${p.id}`, t: p.hasta, orden: 0, tipo: 'retiro',
-        titulo: `${nombreDe(p)} se retiró del puesto de comando`, detalle: p.motivo ?? undefined,
-        registro: p.egresoPorNombre ?? undefined,
+        clave: `c-${p.id}`, t: p.desde, orden: 1, tipo: 'cambio',
+        titulo: `${nombreDe(p)} pasó de ${ETIQUETA_PUESTO[anterior.puesto]} a ${ETIQUETA_PUESTO[p.puesto]}`,
+        registro: p.ingresoPorNombre,
+      });
+    } else {
+      eventos.push({
+        clave: `i-${p.id}`, t: p.desde, orden: 1, tipo: 'ingreso',
+        titulo: `${nombreDe(p)} ingresó como ${ETIQUETA_PUESTO[p.puesto]}`, registro: p.ingresoPorNombre,
       });
     }
-  }
-  for (const m of mando.historialMando) {
-    const anterior = mando.historialMando.find(x => x.hasta && x.usuarioId !== m.usuarioId && mismoInstante(x.hasta, m.desde));
-    const alLlegar = mando.historialPresencias.some(p => p.usuarioId === m.usuarioId && mismoInstante(p.desde, m.desde));
-    eventos.push({
-      clave: `a-${m.id}`, t: m.desde, orden: 3, tipo: 'a_cargo',
-      titulo: `${nombreDe(m)} quedó a cargo del operativo`,
-      detalle: anterior ? `Relevó a ${nombreDe(anterior)}` : alLlegar ? 'Quedó a cargo al llegar' : undefined,
-      registro: m.asignadoPorNombre,
-    });
-    if (m.hasta && !mando.historialMando.some(x => x.id !== m.id && mismoInstante(x.desde, m.hasta!))) {
+    const siguiente = p.hasta && turnos.some(x => x.id !== p.id && x.usuarioId === p.usuarioId && mismoInstante(p.hasta!, x.desde));
+    if (p.hasta && !siguiente) {
       eventos.push({
-        clave: `s-${m.id}`, t: m.hasta, orden: 1, tipo: 'sin_mando',
-        titulo: 'El operativo quedó sin coordinador a cargo', detalle: m.motivo ?? undefined,
+        clave: `e-${p.id}`, t: p.hasta, orden: 0, tipo: 'egreso',
+        titulo: `${nombreDe(p)} egresó del puesto ${ETIQUETA_PUESTO[p.puesto]}`, detalle: p.motivo ?? undefined,
+        registro: p.egresoPorNombre ?? undefined,
       });
     }
   }
   return eventos.sort((a, b) => +new Date(a.t) - +new Date(b.t) || a.orden - b.orden);
 }
 
-const PUNTO: Record<EventoPuesto['tipo'], string> = {
-  ingreso: '#15803d', retiro: '#6b7280', a_cargo: 'var(--primary)', sin_mando: '#d97706',
-};
+const PUNTO: Record<EventoPuesto['tipo'], string> = { ingreso: '#15803d', egreso: '#6b7280', cambio: 'var(--primary)' };
 const dia = (iso: string) => new Date(iso).toLocaleDateString('es-AR', { day: '2-digit', month: '2-digit' });
 
 function HistorialPuestoComando({ mando }: { mando: MandoOperativoApi }) {

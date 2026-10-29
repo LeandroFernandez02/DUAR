@@ -10,6 +10,8 @@
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useOutletContext } from 'react-router';
+import { useApp } from '../../context/AppContext';
+import { puedeGestionar } from '../../utils/permisos';
 import type L from 'leaflet';
 import {
   MousePointer2, Ruler, Pentagon, Circle, Square, MapPinPlus, Flag, Crosshair, House, Layers, Plus, Minus, Maximize, Minimize,
@@ -71,7 +73,10 @@ const mensaje = (err: unknown, porDefecto: string) => (err instanceof ApiError ?
 export default function Mapa() {
   const { operativo, recargarOperativo } = useOutletContext<OperativoOutletContext>();
   const opId = operativo.id;
-  const soloLectura = operativo.estado === 'finalizado' || operativo.estado === 'eliminado';
+  // El Jefe de operativo (29/10) mira el mapa sin dibujar ni modificar nada.
+  const { usuario } = useApp();
+  const operativoCerrado = operativo.estado === 'finalizado' || operativo.estado === 'eliminado';
+  const soloLectura = !puedeGestionar(usuario) || operativoCerrado;
   const requiereMotivo = operativo.estado !== 'nuevo';
 
   /* ── Datos ── */
@@ -492,7 +497,7 @@ export default function Mapa() {
         )}
         {soloLectura && (
           <div style={{ position: 'absolute', top: arriba, left: '50%', transform: 'translateX(-50%)', zIndex: 950, padding: '6px 14px', borderRadius: 'var(--radius)', background: 'rgba(0,0,0,0.72)', color: '#fff', fontSize: 'calc(12px * var(--escala-texto))' }}>
-            El operativo está {operativo.estado}: el mapa es de sólo lectura.
+            {operativoCerrado ? `El operativo está ${operativo.estado}: el mapa es de sólo lectura.` : 'Mapa de sólo lectura (Jefe de operativo).'}
           </div>
         )}
 

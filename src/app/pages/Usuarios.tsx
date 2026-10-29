@@ -1,7 +1,8 @@
 import { useState, useEffect } from 'react';
-import { Plus, Search, Edit2, Trash2, X, Shield, ShieldCheck, UserCheck, Footprints, AlertCircle, MailCheck } from 'lucide-react';
+import { Plus, Search, Edit2, Trash2, X, Shield, ShieldCheck, UserCheck, Footprints, AlertCircle, MailCheck, Eye } from 'lucide-react';
 import { toast } from 'sonner';
 import { useApp } from '../context/AppContext';
+import { puedeGestionar } from '../utils/permisos';
 import { Usuario, Rol, EstadoUsuario, catInstituciones, catEspecialidades, catAlergias, dotacionesDe, institucionLabel, especialidadNombrePorId } from '../data/mockData';
 import { usuariosApi, ApiError, UsuarioApi } from '../services/api';
 import StatusBadge from '../components/shared/StatusBadge';
@@ -54,13 +55,14 @@ function mapearUsuario(u: UsuarioApi): Usuario {
 
 type ModalType = 'create' | 'edit' | 'delete' | null;
 
-/** Rol con su ícono y colores (diseño CALÍVAR): administrador turquesa, coordinador azul, agente gris. */
+/** Rol con su ícono y colores (diseño CALÍVAR): administrador turquesa, coordinador azul, jefe de operativo violeta, agente gris. */
 const ROL_INFO: Record<Rol, { label: string; icono: typeof Shield; bg: string; color: string }> = {
   administrador: { label: 'Administrador', icono: Shield, bg: 'color-mix(in srgb, var(--primary) 10%, transparent)', color: 'var(--primary)' },
   coordinador: { label: 'Coordinador', icono: UserCheck, bg: 'color-mix(in srgb, rgba(37,99,235,0.18) var(--tinte-oscuro, 0%), #dbeafe)', color: 'color-mix(in srgb, #93c5fd var(--tinte-oscuro, 0%), #1d4ed8)' },
+  jefe_operativo: { label: 'Jefe de operativo', icono: Eye, bg: 'color-mix(in srgb, rgba(124,58,237,0.2) var(--tinte-oscuro, 0%), #ede9fe)', color: 'color-mix(in srgb, #c4b5fd var(--tinte-oscuro, 0%), #6d28d9)' },
   agente: { label: 'Agente', icono: Footprints, bg: 'var(--muted)', color: 'var(--muted-foreground)' },
 };
-const ROLES_FILTRO: Rol[] = ['administrador', 'coordinador', 'agente'];
+const ROLES_FILTRO: Rol[] = ['administrador', 'coordinador', 'jefe_operativo', 'agente'];
 const ESTADOS_USUARIO: { value: EstadoUsuario; label: string; dot: string }[] = [
   { value: 'activo', label: 'Activo', dot: '#16a34a' },
   { value: 'pendiente', label: 'Pendiente', dot: 'var(--accent)' },
@@ -103,6 +105,8 @@ export default function Usuarios() {
   // Para el coordinador los administradores no existen (30/09): el backend ya no
   // se los lista, y acá tampoco se le ofrece el rol ni el filtro.
   const soyAdmin = usuarioActual?.rol === 'administrador';
+  // El Jefe de operativo (29/10) consulta usuarios sin crear, editar ni eliminar.
+  const gestiona = puedeGestionar(usuarioActual);
   const [modal, setModal] = useState<ModalType>(null);
   const [selected, setSelected] = useState<Usuario | null>(null);
   const [form, setForm] = useState<typeof emptyForm>(emptyForm);
@@ -177,6 +181,8 @@ export default function Usuarios() {
 
   /** Editando la propia cuenta: ni el rol ni el estado se tocan (autobloqueo, 30/09). */
   const editandomePropio = modal === 'edit' && !!selected && selected.id === usuarioActual?.id;
+  /** Un coordinador no cambia el rol de un jefe de operativo (lo asigna y lo quita un administrador). */
+  const rolSoloAdmin = !soyAdmin && modal === 'edit' && selected?.rol === 'jefe_operativo';
 
   const openEdit = (u: Usuario) => {
     setSelected(u);
@@ -333,6 +339,7 @@ export default function Usuarios() {
 
   const acciones = (u: Usuario) => {
     const yo = u.id === usuarioActual?.id;
+    if (!gestiona) return <div />;
     return (
       <div className="flex items-center gap-0.5 shrink-0">
         {u.estado === 'pendiente' && (
@@ -356,9 +363,11 @@ export default function Usuarios() {
           </p>
         </div>
         {/* En mobile/tablet va a la barra superior (diseño CALÍVAR) */}
-        <AccionCabecera>
-          <Button size="lg" icon={Plus} onClick={openCreate} aria-label="Nuevo Usuario">Nuevo Usuario</Button>
-        </AccionCabecera>
+        {gestiona && (
+          <AccionCabecera>
+            <Button size="lg" icon={Plus} onClick={openCreate} aria-label="Nuevo Usuario">Nuevo Usuario</Button>
+          </AccionCabecera>
+        )}
       </div>
 
       {/* Rechazos del servidor: duplicados (CU-05 3.1), autobloqueo (CU-07 4.1),
@@ -611,13 +620,15 @@ export default function Usuarios() {
                 <select
                   value={form.rol}
                   onChange={e => setForm({ ...form, rol: e.target.value as Rol })}
-                  disabled={editandomePropio}
-                  title={editandomePropio ? 'No podés cambiar tu propio rol' : undefined}
+                  disabled={editandomePropio || rolSoloAdmin}
+                  title={editandomePropio ? 'No podés cambiar tu propio rol' : rolSoloAdmin ? 'El rol de un jefe de operativo lo cambia un administrador' : undefined}
                   className="w-full px-3 py-2 rounded-lg border outline-none"
-                  style={{ ...fieldStyle, ...(editandomePropio ? { opacity: 0.6, cursor: 'not-allowed' } : {}) }}
+                  style={{ ...fieldStyle, ...(editandomePropio || rolSoloAdmin ? { opacity: 0.6, cursor: 'not-allowed' } : {}) }}
                 >
                   <option value="agente">Agente</option>
                   <option value="coordinador">Coordinador</option>
+                  {/* Jefe de operativo y Administrador los asigna sólo un administrador (29/10). */}
+                  {(soyAdmin || form.rol === 'jefe_operativo') && <option value="jefe_operativo">Jefe de operativo</option>}
                   {(soyAdmin || form.rol === 'administrador') && <option value="administrador">Administrador</option>}
                 </select>
                 {editandomePropio && (

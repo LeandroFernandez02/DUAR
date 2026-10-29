@@ -1,4 +1,5 @@
 import { useEffect, useState, type ReactNode } from 'react';
+import { ETIQUETA_ROL } from '../../utils/permisos';
 import { Link, useLocation, useNavigate } from 'react-router';
 import {
   LayoutDashboard, ClipboardList, Users, UsersRound, UserCheck, Map,
@@ -133,7 +134,7 @@ export default function Sidebar({ onVerDatos }: { onVerDatos: () => void }) {
             {!colapsado && usuario && (
               <div className="min-w-0">
                 <p className="truncate" style={{ margin: 0, fontSize: 'var(--text-label)', fontWeight: 600, color: 'var(--sidebar-texto)' }}>{usuario.nombre} {usuario.apellido}</p>
-                <p className="capitalize" style={{ margin: 0, fontSize: 'calc(10px * var(--escala-texto))', opacity: 'var(--sidebar-dim)', color: 'var(--sidebar-texto)' }}>{usuario.rol}</p>
+                <p style={{ margin: 0, fontSize: 'calc(10px * var(--escala-texto))', opacity: 'var(--sidebar-dim)', color: 'var(--sidebar-texto)' }}>{ETIQUETA_ROL[usuario.rol] ?? usuario.rol}</p>
               </div>
             )}
           </button>
