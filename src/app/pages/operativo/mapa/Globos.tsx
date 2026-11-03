@@ -4,7 +4,7 @@
  * El Punto Cero no tiene globo: abre su panel con el historial (pedido del 27/10).
  */
 import { useState } from 'react';
-import { Route, Pentagon, Pencil, Move, Crosshair, Trash2, ImageIcon } from 'lucide-react';
+import { Route, Pentagon, Pencil, Move, Crosshair, Trash2, ImageIcon, AlertTriangle } from 'lucide-react';
 import type { MarcadorApi } from '../../../services/api';
 import { Boton, Globo, PerfilElevacion, Simbolo, SIMBOLOS, dato } from './piezas';
 import { fmtCoord, fmtDist, fmtKm, perfil } from './geo';
@@ -68,9 +68,17 @@ export function GloboMarcador({ m, soloLectura, onClose, onEditar }: { m: Marcad
           <Crosshair size={12} />A <span style={{ color: 'var(--foreground)', fontWeight: 600 }}>{fmtDist(m.distanciaPuntoCeroM)}</span> del Punto Cero
         </p>
       )}
-      <p style={{ margin: 0, fontSize: 'calc(11px * var(--escala-texto))', color: 'var(--muted-foreground)', display: 'flex', alignItems: 'center', gap: 5 }}>
+      {/* Cargado por el Líder desde el portal (03/11): fuera del polígono, en ámbar. */}
+      {m.fueraPoligonoM !== null && (
+        <p style={{ margin: 0, fontSize: 'calc(12px * var(--escala-texto))', color: '#b45309', fontWeight: 600, display: 'flex', alignItems: 'center', gap: 5 }}>
+          <AlertTriangle size={12} />Fuera del polígono · a {fmtDist(m.fueraPoligonoM)} del borde
+        </p>
+      )}
+      <p style={{ margin: 0, fontSize: 'calc(11px * var(--escala-texto))', color: 'var(--muted-foreground)', display: 'flex', alignItems: 'center', gap: 5, flexWrap: 'wrap' }}>
         {m.fotos.length > 0 && <><ImageIcon size={12} />{m.fotos.length} {m.fotos.length === 1 ? 'foto' : 'fotos'} · </>}
-        Marcado por {m.creadoPor ?? '—'} · {fechaCorta(m.creadoEn)}
+        {m.grupoNombre
+          ? <>Marcado por {m.creadoPor ?? '—'}, Líder de {m.grupoNombre} · {fechaCorta(m.ocurridoEn ?? m.creadoEn)}</>
+          : <>Marcado por {m.creadoPor ?? '—'} · {fechaCorta(m.creadoEn)}</>}
       </p>
     </Globo>
   );

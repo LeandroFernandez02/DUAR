@@ -103,6 +103,8 @@ router.delete('/:id/tracks/:trackId', requiereSesion, gestores, tracks.eliminar)
 // Módulo 5 · Marcadores: puntos de interés, hallazgos e instalaciones SCI (CU-34, CU-35, CU-38).
 router.get(   '/:id/marcadores',                            requiereSesion, consulta, marcadores.listar);
 router.post(  '/:id/marcadores',                            requiereSesion, gestores, marcadores.crear);        // CU-34
+// Aviso al coordinador de lo que cargaron los Líderes desde el portal (03/11). Antes de :marcadorId.
+router.get(   '/:id/marcadores/novedades',                  requiereSesion, consulta, marcadores.novedades);
 router.get(   '/:id/marcadores/:marcadorId',                requiereSesion, consulta, marcadores.obtener);
 router.put(   '/:id/marcadores/:marcadorId',                requiereSesion, gestores, marcadores.actualizar);   // CU-35
 router.delete('/:id/marcadores/:marcadorId',                requiereSesion, gestores, marcadores.eliminar);     // CU-38

@@ -40,6 +40,15 @@ const CAMPOS = `
   (SELECT round(ST_Distance(m.geom::geography, o.punto_cero::geography))::int
      FROM operativos o WHERE o.id = m.operativo_id) AS "distanciaPuntoCeroM",
   u.nombre || ' ' || u.apellido AS "creadoPor",
+  m.creado_por          AS "creadoPorId",
+  -- Cargado por el Líder desde el portal (032): de qué grupo, cuándo se marcó, con qué precisión
+  -- y, si quedó fuera de su polígono, a cuántos metros del borde.
+  m.grupo_id            AS "grupoId",
+  (SELECT g.nombre FROM grupos g WHERE g.id = m.grupo_id) AS "grupoNombre",
+  m.poligono_id         AS "poligonoId",
+  m.ocurrido_en         AS "ocurridoEn",
+  m.precision_m         AS "precisionM",
+  m.fuera_poligono_m    AS "fueraPoligonoM",
   m.creado_en           AS "creadoEn",
   m.actualizado_en      AS "actualizadoEn",
   COALESCE((SELECT json_agg(json_build_object('id', f.id, 'path', f.url_foto) ORDER BY f.creado_en)
@@ -180,6 +189,101 @@ export async function lugarParaFotos(operativoId, marcadorId) {
   if (!m) throw new ReglaError(404, 'marcador_no_encontrado', 'El marcador no existe en este operativo.');
   if (m.clase === 'INSTALACION') throw new ReglaError(409, 'sin_fotos', 'Las instalaciones no llevan fotos.');
   return FOTOS_MAX - m.n;
+}
+
+/* ── Cargados por el Líder de Grupo desde el portal (pedido del 03/11, migración 032) ──────── */
+
+/** El marcador que ya se cargó con ese id del celular (reenvío sin señal), o null. */
+export async function buscarPorCliente(clienteId) {
+  const { rows } = await query(`SELECT id, operativo_id AS "operativoId", creado_por AS "creadoPor" FROM marcadores WHERE cliente_id = $1`, [clienteId]);
+  return rows[0] ?? null;
+}
+
+/**
+ * ¿El grupo tenía ese polígono asignado a esa hora? Lo que se marcó sin señal llega después:
+ * vale si el polígono era del grupo cuando se marcó, aunque ya haya salido de él.
+ */
+export async function grupoTeniaPoligono(grupoId, poligonoId, t) {
+  const { rows } = await query(
+    `SELECT 1 FROM poligono_grupos
+      WHERE grupo_id = $1 AND poligono_id = $2
+        AND asignado_en <= $3 AND (salida_en IS NULL OR salida_en >= $3)
+      LIMIT 1`,
+    [grupoId, poligonoId, t]
+  );
+  return rows.length > 0;
+}
+
+/**
+ * Lo marca el Líder: queda con su grupo, su polígono, la hora del celular y, si cae fuera
+ * del polígono, los metros hasta el borde (lo calcula la base, no el celular).
+ */
+export async function crearDelLider(operativoId, datos, usuarioId) {
+  const { rows } = await query(
+    `WITH pt AS (SELECT ST_SetSRID(ST_MakePoint($6, $7), 4326) AS g),
+          pol AS (SELECT geom FROM poligonos WHERE id = $10 AND operativo_id = $1 AND eliminado_en IS NULL)
+     INSERT INTO marcadores (operativo_id, clase, nombre, descripcion, detalle, geom, creado_por,
+                             grupo_id, poligono_id, ocurrido_en, precision_m, fuera_poligono_m, cliente_id)
+     SELECT $1, $2, $3, $4, $5, pt.g, $8, $9, $10, $11, $12,
+            CASE WHEN ST_Covers(pol.geom, pt.g) THEN NULL
+                 ELSE round(ST_Distance(ST_Boundary(pol.geom)::geography, pt.g::geography))::int END,
+            $13
+       FROM pt, pol
+     RETURNING id`,
+    [operativoId, datos.clase, datos.nombre, datos.descripcion ?? null, datos.detalle ?? null, datos.lng, datos.lat,
+     usuarioId, datos.grupoId, datos.poligonoId, datos.ocurridoEn, datos.precisionM ?? null, datos.clienteId]
+  );
+  if (!rows[0]) throw new ReglaError(409, 'poligono_no_disponible', 'El polígono de tu grupo ya no existe en el operativo.');
+  return detalle(operativoId, rows[0].id);
+}
+
+/**
+ * «Mi sector» del Líder: los puntos de interés y hallazgos que están dentro del polígono, o que
+ * se cargaron para él aunque hayan quedado afuera. Cargados por cualquiera.
+ */
+export async function listarDelPoligono(operativoId, poligonoId) {
+  const { rows } = await query(
+    `SELECT ${CAMPOS} ${DESDE}
+      WHERE m.operativo_id = $1 AND m.eliminado_en IS NULL AND m.clase IN ('POI', 'HALLAZGO')
+        AND (m.poligono_id = $2
+             OR EXISTS (SELECT 1 FROM poligonos p WHERE p.id = $2 AND p.eliminado_en IS NULL AND ST_Covers(p.geom, m.geom)))
+      ORDER BY COALESCE(m.ocurrido_en, m.creado_en) DESC`,
+    [operativoId, poligonoId]
+  );
+  return Promise.all(rows.map(conUrls));
+}
+
+/** ¿Ya se subió la foto con ese id del celular? */
+export async function fotoYaSubida(clienteId) {
+  const { rows } = await query(`SELECT 1 FROM marcador_fotos WHERE cliente_id = $1`, [clienteId]);
+  return rows.length > 0;
+}
+
+/** Una foto del Líder, con el id del celular (reenviarla no la duplica). */
+export async function agregarFotoDelLider(marcadorId, path, usuarioId, clienteId) {
+  await query(
+    `INSERT INTO marcador_fotos (marcador_id, url_foto, subido_por, cliente_id) VALUES ($1, $2, $3, $4)
+     ON CONFLICT (cliente_id) WHERE cliente_id IS NOT NULL DO NOTHING`,
+    [marcadorId, path, usuarioId, clienteId]
+  );
+}
+
+/**
+ * Aviso al coordinador: lo que cargaron los Líderes después de `desde` (sin fotos ni URLs:
+ * se consulta seguido y tiene que ser liviano).
+ */
+export async function novedadesDeLideres(operativoId, desde) {
+  const { rows } = await query(
+    `SELECT m.id, m.clase, m.nombre, m.creado_en AS "creadoEn", m.fuera_poligono_m AS "fueraPoligonoM",
+            g.nombre AS "grupoNombre", u.nombre || ' ' || u.apellido AS "creadoPor"
+       FROM marcadores m
+       JOIN grupos g ON g.id = m.grupo_id
+       LEFT JOIN usuarios u ON u.id = m.creado_por
+      WHERE m.operativo_id = $1 AND m.eliminado_en IS NULL AND m.creado_en > $2
+      ORDER BY m.creado_en`,
+    [operativoId, desde]
+  );
+  return rows;
 }
 
 export async function agregarFotos(marcadorId, paths, usuarioId) {

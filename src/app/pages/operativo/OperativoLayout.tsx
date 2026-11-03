@@ -1,7 +1,8 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Outlet, useParams, Navigate, useNavigate, useLocation } from 'react-router';
 import { Operativo } from '../../data/mockData';
-import { operativosApi, ApiError } from '../../services/api';
+import { toast } from 'sonner';
+import { operativosApi, marcadoresApi, ApiError } from '../../services/api';
 import { mapearOperativo } from '../../utils/mapearOperativo';
 import OperativoHeader from './OperativoHeader';
 import { CabeceraMovil } from '../../components/layout/Movil';
@@ -16,6 +17,45 @@ export interface OperativoOutletContext {
   soloConsulta: boolean;
 }
 
+/** Lo dispara el aviso de abajo: el mapa lo escucha para traer enseguida lo que cargó un Líder. */
+export const EVENTO_NOVEDAD_LIDER = 'calivar:novedad-lider';
+const NOVEDADES_MS = 20_000;
+
+/**
+ * Aviso al coordinador (pedido del 03/11): lo que los Líderes de Grupo cargan desde el portal
+ * (puntos de interés y hallazgos) aparece como aviso en cualquier pantalla del operativo, con
+ * «Ver en el mapa». Se consulta liviano (sin fotos) cada 20 s, desde que se abrió el operativo.
+ */
+function useAvisoLideres(operativoId: string | undefined) {
+  const navigate = useNavigate();
+  useEffect(() => {
+    if (!operativoId) return;
+    let desde = new Date().toISOString();
+    let vigente = true;
+    const consultar = async () => {
+      if (document.visibilityState !== 'visible') return;
+      try {
+        const r = await marcadoresApi.novedades(operativoId, desde);
+        if (!vigente) return;
+        desde = r.hasta;
+        if (!r.novedades.length) return;
+        window.dispatchEvent(new Event(EVENTO_NOVEDAD_LIDER));
+        for (const n of r.novedades) {
+          const que = n.clase === 'HALLAZGO' ? 'Nuevo hallazgo' : 'Nuevo punto de interés';
+          const fuera = n.fueraPoligonoM !== null ? ' · fuera del polígono' : '';
+          (n.clase === 'HALLAZGO' ? toast.warning : toast.info)(`${que}: ${n.nombre}`, {
+            description: `Cargado por el Líder del grupo ${n.grupoNombre}${n.creadoPor ? ` (${n.creadoPor})` : ''}${fuera}.`,
+            duration: 12_000,
+            action: { label: 'Ver en el mapa', onClick: () => navigate(`/operativo/${operativoId}/mapa`) },
+          });
+        }
+      } catch { /* sin conexión: se reintenta en la próxima vuelta */ }
+    };
+    const id = setInterval(consultar, NOVEDADES_MS);
+    return () => { vigente = false; clearInterval(id); };
+  }, [operativoId, navigate]);
+}
+
 export default function OperativoLayout() {
   const { id } = useParams<{ id: string }>();
   const [operativo, setOperativo] = useState<Operativo | null>(null);
@@ -26,6 +66,7 @@ export default function OperativoLayout() {
   const { usuario } = useApp();
   const soloConsulta = usuario?.rol === ROL_JEFE;
   const { pathname } = useLocation();
+  useAvisoLideres(id);
 
   const cargar = useCallback(async () => {
     if (!id) return;

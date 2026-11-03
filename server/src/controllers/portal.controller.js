@@ -140,6 +140,7 @@ export async function miEstado(req, res, next) {
 /**
  * GET /api/mi-sector — «Mi sector» del portal (diseño CALÍVAR, 23/10): el polígono asignado a MI grupo,
  * con sus vértices para ubicarse. Sólo lectura y sólo el de mi grupo; sin grupo o sin polígono → null.
+ * `soyLider` habilita, en el portal, marcar puntos de interés y hallazgos (ver marcador.controller.js).
  */
 export async function miSector(req, res, next) {
   try {
@@ -147,7 +148,8 @@ export async function miSector(req, res, next) {
     if (!alta?.grupoId) return res.json({ sector: null });
     const grupo = await Grupo.grupoDelAgente(alta);
     if (!grupo?.poligonoId) return res.json({ sector: null });
-    res.json({ sector: await Poligono.paraAgente(alta.operativoId, grupo.poligonoId) });
+    // soyLider: sólo el Líder marca puntos de interés y hallazgos en el sector (03/11).
+    res.json({ sector: await Poligono.paraAgente(alta.operativoId, grupo.poligonoId), soyLider: grupo.soyLider });
   } catch (err) { next(err); }
 }
 

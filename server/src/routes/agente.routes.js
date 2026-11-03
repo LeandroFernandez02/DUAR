@@ -7,8 +7,9 @@ import { Router } from 'express';
 import * as registro from '../controllers/registro.controller.js';
 import * as portal from '../controllers/portal.controller.js';
 import * as tracks from '../controllers/track.controller.js';
+import * as marcadores from '../controllers/marcador.controller.js';
 import { requiereSesion } from '../middleware/auth.middleware.js';
-import { subirGpxMiddleware } from '../middleware/upload.middleware.js';
+import { subirGpxMiddleware, subirFotosMiddleware } from '../middleware/upload.middleware.js';
 
 const router = Router();
 
@@ -25,6 +26,13 @@ router.put( '/mi-estado',        requiereSesion, portal.miEstado);
 // Portal CALÍVAR (23/10): «Mi sector» y «Objetivo buscado», sólo lectura y sólo del operativo propio.
 router.get( '/mi-sector',        requiereSesion, portal.miSector);
 router.get( '/mi-objetivo',      requiereSesion, portal.miObjetivo);
+
+// El Líder de Grupo marca puntos de interés y hallazgos en su polígono, con fotos (03/11). Sólo el
+// Líder: lo verifica el controlador contra grupos.lider_id. Las fotos van de a una (sin señal se
+// reenvían y no se duplican).
+router.get( '/mi-sector/marcadores',                   requiereSesion, marcadores.listarDelLider);
+router.post('/mi-sector/marcadores',                   requiereSesion, marcadores.crearDelLider);
+router.post('/mi-sector/marcadores/:marcadorId/fotos', requiereSesion, subirFotosMiddleware, marcadores.subirFotoDelLider);
 
 // Módulo 5 · el agente carga el GPX de su propio recorrido (CU-31, flujo principal).
 router.get( '/mis-tracks',          requiereSesion, tracks.misTracksListar);

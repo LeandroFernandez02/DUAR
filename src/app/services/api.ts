@@ -845,10 +845,46 @@ export interface MarcadorApi {
   /** Metros en línea recta hasta el Punto Cero vigente (lo calcula la API al leer). */
   distanciaPuntoCeroM: number | null;
   creadoPor: string | null;
+  creadoPorId: string | null;
+  /** Cargado por el Líder desde el portal (03/11): su grupo y su polígono; null si lo cargó un coordinador. */
+  grupoId: string | null;
+  grupoNombre: string | null;
+  poligonoId: string | null;
+  /** Hora en que el Líder lo marcó en el celular (creadoEn es la de carga). */
+  ocurridoEn: string | null;
+  /** Precisión del GPS del celular, en metros. */
+  precisionM: number | null;
+  /** Si quedó fuera de su polígono, metros hasta el borde; null = dentro. */
+  fueraPoligonoM: number | null;
   creadoEn: string;
   actualizadoEn: string;
   /** URL firmada (bucket privado; vence). */
   fotos: { id: string; url: string | null }[];
+}
+
+/** Lo que cargaron los Líderes desde el portal: el aviso al coordinador (liviano, sin fotos). */
+export interface NovedadMarcadorApi {
+  id: string;
+  clase: 'POI' | 'HALLAZGO';
+  nombre: string;
+  creadoEn: string;
+  fueraPoligonoM: number | null;
+  grupoNombre: string;
+  creadoPor: string | null;
+}
+
+/** Un punto que marca el Líder (el celular le pone el id: reenviarlo no lo duplica). */
+export interface MarcadorLiderNuevo {
+  clienteId: string;
+  poligonoId: string;
+  clase: 'POI' | 'HALLAZGO';
+  nombre: string;
+  descripcion?: string | null;
+  detalle?: string | null;
+  lat: number;
+  lng: number;
+  precisionM?: number | null;
+  ocurridoEn: string;
 }
 
 export interface DatosMarcador {
@@ -887,6 +923,9 @@ export const marcadoresApi = {
   /** Las fotos de un hallazgo no se quitan. */
   eliminarFoto: (operativoId: string, marcadorId: string, fotoId: string) =>
     api.del<void>(`/operativos/${operativoId}/marcadores/${marcadorId}/fotos/${fotoId}`),
+  /** Aviso al coordinador: lo que cargaron los Líderes desde `desde`. */
+  novedades: (operativoId: string, desde: string) =>
+    api.get<{ novedades: NovedadMarcadorApi[]; hasta: string }>(`/operativos/${operativoId}/marcadores/novedades?desde=${encodeURIComponent(desde)}`),
 };
 
 export interface MovimientoPuntoCeroApi {
@@ -1004,8 +1043,20 @@ export const portalApi = {
   /** CU-31: queda «recorrido de» y «cargado por» uno mismo. */
   cargarMiTrack: (archivo: File, notas?: string) =>
     requestFormData<{ track: TrackApi }>('/mis-tracks', formularioGpx(archivo, { notas })),
-  /** «Mi sector»: el polígono de mi grupo (null sin grupo o sin polígono). */
-  miSector: () => api.get<{ sector: MiSectorApi | null }>('/mi-sector'),
+  /** «Mi sector»: el polígono de mi grupo (null sin grupo o sin polígono). `soyLider` habilita marcar. */
+  miSector: () => api.get<{ sector: MiSectorApi | null; soyLider?: boolean }>('/mi-sector'),
+  /** Sólo el Líder: los puntos de interés y hallazgos de su polígono (03/11). */
+  misMarcadores: () => api.get<{ marcadores: MarcadorApi[] }>('/mi-sector/marcadores'),
+  /** Sólo el Líder: marca un punto de interés o un hallazgo (reenviar no duplica). */
+  crearMiMarcador: (datos: MarcadorLiderNuevo) =>
+    api.post<{ marcador: MarcadorApi; repetido?: boolean }>('/mi-sector/marcadores', datos),
+  /** Una foto por vez, con su id (reenviarla no la duplica). */
+  subirFotoMiMarcador: (marcadorId: string, foto: Blob, nombre: string, clienteId: string) => {
+    const f = new FormData();
+    f.append('clienteId', clienteId);
+    f.append('fotos', foto, nombre);
+    return requestFormData<{ marcador: MarcadorApi; repetida?: boolean }>(`/mi-sector/marcadores/${marcadorId}/fotos`, f);
+  },
   /** «Objetivo buscado» del operativo en el que estoy (CU-14, sólo lectura). */
   miObjetivo: () => api.get<{ objetivo: ObjetivoApi | null }>('/mi-objetivo'),
 };

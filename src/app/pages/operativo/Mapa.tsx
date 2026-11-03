@@ -33,6 +33,7 @@ import {
   ModalCargarGpx, ModalEliminar, ModalNuevaInstalacion, ModalNuevoMarcador, ModalNuevoPoligono, ModalPuntoCero,
 } from './mapa/Modales';
 import { aPoligono, fmtDist, fmtRadio, formaArrastre, largo, type LatLng } from './mapa/geo';
+import { EVENTO_NOVEDAD_LIDER } from './OperativoLayout';
 import {
   COLOR_SIN_GRUPO, OVERLAYS_INICIALES, PALETA_RADIOS, aPoligonoVista, aTrackVista, colorDeGrupo, guardarPreferencias, leerPreferencias,
   type Preferencias,
@@ -110,7 +111,9 @@ export default function Mapa() {
   useEffect(() => { cargar(); }, [cargar]);
   useEffect(() => {
     const id = setInterval(() => { if (document.visibilityState === 'visible') cargar(); }, REFRESCO_MS);
-    return () => clearInterval(id);
+    // Un Líder cargó algo desde el portal (aviso de OperativoLayout): se trae enseguida.
+    window.addEventListener(EVENTO_NOVEDAD_LIDER, cargar);
+    return () => { clearInterval(id); window.removeEventListener(EVENTO_NOVEDAD_LIDER, cargar); };
   }, [cargar]);
 
   const poligonos = useMemo(() => poligonosApiL.map(p => aPoligonoVista(p, grupos)), [poligonosApiL, grupos]);

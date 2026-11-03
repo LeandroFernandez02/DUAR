@@ -2,6 +2,7 @@
  * CONTROLADOR · Marcadores del mapa (Módulo 5)
  *   · CU-34 Marcar Punto de Interés, Hallazgo o Instalación SCI
  *   · CU-35 Modificar (y reubicar una instalación) · CU-38 Eliminar
+ *   · El Líder de Grupo, desde el portal, en su polígono (03/11)
  *
  * Valida la forma del pedido según la clase y audita. Las reglas del hallazgo
  * (no se elimina, no cambia de clase, sus fotos no se quitan) las aplica
@@ -9,6 +10,8 @@
  */
 import * as Marcador from '../models/marcador.model.js';
 import * as Operativo from '../models/operativo.model.js';
+import * as AgenteOperativo from '../models/agenteOperativo.model.js';
+import * as Grupo from '../models/grupo.model.js';
 import * as Auditoria from '../models/auditoria.model.js';
 import * as Storage from '../services/storage.service.js';
 
@@ -211,6 +214,158 @@ export async function eliminarFoto(req, res, next) {
     await Marcador.eliminarFoto(req.params.id, req.params.marcadorId, req.params.fotoId);
     await auditar(req, Auditoria.ACCION.ELIMINAR, ENTIDAD_FOTOS, req.params.fotoId, { marcadorId: req.params.marcadorId }, null);
     res.status(204).end();
+  } catch (err) { next(err); }
+}
+
+/* ── Portal: el Líder de Grupo marca en su polígono (pedido del 03/11, migración 032) ────────────
+ * Sólo el Líder (grupos.lider_id = su alta vigente) y sólo en el polígono asignado a su grupo; el
+ * resto del grupo no carga ni ve. Sin señal, el celular guarda el punto con la hora en que se marcó
+ * y lo manda después: el id del celular (`clienteId`) hace que reenviar no duplique, y vale si el
+ * polígono era del grupo a esa hora. Fuera del polígono se guarda igual (el celular ya avisó) con
+ * los metros hasta el borde, para que el coordinador lo vea.
+ */
+const ADELANTO_MAX_MS = 5 * 60 * 1000;   // reloj del celular adelantado: tolerancia
+
+/** El Líder con polígono, o null (y la respuesta ya enviada). */
+async function liderConPoligono(req, res) {
+  const alta = await AgenteOperativo.altaActivaDe(req.usuario.id);
+  if (!alta) {
+    res.status(404).json({ error: 'No estás asignado a ningún operativo en curso.', motivo: 'sin_operativo' });
+    return null;
+  }
+  const grupo = await Grupo.grupoDelAgente(alta);
+  if (!grupo?.soyLider) {
+    res.status(403).json({ error: 'Sólo el Líder del grupo carga puntos de interés y hallazgos.', motivo: 'no_es_lider' });
+    return null;
+  }
+  return { alta, grupo };
+}
+
+/** GET /api/mi-sector/marcadores — lo que hay en el polígono de mi grupo (sólo el Líder). */
+export async function listarDelLider(req, res, next) {
+  try {
+    const ctx = await liderConPoligono(req, res);
+    if (!ctx) return;
+    if (!ctx.grupo.poligonoId) return res.json({ marcadores: [] });
+    res.json({ marcadores: await Marcador.listarDelPoligono(ctx.alta.operativoId, ctx.grupo.poligonoId) });
+  } catch (err) { next(err); }
+}
+
+/**
+ * POST /api/mi-sector/marcadores
+ * body: { clienteId, poligonoId, clase: POI|HALLAZGO, nombre, descripcion?, detalle?, lat, lng, precisionM?, ocurridoEn? }
+ */
+export async function crearDelLider(req, res, next) {
+  try {
+    const b = req.body ?? {};
+    if (!esUuid(b.clienteId)) return invalido(res, 'Falta el identificador del envío.', 'cliente_id_invalido');
+
+    // Reenvío de algo que ya llegó (se cortó la señal antes de la respuesta): se devuelve lo guardado.
+    const previo = await Marcador.buscarPorCliente(b.clienteId);
+    if (previo) {
+      if (previo.creadoPor !== req.usuario.id) return invalido(res, 'Identificador de envío repetido.', 'cliente_id_invalido');
+      return res.json({ marcador: await Marcador.detalle(previo.operativoId, previo.id), repetido: true });
+    }
+
+    if (b.clase !== 'POI' && b.clase !== 'HALLAZGO') {
+      return invalido(res, 'Elegí qué marcás: punto de interés o hallazgo.', 'clase_invalida');
+    }
+    const c = leerCoordenadas(b);
+    if (c.error || c.lat === undefined) return invalido(res, COORDENADAS_INVALIDAS, 'coordenadas_invalidas');
+    const r = leerCampos({ nombre: b.nombre, descripcion: b.descripcion, detalle: b.detalle }, b.clase);
+    if (r.error) return invalido(res, r.error, r.motivo);
+    if (!r.datos.nombre) return invalido(res, 'Ingresá un nombre.', 'nombre_requerido');
+
+    let precisionM = null;
+    if (b.precisionM !== undefined && b.precisionM !== null) {
+      const p = Number(b.precisionM);
+      if (!Number.isFinite(p) || p < 0 || p > 100000) return invalido(res, 'La precisión del GPS no es válida.', 'precision_invalida');
+      precisionM = Math.round(p);
+    }
+    const ahora = Date.now();
+    const ocurrido = b.ocurridoEn === undefined || b.ocurridoEn === null ? new Date(ahora) : new Date(b.ocurridoEn);
+    if (Number.isNaN(ocurrido.getTime()) || ocurrido.getTime() > ahora + ADELANTO_MAX_MS) {
+      return invalido(res, 'La hora en que se marcó no es válida.', 'hora_invalida');
+    }
+
+    const ctx = await liderConPoligono(req, res);
+    if (!ctx) return;
+    const { alta, grupo } = ctx;
+    const operativo = await operativoEditable(alta.operativoId, res);
+    if (!operativo) return;
+    if (ocurrido < new Date(operativo.fechaHoraInicio)) {
+      return invalido(res, 'La hora en que se marcó es anterior al inicio del operativo.', 'hora_invalida');
+    }
+
+    // El polígono: el que el grupo tiene ahora o, si se marcó sin señal, el que tenía a esa hora.
+    const poligonoId = esUuid(b.poligonoId) ? b.poligonoId : grupo.poligonoId;
+    if (!poligonoId) {
+      return res.status(409).json({ error: 'Tu grupo no tiene un polígono asignado.', motivo: 'sin_poligono' });
+    }
+    if (poligonoId !== grupo.poligonoId && !(await Marcador.grupoTeniaPoligono(grupo.id, poligonoId, ocurrido))) {
+      return res.status(409).json({ error: 'Ese polígono no era de tu grupo cuando marcaste el punto.', motivo: 'poligono_ajeno' });
+    }
+
+    const marcador = await Marcador.crearDelLider(alta.operativoId, {
+      clase: b.clase, ...r.datos, lat: c.lat, lng: c.lng, grupoId: grupo.id, poligonoId,
+      ocurridoEn: ocurrido.toISOString(), precisionM, clienteId: b.clienteId,
+    }, req.usuario.id);
+    await auditar(req, Auditoria.ACCION.CREAR, ENTIDAD, marcador.id, null, marcador);
+    res.status(201).json({ marcador });
+  } catch (err) {
+    // Dos reenvíos simultáneos del mismo punto: el segundo choca con el índice único.
+    if (err.code === '23505' && esUuid(req.body?.clienteId)) {
+      const previo = await Marcador.buscarPorCliente(req.body.clienteId).catch(() => null);
+      if (previo) return res.json({ marcador: await Marcador.detalle(previo.operativoId, previo.id), repetido: true });
+    }
+    next(err);
+  }
+}
+
+/**
+ * POST /api/mi-sector/marcadores/:marcadorId/fotos — de a una, en el campo `fotos`, con `clienteId`.
+ * Sólo a un punto que cargó uno mismo en el operativo en el que está (puede llegar después de
+ * volver a la base, por eso no se exige seguir siendo Líder ni tener el polígono).
+ */
+export async function subirFotoDelLider(req, res, next) {
+  try {
+    if (!esUuid(req.params.marcadorId)) return noEncontrado(res);
+    if (!esUuid(req.body?.clienteId)) return invalido(res, 'Falta el identificador del envío.', 'cliente_id_invalido');
+    if (!Storage.estaConfigurado()) {
+      return res.status(503).json({ error: 'El almacenamiento de fotos no está configurado en el servidor.' });
+    }
+    const alta = await AgenteOperativo.altaActivaDe(req.usuario.id);
+    if (!alta) return res.status(404).json({ error: 'No estás asignado a ningún operativo en curso.', motivo: 'sin_operativo' });
+    const marcador = await Marcador.detalle(alta.operativoId, req.params.marcadorId);
+    if (!marcador || !marcador.grupoId) return noEncontrado(res);
+    if (marcador.creadoPorId !== req.usuario.id) {
+      return res.status(403).json({ error: 'Sólo podés sumar fotos a los puntos que cargaste vos.', motivo: 'marcador_ajeno' });
+    }
+    if (await Marcador.fotoYaSubida(req.body.clienteId)) {
+      return res.json({ marcador, repetida: true });
+    }
+    const archivos = req.files ?? [];
+    if (archivos.length !== 1) return invalido(res, 'Se sube una foto por vez.', 'fotos_requeridas');
+    if (!(await operativoEditable(alta.operativoId, res))) return;
+    if ((await Marcador.lugarParaFotos(alta.operativoId, marcador.id)) < 1) {
+      return res.status(409).json({ error: `Un punto puede tener hasta ${Marcador.FOTOS_MAX} fotos.`, motivo: 'demasiadas_fotos' });
+    }
+    const [archivo] = archivos;
+    const extension = (archivo.originalname.split('.').pop() || 'jpg').toLowerCase();
+    const path = await Storage.subir(`${alta.operativoId}/marcadores/${marcador.id}`, archivo.buffer, extension, archivo.mimetype);
+    await Marcador.agregarFotoDelLider(marcador.id, path, req.usuario.id, req.body.clienteId);
+    await auditar(req, Auditoria.ACCION.CREAR, ENTIDAD_FOTOS, marcador.id, null, { cantidad: 1, paths: [path] });
+    res.status(201).json({ marcador: await Marcador.detalle(alta.operativoId, marcador.id) });
+  } catch (err) { next(err); }
+}
+
+/** GET /api/operativos/:id/marcadores/novedades?desde=ISO — aviso al coordinador de lo que cargaron los Líderes. */
+export async function novedades(req, res, next) {
+  try {
+    const desde = new Date(req.query.desde ?? '');
+    if (Number.isNaN(desde.getTime())) return invalido(res, 'Falta la hora desde la que se consulta.', 'desde_invalido');
+    if (!(await operativoEditable(req.params.id, res, { soloLectura: true }))) return;
+    res.json({ novedades: await Marcador.novedadesDeLideres(req.params.id, desde.toISOString()), hasta: new Date().toISOString() });
   } catch (err) { next(err); }
 }
 

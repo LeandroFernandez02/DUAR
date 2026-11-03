@@ -417,6 +417,23 @@ export function PanelMarcador({ m, soloLectura, onClose, onGuardar, onEliminar, 
         )}
         {hallazgo && <p style={{ margin: 0, fontSize: 'calc(11.5px * var(--escala-texto))', color: 'var(--muted-foreground)', lineHeight: 1.45 }}>Un hallazgo es evidencia: queda donde se encontró, no se elimina y sus fotos no se quitan. Sus datos sí se corrigen.</p>}
       </div>
+      {/* Cargado por el Líder desde el portal (03/11): grupo, horas, precisión y si quedó fuera del polígono. */}
+      {m.grupoNombre && (
+        <div style={{ display: 'flex', flexDirection: 'column', gap: 3, padding: '9px 11px', borderRadius: 'var(--radius-md)', background: 'var(--muted)', fontSize: 'calc(12px * var(--escala-texto))', color: 'var(--foreground)' }}>
+          <p style={rotulo}>Cargado por el Líder del grupo</p>
+          <p style={{ margin: 0, fontWeight: 600 }}>{m.creadoPor ?? '—'} · {m.grupoNombre}</p>
+          <p style={{ margin: 0, color: 'var(--muted-foreground)' }}>
+            Marcado {fechaCorta(m.ocurridoEn ?? m.creadoEn)}
+            {m.ocurridoEn && (new Date(m.creadoEn).getTime() - new Date(m.ocurridoEn).getTime()) >= 120_000 && ` · llegó ${fechaCorta(m.creadoEn)} (sin señal)`}
+            {m.precisionM !== null ? ` · GPS ± ${fmtDist(m.precisionM)}` : ' · ubicado a mano'}
+          </p>
+          {m.fueraPoligonoM !== null && (
+            <p style={{ margin: 0, display: 'flex', alignItems: 'center', gap: 5, color: '#b45309', fontWeight: 600 }}>
+              <TriangleAlert size={13} />Fuera del polígono · a {fmtDist(m.fueraPoligonoM)} del borde
+            </p>
+          )}
+        </div>
+      )}
       {m.distanciaPuntoCeroM !== null && (
         <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 11px', borderRadius: 'var(--radius-md)', background: 'var(--muted)' }}>
           <Crosshair size={15} style={{ color: 'var(--primary)', flexShrink: 0 }} />

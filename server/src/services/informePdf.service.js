@@ -309,8 +309,12 @@ export async function generarPdf(d, meta) {
               ...(h.descripcion ? [{ text: h.descripcion, margin: [0, 0, 0, 2] }] : []),
               ...(h.detalle ? [{ text: h.detalle, color: C.tenue, margin: [0, 0, 0, 3] }] : []),
               ficha([
-                ['Registrado', fechaHora(h.creadoEn)], ['Coordenadas', mono(coords(h.lat, h.lng)).text],
-                ['Polígono', h.poligono ?? 'Fuera de los polígonos'], ['Registró', h.registradoPor],
+                // Del Líder (03/11): la hora en que se marcó y la de carga, su grupo y si quedó fuera del polígono.
+                ...(h.ocurridoEn ? [['Marcado', fechaHora(h.ocurridoEn)]] : []),
+                [h.ocurridoEn ? 'Cargado' : 'Registrado', fechaHora(h.creadoEn)], ['Coordenadas', mono(coords(h.lat, h.lng)).text],
+                ...(h.precisionM != null ? [['Precisión del GPS', `± ${fmtDistancia(h.precisionM)}`]] : []),
+                ['Polígono', h.poligono ? (h.fueraPoligonoM != null ? `${h.poligono} (fuera, a ${fmtDistancia(h.fueraPoligonoM)} del borde)` : h.poligono) : 'Fuera de los polígonos'],
+                ['Registró', h.grupo ? `${h.registradoPor} (Líder de ${h.grupo})` : h.registradoPor],
                 ['Distancia al Punto Cero', h.distanciaPuntoCeroM != null ? fmtDistancia(h.distanciaPuntoCeroM) : '—'],
               ]),
             ] },

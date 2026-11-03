@@ -123,8 +123,12 @@ export async function reunirDatos(operativoId, corteEn) {
               ST_Y(m.geom) AS lat, ST_X(m.geom) AS lng, ${nombre('u')} AS "registradoPor",
               (SELECT round(ST_Distance(m.geom::geography, o.punto_cero::geography))::int
                  FROM operativos o WHERE o.id = m.operativo_id) AS "distanciaPuntoCeroM",
-              (SELECT p.nombre FROM poligonos p WHERE p.operativo_id = m.operativo_id AND p.eliminado_en IS NULL
-                  AND ST_Contains(p.geom, m.geom) ORDER BY p.creado_en LIMIT 1) AS poligono,
+              -- Cargado por el Líder (03/11): su polígono aunque haya quedado afuera; si no, el que lo contiene.
+              COALESCE((SELECT p.nombre FROM poligonos p WHERE p.id = m.poligono_id),
+                       (SELECT p.nombre FROM poligonos p WHERE p.operativo_id = m.operativo_id AND p.eliminado_en IS NULL
+                           AND ST_Contains(p.geom, m.geom) ORDER BY p.creado_en LIMIT 1)) AS poligono,
+              (SELECT g.nombre FROM grupos g WHERE g.id = m.grupo_id) AS grupo,
+              m.ocurrido_en AS "ocurridoEn", m.fuera_poligono_m AS "fueraPoligonoM", m.precision_m AS "precisionM",
               COALESCE((SELECT json_agg(f.url_foto ORDER BY f.creado_en) FROM marcador_fotos f
                          WHERE f.marcador_id = m.id AND f.eliminado_en IS NULL), '[]') AS fotos
          FROM marcadores m LEFT JOIN usuarios u ON u.id = m.creado_por
@@ -413,7 +417,15 @@ export function armarCronologia(d) {
   }
 
   for (const h of d.hallazgos) {
-    add(h.creadoEn, 'Hallazgo', `${h.nombre}${h.poligono ? `, en ${h.poligono}` : ''}.`, h.registradoPor, { clave: true });
+    // El del Líder va a la hora en que se marcó; si llegó después (sin señal), se aclara.
+    const enCelular = h.ocurridoEn && (new Date(h.creadoEn) - new Date(h.ocurridoEn)) / 60000 >= 2;
+    const nota = [
+      h.grupo ? `Lo marcó el Líder d${elDe('grupo', h.grupo)}.` : null,
+      h.fueraPoligonoM != null ? `Fuera del polígono, a ${fmtDistancia(h.fueraPoligonoM)} del borde.` : null,
+      enCelular ? `Llegó desde el celular a las ${hhmm(h.creadoEn)}.` : null,
+    ].filter(Boolean).join(' ');
+    add(h.ocurridoEn ?? h.creadoEn, 'Hallazgo', `${h.nombre}${h.poligono ? `, en ${h.poligono}` : ''}.`, h.registradoPor,
+      { clave: true, ...(nota ? { nota } : {}) });
   }
   d.puntoCero.forEach(h => {
     if (h.desdeLat == null) return;   // la definición inicial va con la creación del operativo
