@@ -27,15 +27,17 @@ const router = Router();
 // administrador con el mismo criterio ya usado en el resto del sistema
 // (Usuarios, QR): quien gestiona el sistema puede hacer lo que el Coordinador.
 const gestores = requiereRol('administrador', 'coordinador');
+// Jefe de Operativo (rol del 02/11): consulta todo, saca informes y asigna al Jefe. No modifica nada más.
+const consulta = requiereRol('administrador', 'coordinador', 'jefe de operativo');
 
-router.get( '/',              requiereSesion, gestores, operativos.listar);     // CU-11
+router.get( '/',              requiereSesion, consulta, operativos.listar);     // CU-11
 router.post('/',              requiereSesion, gestores, operativos.crear);      // CU-08
-router.get( '/:id',           requiereSesion, gestores, operativos.obtener);
+router.get( '/:id',           requiereSesion, consulta, operativos.obtener);
 router.put( '/:id',           requiereSesion, gestores, operativos.actualizar); // CU-09
 router.post('/:id/activar',   requiereSesion, gestores, operativos.activar);    // CU-08 paso 8
 router.post('/:id/pausar',    requiereSesion, gestores, operativos.pausar);     // pausa manual (24/10)
 router.post('/:id/reanudar',  requiereSesion, gestores, operativos.reanudar);   // reanudar (24/10)
-router.get( '/:id/finalizar/revision', requiereSesion, gestores, operativos.revisionFinalizar); // CU-10 5.1
+router.get( '/:id/finalizar/revision', requiereSesion, consulta, operativos.revisionFinalizar); // CU-10 5.1
 router.post('/:id/finalizar', requiereSesion, gestores, operativos.finalizar);  // CU-10
 router.delete('/:id',         requiereSesion, gestores, operativos.eliminar);
 
@@ -44,7 +46,7 @@ router.get( '/:id/qr',           requiereSesion, gestores, qr.obtener);
 router.post('/:id/qr/refrescar', requiereSesion, gestores, qr.refrescar);
 
 // La grilla del personal: la consulta el Coordinador por polling.
-router.get('/:id/personal', requiereSesion, gestores, qr.personal);
+router.get('/:id/personal', requiereSesion, consulta, qr.personal);
 
 // El alta la hace el propio agente con su sesión, tras escanear el QR.
 router.post('/:id/alta', requiereSesion, registro.altaEnOperativo);
@@ -55,7 +57,7 @@ router.put(   '/:id/agentes/:usuarioId', requiereSesion, gestores, agentesOperat
 router.delete('/:id/agentes/:usuarioId', requiereSesion, gestores, agentesOperativo.quitar);
 
 // CU-12/13/14: ficha del Objetivo Buscado (una por operativo — Aislamiento de Información).
-router.get(   '/:id/objetivo',               requiereSesion, gestores, objetivo.obtener);
+router.get(   '/:id/objetivo',               requiereSesion, consulta, objetivo.obtener);
 router.post(  '/:id/objetivo',               requiereSesion, gestores, objetivo.crear);
 router.put(   '/:id/objetivo',               requiereSesion, gestores, objetivo.actualizar);
 router.post(  '/:id/objetivo/fotos',         requiereSesion, gestores, subirFotosMiddleware, objetivo.subirFotos);
@@ -63,7 +65,7 @@ router.delete('/:id/objetivo/fotos/:fotoId', requiereSesion, gestores, objetivo.
 
 // Módulo 4 · Grupos de Trabajo (CU-22 a CU-27). /mover y /automatico van antes
 // que /:grupoId para que Express no los tome como un id.
-router.get(   '/:id/grupos',                  requiereSesion, gestores, grupos.listar);           // CU-24
+router.get(   '/:id/grupos',                  requiereSesion, consulta, grupos.listar);           // CU-24
 router.post(  '/:id/grupos',                  requiereSesion, gestores, grupos.crear);            // CU-22
 router.post(  '/:id/grupos/automatico',       requiereSesion, gestores, grupos.armadoAutomatico); // CU-23
 router.post(  '/:id/grupos/mover',            requiereSesion, gestores, grupos.mover);            // CU-22 6 / CU-25
@@ -72,17 +74,18 @@ router.post(  '/:id/grupos/:grupoId/acciones', requiereSesion, gestores, grupos.
 router.post(  '/:id/grupos/:grupoId/extraer', requiereSesion, gestores, grupos.extraer);          // CU-27
 router.delete('/:id/grupos/:grupoId',         requiereSesion, gestores, grupos.disolver);         // CU-26
 
-// Puesto de comando: qué coordinadores están presentes y quién está a cargo
-// (CU-15 Registrar Presencia de Mando, migración 016). Lo ven y lo operan los gestores.
-router.get( '/:id/mando',         requiereSesion, gestores, mando.estado);
+// Puesto de comando (CU-15, migraciones 016 y 030): el turno por puesto (Coordinador u Operador
+// Mesa Coordinadora), que lo registran los gestores, y el Jefe de Operativo, que lo asignan
+// también los jefes de operativo (02/11).
+router.get( '/:id/mando',         requiereSesion, consulta, mando.estado);
 router.post('/:id/mando/ingreso', requiereSesion, gestores, mando.ingreso);
 router.post('/:id/mando/retiro',  requiereSesion, gestores, mando.retiro);
-router.post('/:id/mando/a-cargo', requiereSesion, gestores, mando.aCargo);
+router.put( '/:id/mando/jefe',    requiereSesion, consulta, mando.jefe);
 
 // Módulo 5 · Mapa Operacional: polígonos y sus grupos (CU-29, 30, 37, 38, 39).
-router.get(   '/:id/poligonos',                                     requiereSesion, gestores, poligonos.listar);
+router.get(   '/:id/poligonos',                                     requiereSesion, consulta, poligonos.listar);
 router.post(  '/:id/poligonos',                                     requiereSesion, gestores, poligonos.crear);        // CU-29
-router.get(   '/:id/poligonos/:poligonoId',                         requiereSesion, gestores, poligonos.obtener);      // CU-39
+router.get(   '/:id/poligonos/:poligonoId',                         requiereSesion, consulta, poligonos.obtener);      // CU-39
 router.put(   '/:id/poligonos/:poligonoId',                         requiereSesion, gestores, poligonos.actualizar);   // CU-37
 router.delete('/:id/poligonos/:poligonoId',                         requiereSesion, gestores, poligonos.eliminar);     // CU-38
 router.post(  '/:id/poligonos/:poligonoId/grupos',                  requiereSesion, gestores, poligonos.asignarGrupo); // CU-30
@@ -92,35 +95,35 @@ router.post(  '/:id/poligonos/:poligonoId/grupos/:grupoId/cambiar', requiereSesi
 // Módulo 5 · Tracks GPX (CU-31, CU-32, CU-38). /analizar va antes que /:trackId.
 router.post(  '/:id/tracks/analizar', requiereSesion, gestores, subirGpxMiddleware, tracks.analizar); // CU-31 pasos 3-5
 router.post(  '/:id/tracks',          requiereSesion, gestores, subirGpxMiddleware, tracks.crear);    // CU-31
-router.get(   '/:id/tracks',          requiereSesion, gestores, tracks.listar);
-router.get(   '/:id/tracks/:trackId', requiereSesion, gestores, tracks.obtener);
+router.get(   '/:id/tracks',          requiereSesion, consulta, tracks.listar);
+router.get(   '/:id/tracks/:trackId', requiereSesion, consulta, tracks.obtener);
 router.put(   '/:id/tracks/:trackId', requiereSesion, gestores, tracks.actualizar);                    // CU-32
 router.delete('/:id/tracks/:trackId', requiereSesion, gestores, tracks.eliminar);                      // CU-38
 
 // Módulo 5 · Marcadores: puntos de interés, hallazgos e instalaciones SCI (CU-34, CU-35, CU-38).
-router.get(   '/:id/marcadores',                            requiereSesion, gestores, marcadores.listar);
+router.get(   '/:id/marcadores',                            requiereSesion, consulta, marcadores.listar);
 router.post(  '/:id/marcadores',                            requiereSesion, gestores, marcadores.crear);        // CU-34
-router.get(   '/:id/marcadores/:marcadorId',                requiereSesion, gestores, marcadores.obtener);
+router.get(   '/:id/marcadores/:marcadorId',                requiereSesion, consulta, marcadores.obtener);
 router.put(   '/:id/marcadores/:marcadorId',                requiereSesion, gestores, marcadores.actualizar);   // CU-35
 router.delete('/:id/marcadores/:marcadorId',                requiereSesion, gestores, marcadores.eliminar);     // CU-38
 router.post(  '/:id/marcadores/:marcadorId/fotos',          requiereSesion, gestores, subirFotosMiddleware, marcadores.subirFotos);
 router.delete('/:id/marcadores/:marcadorId/fotos/:fotoId',  requiereSesion, gestores, marcadores.eliminarFoto);
 
 // Módulo 5 · Punto Cero (con historial) y radios del operativo (CU-36).
-router.get(   '/:id/punto-cero',       requiereSesion, gestores, puntoCero.obtener);
+router.get(   '/:id/punto-cero',       requiereSesion, consulta, puntoCero.obtener);
 router.put(   '/:id/punto-cero',       requiereSesion, gestores, puntoCero.mover);
-router.get(   '/:id/radios',           requiereSesion, gestores, puntoCero.listarRadios);
+router.get(   '/:id/radios',           requiereSesion, consulta, puntoCero.listarRadios);
 router.post(  '/:id/radios',           requiereSesion, gestores, puntoCero.crearRadio);
 router.put(   '/:id/radios/:radioId',  requiereSesion, gestores, puntoCero.actualizarRadio);
 router.delete('/:id/radios/:radioId',  requiereSesion, gestores, puntoCero.eliminarRadio);
 
 // Módulo 6 · Informe por operativo (CU-41): qué se emite, generar y descargar copias guardadas.
-router.get( '/:id/informes',                     requiereSesion, gestores, informes.listar);
-router.post('/:id/informes',                     requiereSesion, gestores, informes.generar);
-router.get( '/:id/informes/:informeId/descarga', requiereSesion, gestores, informes.descargar);
+router.get( '/:id/informes',                     requiereSesion, consulta, informes.listar);
+router.post('/:id/informes',                     requiereSesion, consulta, informes.generar);
+router.get( '/:id/informes/:informeId/descarga', requiereSesion, consulta, informes.descargar);
 
 // Línea de tiempo del terreno (eventos_estado, migración 010).
-router.get('/:id/grupos/:grupoId/linea-tiempo',            requiereSesion, gestores, grupos.lineaTiempoGrupo);
-router.get('/:id/agentes/:agenteOperativoId/linea-tiempo', requiereSesion, gestores, grupos.lineaTiempoAgente);
+router.get('/:id/grupos/:grupoId/linea-tiempo',            requiereSesion, consulta, grupos.lineaTiempoGrupo);
+router.get('/:id/agentes/:agenteOperativoId/linea-tiempo', requiereSesion, consulta, grupos.lineaTiempoAgente);
 
 export default router;

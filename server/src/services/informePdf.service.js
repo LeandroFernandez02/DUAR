@@ -16,7 +16,7 @@ import pdfmake from 'pdfmake';
 import sharp from 'sharp';
 import * as Storage from './storage.service.js';
 import { mapaSvg, ATRIBUCION } from './informeMapa.js';
-import { coord, fmtDistancia, codigoOperativo } from '../models/informe.model.js';
+import { coord, fmtDistancia, codigoOperativo, PUESTO_TURNO } from '../models/informe.model.js';
 import { ETIQUETA_GRUPO } from '../models/estados.js';
 import { RESULTADOS_OPERATIVO } from '../utils/validaciones.js';
 
@@ -219,7 +219,8 @@ export async function generarPdf(d, meta) {
   }
 
   /* 1 · Datos del operativo */
-  const aCargo = d.mandos.find(m => !m.hasta) ?? d.mandos[d.mandos.length - 1];
+  // Jefe de Operativo (02/11): el vigente o, cerrado el operativo, el último.
+  const jefe = d.jefes.find(j => !j.hasta) ?? d.jefes[d.jefes.length - 1];
   const pcVigente = d.puntoCero[d.puntoCero.length - 1];
   add(seccion('Datos del operativo'), ficha([
     ['N.º de operativo', opCodigo],
@@ -229,7 +230,7 @@ export async function generarPdf(d, meta) {
     ['Fiscal de instrucción', op.fiscalInstruccion || 'Sin asignar'],
     [final ? 'Fin' : 'Duración al corte', final ? fechaHora(op.fechaHoraFin) : duracion(op.fechaHoraInicio ?? op.creadoEn, d.corteEn)],
     ['Creado por', op.creadoPor],
-    [final ? 'A cargo al cierre' : 'A cargo al corte', aCargo?.nombre ?? 'Nadie registrado'],
+    ['Jefe de Operativo', jefe?.nombre ?? 'No asignado'],
     ['Punto Cero vigente', { text: [mono(coords(op.puntoCeroLat, op.puntoCeroLng)), tenue(pcVigente?.registradoEn ? `  ·  desde ${fechaCorta(pcVigente.registradoEn)}` : '')] }, true],
     ['Descripción', { text: op.descripcion || '—' }, true],
     // La reseña del cierre (CU-10) en su propia fila: antes pisaba la descripción (migración 024).
@@ -251,7 +252,7 @@ export async function generarPdf(d, meta) {
     [num(d.hallazgos.length), d.hallazgos.length === 1 ? 'hallazgo registrado' : 'hallazgos registrados'],
     [`${num(kmTotal, 1)} km`, 'recorridos dentro de los polígonos'],
     [`${areaTotal ? num(revisada / areaTotal * 100) : 0} %`, 'del área total revisada según los tracks GPX'],
-    [num(new Set(d.mandos.map(m => m.nombre)).size), 'coordinadores estuvieron a cargo'],
+    [num(new Set(d.presencias.map(p => p.nombre)).size), 'coordinadores en el turno del puesto de comando'],
     [num(d.retiros.length), d.retiros.length === 1 ? 'agente retirado de su grupo' : 'agentes retirados de su grupo'],
   ];
   add(seccion('Resumen al corte'), {
@@ -310,6 +311,7 @@ export async function generarPdf(d, meta) {
               ficha([
                 ['Registrado', fechaHora(h.creadoEn)], ['Coordenadas', mono(coords(h.lat, h.lng)).text],
                 ['Polígono', h.poligono ?? 'Fuera de los polígonos'], ['Registró', h.registradoPor],
+                ['Distancia al Punto Cero', h.distanciaPuntoCeroM != null ? fmtDistancia(h.distanciaPuntoCeroM) : '—'],
               ]),
             ] },
           ],
@@ -400,12 +402,18 @@ export async function generarPdf(d, meta) {
   /* 9 · Puesto de comando */
   add(seccion('Puesto de comando'), {
     columns: [
-      d.mandos.length
-        ? tabla(['A cargo', 'Desde', 'Hasta'], d.mandos.map(m => [m.nombre, mono(fechaCorta(m.desde)), m.hasta ? mono(fechaCorta(m.hasta)) : tenue('al corte')]), ['*', 54, 54])
-        : vacio('Nadie quedó registrado a cargo.'),
+      { stack: [
+        d.jefes.length
+          ? tabla(['Jefe de Operativo', 'Desde', 'Hasta'], d.jefes.map(j => [j.nombre, mono(fechaCorta(j.desde)), j.hasta ? mono(fechaCorta(j.hasta)) : tenue('al corte')]), ['*', 54, 54])
+          : vacio('No se asignó Jefe de Operativo.'),
+        // Operativos de antes de la 030: quién estuvo «a cargo».
+        ...(d.mandos.length
+          ? [{ ...tabla(['A cargo (antes del Jefe)', 'Desde', 'Hasta'], d.mandos.map(m => [m.nombre, mono(fechaCorta(m.desde)), m.hasta ? mono(fechaCorta(m.hasta)) : tenue('al corte')]), ['*', 54, 54]), margin: [0, 8, 0, 0] }]
+          : []),
+      ] },
       d.presencias.length
-        ? tabla(['Presentes', 'Ingreso', 'Retiro'], d.presencias.map(p => [p.nombre, mono(fechaCorta(p.desde)), p.hasta ? mono(fechaCorta(p.hasta)) : tenue('al corte')]), ['*', 54, 54])
-        : vacio('No se registraron presencias en el puesto de comando.'),
+        ? tabla(['Turno', 'Puesto', 'Ingreso', 'Egreso'], d.presencias.map(p => [p.nombre, PUESTO_TURNO[p.puesto] ?? 'Coordinador', mono(fechaCorta(p.desde)), p.hasta ? mono(fechaCorta(p.hasta)) : tenue('al corte')]), ['*', 62, 50, 50])
+        : vacio('No se registraron turnos en el puesto de comando.'),
     ],
     columnGap: 16,
   });

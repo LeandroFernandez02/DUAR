@@ -58,9 +58,11 @@ type ModalType = 'create' | 'edit' | 'delete' | null;
 const ROL_INFO: Record<Rol, { label: string; icono: typeof Shield; bg: string; color: string }> = {
   administrador: { label: 'Administrador', icono: Shield, bg: 'color-mix(in srgb, var(--primary) 10%, transparent)', color: 'var(--primary)' },
   coordinador: { label: 'Coordinador', icono: UserCheck, bg: 'color-mix(in srgb, rgba(37,99,235,0.18) var(--tinte-oscuro, 0%), #dbeafe)', color: 'color-mix(in srgb, #93c5fd var(--tinte-oscuro, 0%), #1d4ed8)' },
+  // Jefe de Operativo (02/11): ve todo el sistema y saca informes.
+  'jefe de operativo': { label: 'Jefe de Operativo', icono: ShieldCheck, bg: 'color-mix(in srgb, rgba(124,58,237,0.18) var(--tinte-oscuro, 0%), #ede9fe)', color: 'color-mix(in srgb, #c4b5fd var(--tinte-oscuro, 0%), #6d28d9)' },
   agente: { label: 'Agente', icono: Footprints, bg: 'var(--muted)', color: 'var(--muted-foreground)' },
 };
-const ROLES_FILTRO: Rol[] = ['administrador', 'coordinador', 'agente'];
+const ROLES_FILTRO: Rol[] = ['administrador', 'coordinador', 'jefe de operativo', 'agente'];
 const ESTADOS_USUARIO: { value: EstadoUsuario; label: string; dot: string }[] = [
   { value: 'activo', label: 'Activo', dot: '#16a34a' },
   { value: 'pendiente', label: 'Pendiente', dot: 'var(--accent)' },
@@ -100,6 +102,7 @@ const emptyForm = {
 
 export default function Usuarios() {
   const { usuario: usuarioActual } = useApp();
+  const soloConsulta = usuarioActual?.rol === 'jefe de operativo';
   // Para el coordinador los administradores no existen (30/09): el backend ya no
   // se los lista, y acá tampoco se le ofrece el rol ni el filtro.
   const soyAdmin = usuarioActual?.rol === 'administrador';
@@ -333,6 +336,7 @@ export default function Usuarios() {
 
   const acciones = (u: Usuario) => {
     const yo = u.id === usuarioActual?.id;
+    if (soloConsulta) return null;   // El Jefe de Operativo mira las cuentas, no las modifica (02/11).
     return (
       <div className="flex items-center gap-0.5 shrink-0">
         {u.estado === 'pendiente' && (
@@ -356,9 +360,9 @@ export default function Usuarios() {
           </p>
         </div>
         {/* En mobile/tablet va a la barra superior (diseño CALÍVAR) */}
-        <AccionCabecera>
+        {!soloConsulta && <AccionCabecera>
           <Button size="lg" icon={Plus} onClick={openCreate} aria-label="Nuevo Usuario">Nuevo Usuario</Button>
-        </AccionCabecera>
+        </AccionCabecera>}
       </div>
 
       {/* Rechazos del servidor: duplicados (CU-05 3.1), autobloqueo (CU-07 4.1),
@@ -618,6 +622,7 @@ export default function Usuarios() {
                 >
                   <option value="agente">Agente</option>
                   <option value="coordinador">Coordinador</option>
+                  <option value="jefe de operativo">Jefe de Operativo</option>
                   {(soyAdmin || form.rol === 'administrador') && <option value="administrador">Administrador</option>}
                 </select>
                 {editandomePropio && (
@@ -792,23 +797,10 @@ export default function Usuarios() {
                 <h2 className="mb-2" style={{ color: 'var(--foreground)', fontSize: 'var(--text-h3)', fontWeight: 'var(--font-weight-semibold)' }}>
                   Eliminar Usuario
                 </h2>
-                <p className="mb-3" style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-base)' }}>
+                {/* Sin el recuadro «¿Qué ocurre al eliminar?» (Testeo, punto 45). */}
+                <p className="mb-5" style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-base)' }}>
                   ¿Seguro que querés eliminar a <strong>{selected.nombre} {selected.apellido}</strong>?
                 </p>
-                <div
-                  className="p-3 rounded-lg mb-5 flex flex-col gap-1"
-                  style={{ background: 'rgba(220,38,38,0.06)', border: '1px solid rgba(220,38,38,0.2)' }}
-                >
-                  <p style={{ color: '#dc2626', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)' }}>
-                    ¿Qué ocurre al eliminar?
-                  </p>
-                  <ul style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-label)', paddingLeft: '1rem', lineHeight: 1.7 }}>
-                    <li>El usuario desaparece del sistema visualmente.</li>
-                    <li>Se desvincula de todos los operativos y grupos.</li>
-                    <li>Su registro queda como auditoría interna (soft-delete).</li>
-                    <li>Si la persona vuelve a registrarse con el mismo DNI, se reactiva esta cuenta con su historial. Su correo queda libre para crear otra cuenta.</li>
-                  </ul>
-                </div>
                 <div className="flex justify-end gap-3">
                   <button
                     onClick={() => setModal(null)}

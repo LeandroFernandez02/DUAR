@@ -76,11 +76,12 @@ const INTERVALO_MS = 10_000;
  * del Módulo de Agentes": por eso es la misma pantalla con otra dirección.
  */
 export default function Agentes() {
-  const { operativo } = useOutletContext<OperativoOutletContext>();
+  const { operativo, soloConsulta } = useOutletContext<OperativoOutletContext>();
   const { usuario } = useApp();
   // Agentes y Grupos son dos secciones del menú del operativo (diseño CALÍVAR, 23/10): la dirección dice cuál.
   const pestana: 'agentes' | 'grupos' = useLocation().pathname.endsWith('/grupos') ? 'grupos' : 'agentes';
-  const soloLectura = operativo.estado === 'finalizado' || operativo.estado === 'eliminado';
+  // El Jefe de Operativo (02/11) mira, no agrega, edita ni quita.
+  const soloLectura = operativo.estado === 'finalizado' || operativo.estado === 'eliminado' || soloConsulta;
   const tableroRef = useRef<TableroGruposHandle>(null);
   const [cantGrupos, setCantGrupos] = useState<number | null>(null);
 
@@ -262,8 +263,8 @@ export default function Agentes() {
   const acciones = (a: PersonalOperativoApi) => (
     <div className="flex items-center gap-0.5 shrink-0">
       <BotonIcono icono={History} title="Línea de tiempo" onClick={() => setHistoria(a)} />
-      <BotonIcono icono={Pencil} title="Editar datos operativos" onClick={() => setEditUsuarioId(a.usuarioId)} />
-      <BotonIcono icono={X} tono="peligro" title="Quitar del operativo" onClick={() => { setQuitarTarget(a); setErrorQuitar(null); }} />
+      {!soloConsulta && <BotonIcono icono={Pencil} title="Editar datos operativos" onClick={() => setEditUsuarioId(a.usuarioId)} />}
+      {!soloConsulta && <BotonIcono icono={X} tono="peligro" title="Quitar del operativo" onClick={() => { setQuitarTarget(a); setErrorQuitar(null); }} />}
     </div>
   );
 
@@ -283,7 +284,7 @@ export default function Agentes() {
         </div>
 
         {pestana === 'agentes' ? (
-          <Button size="lg" icon={UserPlus} onClick={abrirModalAdd} aria-label="Agregar Agente">Agregar Agente</Button>
+          !soloConsulta && <Button size="lg" icon={UserPlus} onClick={abrirModalAdd} aria-label="Agregar Agente">Agregar Agente</Button>
         ) : !soloLectura && (
           <Button size="lg" icon={Plus} onClick={() => tableroRef.current?.abrirCrear()} aria-label="Nuevo Grupo">Nuevo Grupo</Button>
         )}

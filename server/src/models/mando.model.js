@@ -1,34 +1,36 @@
 /**
- * MODELO · Presencia de mando (CU-15 Registrar Presencia de Mando; 01/10, migración 016)
+ * MODELO · Puesto de comando (CU-15; 01/10, migración 016; rehecho el 02/11, migración 030)
  *
- * Qué coordinadores están en el puesto de comando de un operativo y quién está
- * a cargo. El coordinador NO es un agente: no tiene estados tácticos, grupo ni
- * aparece en el tablero; tiene sus propios períodos de presencia.
+ * Dos cosas por operativo:
+ *   · El TURNO: quiénes están en el puesto de comando y en qué puesto —«Coordinador» u
+ *     «Operador Mesa Coordinadora»—, con su ingreso y su egreso. Los dos puestos los
+ *     ocupan usuarios con rol coordinador. No son agentes: no tienen estados tácticos.
+ *   · El JEFE DE OPERATIVO (02/11): uno por operativo, opcional, con rol «jefe de
+ *     operativo». Es omnipresente: no marca ingreso ni egreso y puede ser Jefe de varios
+ *     operativos a la vez. Reemplaza al «coordinador a cargo» de la 016 (mando_operativo
+ *     ya no se escribe: queda para los informes viejos).
  *
- * Reglas (decididas con el usuario el 01/10):
- *   · Sólo se registra la presencia de COORDINADORES activos, en operativos en
- *     planificación o activos. Un administrador puede hacer todo (registrar a
- *     otros, pasar el mando), pero no figura él mismo como presente.
- *   · Un coordinador está presente en un solo operativo a la vez (índice único).
- *   · El primero que llega queda a cargo; uno solo a cargo por operativo.
- *   · Cualquier gestor registra el ingreso o el retiro de otro; queda quién.
- *   · El mando lo pasa quien está a cargo (o un administrador). Si nadie está a
- *     cargo, cualquier gestor designa a un presente (o se lo toma él).
- *   · Si el que está a cargo se retira y quedan otros, tiene que elegir sucesor
- *     (como la sucesión del Líder en el CU-27). Si estaba solo, el operativo
- *     queda sin coordinador a cargo.
- *   · No puede figurar a la vez como agente: si se registra como agente se
- *     cierra su presencia, y quien figura como agente no entra al puesto.
- *   · La presencia no limita permisos (mando compartido): es trazabilidad.
+ * Reglas:
+ *   · En el turno se registra sólo a COORDINADORES activos, en operativos no cerrados.
+ *     Un administrador registra a otros, pero no figura él mismo.
+ *   · Un coordinador está en el turno de un solo operativo a la vez (índice único).
+ *   · Cualquier gestor registra el ingreso o el egreso de otro; queda quién.
+ *   · No puede figurar a la vez como agente (desde el 27/10 en un operativo sólo se da de
+ *     alta a cuentas con rol de agente). Al cambiarle el rol, deja el turno.
+ *   · Al Jefe lo asigna, lo cambia o lo quita un coordinador, un administrador o un jefe
+ *     de operativo (también él mismo). Cada cambio cierra el período anterior.
  *
- * Cada cambio corre en una transacción con la fila del operativo bloqueada:
- * dos coordinadores operando a la vez no pueden dejar dos a cargo ni un a
- * cargo ausente.
+ * Cada cambio corre en una transacción con la fila del operativo bloqueada.
  */
 import { query, withTransaction } from '../config/db.js';
 import { ReglaError } from './reglaError.js';
 
 const ADMITE_PRESENCIA = ['INICIADO', 'EN_PLANIFICACION', 'EN_PROCESO'];
+const CERRADOS = ['FINALIZADO', 'ELIMINADO'];
+
+/** Puestos del turno (030) y cómo se dicen en la pantalla y el informe. */
+export const PUESTOS = { COORDINADOR: 'Coordinador', OPERADOR_MESA: 'Operador Mesa Coordinadora' };
+export const ROL_JEFE = 'jefe de operativo';
 
 const nombre = u => `${u.nombre} ${u.apellido}`;
 
@@ -60,41 +62,28 @@ async function presenciaActiva(client, usuarioId) {
   return rows[0] ?? null;
 }
 
-async function mandoActivo(client, operativoId) {
-  const { rows } = await client.query(
-    `SELECT id, usuario_id AS "usuarioId" FROM mando_operativo
-      WHERE operativo_id = $1 AND hasta IS NULL FOR UPDATE`, [operativoId]);
-  return rows[0] ?? null;
-}
-
-async function presentes(client, operativoId) {
-  const { rows } = await client.query(
-    `SELECT p.id, p.usuario_id AS "usuarioId", u.nombre, u.apellido
-       FROM presencias_mando p JOIN usuarios u ON u.id = p.usuario_id
-      WHERE p.operativo_id = $1 AND p.egreso_en IS NULL
-      ORDER BY p.ingreso_en`, [operativoId]);
-  return rows;
-}
-
 const cerrarPresencia = (client, presenciaId, t, autorId, motivo) => client.query(
   `UPDATE presencias_mando SET egreso_en = $2, egreso_por = $3, motivo_egreso = $4 WHERE id = $1`,
   [presenciaId, t, autorId, motivo]);
 
-const cerrarMando = (client, mandoId, t, autorId, motivo) => client.query(
-  `UPDATE mando_operativo SET hasta = $2, cerrado_por = $3, motivo_fin = $4 WHERE id = $1`,
-  [mandoId, t, autorId, motivo]);
+async function jefeActivo(client, operativoId) {
+  const { rows } = await client.query(
+    `SELECT j.id, j.usuario_id AS "usuarioId", u.nombre, u.apellido FROM jefes_operativo j JOIN usuarios u ON u.id = j.usuario_id
+      WHERE j.operativo_id = $1 AND j.hasta IS NULL FOR UPDATE OF j`, [operativoId]);
+  return rows[0] ?? null;
+}
 
-const abrirMando = (client, operativoId, usuarioId, t, autorId) => client.query(
-  `INSERT INTO mando_operativo (operativo_id, usuario_id, desde, asignado_por) VALUES ($1, $2, $3, $4)`,
-  [operativoId, usuarioId, t, autorId]);
+const cerrarJefe = (client, jefeId, t, autorId, motivo) => client.query(
+  `UPDATE jefes_operativo SET hasta = $2, cerrado_por = $3, motivo_fin = $4 WHERE id = $1`,
+  [jefeId, t, autorId, motivo]);
 
 /* ── Lectura ───────────────────────────────────────────────────────────── */
 
-/** Quién está a cargo, quiénes están presentes y el historial completo (para el puesto de comando y el Informe). */
+/** El Jefe de Operativo, quiénes están en el turno (con su puesto) y los historiales (puesto de comando e Informe). */
 export async function estado(operativoId) {
-  const [presencias, mandos] = await Promise.all([
+  const [presencias, jefes] = await Promise.all([
     query(
-      `SELECT p.id, p.usuario_id AS "usuarioId", u.nombre, u.apellido,
+      `SELECT p.id, p.usuario_id AS "usuarioId", u.nombre, u.apellido, p.puesto,
               p.ingreso_en AS "desde", p.egreso_en AS "hasta", p.motivo_egreso AS "motivo",
               p.ingreso_por AS "ingresoPor", ui.nombre || ' ' || ui.apellido AS "ingresoPorNombre",
               ue.nombre || ' ' || ue.apellido AS "egresoPorNombre"
@@ -105,33 +94,36 @@ export async function estado(operativoId) {
         WHERE p.operativo_id = $1
         ORDER BY p.ingreso_en DESC`, [operativoId]),
     query(
-      `SELECT m.id, m.usuario_id AS "usuarioId", u.nombre, u.apellido,
-              m.desde, m.hasta, m.motivo_fin AS "motivo",
-              ua.nombre || ' ' || ua.apellido AS "asignadoPorNombre"
-         FROM mando_operativo m
-         JOIN usuarios u  ON u.id  = m.usuario_id
-         JOIN usuarios ua ON ua.id = m.asignado_por
-        WHERE m.operativo_id = $1
-        ORDER BY m.desde DESC`, [operativoId]),
+      `SELECT j.id, j.usuario_id AS "usuarioId", u.nombre, u.apellido,
+              j.desde, j.hasta, j.motivo_fin AS "motivo",
+              ua.nombre || ' ' || ua.apellido AS "asignadoPorNombre",
+              uc.nombre || ' ' || uc.apellido AS "cerradoPorNombre"
+         FROM jefes_operativo j
+         JOIN usuarios u  ON u.id  = j.usuario_id
+         JOIN usuarios ua ON ua.id = j.asignado_por
+         LEFT JOIN usuarios uc ON uc.id = j.cerrado_por
+        WHERE j.operativo_id = $1
+        ORDER BY j.desde DESC`, [operativoId]),
   ]);
-  const aCargo = mandos.rows.find(m => !m.hasta) ?? null;
-  const vigentes = presencias.rows.filter(p => !p.hasta).reverse();
   return {
-    aCargo,
-    presentes: vigentes.map(p => ({ ...p, aCargo: p.usuarioId === aCargo?.usuarioId })),
+    jefe: jefes.rows.find(j => !j.hasta) ?? null,
+    presentes: presencias.rows.filter(p => !p.hasta).reverse(),
     historialPresencias: presencias.rows,
-    historialMando: mandos.rows,
+    historialJefes: jefes.rows,
   };
 }
 
 /* ── Cambios (cada uno con su versión "Con(client)" para componer transacciones y probar) ── */
 
 /**
- * Ingreso al puesto de comando. Si estaba presente en otro operativo, sólo se
- * traslada con `trasladar` (mismo patrón que la Regla de Ubicuidad del agente).
- * Devuelve si quedó a cargo (el primero que llega).
+ * Ingreso al turno del puesto de comando, en un puesto («Coordinador» u «Operador Mesa
+ * Coordinadora»). Si estaba en el turno de otro operativo, sólo se traslada con
+ * `trasladar` (mismo patrón que la Regla de Ubicuidad del agente).
  */
-export async function ingresarCon(client, { operativoId, usuarioId, autorId, trasladar = false }) {
+export async function ingresarCon(client, { operativoId, usuarioId, autorId, puesto = 'COORDINADOR', trasladar = false }) {
+  if (!Object.hasOwn(PUESTOS, puesto)) {
+    throw new ReglaError(400, 'puesto_invalido', 'Elegí el puesto: «Coordinador» u «Operador Mesa Coordinadora».');
+  }
   const op = await bloquearOperativo(client, operativoId);
   if (!ADMITE_PRESENCIA.includes(op.estado)) {
     throw new ReglaError(409, 'operativo_cerrado',
@@ -140,7 +132,7 @@ export async function ingresarCon(client, { operativoId, usuarioId, autorId, tra
   const u = await usuario(client, usuarioId);
   if (!u) throw new ReglaError(404, 'usuario_no_encontrado', 'Usuario no encontrado.');
   if (u.rol !== 'coordinador') {
-    throw new ReglaError(409, 'no_es_coordinador', 'En el puesto de comando se registra sólo a coordinadores.');
+    throw new ReglaError(409, 'no_es_coordinador', 'En el turno del puesto de comando se registra sólo a usuarios con rol coordinador.');
   }
   if (u.estado !== 'ACTIVO') {
     throw new ReglaError(409, 'usuario_no_activo', `${nombre(u)} no tiene la cuenta activa.`);
@@ -156,132 +148,105 @@ export async function ingresarCon(client, { operativoId, usuarioId, autorId, tra
 
   const previa = await presenciaActiva(client, usuarioId);
   if (previa?.operativoId === operativoId) {
-    throw new ReglaError(409, 'ya_presente', `${nombre(u)} ya está presente en el puesto de comando.`);
+    throw new ReglaError(409, 'ya_presente', `${nombre(u)} ya está en el turno del puesto de comando.`);
   }
   if (previa) {
     if (!trasladar) {
       throw new ReglaError(409, 'presente_en_otro_operativo',
-        `${nombre(u)} está presente en el operativo "${previa.operativoTitulo}". ¿Lo retirás de allá y lo registrás acá?`,
+        `${nombre(u)} está en el turno del operativo "${previa.operativoTitulo}". ¿Registrás su egreso allá y su ingreso acá?`,
         { operativoActual: { id: previa.operativoId, titulo: previa.operativoTitulo } });
     }
     await retirarCon(client, {
       operativoId: previa.operativoId, usuarioId, autorId,
-      motivo: `Se presentó en el operativo "${op.titulo}"`, porTraslado: true,
+      motivo: `Se presentó en el operativo "${op.titulo}"`,
     });
   }
 
   const t = await ahora(client);
   const { rows } = await client.query(
-    `INSERT INTO presencias_mando (operativo_id, usuario_id, ingreso_en, ingreso_por)
-     VALUES ($1, $2, $3, $4) RETURNING id`, [operativoId, usuarioId, t, autorId]);
-  let quedoACargo = false;
-  if (!(await mandoActivo(client, operativoId))) {
-    await abrirMando(client, operativoId, usuarioId, t, autorId);
-    quedoACargo = true;
-  }
-  return { presenciaId: rows[0].id, quedoACargo };
+    `INSERT INTO presencias_mando (operativo_id, usuario_id, ingreso_en, ingreso_por, puesto)
+     VALUES ($1, $2, $3, $4, $5) RETURNING id`, [operativoId, usuarioId, t, autorId, puesto]);
+  return { presenciaId: rows[0].id };
 }
 
-/**
- * Retiro del puesto de comando. Si se retira el que está a cargo y quedan
- * otros presentes, tiene que dejar sucesor; si estaba solo, el operativo queda
- * sin coordinador a cargo.
- */
-export async function retirarCon(client, { operativoId, usuarioId, autorId, motivo, sucesorId = null, porTraslado = false }) {
+/** Egreso del turno del puesto de comando. */
+export async function retirarCon(client, { operativoId, usuarioId, autorId, motivo }) {
   await bloquearOperativo(client, operativoId);
   const { rows } = await client.query(
-    `SELECT p.id, u.nombre, u.apellido FROM presencias_mando p JOIN usuarios u ON u.id = p.usuario_id
+    `SELECT p.id FROM presencias_mando p
       WHERE p.operativo_id = $1 AND p.usuario_id = $2 AND p.egreso_en IS NULL FOR UPDATE OF p`,
     [operativoId, usuarioId]);
-  const p = rows[0];
-  if (!p) throw new ReglaError(409, 'no_presente', 'Ese coordinador no está presente en el puesto de comando de este operativo.');
-
-  const mando = await mandoActivo(client, operativoId);
-  const estaACargo = mando?.usuarioId === usuarioId;
-  const otros = (await presentes(client, operativoId)).filter(x => x.usuarioId !== usuarioId);
-  let sucesor = null;
-  if (estaACargo && otros.length) {
-    if (!sucesorId) {
-      throw new ReglaError(409, porTraslado ? 'a_cargo_en_otro_operativo' : 'sucesion_requerida',
-        porTraslado
-          ? `${nombre(p)} está a cargo de otro operativo donde hay más coordinadores: primero tiene que pasar el mando allá.`
-          : `${nombre(p)} está a cargo del operativo: elegí a quién le deja el mando.`,
-        { presentes: otros.map(o => ({ usuarioId: o.usuarioId, nombre: o.nombre, apellido: o.apellido })) });
-    }
-    sucesor = otros.find(o => o.usuarioId === sucesorId);
-    if (!sucesor) throw new ReglaError(409, 'sucesor_no_presente', 'El nuevo a cargo tiene que estar presente en el puesto de comando.');
-  }
-
-  const t = await ahora(client);
-  await cerrarPresencia(client, p.id, t, autorId, motivo);
-  if (estaACargo) {
-    await cerrarMando(client, mando.id, t, autorId,
-      sucesor ? `Se retiró y dejó a cargo a ${nombre(sucesor)}` : 'Se retiró sin otro coordinador en el puesto');
-    if (sucesor) await abrirMando(client, operativoId, sucesor.usuarioId, t, autorId);
-  }
-  return { quedaSinMando: estaACargo && !sucesor };
+  if (!rows[0]) throw new ReglaError(409, 'no_presente', 'Ese coordinador no está en el turno del puesto de comando de este operativo.');
+  await cerrarPresencia(client, rows[0].id, await ahora(client), autorId, motivo);
 }
 
 /**
- * Traspaso del mando (o designación, si nadie está a cargo). Lo pasa quien está
- * a cargo o un administrador; si nadie está a cargo, cualquier gestor designa
- * a un presente (o se lo toma él).
+ * Asigna, cambia o quita (usuarioId = null) al Jefe de Operativo. Cierra el período anterior
+ * y abre el nuevo con la misma hora. No pide presencia: el Jefe es omnipresente.
  */
-export async function asignarMandoCon(client, { operativoId, usuarioId, autorId, autorEsAdmin = false }) {
-  await bloquearOperativo(client, operativoId);
-  const { rows } = await client.query(
-    `SELECT u.nombre, u.apellido FROM presencias_mando p JOIN usuarios u ON u.id = p.usuario_id
-      WHERE p.operativo_id = $1 AND p.usuario_id = $2 AND p.egreso_en IS NULL`, [operativoId, usuarioId]);
-  const nuevo = rows[0];
-  if (!nuevo) throw new ReglaError(409, 'no_presente', 'Sólo puede quedar a cargo un coordinador presente en el puesto de comando.');
-
-  const mando = await mandoActivo(client, operativoId);
-  if (mando?.usuarioId === usuarioId) throw new ReglaError(409, 'ya_a_cargo', `${nombre(nuevo)} ya está a cargo.`);
-  if (mando && mando.usuarioId !== autorId && !autorEsAdmin) {
-    throw new ReglaError(403, 'solo_a_cargo', 'Sólo el coordinador a cargo (o un administrador) puede pasar el mando.');
+export async function asignarJefeCon(client, { operativoId, usuarioId, autorId }) {
+  const op = await bloquearOperativo(client, operativoId);
+  if (CERRADOS.includes(op.estado)) {
+    throw new ReglaError(409, 'operativo_cerrado', `El operativo está ${op.estado.toLowerCase()}: su Jefe ya no se cambia.`);
   }
+  let nuevo = null;
+  if (usuarioId) {
+    nuevo = await usuario(client, usuarioId);
+    if (!nuevo) throw new ReglaError(404, 'usuario_no_encontrado', 'Usuario no encontrado.');
+    if (nuevo.rol !== ROL_JEFE) {
+      throw new ReglaError(409, 'no_es_jefe', `${nombre(nuevo)} no tiene el rol «Jefe de Operativo».`);
+    }
+    if (nuevo.estado !== 'ACTIVO') throw new ReglaError(409, 'usuario_no_activo', `${nombre(nuevo)} no tiene la cuenta activa.`);
+  }
+  const actual = await jefeActivo(client, operativoId);
+  if (actual && actual.usuarioId === usuarioId) throw new ReglaError(409, 'ya_es_jefe', `${nombre(nuevo)} ya es el Jefe de este operativo.`);
+  if (!actual && !usuarioId) throw new ReglaError(409, 'sin_jefe', 'El operativo no tiene Jefe asignado.');
+
   const t = await ahora(client);
-  if (mando) await cerrarMando(client, mando.id, t, autorId, `Pasó el mando a ${nombre(nuevo)}`);
-  await abrirMando(client, operativoId, usuarioId, t, autorId);
+  if (actual) await cerrarJefe(client, actual.id, t, autorId, nuevo ? `Lo reemplaza ${nombre(nuevo)}` : 'Quitado del operativo');
+  if (nuevo) {
+    await client.query(
+      `INSERT INTO jefes_operativo (operativo_id, usuario_id, desde, asignado_por) VALUES ($1, $2, $3, $4)`,
+      [operativoId, usuarioId, t, autorId]);
+  }
+  return { anterior: actual, nuevo };
 }
 
 export const ingresar = args => withTransaction(c => ingresarCon(c, args));
 export const retirar = args => withTransaction(c => retirarCon(c, args));
-export const asignarMando = args => withTransaction(c => asignarMandoCon(c, args));
+export const asignarJefe = args => withTransaction(c => asignarJefeCon(c, args));
 
 /* ── Cierres automáticos (dentro de la transacción de quien los provoca) ── */
 
-/** CU-10: al finalizar el operativo se cierran todas las presencias y el mando, con esa hora. */
+/** CU-10: al finalizar el operativo se cierran el turno y el período del Jefe, con esa hora. */
 export async function cerrarTodoCon(client, operativoId, autorId, motivo) {
   const t = await ahora(client);
   await client.query(
     `UPDATE presencias_mando SET egreso_en = $2, egreso_por = COALESCE($3, usuario_id), motivo_egreso = $4
       WHERE operativo_id = $1 AND egreso_en IS NULL`, [operativoId, t, autorId, motivo]);
   await client.query(
-    `UPDATE mando_operativo SET hasta = $2, cerrado_por = COALESCE($3, usuario_id), motivo_fin = $4
+    `UPDATE jefes_operativo SET hasta = $2, cerrado_por = COALESCE($3, usuario_id), motivo_fin = $4
       WHERE operativo_id = $1 AND hasta IS NULL`, [operativoId, t, autorId, motivo]);
 }
 
 /**
- * Un coordinador que se registra como agente (QR o alta manual) deja el puesto
- * de comando. Si estaba a cargo, el operativo queda sin coordinador a cargo: en
- * ese flujo nadie puede elegir sucesor, y el puesto lo muestra en ámbar.
- */
-export async function cerrarPorAltaComoAgenteCon(client, usuarioId, autorId, operativoTitulo) {
-  await cerrarPresenciaDeCon(client, usuarioId, autorId, `Pasó a rastrillar como agente en "${operativoTitulo}"`);
-}
-
-/**
- * Cierra la presencia vigente de un coordinador (y su mando, si estaba a cargo)
- * sin pedir sucesor: lo usan los flujos donde nadie puede elegirlo, como pasar a
- * rastrillar como agente o que se elimine su cuenta (CU-07). El operativo queda
- * sin coordinador a cargo y el puesto lo muestra en ámbar.
+ * Cuando se le cambia el rol o se elimina su cuenta (CU-07): deja el turno en el que esté
+ * y deja de ser Jefe de los operativos en los que lo sea, sin preguntar nada más.
  */
 export async function cerrarPresenciaDeCon(client, usuarioId, autorId, motivo) {
-  const previa = await presenciaActiva(client, usuarioId);
-  if (!previa) return;
   const t = await ahora(client);
-  await cerrarPresencia(client, previa.id, t, autorId, motivo);
-  const mando = await mandoActivo(client, previa.operativoId);
-  if (mando?.usuarioId === usuarioId) await cerrarMando(client, mando.id, t, autorId, motivo);
+  const previa = await presenciaActiva(client, usuarioId);
+  if (previa) await cerrarPresencia(client, previa.id, t, autorId, motivo);
+  await client.query(
+    `UPDATE jefes_operativo SET hasta = $2, cerrado_por = $3, motivo_fin = $4 WHERE usuario_id = $1 AND hasta IS NULL`,
+    [usuarioId, t, autorId, motivo]);
+}
+
+/** Operativos (no cerrados) de los que es Jefe: para avisar antes de cambiarle el rol. */
+export async function jefaturasDe(usuarioId) {
+  const { rows } = await query(
+    `SELECT o.id, o.titulo FROM jefes_operativo j JOIN operativos o ON o.id = j.operativo_id
+      WHERE j.usuario_id = $1 AND j.hasta IS NULL AND o.estado::text NOT IN ('FINALIZADO', 'ELIMINADO')
+      ORDER BY j.desde`, [usuarioId]);
+  return rows;
 }

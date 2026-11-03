@@ -78,10 +78,19 @@ async function sincronizarAlergias(client, usuarioId, alergiaIds) {
   );
 }
 
-/** Lista usuarios visibles. El borrado es lógico: ELIMINADO no se muestra nunca. */
+/**
+ * Lista usuarios visibles. El borrado es lógico: ELIMINADO no se muestra nunca.
+ * `agenteEnOperativo`: el título del operativo en el que figura hoy como agente (o null). Lo usa
+ * el puesto de comando para no ofrecer como coordinador a quien está de agente (Testeo, punto 46);
+ * va sólo acá y no en CAMPOS, que se arma en cada request con la sesión.
+ */
 export async function listar({ incluirEliminados = false } = {}) {
   const filtro = incluirEliminados ? '' : `WHERE u.estado <> 'ELIMINADO'`;
-  const { rows } = await query(`SELECT ${CAMPOS} ${JOINS} ${filtro} ORDER BY u.apellido, u.nombre`);
+  const { rows } = await query(
+    `SELECT ${CAMPOS},
+            (SELECT o.titulo FROM agentes_operativo ao JOIN operativos o ON o.id = ao.operativo_id
+              WHERE ao.usuario_id = u.id AND ao.fecha_egreso IS NULL LIMIT 1) AS "agenteEnOperativo"
+       ${JOINS} ${filtro} ORDER BY u.apellido, u.nombre`);
   return rows;
 }
 
@@ -154,7 +163,11 @@ export async function crear({
   return buscarPorId(id);
 }
 
-export async function actualizar(id, campos) {
+/**
+ * `antesCon(client)`: lo que tiene que pasar en la MISMA transacción antes de guardar (por ejemplo,
+ * que deje el operativo al cambiar de rol: si eso falla, el rol no cambia).
+ */
+export async function actualizar(id, campos, { antesCon = null } = {}) {
   // alergiaIds se maneja aparte: no es una columna de `usuarios`, es la
   // relación N:M. `undefined` = "no tocar alergias"; `[]` = "vaciarlas
   // deliberadamente" (el usuario destildó todo en el formulario).
@@ -181,6 +194,7 @@ export async function actualizar(id, campos) {
   if (sets.length === 0 && alergiaIds === undefined) return buscarPorId(id);
 
   await withTransaction(async (client) => {
+    if (antesCon) await antesCon(client);
     if (sets.length > 0) {
       const setsConFecha = [...sets, `actualizado_en = CURRENT_TIMESTAMP`];
       await client.query(

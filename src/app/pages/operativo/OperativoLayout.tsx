@@ -6,10 +6,14 @@ import { mapearOperativo } from '../../utils/mapearOperativo';
 import OperativoHeader from './OperativoHeader';
 import { CabeceraMovil } from '../../components/layout/Movil';
 import { useEsCompacto } from '../../utils/useAncho';
+import { useApp } from '../../context/AppContext';
+import { ROL_JEFE } from '../../services/api';
 
 export interface OperativoOutletContext {
   operativo: Operativo;
   recargarOperativo: () => void;
+  /** Jefe de Operativo (rol del 02/11): ve todo el operativo, no modifica nada (salvo el Jefe y los informes). */
+  soloConsulta: boolean;
 }
 
 export default function OperativoLayout() {
@@ -19,6 +23,8 @@ export default function OperativoLayout() {
   const [loading, setLoading] = useState(true);
   const compacto = useEsCompacto();
   const navigate = useNavigate();
+  const { usuario } = useApp();
+  const soloConsulta = usuario?.rol === ROL_JEFE;
   const { pathname } = useLocation();
 
   const cargar = useCallback(async () => {
@@ -54,12 +60,12 @@ export default function OperativoLayout() {
     <div className="flex flex-col h-full min-h-0" style={{ fontFamily: 'var(--font-family-primary)' }}>
       {/* En mobile/tablet el encabezado del operativo va dentro de la barra superior, con el botón volver */}
       {compacto
-        ? <CabeceraMovil onVolver={() => navigate('/operativos')}><OperativoHeader operativo={operativo} movil onRecargar={cargar} /></CabeceraMovil>
-        : <OperativoHeader operativo={operativo} onRecargar={cargar} />}
+        ? <CabeceraMovil onVolver={() => navigate('/operativos')}><OperativoHeader operativo={operativo} movil onRecargar={cargar} soloConsulta={soloConsulta} /></CabeceraMovil>
+        : <OperativoHeader operativo={operativo} onRecargar={cargar} soloConsulta={soloConsulta} />}
       {/* En < 1024 el mapa sube 20 px por debajo de las esquinas redondeadas de la barra superior */}
       <div className="scroll-contenido flex-1 min-h-0 overflow-y-auto overflow-x-hidden relative"
         style={compacto && pathname.endsWith('/mapa') ? { marginTop: -20 } : undefined}>
-        <Outlet context={{ operativo, recargarOperativo: cargar } satisfies OperativoOutletContext} />
+        <Outlet context={{ operativo, recargarOperativo: cargar, soloConsulta } satisfies OperativoOutletContext} />
       </div>
     </div>
   );

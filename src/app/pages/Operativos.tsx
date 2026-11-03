@@ -2,7 +2,7 @@ import React, { useState, useEffect, useMemo } from 'react';
 import { useNavigate, useSearchParams } from 'react-router';
 import {
   Plus, MapPin, Calendar, Users, ArrowRight, QrCode, X, Trash2, Edit2,
-  RadioTower, Search, AlertCircle,
+  Search, AlertCircle,
   Crosshair, Lock, Flag, CheckCircle2, Clock,
 } from 'lucide-react';
 import { toast } from 'sonner';
@@ -12,7 +12,7 @@ import { MapPickerModal } from '../components/shared/MapPickerModal';
 import { QRModal } from '../components/shared/QRModal';
 import { useApp } from '../context/AppContext';
 import { Operativo, EstadoOperativo } from '../data/mockData';
-import { operativosApi, ApiError } from '../services/api';
+import { operativosApi, usuariosApi, ApiError, ROL_JEFE, type UsuarioApi } from '../services/api';
 import { mapearOperativo } from '../utils/mapearOperativo';
 import { ETIQUETA_RESULTADO, opcionesResultado, type ResultadoOperativo } from '../utils/resultadoOperativo';
 import { fechaHoraArgentina } from '../utils/fechaArgentina';
@@ -50,17 +50,6 @@ function esVigente(estado: EstadoOperativo): boolean {
   return estado === 'nuevo' || estado === 'planificación' || estado === 'en_proceso' || estado === 'iniciado' || estado === 'inactivo';
 }
 
-/**
- * Coordinador a cargo del puesto de comando (presencia de mando, 01/10), para
- * la tarjeta y la fila del listado: sólo su nombre, o "Sin coordinador a cargo".
- * En ámbar sólo cuando el operativo está activo y nadie está a cargo (el
- * historial de quién estuvo a cargo está en el puesto de comando del operativo).
- */
-function mandoDe(op: Operativo): { texto: string; alerta: boolean } {
-  const m = op.mandoPreview;
-  if (m?.vigente) return { texto: `${m.nombre} ${m.apellido}`.trim(), alerta: false };
-  return { texto: 'Sin coordinador a cargo', alerta: op.estado === 'iniciado' || op.estado === 'planificación' || op.estado === 'en_proceso' };
-}
 
 type ModalType = 'create' | 'edit' | 'qr' | 'delete' | 'finalize' | null;
 type ViewMode = VistaListado;
@@ -100,6 +89,7 @@ const emptyForm = {
   punto0lng: '',
   descripcion: '',
   motivoPuntoCero: '',   // CU-36: sólo al mover el Punto 0 con el operativo en curso
+  jefeId: '',            // Jefe de Operativo (02/11); vacío = «No asignado»
 };
 
 const MOTIVO_PUNTO_CERO_MAX = 500;
@@ -181,6 +171,8 @@ function BotonPanel({ onClick }: { onClick: () => void }) {
 export default function Operativos() {
   const navigate = useNavigate();
   const { usuario } = useApp();
+  /** Jefe de Operativo (rol del 02/11): ve todo, no crea ni modifica. */
+  const soloConsulta = usuario?.rol === ROL_JEFE;
 
   /* ── Datos REALES desde la API (CU-11) ──────────────────────────────────
    * Igual patrón que Usuarios.tsx: se pide la lista completa y el filtrado
@@ -229,6 +221,15 @@ export default function Operativos() {
   const [revisando, setRevisando] = useState(false);
   const [finalizando, setFinalizando] = useState(false);
 
+  /** Usuarios con rol «jefe de operativo» y cuenta activa, para el desplegable del formulario (02/11). */
+  const [jefes, setJefes] = useState<UsuarioApi[] | null>(null);
+  useEffect(() => {
+    if (modal !== 'create' && modal !== 'edit') return;
+    usuariosApi.listar()
+      .then(({ usuarios }) => setJefes(usuarios.filter(u => u.rol.toLowerCase() === ROL_JEFE && u.estado.toUpperCase() === 'ACTIVO')))
+      .catch(() => setJefes([]));
+  }, [modal]);
+
   /* ── open/close helpers ── */
   const openCreate = () => {
     setForm({ ...emptyForm });
@@ -251,6 +252,7 @@ export default function Operativos() {
       punto0lng: op.punto0 ? String(op.punto0.lng) : '',
       descripcion: op.descripcion || '',
       motivoPuntoCero: '',
+      jefeId: op.jefe?.id ?? '',
     });
     setModal('edit');
   };
@@ -266,7 +268,7 @@ export default function Operativos() {
    * estar cumplida.
    */
   /** Acciones rápidas de cada operativo: QR, Modificar, Finalizar (si no terminó) y Eliminar (sólo los Nuevos). */
-  const accionesDe = (op: Operativo) => (
+  const accionesDe = (op: Operativo) => soloConsulta ? null : (
     <div className="flex items-center gap-1">
       <BotonIcono icono={QrCode} title="Código QR" onClick={() => openQr(op)} />
       <BotonIcono icono={Edit2} title="Modificar" onClick={() => openEdit(op)} />
@@ -276,7 +278,7 @@ export default function Operativos() {
   );
 
   const entrarAOperativo = async (op: Operativo) => {
-    if (op.estado === 'nuevo') {
+    if (op.estado === 'nuevo' && !soloConsulta) {
       try { await operativosApi.activar(op.id); } catch { /* no bloquea la navegación */ }
     }
     navigate(`/operativo/${op.id}/dashboard`);
@@ -394,6 +396,7 @@ export default function Operativos() {
         puntoCeroLat: lat,
         puntoCeroLng: lng,
         // La fecha y hora de inicio la pone el servidor al crear (Testeo 25/10, punto 26).
+        jefeId: form.jefeId || null,
       });
       setModal(null);
       await cargarOperativos();
@@ -437,6 +440,7 @@ export default function Operativos() {
         localidad: form.ubicacion.trim(),
         fiscalInstruccion: form.fiscal.trim() || null,   // vacío lo deja sin fiscal
         descripcion: form.descripcion || undefined,
+        jefeId: form.jefeId || null,   // «No asignado» lo quita (02/11)
         // El Punto 0 sólo viaja si se movió (CU-36: cada movimiento queda en su historial).
         ...(puntoCeroMovido ? {
           puntoCeroLat: latVal,
@@ -478,8 +482,7 @@ export default function Operativos() {
         o.ubicacion.toLowerCase().includes(q) ||
         (o.descripcion ?? '').toLowerCase().includes(q) ||
         (o.objetivoPreview?.nombre ?? '').toLowerCase().includes(q) ||
-        (o.objetivoPreview?.apellido ?? '').toLowerCase().includes(q) ||
-        `${o.mandoPreview?.nombre ?? ''} ${o.mandoPreview?.apellido ?? ''}`.toLowerCase().includes(q)
+        (o.objetivoPreview?.apellido ?? '').toLowerCase().includes(q)
       );
     }
     return list;
@@ -522,7 +525,7 @@ export default function Operativos() {
             </p>
           </div>
           {/* En mobile/tablet va a la barra superior (diseño CALÍVAR) */}
-          <AccionCabecera>
+          {!soloConsulta && <AccionCabecera>
             <button
               onClick={openCreate}
               aria-label="Nuevo Operativo"
@@ -532,7 +535,7 @@ export default function Operativos() {
               <Plus size={16} />
               Nuevo Operativo
             </button>
-          </AccionCabecera>
+          </AccionCabecera>}
         </div>
 
         {/* Stats strip */}
@@ -588,8 +591,8 @@ export default function Operativos() {
       {cargando ? (
         <div className="flex items-center justify-center py-20" style={{ ...tarjetaBase, color: 'var(--muted-foreground)' }}>Cargando operativos…</div>
       ) : operativos.length === 0 ? (
-        <Vacio icono={Plus} titulo="No hay operativos vigentes" texto="Creá el primer operativo para comenzar."
-          accion={<Button size="md" icon={Plus} onClick={openCreate}>Crear operativo</Button>} />
+        <Vacio icono={Plus} titulo="No hay operativos vigentes" texto={soloConsulta ? 'Todavía no hay operativos cargados.' : 'Creá el primer operativo para comenzar.'}
+          accion={soloConsulta ? undefined : <Button size="md" icon={Plus} onClick={openCreate}>Crear operativo</Button>} />
       ) : filteredOperativos.length === 0 ? (
         <Vacio icono={Search} titulo="No hay operativos vigentes"
           texto={searchQuery ? `No se encontraron resultados para "${searchQuery}".` : 'No hay operativos iniciados o en proceso para el filtro seleccionado.'}
@@ -598,7 +601,6 @@ export default function Operativos() {
         /* ═══════ TARJETAS ═══════ */
         <div className="grid gap-5" style={{ gridTemplateColumns: 'repeat(auto-fill, minmax(min(300px, 100%), 1fr))' }}>
           {filteredOperativos.map(op => {
-            const m = mandoDe(op);
             return (
               <div key={op.id} className="flex flex-col overflow-hidden" style={{ ...tarjetaBase, transition: 'box-shadow .15s' }}
                 onMouseEnter={e => (e.currentTarget.style.boxShadow = 'var(--elevation-md)')}
@@ -614,8 +616,6 @@ export default function Operativos() {
                     <MetaFila icono={MapPin}>{op.ubicacion}</MetaFila>
                     <MetaFila icono={Calendar}>{fechaHoraArgentina(op.fechaInicio)}</MetaFila>
                     <MetaFila icono={Users}>{op.agenteIds.length} agente{op.agenteIds.length !== 1 ? 's' : ''} asignado{op.agenteIds.length !== 1 ? 's' : ''}</MetaFila>
-                    {/* Coordinador a cargo del puesto de comando (01/10): reemplaza al objetivo buscado. */}
-                    <MetaFila icono={RadioTower} alerta={m.alerta} title="Coordinador a cargo del puesto de comando">{m.texto}</MetaFila>
                   </div>
                 </div>
                 <div className="flex items-center justify-between" style={{ padding: '10px 16px', borderTop: '1px solid var(--border)', background: 'var(--muted)' }}>
@@ -635,7 +635,6 @@ export default function Operativos() {
             </div>
           }>
           {filteredOperativos.map((op, idx) => {
-            const m = mandoDe(op);
             return (
               <div key={op.id} className={`grid items-center gap-3 transition-colors ${COLUMNAS_LISTA}`}
                 style={{ padding: '14px 20px', borderBottom: idx < filteredOperativos.length - 1 ? '1px solid var(--border)' : 'none' }}
@@ -647,7 +646,6 @@ export default function Operativos() {
                     <p className="truncate" style={{ margin: 0, color: 'var(--foreground)', fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-semibold)' }}>{op.nombre}</p>
                     <div className="flex items-center gap-3 mt-0.5 flex-wrap" style={{ fontSize: 'calc(11px * var(--escala-texto))', color: 'var(--muted-foreground)' }}>
                       <span className="flex items-center gap-1"><Users size={10} />{op.agenteIds.length} agente{op.agenteIds.length !== 1 ? 's' : ''}</span>
-                      <span className="flex items-center gap-1" title="Coordinador a cargo del puesto de comando" style={{ color: m.alerta ? '#b45309' : undefined }}><RadioTower size={10} />{m.texto}</span>
                     </div>
                   </div>
                 </div>
@@ -804,6 +802,25 @@ export default function Operativos() {
                         style={isEditReadOnly ? readOnlyInputStyle() : errStyle(inputStyle(), formErrors.has('fiscal'))}
                       />
                       {!isEditReadOnly && formErrors.has('fiscal') && <span style={{ color: 'var(--destructive)', fontSize: 'calc(11px * var(--escala-texto))', fontFamily: 'var(--font-family-primary)' }}>Revisá este campo</span>}
+                    </div>
+
+                    {/* Jefe de Operativo (02/11): opcional; sólo usuarios con ese rol. También se cambia desde el puesto de comando. */}
+                    <div>
+                      <label style={labelStyle()} htmlFor="op-jefe">Jefe de Operativo</label>
+                      <select id="op-jefe" value={form.jefeId} disabled={isEditReadOnly || jefes === null}
+                        onChange={e => setForm({ ...form, jefeId: e.target.value })}
+                        className="w-full px-3 py-2.5 rounded-lg border outline-none"
+                        style={isEditReadOnly ? readOnlyInputStyle() : inputStyle()}>
+                        <option value="">{jefes === null ? 'Cargando…' : 'No asignado'}</option>
+                        {/* El Jefe actual aunque ya no esté activo, para no perderlo de vista. */}
+                        {selected?.jefe && form.jefeId === selected.jefe.id && !(jefes ?? []).some(j => j.id === selected.jefe!.id) && (
+                          <option value={selected.jefe.id}>{selected.jefe.nombre} {selected.jefe.apellido}</option>
+                        )}
+                        {(jefes ?? []).map(j => <option key={j.id} value={j.id}>{j.nombre} {j.apellido}</option>)}
+                      </select>
+                      {jefes !== null && jefes.length === 0 && !isEditReadOnly && (
+                        <span style={{ color: 'var(--muted-foreground)', fontSize: 'calc(11px * var(--escala-texto))' }}>Todavía no hay usuarios con el rol «Jefe de Operativo».</span>
+                      )}
                     </div>
 
                     {/* El estado no se edita acá: cambia con las acciones reales (entrar, pausar, finalizar, eliminar). */}

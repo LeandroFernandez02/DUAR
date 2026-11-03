@@ -1,4 +1,5 @@
 import { useState } from 'react';
+import { createPortal } from 'react-dom';
 import { differenceInDays } from 'date-fns';
 import {
   MapPin, Calendar, Clock, Target,
@@ -20,12 +21,14 @@ interface Props {
   movil?: boolean;
   /** Vuelve a pedir el operativo (después de pausarlo o reanudarlo). */
   onRecargar?: () => void;
+  /** Jefe de Operativo (02/11): sin QR (lo exhibe quien conduce el operativo) y fichas sin editar. */
+  soloConsulta?: boolean;
 }
 
 /* ─────────────────────────────────────────────────
    Header principal del operativo
 ───────────────────────────────────────────────── */
-export default function OperativoHeader({ operativo, movil = false, onRecargar }: Props) {
+export default function OperativoHeader({ operativo, movil = false, onRecargar, soloConsulta = false }: Props) {
   const today = new Date();
   // `fechaInicio` ya viene como datetime ISO completo (mapearOperativo lee
   // `fechaHoraInicio` de la API) — no es una fecha "pelada" para concatenarle hora.
@@ -134,7 +137,7 @@ export default function OperativoHeader({ operativo, movil = false, onRecargar }
             <ChevronLeft size={15} style={{ transform: compacto ? 'rotate(180deg)' : 'none', transition: 'transform 0.2s' }} />
           </button>}
 
-          {/* Puesto de comando: coordinadores presentes y quién está a cargo (01/10). */}
+          {/* Puesto de comando: Jefe de Operativo y turno (02/11). */}
           <PuestoComando operativoId={operativo.id} compacto={compacto}
             soloLectura={operativo.estado === 'finalizado' || operativo.estado === 'eliminado'} />
 
@@ -174,8 +177,8 @@ export default function OperativoHeader({ operativo, movil = false, onRecargar }
             {!compacto && <span>Objetivo</span>}
           </button>
 
-          {/* QR Agentes */}
-          <button
+          {/* QR Agentes (no para el Jefe de Operativo: el QR lo exhibe quien conduce el operativo) */}
+          {!soloConsulta && <button
             onClick={() => setShowQRModal(true)}
             title="Código QR para registro de agentes"
             className={`flex items-center gap-1.5 ${relleno} py-1.5 rounded-[var(--radius-button)] transition-all`}
@@ -198,7 +201,7 @@ export default function OperativoHeader({ operativo, movil = false, onRecargar }
           >
             <QrCode size={icono} />
             {!compacto && <span>QR Agentes</span>}
-          </button>
+          </button>}
 
           {/* Informe (CU-41). Pasó del sidebar a botón según la Lista de Casos
               de Uso del 21/09, que además sacó el Portal de Familia (ex CU-44)
@@ -266,15 +269,16 @@ export default function OperativoHeader({ operativo, movil = false, onRecargar }
         </div>
       </div>
 
-      {/* Modals */}
-      {showInfoModal && (
-        <OperativoInfoModal operativo={operativo} onClose={() => setShowInfoModal(false)} onCambio={onRecargar} />
+      {/* Modales: por portal al <body>. En el celular el encabezado vive en la barra superior, que
+          tiene su propio apilado: adentro quedaban debajo del menú inferior, que seguía recibiendo toques. */}
+      {showInfoModal && createPortal(
+        <OperativoInfoModal operativo={operativo} onClose={() => setShowInfoModal(false)} onCambio={onRecargar} soloConsulta={soloConsulta} />, document.body,
       )}
-      {showObjetivoModal && (
-        <ObjetivoModal operativoId={operativo.id} onClose={() => setShowObjetivoModal(false)} />
+      {showObjetivoModal && createPortal(
+        <ObjetivoModal operativoId={operativo.id} onClose={() => setShowObjetivoModal(false)} soloConsulta={soloConsulta} />, document.body,
       )}
-      {showQRModal && (
-        <QRModal operativo={operativo} onClose={() => setShowQRModal(false)} />
+      {showQRModal && createPortal(
+        <QRModal operativo={operativo} onClose={() => setShowQRModal(false)} />, document.body,
       )}
       {showInformeModal && (
         <InformeModal operativoId={operativo.id} onClose={() => setShowInformeModal(false)} />

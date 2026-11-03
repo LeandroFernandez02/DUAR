@@ -121,6 +121,8 @@ export async function reunirDatos(operativoId, corteEn) {
          FROM objetivo_buscado ob WHERE ob.operativo_id = $1`),
     q(`SELECT m.id, m.nombre, m.descripcion, m.detalle, m.creado_en AS "creadoEn",
               ST_Y(m.geom) AS lat, ST_X(m.geom) AS lng, ${nombre('u')} AS "registradoPor",
+              (SELECT round(ST_Distance(m.geom::geography, o.punto_cero::geography))::int
+                 FROM operativos o WHERE o.id = m.operativo_id) AS "distanciaPuntoCeroM",
               (SELECT p.nombre FROM poligonos p WHERE p.operativo_id = m.operativo_id AND p.eliminado_en IS NULL
                   AND ST_Contains(p.geom, m.geom) ORDER BY p.creado_en LIMIT 1) AS poligono,
               COALESCE((SELECT json_agg(f.url_foto ORDER BY f.creado_en) FROM marcador_fotos f
@@ -195,7 +197,7 @@ export async function reunirDatos(operativoId, corteEn) {
     q(`SELECT ${nombre('u')} AS nombre, m.desde, m.hasta, m.motivo_fin AS motivo, ${nombre('ua')} AS "asignadoPor"
          FROM mando_operativo m JOIN usuarios u ON u.id = m.usuario_id LEFT JOIN usuarios ua ON ua.id = m.asignado_por
         WHERE m.operativo_id = $1 ORDER BY m.desde`),
-    q(`SELECT ${nombre('u')} AS nombre, p.ingreso_en AS desde, p.egreso_en AS hasta, p.motivo_egreso AS motivo,
+    q(`SELECT ${nombre('u')} AS nombre, p.puesto, p.ingreso_en AS desde, p.egreso_en AS hasta, p.motivo_egreso AS motivo,
               ${nombre('ui')} AS "ingresoPor", ${nombre('ue')} AS "egresoPor"
          FROM presencias_mando p JOIN usuarios u ON u.id = p.usuario_id
          LEFT JOIN usuarios ui ON ui.id = p.ingreso_por LEFT JOIN usuarios ue ON ue.id = p.egreso_por
@@ -220,7 +222,7 @@ export async function reunirDatos(operativoId, corteEn) {
         WHERE i.operativo_id = $1 ORDER BY i.generado_en`),
   ]);
 
-  const [bajas, otrosMarcadores, cambiosCaratula] = await Promise.all([
+  const [bajas, otrosMarcadores, cambiosCaratula, jefes] = await Promise.all([
     q(`SELECT 'Track' AS clase, t.archivo_nombre AS nombre, t.eliminado_en AS "eliminadoEn", ${nombre('u')} AS "eliminadoPor", t.notas AS motivo
          FROM tracks_gpx t LEFT JOIN usuarios u ON u.id = t.eliminado_por WHERE t.operativo_id = $1 AND t.eliminado_en IS NOT NULL
        UNION ALL
@@ -245,6 +247,12 @@ export async function reunirDatos(operativoId, corteEn) {
         WHERE a.entidad_afectada = 'operativos' AND a.registro_id = $1 AND a.accion = 'MODIFICAR'
           AND a.valores_nuevos ? 'titulo'
         ORDER BY a.creado_en`),
+    // Jefe de Operativo por períodos (02/11, migración 030).
+    q(`SELECT ${nombre('u')} AS nombre, j.desde, j.hasta, j.motivo_fin AS motivo,
+              ${nombre('ua')} AS "asignadoPor", ${nombre('uc')} AS "cerradoPor"
+         FROM jefes_operativo j JOIN usuarios u ON u.id = j.usuario_id
+         LEFT JOIN usuarios ua ON ua.id = j.asignado_por LEFT JOIN usuarios uc ON uc.id = j.cerrado_por
+        WHERE j.operativo_id = $1 ORDER BY j.desde`),
   ]);
 
   return {
@@ -252,13 +260,13 @@ export async function reunirDatos(operativoId, corteEn) {
     objetivo: objetivo[0] ?? null,
     hallazgos, poligonos, tracks, marcadores, radios, puntoCero,
     grupos: grupos.map(g => ({ ...g, periodos: periodosEnTerreno(eventosGrupo.filter(e => e.grupoId === g.id)) })),
-    personal, mandos, presencias, bajas,
+    personal, mandos, jefes, presencias, bajas,
     retiros: eventosAgente.filter(e => e.accion === 'retiro'),
     // «Baja de personal» (15/10): los retiros del grupo y quienes dejaron el operativo antes del cierre.
     bajasPersonal: eventosAgente.filter(e => e.accion === 'retiro' || (e.accion === 'baja' && e.motivo !== 'Operativo finalizado')),
     cronologia: armarCronologia({
       operativo, objetivo: objetivo[0], hallazgos, puntoCero, grupos, eventosGrupo, eventosAgente,
-      mandos, presencias, eventosPoligono, otrosMarcadores, bajas, auditoriaOperativo, informesPrevios, cambiosCaratula,
+      mandos, jefes, presencias, eventosPoligono, otrosMarcadores, bajas, auditoriaOperativo, informesPrevios, cambiosCaratula,
     }),
   };
 }
@@ -364,10 +372,16 @@ export function armarCronologia(d) {
   }
   if (d.objetivo) add(d.objetivo.creado_en, 'Operativo', `Se carga la ficha ${d.objetivo.tipo === 'OBJETO' ? 'del objeto' : 'de la persona'} buscada.`, null);
 
+  // «A cargo» de antes de la 030 (los informes de operativos viejos lo siguen contando).
   for (const m of d.mandos) add(m.desde, 'Mando', `${m.nombre} queda a cargo del puesto de comando.`, m.asignadoPor);
+  for (const j of d.jefes ?? []) {
+    add(j.desde, 'Mando', `${j.nombre} queda como Jefe de Operativo.`, j.asignadoPor);
+    if (j.hasta && j.motivo === 'Quitado del operativo') add(j.hasta, 'Mando', `${j.nombre} deja de ser el Jefe de Operativo.`, j.cerradoPor);
+  }
   for (const p of d.presencias) {
-    add(p.desde, 'Mando', `${p.nombre} ingresa al puesto de comando.`, p.ingresoPor);
-    if (p.hasta) add(p.hasta, 'Mando', `${p.nombre} se retira del puesto de comando.`, p.egresoPor, p.motivo ? { nota: `Motivo: ${p.motivo}` } : {});
+    const puesto = PUESTO_TURNO[p.puesto] ?? 'Coordinador';
+    add(p.desde, 'Mando', `${p.nombre} ingresa al turno del puesto de comando como ${puesto}.`, p.ingresoPor);
+    if (p.hasta) add(p.hasta, 'Mando', `${p.nombre} egresa del turno del puesto de comando.`, p.egresoPor, p.motivo ? { nota: `Motivo: ${p.motivo}` } : {});
   }
 
   // Altas: agrupadas por hora y fuente.
@@ -434,4 +448,7 @@ export function armarCronologia(d) {
 }
 
 export const coord = v => (v == null ? '' : Number(v).toFixed(5).replace('-', '−').replace('.', ','));
+/** Puestos del turno del puesto de comando (migración 030). */
+export const PUESTO_TURNO = { COORDINADOR: 'Coordinador', OPERADOR_MESA: 'Operador Mesa Coordinadora' };
+
 export const fmtDistancia = m => (m >= 1000 ? `${(m / 1000).toFixed(2).replace('.', ',')} km` : `${Math.round(m)} m`);

@@ -930,7 +930,7 @@ function ObjetoContent({
    Main page
 ───────────────────────────────────────────────── */
 export default function ObjetivoBuscado() {
-  const { operativo, recargarOperativo } = useOutletContext<OperativoOutletContext>();
+  const { operativo, recargarOperativo, soloConsulta } = useOutletContext<OperativoOutletContext>();
 
   const [objetivo, setObjetivo] = useState<ObjetivoApi | null>(null);
   const [loading, setLoading] = useState(true);
@@ -940,7 +940,7 @@ export default function ObjetivoBuscado() {
   const [deleteFotoId, setDeleteFotoId] = useState<string | null>(null);
 
   // CU-12/13: el operativo cerrado sigue permitiendo CONSULTAR (CU-14), no cargar/editar.
-  const soloLectura = operativo.estado === 'finalizado' || operativo.estado === 'eliminado';
+  const soloLectura = operativo.estado === 'finalizado' || operativo.estado === 'eliminado' || soloConsulta;
 
   const cargarObjetivo = useCallback(async () => {
     setLoading(true);
@@ -1103,7 +1103,7 @@ export default function ObjetivoBuscado() {
               marginTop: 6, marginBottom: 20, textAlign: 'center', maxWidth: 320,
             }}>
               {soloLectura
-                ? 'Este operativo se cerró sin cargar los datos del objetivo.'
+                ? (soloConsulta ? 'Todavía no se cargaron los datos del objetivo.' : 'Este operativo se cerró sin cargar los datos del objetivo.')
                 : 'Todavía no hay datos del objetivo para este operativo. Cargá la información para poder visualizarla.'}
             </p>
             {!soloLectura && (

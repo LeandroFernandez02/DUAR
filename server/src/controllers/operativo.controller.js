@@ -32,6 +32,9 @@ export async function obtener(req, res, next) {
   } catch (err) { next(err); }
 }
 
+const RE_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
+const JEFE_INVALIDO = { error: 'Elegí un Jefe de Operativo de la lista o «No asignado».', motivo: 'jefe_invalido' };
+
 /**
  * POST /api/operativos — CU-08
  * Paso 5: campos obligatorios. Observaciones: bloquea carátulas duplicadas
@@ -61,6 +64,7 @@ export async function crear(req, res, next) {
       return res.status(400).json({ error: 'Longitud inválida (–180 a 180).' });
     }
 
+    if (b.jefeId && !RE_UUID.test(b.jefeId)) return res.status(400).json(JEFE_INVALIDO);
     if (await Operativo.existeTituloDuplicado(b.titulo)) return res.status(409).json(TITULO_DUPLICADO);
 
     const creado = await Operativo.crear({
@@ -71,6 +75,7 @@ export async function crear(req, res, next) {
       puntoCeroLat: lat,
       puntoCeroLng: lng,
       coordinadorId: req.usuario.id,
+      jefeId: b.jefeId || null,   // Jefe de Operativo, opcional (02/11)
     });
 
     // CU-08 Observaciones: "Auditoría y Trazabilidad" — Coordinador, IP y
@@ -131,6 +136,7 @@ export async function actualizar(req, res, next) {
       motivoPuntoCero = b.motivoPuntoCero.trim() || null;
     }
 
+    if (b.jefeId && !RE_UUID.test(b.jefeId)) return res.status(400).json(JEFE_INVALIDO);
     if (typeof b.titulo === 'string' && await Operativo.existeTituloDuplicado(b.titulo, id)) {
       return res.status(409).json(TITULO_DUPLICADO);
     }

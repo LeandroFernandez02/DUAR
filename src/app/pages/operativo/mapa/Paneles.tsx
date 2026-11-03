@@ -417,6 +417,16 @@ export function PanelMarcador({ m, soloLectura, onClose, onGuardar, onEliminar, 
         )}
         {hallazgo && <p style={{ margin: 0, fontSize: 'calc(11.5px * var(--escala-texto))', color: 'var(--muted-foreground)', lineHeight: 1.45 }}>Un hallazgo es evidencia: queda donde se encontró, no se elimina y sus fotos no se quitan. Sus datos sí se corrigen.</p>}
       </div>
+      {m.distanciaPuntoCeroM !== null && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '9px 11px', borderRadius: 'var(--radius-md)', background: 'var(--muted)' }}>
+          <Crosshair size={15} style={{ color: 'var(--primary)', flexShrink: 0 }} />
+          <div style={{ minWidth: 0 }}>
+            <p style={rotulo}>Distancia al Punto Cero</p>
+            <p style={{ margin: '2px 0 0', fontSize: 'calc(14px * var(--escala-texto))', fontWeight: 700, color: 'var(--foreground)' }}>{fmtDist(m.distanciaPuntoCeroM)}</p>
+            <p style={{ margin: '1px 0 0', fontSize: 'calc(11px * var(--escala-texto))', color: 'var(--muted-foreground)' }}>En línea recta. Si el Punto Cero se mueve, se recalcula sola.</p>
+          </div>
+        </div>
+      )}
       {soloLectura ? <>
         <div><p style={rotulo}>Descripción</p><p style={{ margin: '4px 0 0', fontSize: 'calc(13px * var(--escala-texto))' }}>{m.descripcion || '—'}</p></div>
         <div><p style={rotulo}>Detalle / notas de pista</p><p style={{ margin: '4px 0 0', fontSize: 'calc(12.5px * var(--escala-texto))', whiteSpace: 'pre-wrap' }}>{m.detalle || '—'}</p></div>
@@ -521,13 +531,33 @@ export function PanelInstalacion({ m, soloLectura, onClose, onGuardar, onReubica
 }
 
 /* ── Punto Cero (CU-36) ── */
-export function PanelPuntoCero({ lat, lng, historial, soloLectura, onClose, onActualizar }: {
-  lat: number; lng: number; historial: MovimientoPuntoCeroApi[]; soloLectura: boolean; onClose: () => void; onActualizar: () => void;
+export function PanelPuntoCero({ lat, lng, historial, marcadores, soloLectura, onClose, onActualizar, onMarcador }: {
+  lat: number; lng: number; historial: MovimientoPuntoCeroApi[]; marcadores: MarcadorApi[]; soloLectura: boolean;
+  onClose: () => void; onActualizar: () => void; onMarcador: (m: MarcadorApi) => void;
 }) {
+  // Hallazgos y puntos de interés, del más cercano al más lejano (la API calcula la distancia).
+  const puntos = marcadores
+    .filter(m => m.clase !== 'INSTALACION' && m.distanciaPuntoCeroM !== null)
+    .sort((a, b) => a.distanciaPuntoCeroM! - b.distanciaPuntoCeroM!);
   return (
     <PanelDetalle chip={<Simbolo tipo="puntoCero" variante="chip" />} titulo="Punto Cero (LSP)" insignia={pastilla('Último punto de avistamiento', 'var(--primary)')} onClose={onClose} sub={fmtCoord(lat, lng)}
       pie={soloLectura ? undefined : <Boton tam="md" icono={Crosshair} onClick={onActualizar} full>Actualizar Punto Cero</Boton>}>
       <p style={{ margin: 0, fontSize: 'calc(12.5px * var(--escala-texto))', color: 'var(--foreground)', lineHeight: 1.6 }}>Es el centro del operativo: los radios se dibujan desde acá y lo siguen cuando se mueve.</p>
+      <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
+        <p style={rotulo}>Distancia a hallazgos y puntos de interés · {puntos.length}</p>
+        {puntos.map(m => {
+          const tipo = m.clase === 'HALLAZGO' ? 'HALLAZGO' : 'POI';
+          return (
+            <button key={m.id} type="button" onClick={() => onMarcador(m)}
+              style={{ display: 'flex', alignItems: 'center', gap: 9, padding: '7px 8px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', background: 'transparent', cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-family-primary)' }}>
+              <Simbolo tipo={tipo} />
+              <span style={{ flex: 1, minWidth: 0, fontSize: 'calc(12px * var(--escala-texto))', fontWeight: 600, color: 'var(--foreground)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>{m.nombre}</span>
+              <span style={{ fontSize: 'calc(12px * var(--escala-texto))', fontWeight: 700, color: 'var(--foreground)', fontVariantNumeric: 'tabular-nums' }}>{fmtDist(m.distanciaPuntoCeroM!)}</span>
+            </button>
+          );
+        })}
+        {!puntos.length && <p style={{ margin: 0, fontSize: 'calc(12px * var(--escala-texto))', color: 'var(--muted-foreground)' }}>Todavía no hay hallazgos ni puntos de interés marcados.</p>}
+      </div>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 10 }}>
         <p style={{ ...rotulo, display: 'flex', alignItems: 'center', gap: 6 }}><History size={12} />Historial · {historial.length}</p>
         {historial.map((h, i) => (

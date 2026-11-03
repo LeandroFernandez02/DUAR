@@ -1,14 +1,14 @@
 /**
- * CONTROLADOR · Puesto de comando: presencia de mando (CU-15; 01/10, migración 016)
+ * CONTROLADOR · Puesto de comando (CU-15; 01/10, migración 016; rehecho el 02/11, migración 030)
  *
- *   GET  /api/operativos/:id/mando           → a cargo, presentes e historial
- *   POST /api/operativos/:id/mando/ingreso   { usuarioId?, trasladar? }
- *   POST /api/operativos/:id/mando/retiro    { usuarioId?, motivo?, sucesorId? }
- *   POST /api/operativos/:id/mando/a-cargo   { usuarioId }
+ *   GET  /api/operativos/:id/mando           → Jefe de Operativo, turno e historiales
+ *   POST /api/operativos/:id/mando/ingreso   { usuarioId?, puesto, trasladar? }
+ *   POST /api/operativos/:id/mando/retiro    { usuarioId?, motivo? }
+ *   PUT  /api/operativos/:id/mando/jefe      { usuarioId | null }   (null = «No asignado»)
  *
- * Sin `usuarioId`, el coordinador opera sobre sí mismo. Un administrador puede
- * hacer todo, pero no figura él mismo como presente: tiene que indicar a qué
- * coordinador registra. Registrar el retiro de OTRO exige motivo.
+ * Turno: sin `usuarioId`, el coordinador opera sobre sí mismo. Un administrador registra a
+ * otros, pero no figura él mismo. Registrar el egreso de OTRO exige motivo.
+ * Jefe: lo asignan, cambian o quitan coordinadores, administradores y jefes de operativo.
  * Las reglas viven en mando.model.js; acá la forma del pedido y la auditoría.
  */
 import * as Mando from '../models/mando.model.js';
@@ -24,11 +24,11 @@ function destinatario(req) {
   return esAdmin(req) ? null : req.usuario.id;
 }
 
-const auditar = (req, accion, valoresNuevos) => Auditoria.registrar({
+const auditar = (req, accion, valoresNuevos, entidad = 'presencias_mando') => Auditoria.registrar({
   usuarioId: req.usuario.id,
   accion: Auditoria.ACCION.MODIFICAR,
-  entidad: 'presencias_mando',
-  registroId: req.params.id,          // el operativo: la presencia es parte de su registro
+  entidad,
+  registroId: req.params.id,          // el operativo: el puesto de comando es parte de su registro
   valoresNuevos: { accion, ...valoresNuevos },
   ip: req.ip,
 });
@@ -42,11 +42,13 @@ export async function estado(req, res, next) {
 export async function ingreso(req, res, next) {
   try {
     const usuarioId = destinatario(req);
-    if (!usuarioId) return invalido(res, 'Elegí qué coordinador ingresa al puesto de comando.', 'usuario_requerido');
+    if (!usuarioId) return invalido(res, 'Elegí qué coordinador ingresa al turno.', 'usuario_requerido');
+    const puesto = req.body?.puesto;
+    if (!puesto) return invalido(res, 'Elegí el puesto: «Coordinador» u «Operador Mesa Coordinadora».', 'puesto_invalido');
     const r = await Mando.ingresar({
-      operativoId: req.params.id, usuarioId, autorId: req.usuario.id, trasladar: req.body?.trasladar === true,
+      operativoId: req.params.id, usuarioId, autorId: req.usuario.id, puesto, trasladar: req.body?.trasladar === true,
     });
-    await auditar(req, 'ingreso', { usuarioId, quedoACargo: r.quedoACargo });
+    await auditar(req, 'ingreso', { usuarioId, puesto });
     res.status(201).json({ ...r, mando: await Mando.estado(req.params.id) });
   } catch (err) { next(err); }
 }
@@ -54,29 +56,29 @@ export async function ingreso(req, res, next) {
 export async function retiro(req, res, next) {
   try {
     const usuarioId = destinatario(req);
-    if (!usuarioId) return invalido(res, 'Elegí qué coordinador se retira.', 'usuario_requerido');
+    if (!usuarioId) return invalido(res, 'Elegí qué coordinador egresa del turno.', 'usuario_requerido');
     const propio = usuarioId === req.usuario.id;
     const motivo = String(req.body?.motivo ?? '').trim();
     if (!propio && motivo.length < 3) {
-      return invalido(res, 'Registrar el retiro de otro coordinador requiere un motivo.', 'motivo_requerido');
+      return invalido(res, 'Registrar el egreso de otro coordinador requiere un motivo.', 'motivo_requerido');
     }
-    const r = await Mando.retirar({
-      operativoId: req.params.id, usuarioId, autorId: req.usuario.id,
-      motivo: motivo || 'Se retiró del puesto de comando', sucesorId: req.body?.sucesorId ?? null,
+    await Mando.retirar({
+      operativoId: req.params.id, usuarioId, autorId: req.usuario.id, motivo: motivo || 'Terminó su turno',
     });
-    await auditar(req, 'retiro', { usuarioId, motivo: motivo || null, sucesorId: req.body?.sucesorId ?? null });
-    res.json({ ...r, mando: await Mando.estado(req.params.id) });
+    await auditar(req, 'retiro', { usuarioId, motivo: motivo || null });
+    res.json({ mando: await Mando.estado(req.params.id) });
   } catch (err) { next(err); }
 }
 
-export async function aCargo(req, res, next) {
+/** Asigna, cambia o quita al Jefe de Operativo (02/11). */
+export async function jefe(req, res, next) {
   try {
-    const usuarioId = req.body?.usuarioId;
-    if (!usuarioId) return invalido(res, 'Elegí qué coordinador queda a cargo.', 'usuario_requerido');
-    await Mando.asignarMando({
-      operativoId: req.params.id, usuarioId, autorId: req.usuario.id, autorEsAdmin: esAdmin(req),
-    });
-    await auditar(req, 'a_cargo', { usuarioId });
+    const b = req.body ?? {};
+    if (!Object.hasOwn(b, 'usuarioId')) return invalido(res, 'Elegí al Jefe de Operativo o «No asignado».', 'usuario_requerido');
+    if (b.usuarioId && !/^[0-9a-f-]{36}$/i.test(b.usuarioId)) return invalido(res, 'Elegí un Jefe de Operativo de la lista.', 'jefe_invalido');
+    const r = await Mando.asignarJefe({ operativoId: req.params.id, usuarioId: b.usuarioId || null, autorId: req.usuario.id });
+    await auditar(req, b.usuarioId ? 'jefe_asignado' : 'jefe_quitado',
+      { usuarioId: b.usuarioId || null, anteriorId: r.anterior?.usuarioId ?? null }, 'jefes_operativo');
     res.json({ mando: await Mando.estado(req.params.id) });
   } catch (err) { next(err); }
 }

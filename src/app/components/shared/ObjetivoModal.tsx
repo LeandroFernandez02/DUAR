@@ -18,6 +18,8 @@ import {
 interface Props {
   operativoId: string;
   onClose: () => void;
+  /** Jefe de Operativo (02/11): sólo mira la ficha. */
+  soloConsulta?: boolean;
 }
 
 type FotoLista = { id: string; url: string };
@@ -404,7 +406,7 @@ function ObjetoView({ objetivo, fotos, onOpenLightbox }: {
 /* ─────────────────────────────────────────────────
    Main ObjetivoModal — CU-14 (vista rápida) + CU-12/13 (edición)
 ───────────────────────────────────────────────── */
-export default function ObjetivoModal({ operativoId, onClose }: Props) {
+export default function ObjetivoModal({ operativoId, onClose, soloConsulta = false }: Props) {
   const [objetivo, setObjetivo] = useState<ObjetivoApi | null>(null);
   const [loading, setLoading] = useState(true);
   const [errorGeneral, setErrorGeneral] = useState('');
@@ -599,7 +601,7 @@ export default function ObjetivoModal({ operativoId, onClose }: Props) {
                 }}>
                   Objetivo Buscado
                 </p>
-                {mode === 'view' && objetivo && (
+                {mode === 'view' && objetivo && !soloConsulta && (
                   <div className="flex items-center gap-1.5 mt-0.5">
                     <Lock size={10} style={{ color: 'var(--muted-foreground)' }} />
                     <span style={{ color: 'var(--muted-foreground)', fontSize: 'calc(11px * var(--escala-texto))', fontFamily: 'var(--font-family-primary)' }}>
@@ -617,7 +619,7 @@ export default function ObjetivoModal({ operativoId, onClose }: Props) {
 
             {/* Header actions */}
             <div className="flex items-center gap-2">
-              {mode === 'view' && !loading && (
+              {mode === 'view' && !loading && !soloConsulta && (
                 <button
                   onClick={enterEdit}
                   className="flex items-center gap-1.5 px-3 py-1.5 rounded-[var(--radius-button)] transition-opacity hover:opacity-88"

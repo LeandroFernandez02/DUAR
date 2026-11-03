@@ -1,13 +1,13 @@
 /**
  * Globos de información al hacer clic en un elemento del mapa (CU-33): track
- * (con perfil de elevación), punto de interés o hallazgo, instalación SCI y
- * Punto Cero.
+ * (con perfil de elevación), punto de interés o hallazgo e instalación SCI.
+ * El Punto Cero no tiene globo: abre su panel con el historial (pedido del 27/10).
  */
 import { useState } from 'react';
 import { Route, Pentagon, Pencil, Move, Crosshair, Trash2, ImageIcon } from 'lucide-react';
-import type { MarcadorApi, MovimientoPuntoCeroApi } from '../../../services/api';
+import type { MarcadorApi } from '../../../services/api';
 import { Boton, Globo, PerfilElevacion, Simbolo, SIMBOLOS, dato } from './piezas';
-import { fmtCoord, fmtKm, perfil } from './geo';
+import { fmtCoord, fmtDist, fmtKm, perfil } from './geo';
 import { duracion, fechaCorta, type TrackVista } from './modelo';
 
 const fila = (l: string, v: React.ReactNode) => (
@@ -63,6 +63,11 @@ export function GloboMarcador({ m, soloLectura, onClose, onEditar }: { m: Marcad
       {m.descripcion && <p style={{ margin: 0, fontSize: 'calc(13px * var(--escala-texto))', color: 'var(--foreground)' }}>{m.descripcion}</p>}
       {m.detalle && <p style={{ margin: 0, fontSize: 'calc(12px * var(--escala-texto))', color: 'var(--muted-foreground)', lineHeight: 1.5, display: '-webkit-box', WebkitLineClamp: 3, WebkitBoxOrient: 'vertical', overflow: 'hidden' }}>{m.detalle}</p>}
       {!m.descripcion && !m.detalle && <p style={{ margin: 0, fontSize: 'calc(12px * var(--escala-texto))', color: 'var(--muted-foreground)' }}>Sin descripción cargada.</p>}
+      {m.distanciaPuntoCeroM !== null && (
+        <p style={{ margin: 0, fontSize: 'calc(12px * var(--escala-texto))', color: 'var(--muted-foreground)', display: 'flex', alignItems: 'center', gap: 5 }}>
+          <Crosshair size={12} />A <span style={{ color: 'var(--foreground)', fontWeight: 600 }}>{fmtDist(m.distanciaPuntoCeroM)}</span> del Punto Cero
+        </p>
+      )}
       <p style={{ margin: 0, fontSize: 'calc(11px * var(--escala-texto))', color: 'var(--muted-foreground)', display: 'flex', alignItems: 'center', gap: 5 }}>
         {m.fotos.length > 0 && <><ImageIcon size={12} />{m.fotos.length} {m.fotos.length === 1 ? 'foto' : 'fotos'} · </>}
         Marcado por {m.creadoPor ?? '—'} · {fechaCorta(m.creadoEn)}
@@ -82,20 +87,6 @@ export function GloboInstalacion({ m, soloLectura, onClose, onEditar, onReubicar
       {m.notas && <p style={{ margin: 0, fontSize: 'calc(12.5px * var(--escala-texto))', color: 'var(--foreground)', lineHeight: 1.5 }}>{m.notas}</p>}
       {m.responsable && <p style={{ margin: 0, fontSize: 'calc(12px * var(--escala-texto))', color: 'var(--muted-foreground)' }}>Responsable: <strong style={{ color: 'var(--foreground)', fontWeight: 600 }}>{m.responsable}</strong></p>}
       {!m.notas && !m.responsable && <p style={{ margin: 0, fontSize: 'calc(12px * var(--escala-texto))', color: 'var(--muted-foreground)' }}>{c.label}.</p>}
-    </Globo>
-  );
-}
-
-export function GloboPuntoCero({ lat, lng, ultimo, soloLectura, onClose, onActualizar }: {
-  lat: number; lng: number; ultimo: MovimientoPuntoCeroApi | null; soloLectura: boolean; onClose: () => void; onActualizar: () => void;
-}) {
-  return (
-    <Globo chip={<Simbolo tipo="puntoCero" variante="chip" />} color="var(--primary)" rotuloSup="Punto Cero · LSP" titulo="Último punto de avistamiento" subtitulo={fmtCoord(lat, lng)} onClose={onClose}
-      acciones={!soloLectura ? <Boton variante="muted" icono={Crosshair} onClick={onActualizar}>Actualizar Punto Cero</Boton> : undefined}>
-      {ultimo?.motivo && <p style={{ margin: 0, fontSize: 'calc(12.5px * var(--escala-texto))', color: 'var(--foreground)', lineHeight: 1.5 }}>{ultimo.motivo}</p>}
-      <p style={{ margin: 0, fontSize: 'calc(11.5px * var(--escala-texto))', color: 'var(--muted-foreground)' }}>
-        {ultimo ? `${ultimo.desdeLat === null ? 'Definido' : 'Actualizado'} ${fechaCorta(ultimo.registradoEn)}${ultimo.registradoPor ? ` por ${ultimo.registradoPor}` : ''}` : 'Definido al crear el operativo.'}
-      </p>
     </Globo>
   );
 }

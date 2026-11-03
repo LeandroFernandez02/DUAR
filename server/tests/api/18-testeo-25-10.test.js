@@ -78,14 +78,18 @@ describe('Testeo 25/10', () => {
     assert.match(texto, /Se cambia el fiscal de instrucción de Dra\. Laura Medina a Dr\. Pablo Sosa\./);
   });
 
-  test('punto 44 · cambiar el rol de alguien que está en un operativo avisa dónde y en qué estado; confirmado, se cambia', async () => {
+  test('punto 44 · cambiar el rol de alguien que está en un operativo avisa dónde y en qué estado; confirmado, se cambia y deja el operativo (27/10)', async () => {
     const clave = Object.keys(ctx.agentes)[0];
     const u = ctx.usuarios[clave];
     const r = await ctx.api('PUT', `/usuarios/${u.uid}`, { rol: 'coordinador' });
     motivo(r, 409, 'cambio_rol_en_operativo');
-    assert.match(r.json.error, /está en el operativo «.+» como agente \(Disponible\)/);
+    assert.match(r.json.error, /está en el operativo «.+» como agente \(Disponible\)\. Si le cambiás el rol, se le da de baja de ese operativo/);
     motivo(await ctx.api('PUT', `/usuarios/${u.uid}`, { rol: 'coordinador', confirmarCambioRol: true }), 200);
-    // Se deja como estaba (también confirmando: sigue en el operativo).
-    motivo(await ctx.api('PUT', `/usuarios/${u.uid}`, { rol: 'agente', confirmarCambioRol: true }), 200);
+    // Un coordinador nunca figura como agente: dejó el operativo.
+    const personal = (await ctx.api('GET', `/operativos/${ctx.op}/personal`)).json.personal;
+    assert.ok(!personal.some(p => p.usuarioId === u.uid), 'ya no figura en el operativo');
+    // Se deja como estaba: vuelve a agente y se lo da de alta otra vez.
+    motivo(await ctx.api('PUT', `/usuarios/${u.uid}`, { rol: 'agente' }), 200);
+    motivo(await ctx.api('POST', `/operativos/${ctx.op}/agentes`, { usuarioId: u.uid }), 201);
   });
 });

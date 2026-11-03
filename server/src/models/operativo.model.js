@@ -32,8 +32,19 @@ const CAMPOS = `
   o.creado_en           AS "creadoEn",
   (SELECT count(*)::int FROM agentes_operativo ao
     WHERE ao.operativo_id = o.id AND ao.fecha_egreso IS NULL) AS "cantidadAgentes",
-  EXISTS(SELECT 1 FROM objetivo_buscado ob WHERE ob.operativo_id = o.id) AS "tieneObjetivo"
+  EXISTS(SELECT 1 FROM objetivo_buscado ob WHERE ob.operativo_id = o.id) AS "tieneObjetivo",
+  -- Jefe de Operativo vigente (02/11, migración 030). Reemplaza al coordinador a cargo.
+  jo.usuario_id         AS "jefeId",
+  jo.nombre             AS "jefeNombre",
+  jo.apellido           AS "jefeApellido"
 `;
+
+/** El Jefe vigente de cada operativo, para sumar a cualquier SELECT sobre `operativos o`. */
+const JOIN_JEFE = `
+  LEFT JOIN LATERAL (
+    SELECT j.usuario_id, u.nombre, u.apellido FROM jefes_operativo j JOIN usuarios u ON u.id = j.usuario_id
+     WHERE j.operativo_id = o.id AND j.hasta IS NULL LIMIT 1
+  ) jo ON true`;
 
 /**
  * Vista previa liviana del objetivo para el listado (CU-11): sin fotos ni
@@ -54,7 +65,7 @@ export async function buscarPorId(id) {
   // Antes de leerlo se revisa si pasó a Inactivo (48 h sin actividad) o si volvió la actividad.
   if (id) await Estado.sincronizar(id).catch(err => console.error('[estado] no se pudo sincronizar:', err.message));
   const { rows } = await query(
-    `SELECT ${CAMPOS} FROM operativos o WHERE o.id = $1 AND o.eliminado_en IS NULL`,
+    `SELECT ${CAMPOS} FROM operativos o ${JOIN_JEFE} WHERE o.id = $1 AND o.eliminado_en IS NULL`,
     [id]
   );
   return rows[0] ?? null;
@@ -91,19 +102,11 @@ export async function listar({ busqueda = '', estado = '' } = {}) {
     condiciones.push(`o.estado = $${valores.length}::estado_operativo`);
   }
 
-  // Quién está a cargo (presencia de mando, 01/10): el último período de mando.
-  // Con `hasta` vacío está a cargo ahora; si no, es el último que estuvo.
   const { rows } = await query(
-    `SELECT ${CAMPOS_CON_OBJETIVO},
-            mc.nombre AS "mandoNombre", mc.apellido AS "mandoApellido", mc.hasta AS "mandoHasta"
+    `SELECT ${CAMPOS_CON_OBJETIVO}
        FROM operativos o
        LEFT JOIN objetivo_buscado ob2 ON ob2.operativo_id = o.id
-       LEFT JOIN LATERAL (
-         SELECT u.nombre, u.apellido, m.hasta
-           FROM mando_operativo m JOIN usuarios u ON u.id = m.usuario_id
-          WHERE m.operativo_id = o.id
-          ORDER BY m.desde DESC LIMIT 1
-       ) mc ON true
+       ${JOIN_JEFE}
       WHERE ${condiciones.join(' AND ')}
       ORDER BY o.fecha_hora_inicio DESC`,
     valores
@@ -134,7 +137,7 @@ export async function existeTituloDuplicado(titulo, exceptoId = null) {
  */
 export async function crear({
   titulo, localidad, fiscalInstruccion, descripcion = null,
-  puntoCeroLat, puntoCeroLng, coordinadorId,
+  puntoCeroLat, puntoCeroLng, coordinadorId, jefeId = null,
 }) {
   const id = await withTransaction(async (client) => {
     const { rows } = await client.query(
@@ -149,6 +152,8 @@ export async function crear({
     );
     // CU-36: el historial del Punto Cero arranca con su definición.
     await PuntoCero.registrarInicial(client, rows[0].id, coordinadorId);
+    // Jefe de Operativo opcional al crearlo (02/11): con las mismas reglas que desde el puesto de comando.
+    if (jefeId) await Mando.asignarJefeCon(client, { operativoId: rows[0].id, usuarioId: jefeId, autorId: coordinadorId });
     return rows[0].id;
   });
   return buscarPorId(id);
@@ -159,6 +164,7 @@ export async function crear({
  * columnas presentes en `campos`. El UUID nunca cambia (Observaciones del CU).
  * Si cambia el Punto Cero, rigen las reglas del CU-36 (historial y motivo
  * obligatorio con el operativo en curso), en la misma transacción.
+ * `jefeId` (02/11): el Jefe de Operativo; null = «No asignado». Si no cambia, no se toca.
  */
 export async function actualizar(id, campos, { usuarioId = null, motivoPuntoCero = null } = {}) {
   const permitidos = {
@@ -178,7 +184,12 @@ export async function actualizar(id, campos, { usuarioId = null, motivoPuntoCero
     }
   }
   const mueve = campos.puntoCeroLat !== undefined && campos.puntoCeroLng !== undefined;
-  if (sets.length === 0 && !mueve) return buscarPorId(id);
+  let cambiaJefe = false;
+  if (campos.jefeId !== undefined) {
+    const { rows: [j] } = await query(`SELECT usuario_id AS id FROM jefes_operativo WHERE operativo_id = $1 AND hasta IS NULL`, [id]);
+    cambiaJefe = (j?.id ?? null) !== (campos.jefeId || null);
+  }
+  if (sets.length === 0 && !mueve && !cambiaJefe) return buscarPorId(id);
 
   await withTransaction(async (client) => {
     if (sets.length) {
@@ -194,6 +205,7 @@ export async function actualizar(id, campos, { usuarioId = null, motivoPuntoCero
       await PuntoCero.moverCon(client, id,
         { lat: campos.puntoCeroLat, lng: campos.puntoCeroLng, motivo: motivoPuntoCero }, usuarioId);
     }
+    if (cambiaJefe) await Mando.asignarJefeCon(client, { operativoId: id, usuarioId: campos.jefeId || null, autorId: usuarioId });
   });
   return buscarPorId(id);
 }

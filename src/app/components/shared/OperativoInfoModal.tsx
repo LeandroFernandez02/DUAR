@@ -1,13 +1,12 @@
 import { useState } from 'react';
 import { useNavigate } from 'react-router';
 import {
-  X, MapPin, Calendar, Users, User,
-  FileText, Clock, Flag, PauseCircle, PlayCircle, Loader2,
+  X, MapPin, Calendar, User, ShieldCheck, Scale,
+  FileText, Flag, PauseCircle, PlayCircle, Loader2,
 } from 'lucide-react';
 import { operativosApi, ApiError } from '../../services/api';
 import Button from './base/Button';
 import { haceCuanto } from '../../utils/tiempo';
-import { differenceInDays } from 'date-fns';
 import { Operativo } from '../../data/mockData';
 import { useApp } from '../../context/AppContext';
 import StatusBadge from './StatusBadge';
@@ -18,6 +17,8 @@ interface Props {
   onClose: () => void;
   /** Se pausó o reanudó: el que lo abrió vuelve a pedir el operativo. */
   onCambio?: () => void;
+  /** Jefe de Operativo (02/11): ve el estado, no pausa ni reanuda. */
+  soloConsulta?: boolean;
 }
 
 const MOTIVO_MIN = 5;
@@ -45,7 +46,7 @@ function InfoRow({ icon, label, value }: { icon: React.ReactNode; label: string;
   );
 }
 
-export default function OperativoInfoModal({ operativo, onClose, onCambio }: Props) {
+export default function OperativoInfoModal({ operativo, onClose, onCambio, soloConsulta = false }: Props) {
   const { data } = useApp();
   const [pausando, setPausando] = useState(false);
   const [motivoPausa, setMotivoPausa] = useState('');
@@ -82,16 +83,7 @@ export default function OperativoInfoModal({ operativo, onClose, onCambio }: Pro
   // (mapearOperativo lee fechaHoraInicio/fechaHoraFin de la API) — no son
   // fechas "peladas" para concatenarles hora, por eso NO se les agrega
   // 'T00:00:00' (eso producía "Invalid Date" / "NaN días").
-  const today = new Date();
   const inicio = new Date(operativo.fechaInicio);
-  const fin = operativo.fechaFin ? new Date(operativo.fechaFin) : today;
-  const diasRastrillando = Math.max(1, differenceInDays(fin, inicio) + 1);
-
-  // `operativo.agenteIds` puede traer IDs placeholder ("sin-migrar-N") en las
-  // pantallas ya migradas a la API real (ver mapearOperativo.ts) — su
-  // `.length` sí es el conteo real (viene de `cantidadAgentes`), pero nunca
-  // va a matchear contra `data.usuarios` (mock). Se usa el length directo.
-  const totalAgentes = operativo.agenteIds.length;
 
   return (
     <>
@@ -172,11 +164,6 @@ export default function OperativoInfoModal({ operativo, onClose, onCambio }: Pro
                     })}
                   />
                 )}
-                <InfoRow
-                  icon={<Clock size={13} />}
-                  label="Días rastrillando"
-                  value={`${diasRastrillando} ${diasRastrillando === 1 ? 'día' : 'días'}`}
-                />
                 {coordinador && (
                   <InfoRow
                     icon={<User size={13} />}
@@ -185,7 +172,10 @@ export default function OperativoInfoModal({ operativo, onClose, onCambio }: Pro
                   />
                 )}
                 <InfoRow icon={<MapPin size={13} />} label="Ubicación" value={operativo.ubicacion} />
-                <InfoRow icon={<Users size={13} />} label="Total de agentes" value={`${totalAgentes} agente${totalAgentes !== 1 ? 's' : ''}`} />
+                {/* Jefe de Operativo y Fiscal de Instrucción (02/11). */}
+                <InfoRow icon={<ShieldCheck size={13} />} label="Jefe de Operativo"
+                  value={operativo.jefe ? `${operativo.jefe.nombre} ${operativo.jefe.apellido}` : 'No asignado'} />
+                <InfoRow icon={<Scale size={13} />} label="Fiscal de Instrucción" value={operativo.fiscal || 'Sin asignar'} />
               </div>
             </div>
 
@@ -266,11 +256,11 @@ export default function OperativoInfoModal({ operativo, onClose, onCambio }: Pro
                         ? 'Está en pausa: no admite ingresos hasta que se reanude.'
                         : 'Pasó a Inactivo por falta de actividad. Vuelve solo cuando alguien ingresa o se registra algo; también podés reanudarlo ahora.'}
                     </p>
-                    <div><Button variant="muted" size="md" icon={trabajando ? Loader2 : PlayCircle} disabled={trabajando} onClick={reanudar}>Reanudar operativo</Button></div>
+                    {!soloConsulta && <div><Button variant="muted" size="md" icon={trabajando ? Loader2 : PlayCircle} disabled={trabajando} onClick={reanudar}>Reanudar operativo</Button></div>}
                   </>
                 )}
 
-                {enCurso && !pausando && (
+                {enCurso && !pausando && !soloConsulta && (
                   <div><Button variant="muted" size="md" icon={PauseCircle} onClick={() => setPausando(true)}>Pausar operativo</Button></div>
                 )}
                 {enCurso && pausando && (

@@ -142,6 +142,7 @@ export const SIMBOLOS: Record<TipoSimbolo, Simbolo> = {
   PUESTO_COMANDO: { ...SCI, label: 'Puesto de Comando', icono: Flag, svg: SVG.bandera, glifo: 'PC' },
   BASE: { ...SCI, label: 'Base', glifo: 'B' },
   CAMPAMENTO: { ...SCI, label: 'Campamento', glifo: 'C' },
+  HELIBASE: { ...SCI, label: 'Helibase', glifo: 'HB' },
   HELIPUNTO: { ...SCI, label: 'Helipunto', glifo: 'H' },
   AREA_ESPERA: { ...SCI, label: 'Área de Espera', glifo: 'E' },
   AREA_CONCENTRACION_VICTIMAS: { ...SCI, label: 'Área de Concentración de Víctimas', glifo: 'ACV' },

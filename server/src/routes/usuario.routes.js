@@ -14,10 +14,12 @@ const router = Router();
 router.use(requiereSesion);
 
 const gestores = requiereRol('administrador', 'coordinador');
+// Jefe de Operativo (02/11): ve las cuentas, no las modifica.
+const consulta = requiereRol('administrador', 'coordinador', 'jefe de operativo');
 
-router.get('/',              gestores, usuarios.listar);      // CU-04
-router.get('/:id',           gestores, usuarios.obtener);
-router.get('/:id/auditoria', gestores, usuarios.auditoria);
+router.get('/',              consulta, usuarios.listar);      // CU-04
+router.get('/:id',           consulta, usuarios.obtener);
+router.get('/:id/auditoria', consulta, usuarios.auditoria);
 router.post('/',             gestores, usuarios.crear);       // CU-05
 router.put('/:id',           gestores, usuarios.actualizar);  // CU-06
 router.delete('/:id',        gestores, usuarios.eliminar);    // CU-07

@@ -18,7 +18,6 @@ import MiSector from '../components/portal/MiSector';
 import MisRecorridos from '../components/portal/MisRecorridos';
 import ObjetivoAgente from '../components/portal/ObjetivoAgente';
 import MisDatosModal from '../components/shared/MisDatosModal';
-import StatusBadge from '../components/shared/StatusBadge';
 import { BarraInferior, HojaPerfil } from '../components/layout/Movil';
 import Logo from '../components/layout/Logo';
 import { tarjetaBase } from '../components/shared/Listados';
@@ -39,10 +38,8 @@ function Cabecera({ op }: { op: OperativoApi | null }) {
       <div style={{ maxWidth: 640, margin: '0 auto' }}>
         {op ? (
           <>
-            <div className="flex items-center gap-2 min-w-0">
-              <h2 className="truncate" style={{ margin: 0, fontSize: 'var(--text-h3)', fontWeight: 700, color: 'var(--foreground)' }}>{op.titulo}</h2>
-              <StatusBadge estado={op.estado === 'EN_PLANIFICACION' ? 'planificación' : op.estado.toLowerCase()} size="sm" />
-            </div>
+            {/* Sin el estado del operativo: el agente no lo ve (pedido del 27/10). */}
+            <h2 className="truncate" style={{ margin: 0, fontSize: 'var(--text-h3)', fontWeight: 700, color: 'var(--foreground)' }}>{op.titulo}</h2>
             <div className="flex items-center flex-wrap" style={{ gap: '2px 12px', marginTop: 4, fontSize: 'var(--text-label)', color: 'var(--cabecera-movil-sub, var(--muted-foreground))' }}>
               <span className="flex items-center gap-1"><MapPin size={12} />{op.localidad}</span>
               <span className="flex items-center gap-1"><Calendar size={12} />{formatDate(op.fechaHoraInicio)}</span>

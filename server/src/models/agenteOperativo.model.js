@@ -89,6 +89,17 @@ export async function darDeAlta({
   const autor = registradoPor ?? usuarioId;
 
   const id = await withTransaction(async (client) => {
+    // Regla del 27/10: en un operativo sólo figuran cuentas con rol de agente. Un coordinador que
+    // necesita salir a rastrillar pide que otro le cambie el rol a agente; recién ahí se da de alta.
+    const { rows: [u] } = await client.query(
+      `SELECT u.nombre || ' ' || u.apellido AS nombre, lower(r.nombre) AS rol
+         FROM usuarios u JOIN cat_roles r ON r.id = u.rol_id WHERE u.id = $1`, [usuarioId]);
+    if (u && u.rol !== 'agente') {
+      throw new Grupo.ReglaError(409, 'no_es_agente',
+        `${u.nombre} tiene rol de ${u.rol}: en un operativo sólo se dan de alta agentes. `
+        + 'Si necesita salir a rastrillar, pedile a un coordinador que le cambie el rol a agente.');
+    }
+
     if (abandonarAnterior) {
       const { rows: previas } = await client.query(
         `SELECT ao.id, ao.operativo_id AS "operativoId", ao.estado::text AS estado,
@@ -119,11 +130,6 @@ export async function darDeAlta({
         });
       }
     }
-
-    // Un coordinador que pasa a rastrillar como agente deja el puesto de comando
-    // (decisión del 01/10): nunca figura en los dos lados a la vez.
-    const { rows: destino } = await client.query(`SELECT titulo FROM operativos WHERE id = $1`, [operativoId]);
-    await Mando.cerrarPorAltaComoAgenteCon(client, usuarioId, autor, destino[0]?.titulo ?? '');
 
     const { rows } = await client.query(
       `INSERT INTO agentes_operativo
@@ -283,7 +289,19 @@ export async function egresar(id, usuarioId = null) {
  * Devuelve los operativos que dejó, para la auditoría.
  */
 export async function egresarPorCuentaEliminadaCon(client, usuarioId, autorId) {
-  const MOTIVO = 'Su cuenta fue eliminada del sistema';
+  return dejarOperativosCon(client, usuarioId, autorId, 'Su cuenta fue eliminada del sistema', { porEliminacion: true });
+}
+
+/**
+ * Cambio de rol confirmado (Testeo punto 44 + regla del 27/10: un coordinador nunca figura como
+ * agente): deja sus operativos y el puesto de comando con las mismas reglas que al eliminar la
+ * cuenta, en la transacción del cambio. Si está en el terreno con un grupo, el rol no cambia.
+ */
+export async function egresarPorCambioDeRolCon(client, usuarioId, autorId, rolNuevo) {
+  return dejarOperativosCon(client, usuarioId, autorId, `Cambió de rol a ${rolNuevo}`, { porCambioDeRol: true });
+}
+
+async function dejarOperativosCon(client, usuarioId, autorId, MOTIVO, { porEliminacion = false, porCambioDeRol = false } = {}) {
   const { rows: altas } = await client.query(
     `SELECT ao.id, ao.operativo_id AS "operativoId", o.titulo
        FROM agentes_operativo ao JOIN operativos o ON o.id = ao.operativo_id
@@ -292,7 +310,7 @@ export async function egresarPorCuentaEliminadaCon(client, usuarioId, autorId) {
     [usuarioId]
   );
   for (const alta of altas) {
-    await Grupo.liberarPorCambioDeOperativo(client, alta.id, autorId, null, { porEliminacion: true });
+    await Grupo.liberarPorCambioDeOperativo(client, alta.id, autorId, null, { porEliminacion, porCambioDeRol, motivo: MOTIVO });
     const { rows } = await client.query(
       `UPDATE agentes_operativo SET fecha_egreso = CURRENT_TIMESTAMP, grupo_id = NULL
         WHERE id = $1 RETURNING estado::text AS estado`,

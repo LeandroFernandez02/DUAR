@@ -40,7 +40,8 @@ export interface Overlays {
   herramientas: boolean; zoom: boolean; gruposFlot: boolean;
 }
 
-export interface Vuelo { pts: LatLng[]; k: number; panel?: boolean; luego?: () => void }
+/** `radioM`: con un punto solo, mostrar exactamente ese radio a su alrededor (zoom no entero). */
+export interface Vuelo { pts: LatLng[]; k: number; panel?: boolean; radioM?: number; luego?: () => void }
 
 interface Props {
   centroInicial: LatLng;
@@ -122,7 +123,8 @@ export default function Lienzo(props: Props) {
 
   /* Montaje: el mapa y sus eventos, una sola vez. */
   useEffect(() => {
-    const map = L.map(elRef.current!, { zoomControl: false, doubleClickZoom: false, attributionControl: true })
+    // zoomSnap en cuartos: «Encuadrar» muestra 1 km a la redonda sin que el redondeo lo duplique o lo corte a la mitad.
+    const map = L.map(elRef.current!, { zoomControl: false, doubleClickZoom: false, attributionControl: true, zoomSnap: 0.25 })
       .setView(props.centroInicial, 14);
     map.getContainer().classList.add('mapa-duar');
     // Radios: debajo de los polígonos (overlayPane = 400), sobre el mapa base, sin tapar clics.
@@ -238,7 +240,11 @@ export default function Lienzo(props: Props) {
     const margen = Math.max(f.panel ? Math.min(380, w * 0.45) : 0, cb.current.margenDerecho);
     const opts = { maxZoom: 16, paddingTopLeft: L.point(80, 80), paddingBottomRight: L.point(margen + 80, 60) };
     const uno = f.pts.length === 1;
-    const z = Math.max(map.getZoom(), 15);
+    // Con radio: el zoom (fraccionario) que hace entrar el diámetro en lo que queda visible, con 40 px de aire.
+    const visible = Math.max(120, Math.min(map.getSize().x - margen, map.getSize().y) - 80);
+    const z = uno && f.radioM
+      ? Math.log2((156543.03392 * Math.cos((f.pts[0][0] * Math.PI) / 180) * visible) / (2 * f.radioM))
+      : Math.max(map.getZoom(), 15);
     // Un punto solo se centra en lo que queda visible (sin el panel).
     const destino = uno ? map.unproject(map.project(f.pts[0], z).add([margen / 2, 0]), z) : null;
     let hecho = false;

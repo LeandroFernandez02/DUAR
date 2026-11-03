@@ -29,7 +29,8 @@ const OPERATIVOS_DE_PRUEBA = [
   'PRUEBAS AUTOMÁTICAS - no tocar',
 ];
 // Los que crea cada corrida de las pruebas del Punto Cero y del Informe (uno por corrida: el título no se repite en 24 h).
-const PREFIJOS_OPERATIVOS_DE_PRUEBA = ['PRUEBAS AUTOMÁTICAS - Punto Cero %', 'PRUEBAS AUTOMÁTICAS - Informe %'];
+// Todo «PRUEBAS AUTOMÁTICAS - …» es de las pruebas o de los escenarios armados para verificar en el navegador.
+const PREFIJOS_OPERATIVOS_DE_PRUEBA = ['PRUEBAS AUTOMÁTICAS - %'];
 const CONFIRMAR = process.argv.includes('--confirmar');
 
 const PASOS = [
@@ -80,6 +81,9 @@ const PASOS = [
      WHERE operativo_id IN (SELECT id FROM t_ops) OR usuario_id IN (SELECT id FROM t_usuarios)`],
   ['mando_operativo', `
     DELETE FROM mando_operativo
+     WHERE operativo_id IN (SELECT id FROM t_ops) OR usuario_id IN (SELECT id FROM t_usuarios)`],
+  ['jefes_operativo', `
+    DELETE FROM jefes_operativo
      WHERE operativo_id IN (SELECT id FROM t_ops) OR usuario_id IN (SELECT id FROM t_usuarios)`],
   ['tokens_operativo (QR)', `DELETE FROM tokens_operativo WHERE operativo_id IN (SELECT id FROM t_ops)`],
   ['operativos de prueba', `DELETE FROM operativos WHERE id IN (SELECT id FROM t_ops)`],

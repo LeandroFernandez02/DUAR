@@ -1006,9 +1006,11 @@ export async function armadoAutomatico(operativoId, { tamano }, usuarioId) {
  *    composición cambió: se reabre. Si era el Líder, el grupo queda sin Líder.
  *
  * Con `porEliminacion` es lo mismo pero porque su cuenta se elimina (CU-07,
- * 05/10): cambian sólo los textos que quedan en la línea de tiempo.
+ * 05/10), y con `porCambioDeRol` porque deja de ser agente (27/10): cambian sólo
+ * los textos que quedan en la línea de tiempo (`motivo`).
  */
-export async function liberarPorCambioDeOperativo(client, agenteOperativoId, usuarioId, destinoTitulo, { porEliminacion = false } = {}) {
+export async function liberarPorCambioDeOperativo(client, agenteOperativoId, usuarioId, destinoTitulo, { porEliminacion = false, porCambioDeRol = false, motivo = null } = {}) {
+  const sale = porEliminacion || porCambioDeRol;
   const { rows } = await client.query(
     `SELECT id, operativo_id AS "operativoId", grupo_id AS "grupoId", estado::text AS estado
        FROM agentes_operativo WHERE id = $1 FOR UPDATE`,
@@ -1020,7 +1022,7 @@ export async function liberarPorCambioDeOperativo(client, agenteOperativoId, usu
   const grupo = await bloquearGrupo(client, agente.operativoId, agente.grupoId);
   if (Est.EN_OPERACION.includes(grupo.estado)) {
     throw new ReglaError(409, 'grupo_en_terreno',
-      `Está en el terreno con el ${grupo.nombre} (${Est.ETIQUETA_GRUPO[grupo.estado]}). Tiene que volver y ser retirado del grupo antes de ${porEliminacion ? 'eliminar su cuenta' : 'pasar a otro operativo'}.`);
+      `Está en el terreno con el ${grupo.nombre} (${Est.ETIQUETA_GRUPO[grupo.estado]}). Tiene que volver y ser retirado del grupo antes de ${porEliminacion ? 'eliminar su cuenta' : porCambioDeRol ? 'cambiarle el rol' : 'pasar a otro operativo'}.`);
   }
 
   await client.query(
@@ -1029,9 +1031,9 @@ export async function liberarPorCambioDeOperativo(client, agenteOperativoId, usu
   );
   await Evento.registrar(client, {
     operativoId: agente.operativoId, entidad: 'AGENTE', grupoId: grupo.id, agenteOperativoId: agente.id,
-    accion: porEliminacion ? 'desagrupar' : 'cambio_operativo', estadoAnterior: agente.estado, estadoNuevo: 'DISPONIBLE',
+    accion: sale ? 'desagrupar' : 'cambio_operativo', estadoAnterior: agente.estado, estadoNuevo: 'DISPONIBLE',
     registradoPor: usuarioId, fuente: 'SISTEMA',
-    motivo: porEliminacion ? 'Su cuenta fue eliminada del sistema' : `Pasó al operativo ${destinoTitulo}`,
+    motivo: sale ? (motivo ?? 'Su cuenta fue eliminada del sistema') : `Pasó al operativo ${destinoTitulo}`,
   });
 
   if (grupo.liderId === agente.id) {
@@ -1040,7 +1042,9 @@ export async function liberarPorCambioDeOperativo(client, agenteOperativoId, usu
       operativoId: grupo.operativoId, entidad: 'GRUPO', grupoId: grupo.id, accion: 'cambio_lider',
       estadoAnterior: grupo.estado, estadoNuevo: grupo.estado, registradoPor: usuarioId,
       fuente: 'SISTEMA',
-      motivo: porEliminacion ? 'La cuenta del Líder fue eliminada: hay que designar otro' : 'El Líder dejó el operativo: hay que designar otro',
+      motivo: porEliminacion ? 'La cuenta del Líder fue eliminada: hay que designar otro'
+        : porCambioDeRol ? 'El Líder cambió de rol y dejó el operativo: hay que designar otro'
+        : 'El Líder dejó el operativo: hay que designar otro',
     });
   }
 

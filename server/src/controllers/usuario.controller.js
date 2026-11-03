@@ -15,6 +15,7 @@ import bcrypt from 'bcryptjs';
 import * as Usuario from '../models/usuario.model.js';
 import * as Sesion from '../models/sesion.model.js';
 import * as Auditoria from '../models/auditoria.model.js';
+import * as Mando from '../models/mando.model.js';
 import * as AgenteOperativo from '../models/agenteOperativo.model.js';
 import * as TokenEmail from '../models/tokenEmail.model.js';
 import { enviarConfirmacion } from '../services/email.service.js';
@@ -45,8 +46,16 @@ async function afectacionEnOperativo(usuarioId) {
     `SELECT o.id, o.titulo FROM presencias_mando p JOIN operativos o ON o.id = p.operativo_id
       WHERE p.usuario_id = $1 AND p.egreso_en IS NULL AND o.eliminado_en IS NULL AND o.estado NOT IN ('FINALIZADO', 'ELIMINADO')
       LIMIT 1`, [usuarioId]);
-  return rows[0] ? { ...rows[0], como: 'coordinador en el puesto de comando' } : null;
+  if (rows[0]) return { ...rows[0], como: 'coordinador en el puesto de comando' };
+  // Jefe de Operativo (02/11): puede serlo de varios a la vez; se nombra el primero.
+  const [jefatura] = await Mando.jefaturasDe(usuarioId);
+  return jefatura ? { ...jefatura, como: 'Jefe de Operativo' } : null;
 }
+
+/** Qué le pasa al confirmar el cambio de rol (Testeo punto 44 + reglas del 27/10 y del 02/11). */
+const CONSECUENCIA_CAMBIO_ROL = como => (como.startsWith('agente') ? 'se le da de baja de ese operativo'
+  : como === 'Jefe de Operativo' ? 'deja de ser el Jefe de los operativos que tenga asignados'
+  : 'se registra su egreso del turno del puesto de comando');
 
 /** Mensajes de duplicado (Testeo 13/10, punto 7): iguales al crear y al editar. */
 const DUPLICADO = {
@@ -282,15 +291,16 @@ export async function actualizar(req, res, next) {
     }
     // Testeo 25/10, punto 44: si está afectado a un operativo (como agente o en un puesto de
     // comando), se avisa dónde y en qué estado, y el cambio sigue sólo si se confirma.
-    if (cambiaRol && !b.confirmarCambioRol) {
-      const afectacion = await afectacionEnOperativo(id);
-      if (afectacion) {
-        return res.status(409).json({
-          error: `${previo.nombre} ${previo.apellido} está en el operativo «${afectacion.titulo}» como ${afectacion.como}. ¿Cambiar el rol igual?`,
-          motivo: 'cambio_rol_en_operativo',
-          operativoActual: afectacion,
-        });
-      }
+    // Regla del 27/10: un coordinador nunca figura como agente (ni al revés). Confirmado el
+    // cambio, deja el operativo y el puesto de comando en la misma transacción.
+    const afectacion = cambiaRol ? await afectacionEnOperativo(id) : null;
+    if (afectacion && !b.confirmarCambioRol) {
+      return res.status(409).json({
+        error: `${previo.nombre} ${previo.apellido} está en el operativo «${afectacion.titulo}» como ${afectacion.como}. `
+          + `Si le cambiás el rol, ${CONSECUENCIA_CAMBIO_ROL(afectacion.como)}. ¿Cambiar el rol igual?`,
+        motivo: 'cambio_rol_en_operativo',
+        operativoActual: afectacion,
+      });
     }
     if (rolNuevo) campos.rolId = rolNuevo.id;
 
@@ -302,7 +312,9 @@ export async function actualizar(req, res, next) {
       if (previo.estado !== 'INACTIVO' && campos.estado !== 'INACTIVO') campos.estado = 'PENDIENTE';
     }
 
-    let actualizado = await Usuario.actualizar(id, campos);
+    let actualizado = await Usuario.actualizar(id, campos, {
+      antesCon: afectacion ? client => AgenteOperativo.egresarPorCambioDeRolCon(client, id, req.usuario.id, rolNuevo.nombre) : null,
+    });
 
     // Cambio de contraseña: se hashea aparte, nunca viaja ni se devuelve.
     if (b.password) {

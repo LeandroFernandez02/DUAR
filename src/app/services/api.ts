@@ -155,6 +155,8 @@ export interface UsuarioApi {
   estado: string;
   alergias: { id: string; nombre: string }[];
   emailConfirmado: boolean;
+  /** Sólo en la lista: título del operativo en el que figura hoy como agente (o null). */
+  agenteEnOperativo?: string | null;
 }
 
 export interface Catalogos {
@@ -378,13 +380,10 @@ export interface OperativoApi {
   objetivoTipo?: 'PERSONA' | 'OBJETO' | null;
   objetivoNombre?: string | null;
   objetivoApellido?: string | null;
-  /**
-   * Presencia de mando (01/10), sólo en `listar()`: el último período a cargo.
-   * Con `mandoHasta` vacío, está a cargo ahora; si no, es el último que estuvo.
-   */
-  mandoNombre?: string | null;
-  mandoApellido?: string | null;
-  mandoHasta?: string | null;
+  /** Jefe de Operativo vigente (02/11, migración 030); null = «No asignado». */
+  jefeId: string | null;
+  jefeNombre: string | null;
+  jefeApellido: string | null;
 }
 
 export interface CrearOperativoPayload {
@@ -395,6 +394,8 @@ export interface CrearOperativoPayload {
   puntoCeroLat: number;
   puntoCeroLng: number;
   // Sin fechaHoraInicio: la pone el servidor al crear y no se modifica (Testeo 25/10, punto 26).
+  /** Jefe de Operativo (02/11), opcional; null = «No asignado». */
+  jefeId?: string | null;
 }
 
 export const operativosApi = {
@@ -597,14 +598,24 @@ export interface ArmadoAutomaticoApi {
   limitadoPorLideres: boolean;
 }
 
-/* ── Puesto de comando: presencia de mando (CU-15; 01/10, migración 016) ── */
+/* ── Puesto de comando (CU-15; migraciones 016 y 030) ── */
 
-/** Un coordinador presente (o un período ya cerrado, en el historial). */
+/** Puestos del turno (02/11): los dos los ocupan usuarios con rol coordinador. */
+export type PuestoTurnoApi = 'COORDINADOR' | 'OPERADOR_MESA';
+export const PUESTOS_TURNO: Record<PuestoTurnoApi, string> = {
+  COORDINADOR: 'Coordinador',
+  OPERADOR_MESA: 'Operador Mesa Coordinadora',
+};
+/** Rol del Jefe de Operativo (02/11): consulta todo, saca informes y asigna al Jefe. */
+export const ROL_JEFE = 'jefe de operativo';
+
+/** Un coordinador en el turno (o un período ya cerrado, en el historial). */
 export interface PresenciaMandoApi {
   id: string;
   usuarioId: string;
   nombre: string;
   apellido: string;
+  puesto: PuestoTurnoApi;
   desde: string;
   hasta: string | null;
   motivo: string | null;
@@ -612,12 +623,10 @@ export interface PresenciaMandoApi {
   ingresoPor: string;
   ingresoPorNombre: string;
   egresoPorNombre: string | null;
-  /** Sólo en `presentes`. */
-  aCargo?: boolean;
 }
 
-/** Un período a cargo del operativo. */
-export interface PeriodoMandoApi {
+/** Un período como Jefe de Operativo (02/11). */
+export interface PeriodoJefeApi {
   id: string;
   usuarioId: string;
   nombre: string;
@@ -626,26 +635,27 @@ export interface PeriodoMandoApi {
   hasta: string | null;
   motivo: string | null;
   asignadoPorNombre: string;
+  cerradoPorNombre: string | null;
 }
 
 export interface MandoOperativoApi {
-  aCargo: PeriodoMandoApi | null;
+  jefe: PeriodoJefeApi | null;
   presentes: PresenciaMandoApi[];
   historialPresencias: PresenciaMandoApi[];
-  historialMando: PeriodoMandoApi[];
+  historialJefes: PeriodoJefeApi[];
 }
 
 export const mandoApi = {
   estado: (operativoId: string) => api.get<MandoOperativoApi>(`/operativos/${operativoId}/mando`),
-  /** Sin `usuarioId`, el coordinador se registra a sí mismo. `trasladar` lo saca de otro operativo. */
-  ingresar: (operativoId: string, datos: { usuarioId?: string; trasladar?: boolean } = {}) =>
-    api.post<{ quedoACargo: boolean; mando: MandoOperativoApi }>(`/operativos/${operativoId}/mando/ingreso`, datos),
-  /** El retiro de OTRO exige motivo; si se retira el que está a cargo y quedan otros, `sucesorId`. */
-  retirar: (operativoId: string, datos: { usuarioId?: string; motivo?: string; sucesorId?: string } = {}) =>
-    api.post<{ quedaSinMando: boolean; mando: MandoOperativoApi }>(`/operativos/${operativoId}/mando/retiro`, datos),
-  /** Traspaso (lo hace quien está a cargo o un administrador) o designación si nadie está a cargo. */
-  asignar: (operativoId: string, usuarioId: string) =>
-    api.post<{ mando: MandoOperativoApi }>(`/operativos/${operativoId}/mando/a-cargo`, { usuarioId }),
+  /** Ingreso al turno en un puesto. Sin `usuarioId`, el coordinador se registra a sí mismo. `trasladar` lo saca de otro operativo. */
+  ingresar: (operativoId: string, datos: { usuarioId?: string; puesto: PuestoTurnoApi; trasladar?: boolean }) =>
+    api.post<{ mando: MandoOperativoApi }>(`/operativos/${operativoId}/mando/ingreso`, datos),
+  /** Egreso del turno. El de OTRO exige motivo. */
+  retirar: (operativoId: string, datos: { usuarioId?: string; motivo?: string } = {}) =>
+    api.post<{ mando: MandoOperativoApi }>(`/operativos/${operativoId}/mando/retiro`, datos),
+  /** Asigna, cambia o quita (null) al Jefe de Operativo. */
+  asignarJefe: (operativoId: string, usuarioId: string | null) =>
+    api.put<{ mando: MandoOperativoApi }>(`/operativos/${operativoId}/mando/jefe`, { usuarioId }),
 };
 
 /* ── Módulo 5 · Polígonos del mapa (CU-29, 30, 37, 38, 39) ─────────────── */
@@ -808,12 +818,13 @@ export const tracksApi = {
 
 export type ClaseMarcadorApi = 'POI' | 'HALLAZGO' | 'INSTALACION';
 export type TipoInstalacionApi =
-  'PUESTO_COMANDO' | 'BASE' | 'CAMPAMENTO' | 'HELIPUNTO' | 'AREA_ESPERA' | 'AREA_CONCENTRACION_VICTIMAS';
+  'PUESTO_COMANDO' | 'BASE' | 'CAMPAMENTO' | 'HELIBASE' | 'HELIPUNTO' | 'AREA_ESPERA' | 'AREA_CONCENTRACION_VICTIMAS';
 
 export const TIPOS_INSTALACION: Record<TipoInstalacionApi, string> = {
   PUESTO_COMANDO: 'Puesto de Comando',
   BASE: 'Base',
   CAMPAMENTO: 'Campamento',
+  HELIBASE: 'Helibase',
   HELIPUNTO: 'Helipunto',
   AREA_ESPERA: 'Área de Espera',
   AREA_CONCENTRACION_VICTIMAS: 'Área de Concentración de Víctimas',
@@ -831,6 +842,8 @@ export interface MarcadorApi {
   notas: string | null;
   lat: number;
   lng: number;
+  /** Metros en línea recta hasta el Punto Cero vigente (lo calcula la API al leer). */
+  distanciaPuntoCeroM: number | null;
   creadoPor: string | null;
   creadoEn: string;
   actualizadoEn: string;

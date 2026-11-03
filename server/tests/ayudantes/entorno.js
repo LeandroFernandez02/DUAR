@@ -34,7 +34,8 @@ const MOTIVO_REINICIO = 'Reinicio de las pruebas automáticas';
  *   · delta, eco           → agentes de rastrillaje que no son del DUAR.
  *   · foxtrot              → del DUAR, recurso especial (Dron).
  *   · golf                 → conductor (no rastrilla, entra a cualquier grupo).
- *   · hotel, india         → coordinadores: van al puesto de comando, no al tablero.
+ *   · hotel, india         → coordinadores: van al turno del puesto de comando, no al tablero.
+ *   · juliet, kilo         → jefes de operativo (02/11): consultan todo y se asignan como Jefe.
  */
 export const USUARIOS = [
   { clave: 'alfa',    institucion: 'DUAR',                 especialidad: 'Bombero' },
@@ -46,6 +47,8 @@ export const USUARIOS = [
   { clave: 'golf',    institucion: 'Bomberos Voluntarios', especialidad: 'Bombero', conductor: true },
   { clave: 'hotel',   institucion: 'DUAR',                 rol: 'coordinador' },
   { clave: 'india',   institucion: 'DUAR',                 rol: 'coordinador' },
+  { clave: 'juliet',  institucion: 'DUAR',                 rol: 'jefe de operativo' },
+  { clave: 'kilo',    institucion: 'DUAR',                 rol: 'jefe de operativo' },
 ];
 export const AGENTES = USUARIOS.filter(u => !u.rol).map(u => u.clave);
 
@@ -160,7 +163,8 @@ async function asegurarUsuarios(admin, cat) {
     if (fila.estado === 'PENDIENTE') await confirmarCorreo(fila.id);
     const cambios = {};
     if (fila.estado === 'INACTIVO') cambios.estado = 'ACTIVO';
-    if (fila.rol.toLowerCase() !== rol) cambios.rol = rol;
+    // Confirmado: si una prueba anterior lo dejó afectado a un operativo, al volver a su rol lo deja (27/10).
+    if (fila.rol.toLowerCase() !== rol) Object.assign(cambios, { rol, confirmarCambioRol: true });
     if (Object.keys(cambios).length) {
       const r = await api('PUT', `/usuarios/${fila.id}`, cambios, admin);
       if (r.status !== 200) throw new Error(`No se pudo activar ${email(u.clave)}: ${JSON.stringify(r.json)}`);
@@ -229,11 +233,14 @@ async function verificarAislamiento(op) {
   }
 }
 
-/** Vacía el puesto de comando: primero los presentes que no están a cargo, al final el que está a cargo (ya solo). */
+/** Vacía el puesto de comando: el turno y el Jefe de Operativo (02/11). */
 async function limpiarMando(admin, op) {
-  const { presentes } = (await api('GET', `/operativos/${op}/mando`, undefined, admin)).json;
-  const orden = [...presentes.filter(p => !p.aCargo), ...presentes.filter(p => p.aCargo)];
-  for (const p of orden) {
+  const { presentes, jefe } = (await api('GET', `/operativos/${op}/mando`, undefined, admin)).json;
+  if (jefe) {
+    const r = await api('PUT', `/operativos/${op}/mando/jefe`, { usuarioId: null }, admin);
+    if (r.status !== 200) throw new Error(`No se pudo quitar al Jefe de Operativo de las pruebas: ${JSON.stringify(r.json)}`);
+  }
+  for (const p of presentes) {
     const r = await api('POST', `/operativos/${op}/mando/retiro`, { usuarioId: p.usuarioId, motivo: MOTIVO_REINICIO }, admin);
     if (r.status !== 200) throw new Error(`No se pudo vaciar el puesto de comando: ${JSON.stringify(r.json)}`);
   }

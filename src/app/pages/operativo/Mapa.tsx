@@ -27,7 +27,7 @@ import type { OperativoOutletContext } from './OperativoLayout';
 import Lienzo, { BASES, type Base, type Herr, type Overlays, type Seleccion, type Vuelo } from './mapa/Lienzo';
 import Arbol, { type Abiertas } from './mapa/Arbol';
 import { BarraHerramientas, Boton, Leyenda, type Herramienta, type ItemLeyenda } from './mapa/piezas';
-import { GloboInstalacion, GloboMarcador, GloboPuntoCero, GloboTrack } from './mapa/Globos';
+import { GloboInstalacion, GloboMarcador, GloboTrack } from './mapa/Globos';
 import { PanelInstalacion, PanelMarcador, PanelPoligono, PanelPuntoCero, PanelTrack } from './mapa/Paneles';
 import {
   ModalCargarGpx, ModalEliminar, ModalNuevaInstalacion, ModalNuevoMarcador, ModalNuevoPoligono, ModalPuntoCero,
@@ -41,6 +41,8 @@ import {
 const REFRESCO_MS = 20_000;
 const CORDOBA: LatLng = [-31.4201, -64.1888];
 const EN_TERRENO = ['DESPLEGADO', 'RASTRILLANDO'];
+/** «Encuadrar el operativo» muestra el Punto Cero con este radio alrededor. */
+const RADIO_ENCUADRE_M = 1000;
 
 type Globo = { tipo: Seleccion['tipo']; id: string; latlng: LatLng; offset: number; k: number };
 type ModalMapa =
@@ -69,9 +71,11 @@ const hora = () => new Date().toLocaleTimeString('es-AR', { hour: '2-digit', min
 const mensaje = (err: unknown, porDefecto: string) => (err instanceof ApiError ? err.message : porDefecto);
 
 export default function Mapa() {
-  const { operativo, recargarOperativo } = useOutletContext<OperativoOutletContext>();
+  const { operativo, recargarOperativo, soloConsulta } = useOutletContext<OperativoOutletContext>();
   const opId = operativo.id;
-  const soloLectura = operativo.estado === 'finalizado' || operativo.estado === 'eliminado';
+  const cerrado = operativo.estado === 'finalizado' || operativo.estado === 'eliminado';
+  // El Jefe de Operativo (02/11) consulta el mapa, no lo modifica.
+  const soloLectura = cerrado || soloConsulta;
   const requiereMotivo = operativo.estado !== 'nuevo';
 
   /* ── Datos ── */
@@ -186,13 +190,13 @@ export default function Mapa() {
     if (globo && globo.tipo !== 'puntoCero' && !(globo.tipo === 'track' ? tracks.some(t => t.id === globo.id) : marcadores.some(m => m.id === globo.id))) setGlobo(null);
   }, [poligonos, tracks, marcadores]); // eslint-disable-line react-hooks/exhaustive-deps
 
-  /* ── Encuadrar ── */
+  /* ── Encuadrar: el Punto Cero con 1 km a la redonda (pedido del 27/10); sin Punto Cero, todo lo dibujado ── */
   const encuadrar = useCallback(() => {
+    if (puntoCero) { volar([puntoCero], { radioM: RADIO_ENCUADRE_M }); return; }
     const pts: LatLng[] = [
       ...poligonos.flatMap(p => p.vertices),
       ...marcadores.map(m => [m.lat, m.lng] as LatLng),
       ...tracks.flatMap(t => t.puntos.filter((_, i) => i % 10 === 0)),
-      ...(puntoCero ? [puntoCero] : []),
     ];
     if (pts.length) volar(pts);
   }, [poligonos, marcadores, tracks, puntoCero]);
@@ -239,8 +243,13 @@ export default function Mapa() {
     else if (herr === 'puntoCero') setModal({ tipo: 'puntoCero', hasta: ll });
     else if (!editVerts) { setGlobo(null); setSel(null); }
   };
+  // El polígono y el Punto Cero abren su panel (el del Punto Cero, con el historial de posiciones); el resto, un globo.
   const onSeleccion = (s: Seleccion, ll: LatLng) => {
-    if (s.tipo === 'poligono') { setSel(s); setGlobo(null); } else abrirGlobo(s.tipo, s.id, ll);
+    if (s.tipo === 'poligono' || s.tipo === 'puntoCero') { setSel(s); setGlobo(null); } else abrirGlobo(s.tipo, s.id, ll);
+  };
+  const abrirPanelPuntoCero = (ll: LatLng, conVuelo = false) => {
+    setSel({ tipo: 'puntoCero', id: 'p0' }); setGlobo(null);
+    if (conVuelo) volar([ll], { panel: true });
   };
   const elegirHerr = (id: string) => {
     const m = mapRef.current;
@@ -340,10 +349,6 @@ export default function Mapa() {
       );
       else if (m) contenidoGlobo = <GloboMarcador m={m} soloLectura={soloLectura} onClose={cerrar} onEditar={() => { setSel({ tipo: 'marcador', id: m.id }); setGlobo(null); }} />;
     }
-    if (globo.tipo === 'puntoCero' && puntoCero) contenidoGlobo = (
-      <GloboPuntoCero lat={puntoCero[0]} lng={puntoCero[1]} ultimo={historialP0[0] ?? null} soloLectura={soloLectura} onClose={cerrar}
-        onActualizar={() => { setGlobo(null); setModal({ tipo: 'puntoCero', hasta: puntoCero }); }} />
-    );
   }
 
   /* ── Lo que se dibuja (sin lo que el usuario ocultó) ── */
@@ -410,7 +415,7 @@ export default function Mapa() {
           onPoligono={p => { setSel({ tipo: 'poligono', id: p.id }); setGlobo(null); volar(p.vertices, { panel: true }); }}
           onTrack={t => { setSel(null); if (t.puntos.length) abrirGlobo('track', t.id, t.puntos[Math.floor(t.puntos.length / 2)], true); }}
           onMarcador={m => abrirGlobo('marcador', m.id, [m.lat, m.lng], true)}
-          onPuntoCero={() => puntoCero && abrirGlobo('puntoCero', 'p0', puntoCero, true)}
+          onPuntoCero={() => puntoCero && abrirPanelPuntoCero(puntoCero, true)}
           onAgregarRadio={agregarRadio} onRadio={cambiarRadio} onQuitarRadio={quitarRadio}
           onCargarGpx={() => setModal({ tipo: 'gpx' })}
           onRestablecer={() => { setPrefs(p => ({ ...p, overlays: OVERLAYS_INICIALES, base: 'satelital', ocultos: [] })); setQ(''); setGlobo(null); setSel(null); cancelarModo(); encuadrar(); }}
@@ -492,7 +497,7 @@ export default function Mapa() {
         )}
         {soloLectura && (
           <div style={{ position: 'absolute', top: arriba, left: '50%', transform: 'translateX(-50%)', zIndex: 950, padding: '6px 14px', borderRadius: 'var(--radius)', background: 'rgba(0,0,0,0.72)', color: '#fff', fontSize: 'calc(12px * var(--escala-texto))' }}>
-            El operativo está {operativo.estado}: el mapa es de sólo lectura.
+            {cerrado ? `El operativo está ${operativo.estado}: el mapa es de sólo lectura.` : 'Modo consulta: el mapa es de sólo lectura.'}
           </div>
         )}
 
@@ -536,8 +541,9 @@ export default function Mapa() {
             onEliminar={() => setModal({ tipo: 'eliminar', que: 'marcador', id: selMk.id, nombre: selMk.nombre, titulo: 'instalación', extra: 'Se quita del mapa.' })} />
         )}
         {sel?.tipo === 'puntoCero' && puntoCero && (
-          <PanelPuntoCero lat={puntoCero[0]} lng={puntoCero[1]} historial={historialP0} soloLectura={soloLectura} onClose={() => setSel(null)}
-            onActualizar={() => { setSel(null); setModal({ tipo: 'puntoCero', hasta: puntoCero }); }} />
+          <PanelPuntoCero lat={puntoCero[0]} lng={puntoCero[1]} historial={historialP0} marcadores={marcadores} soloLectura={soloLectura} onClose={() => setSel(null)}
+            onActualizar={() => { setSel(null); setModal({ tipo: 'puntoCero', hasta: puntoCero }); }}
+            onMarcador={m => { setSel(null); abrirGlobo('marcador', m.id, [m.lat, m.lng], true); }} />
         )}
 
         {aviso && (
@@ -589,7 +595,7 @@ export default function Mapa() {
             setModal(null); setHerr('select');
             await despues('Punto Cero actualizado: los radios lo siguen');
             recargarOperativo();
-            abrirGlobo('puntoCero', 'p0', ll);
+            abrirPanelPuntoCero(ll);
           }} />
       )}
       {modal?.tipo === 'eliminar' && (

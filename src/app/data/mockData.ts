@@ -1,5 +1,5 @@
 import type { ResultadoOperativo } from '../utils/resultadoOperativo';
-export type Rol = 'administrador' | 'coordinador' | 'agente';
+export type Rol = 'administrador' | 'coordinador' | 'jefe de operativo' | 'agente';
 export type EstadoUsuario = 'activo' | 'inactivo' | 'eliminado' | 'pendiente';
 export type EstadoOperativo = 'iniciado' | 'planificación' | 'inactivo' | 'nuevo' | 'finalizado' | 'eliminado' | 'en_proceso';
 /**
@@ -301,8 +301,8 @@ export interface Operativo {
   tieneObjetivoBuscado?: boolean;
   /** Vista previa liviana para las cards del listado (CU-11) — sin fotos. */
   objetivoPreview?: { tipo: TipoObjetivo; nombre?: string; apellido?: string };
-  /** Coordinador a cargo del puesto de comando (01/10); `vigente` = está a cargo ahora. */
-  mandoPreview?: { nombre: string; apellido: string; vigente: boolean };
+  /** Jefe de Operativo vigente (02/11, migración 030); sin él, «No asignado». */
+  jefe?: { id: string; nombre: string; apellido: string };
   agenteIds: string[];
   grupoIds: string[];
   puntos: PuntoInteres[];

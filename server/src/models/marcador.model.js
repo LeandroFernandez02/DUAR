@@ -19,6 +19,7 @@ export const TIPOS_INSTALACION = {
   PUESTO_COMANDO: 'Puesto de Comando',
   BASE: 'Base',
   CAMPAMENTO: 'Campamento',
+  HELIBASE: 'Helibase',
   HELIPUNTO: 'Helipunto',
   AREA_ESPERA: 'Área de Espera',
   AREA_CONCENTRACION_VICTIMAS: 'Área de Concentración de Víctimas',
@@ -34,6 +35,10 @@ const CAMPOS = `
   m.nombre, m.descripcion, m.detalle, m.responsable, m.notas,
   ST_Y(m.geom)          AS lat,
   ST_X(m.geom)          AS lng,
+  -- Distancia en línea recta al Punto Cero vigente (pedido del 27/10): se calcula al leer, así
+  -- sigue sola al Punto Cero cuando se mueve.
+  (SELECT round(ST_Distance(m.geom::geography, o.punto_cero::geography))::int
+     FROM operativos o WHERE o.id = m.operativo_id) AS "distanciaPuntoCeroM",
   u.nombre || ' ' || u.apellido AS "creadoPor",
   m.creado_en           AS "creadoEn",
   m.actualizado_en      AS "actualizadoEn",

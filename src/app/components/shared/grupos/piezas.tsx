@@ -4,6 +4,7 @@
  * con desenfoque, encabezado con ícono, botón primario rojo.
  */
 import type { ReactNode } from 'react';
+import { createPortal } from 'react-dom';
 import { AlertCircle } from 'lucide-react';
 import type { AccionGrupo, AccionTerreno, ClaseGrupoApi, EstadoGrupoApi } from '../../../services/api';
 
@@ -98,8 +99,13 @@ export function EtiquetaConductor() {
   );
 }
 
+/**
+ * Va por portal al <body>: abierto desde el encabezado del operativo (puesto de comando) quedaba
+ * dentro del apilado de la barra superior, debajo del menú inferior del celular, que seguía
+ * recibiendo toques con el modal abierto.
+ */
 export function Overlay({ children, onClose, ancho = 480 }: { children: ReactNode; onClose: () => void; ancho?: number }) {
-  return (
+  return createPortal(
     <div
       className="fixed inset-0 z-[60] flex items-center justify-center p-4"
       style={{ background: 'var(--scrim-modal)' }}
@@ -114,7 +120,8 @@ export function Overlay({ children, onClose, ancho = 480 }: { children: ReactNod
       >
         {children}
       </div>
-    </div>
+    </div>,
+    document.body,
   );
 }
 
