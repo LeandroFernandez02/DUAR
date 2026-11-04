@@ -154,9 +154,9 @@ export async function miSector(req, res, next) {
 }
 
 /**
- * GET /api/mi-objetivo — «Objetivo buscado» del portal (CU-14 consultado por el agente): la ficha del
+ * GET /api/mi-objetivo — «Objetivo buscado» del portal (CU-15 consultado por el agente): la ficha del
  * objetivo del operativo en el que estoy, con las fotos por URL firmada. Sólo lectura; cargarlo y
- * editarlo sigue siendo del coordinador (CU-12/13).
+ * editarlo sigue siendo del coordinador (CU-13/13).
  */
 export async function miObjetivo(req, res, next) {
   try {

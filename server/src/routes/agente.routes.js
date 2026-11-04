@@ -34,7 +34,7 @@ router.get( '/mi-sector/marcadores',                   requiereSesion, marcadore
 router.post('/mi-sector/marcadores',                   requiereSesion, marcadores.crearDelLider);
 router.post('/mi-sector/marcadores/:marcadorId/fotos', requiereSesion, subirFotosMiddleware, marcadores.subirFotoDelLider);
 
-// Módulo 5 · el agente carga el GPX de su propio recorrido (CU-31, flujo principal).
+// Módulo 5 · el agente carga el GPX de su propio recorrido (CU-32, flujo principal).
 router.get( '/mis-tracks',          requiereSesion, tracks.misTracksListar);
 router.post('/mis-tracks/analizar', requiereSesion, subirGpxMiddleware, tracks.misTracksAnalizar);
 router.post('/mis-tracks',          requiereSesion, subirGpxMiddleware, tracks.misTracksCrear);

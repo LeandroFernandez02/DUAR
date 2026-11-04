@@ -1,11 +1,11 @@
 /**
  * MODELO · Objetivo Buscado
- *   · CU-12 Registrar · CU-13 Actualizar · CU-14 Consultar
+ *   · CU-13 Registrar · CU-14 Actualizar · CU-15 Consultar
  *
  * Una ficha por operativo (`objetivo_buscado.operativo_id` es UNIQUE). Toda
  * lectura pasa por `buscarPorOperativo` — nunca existe un `buscarPorId(id)`
  * suelto sin el filtro de operativo: es lo que garantiza en el código el
- * "Aislamiento de Información" que exige el CU-12 (la ficha no se puede ver
+ * "Aislamiento de Información" que exige el CU-13 (la ficha no se puede ver
  * desde otro operativo).
  */
 import { query, withTransaction } from '../config/db.js';
@@ -44,7 +44,7 @@ const CAMPOS = `
   ) AS fotos
 `;
 
-/** CU-14: único punto de lectura, siempre acotado al operativo. */
+/** CU-15: único punto de lectura, siempre acotado al operativo. */
 export async function buscarPorOperativo(operativoId) {
   const { rows } = await query(
     `SELECT ${CAMPOS} FROM objetivo_buscado ob WHERE ob.operativo_id = $1`,
@@ -53,7 +53,7 @@ export async function buscarPorOperativo(operativoId) {
   return rows[0] ?? null;
 }
 
-/** CU-12 paso 7: INSERT vinculado al operativo_id. */
+/** CU-13 paso 7: INSERT vinculado al operativo_id. */
 export async function crear(operativoId, campos) {
   const {
     tipo, nombre = null, apellido = null, dni = null, nacionalidad = null,
@@ -80,7 +80,7 @@ export async function crear(operativoId, campos) {
   return buscarPorOperativo(operativoId);
 }
 
-/** CU-13 · UPDATE parcial, mismo patrón `permitidos` que usuario.model.js. */
+/** CU-14 · UPDATE parcial, mismo patrón `permitidos` que usuario.model.js. */
 export async function actualizar(id, campos) {
   const permitidos = {
     tipo: 'tipo', nombre: 'nombre', apellido: 'apellido', dni: 'dni',
@@ -115,7 +115,7 @@ export async function actualizar(id, campos) {
   return buscarPorOperativo(operativoId);
 }
 
-/** CU-12/13: agrega fotos ya subidas a Storage (aditivo, no reemplaza). */
+/** CU-13/13: agrega fotos ya subidas a Storage (aditivo, no reemplaza). */
 export async function agregarFotos(objetivoId, paths) {
   if (!paths || paths.length === 0) return;
   const valores = paths.map((_, i) => `($1, $${i + 2})`).join(', ');

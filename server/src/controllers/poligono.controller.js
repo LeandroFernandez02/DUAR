@@ -1,7 +1,7 @@
 /**
  * CONTROLADOR · Polígonos del Mapa Operacional (Módulo 5)
- *   · CU-29 Dibujar · CU-30 Asignar a grupo · CU-37 Modificar
- *   · CU-38 Eliminar · CU-39 Consultar (CU-40 la cobertura la calcula el modelo)
+ *   · CU-30 Dibujar · CU-31 Asignar a grupo · CU-38 Modificar
+ *   · CU-39 Eliminar · CU-40 Consultar (CU-41 la cobertura la calcula el modelo)
  *
  * Valida la FORMA del pedido (nombre, notas, GeoJSON) y audita en
  * logs_auditoria. Las reglas de negocio viven en poligono.model.js con las
@@ -80,7 +80,7 @@ function leerGeometria(g) {
   return { geojson: JSON.stringify({ type: 'Polygon', coordinates: [puntos] }) };
 }
 
-/** GET /api/operativos/:id/poligonos — los polígonos vigentes (CU-33 / CU-39). */
+/** GET /api/operativos/:id/poligonos — los polígonos vigentes (CU-34 / CU-40). */
 export async function listar(req, res, next) {
   try {
     if (!(await operativoEditable(req, res, { soloLectura: true }))) return;
@@ -88,7 +88,7 @@ export async function listar(req, res, next) {
   } catch (err) { next(err); }
 }
 
-/** GET /api/operativos/:id/poligonos/:poligonoId — CU-39 Consultar Polígono. */
+/** GET /api/operativos/:id/poligonos/:poligonoId — CU-40 Consultar Polígono. */
 export async function obtener(req, res, next) {
   try {
     if (!esUuid(req.params.poligonoId)) return invalido(res, 'Polígono inválido.', 'valor_invalido');
@@ -99,7 +99,7 @@ export async function obtener(req, res, next) {
   } catch (err) { next(err); }
 }
 
-/** POST /api/operativos/:id/poligonos — CU-29 Dibujar Polígono. */
+/** POST /api/operativos/:id/poligonos — CU-30 Dibujar Polígono. */
 export async function crear(req, res, next) {
   try {
     const b = req.body ?? {};
@@ -122,7 +122,7 @@ export async function crear(req, res, next) {
   } catch (err) { next(err); }
 }
 
-/** PUT /api/operativos/:id/poligonos/:poligonoId — CU-37 (nombre, notas, color y/o forma). */
+/** PUT /api/operativos/:id/poligonos/:poligonoId — CU-38 (nombre, notas, color y/o forma). */
 export async function actualizar(req, res, next) {
   try {
     if (!esUuid(req.params.poligonoId)) return invalido(res, 'Polígono inválido.', 'valor_invalido');
@@ -162,7 +162,7 @@ export async function actualizar(req, res, next) {
   } catch (err) { next(err); }
 }
 
-/** DELETE /api/operativos/:id/poligonos/:poligonoId — CU-38 (baja con registro). */
+/** DELETE /api/operativos/:id/poligonos/:poligonoId — CU-39 (baja con registro). */
 export async function eliminar(req, res, next) {
   try {
     if (!esUuid(req.params.poligonoId)) return invalido(res, 'Polígono inválido.', 'valor_invalido');
@@ -179,7 +179,7 @@ export async function eliminar(req, res, next) {
   } catch (err) { next(err); }
 }
 
-/** POST /api/operativos/:id/poligonos/:poligonoId/grupos — CU-30 asignar { grupoId }. */
+/** POST /api/operativos/:id/poligonos/:poligonoId/grupos — CU-31 asignar { grupoId }. */
 export async function asignarGrupo(req, res, next) {
   try {
     const { grupoId } = req.body ?? {};
@@ -191,7 +191,7 @@ export async function asignarGrupo(req, res, next) {
   } catch (err) { next(err); }
 }
 
-/** POST .../poligonos/:poligonoId/grupos/:grupoId/quitar — CU-30 (sólo un grupo Asignado; en el terreno, 409). */
+/** POST .../poligonos/:poligonoId/grupos/:grupoId/quitar — CU-31 (sólo un grupo Asignado; en el terreno, 409). */
 export async function quitarGrupo(req, res, next) {
   try {
     const { poligonoId, grupoId } = req.params;
@@ -203,7 +203,7 @@ export async function quitarGrupo(req, res, next) {
   } catch (err) { next(err); }
 }
 
-/** POST .../poligonos/:poligonoId/grupos/:grupoId/cambiar — CU-30 { nuevoGrupoId } (sólo si el actual está Asignado). */
+/** POST .../poligonos/:poligonoId/grupos/:grupoId/cambiar — CU-31 { nuevoGrupoId } (sólo si el actual está Asignado). */
 export async function cambiarGrupo(req, res, next) {
   try {
     const { poligonoId, grupoId } = req.params;

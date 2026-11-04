@@ -1,13 +1,13 @@
 /**
- * Tablero de grupos con arrastrar y soltar (CU-22 paso 6, CU-24, CU-25), diseño CALÍVAR del 23/10.
+ * Tablero de grupos con arrastrar y soltar (CU-23 paso 6, CU-25, CU-26), diseño CALÍVAR del 23/10.
  *
  * Es sólo la vista: recibe grupos y agentes ya cargados de la API y avisa qué
  * se arrastró adónde. Quien decide si el movimiento vale es el backend
  * (grupo.model.js#moverAgente); acá se anticipan las mismas reglas sólo para
  * que el resaltado no invite a un movimiento que va a rebotar (`veredicto`):
- *  · el Líder no se arrastra (CU-22 6.1 / CU-25 2.1) — se cambia en Editar;
+ *  · el Líder no se arrastra (CU-23 6.1 / CU-26 2.1) — se cambia en Editar;
  *  · sólo se arrastra con el grupo En formación (24/09); en el terreno se usa
- *    "Retirar del grupo" (CU-27);
+ *    "Retirar del grupo" (CU-28);
  *  · un recurso especial no entra a un grupo de rastrillaje (26/09), salvo
  *    que vaya de conductor (29/09).
  * El estado del grupo se cambia con los botones de acción de cada tarjeta.
@@ -102,7 +102,7 @@ function FilaTablero({ agente, lider, enGrupo, fijo, motivoFijo, tactil, onDragI
   onDragInicio: () => void;
   onDragFin: () => void;
   onTactil: (e: React.PointerEvent) => void;
-  /** CU-27: sólo en grupos en el terreno. */
+  /** CU-28: sólo en grupos en el terreno. */
   onRetirar?: () => void;
 }) {
   const [levantada, setLevantada] = useState(false);
@@ -142,7 +142,7 @@ function FilaTablero({ agente, lider, enGrupo, fijo, motivoFijo, tactil, onDragI
       </div>
       {!tactil && <>{chips}{estado}</>}
       {onRetirar && (
-        <span className="flex"><BotonIcono icono={UserMinus} tono="peligro" title={`Retirar del grupo a ${agente.nombre} ${agente.apellido} (CU-27)`} onClick={onRetirar} /></span>
+        <span className="flex"><BotonIcono icono={UserMinus} tono="peligro" title={`Retirar del grupo a ${agente.nombre} ${agente.apellido} (CU-28)`} onClick={onRetirar} /></span>
       )}
       {tactil && !fijo && (
         <span aria-label={`Arrastrar a ${agente.nombre} ${agente.apellido} a un grupo`} role="button"
@@ -436,7 +436,7 @@ export default function GruposDnD({
             {!rastrillaje && <span title="Grupo especial: recursos especiales, con agentes de apoyo" style={{ marginLeft: 2 }}><Chip>Especial</Chip></span>}
           </p>
 
-          {/* Binomio mínimo (CU-27): en el terreno con uno solo rastrillando. El grupo sigue; se avisa. */}
+          {/* Binomio mínimo (CU-28): en el terreno con uno solo rastrillando. El grupo sigue; se avisa. */}
           {g.alertaBinomio && (
             <div role="alert" className="flex items-start" style={{ ...AVISO_ROJO, gap: 6, padding: 8, marginBottom: 10, borderRadius: 'var(--radius-md)', fontSize: 'calc(11px * var(--escala-texto))', lineHeight: 1.4, fontWeight: 600 }}>
               <AlertTriangle size={12} style={{ flexShrink: 0, marginTop: 1 }} />

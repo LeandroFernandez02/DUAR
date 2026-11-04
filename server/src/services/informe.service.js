@@ -1,10 +1,10 @@
 /**
- * SERVICIO · Emisión de informes (CU-41)
+ * SERVICIO · Emisión de informes (CU-42)
  *
  * Emitir un informe es una sola operación para quien lo pide: reservar el
  * código, reunir los datos, armar el PDF, calcular su huella SHA-256,
  * guardarlo en Storage y registrarlo. Si algo falla en el camino no queda
- * registro y no se descarga nada (CU-41 6.1): un informe sin copia guardada
+ * registro y no se descarga nada (CU-42 6.1): un informe sin copia guardada
  * no se podría verificar.
  *
  * Lo usan el botón «Informe» (parcial, o el final si falta) y la finalización

@@ -35,7 +35,7 @@ const CAMPOS = `
 /**
  * Alta ACTIVA del usuario, si tiene una. Es el corazón de la Regla de Ubicuidad
  * (Decisión B): un efectivo no puede estar operando en dos lugares a la vez.
- * Devuelve también el operativo, porque el modal de CU-16 paso 6.2 tiene que
+ * Devuelve también el operativo, porque el modal de CU-17 paso 6.2 tiene que
  * nombrarlo ("Ya estás asignado al operativo [Nombre]").
  */
 export async function altaActivaDe(usuarioId) {
@@ -80,7 +80,7 @@ export async function esRecursoCritico(especialidadId) {
  * (grupo.model.js#liberarPorCambioDeOperativo): no se puede ir estando en el
  * terreno, y si el grupo ya estaba confirmado, se reabre.
  *
- * @param fuente 'QR' (autoservicio) | 'COORDINADOR' (alta manual, CU-17)
+ * @param fuente 'QR' (autoservicio) | 'COORDINADOR' (alta manual, CU-18)
  */
 export async function darDeAlta({
   usuarioId, operativoId, especialidadId = null, abandonarAnterior = false,
@@ -116,7 +116,7 @@ export async function darDeAlta({
           [previa.id]
         );
         // Si venía de un grupo, ese período del historial también se cierra:
-        // dejarlo abierto falsearía el informe forense (CU-27).
+        // dejarlo abierto falsearía el informe forense (CU-28).
         await client.query(
           `UPDATE agentes_grupo_historial
               SET fecha_fin = CURRENT_TIMESTAMP, motivo_salida = 'Cambio de operativo'
@@ -172,7 +172,7 @@ export async function buscarActivoDeOperativo(operativoId, usuarioId) {
 }
 
 /**
- * CU-18 · edición de los datos TÁCTICOS (especialidad-override y
+ * CU-19 · edición de los datos TÁCTICOS (especialidad-override y
  * conductor). Mismo patrón `permitidos` que usuario.model.js: sólo
  * toca columnas presentes en `campos`.
  *
@@ -205,10 +205,10 @@ export async function actualizar(id, campos) {
 }
 
 /**
- * Estado de alguien SIN grupo: lo elige el coordinador (CU-18) o el propio
+ * Estado de alguien SIN grupo: lo elige el coordinador (CU-19) o el propio
  * agente desde su portal. Con grupo no se elige: lo manda el grupo (Regla 1), y
  * la base lo garantiza con el CHECK agente_estado_segun_grupo_chk. El retirado
- * por CU-27 que vuelve (REPLEGADO sin grupo) también sale por acá.
+ * por CU-28 que vuelve (REPLEGADO sin grupo) también sale por acá.
  *
  * La marca de tiempo sólo se mueve si el estado REALMENTE cambia: reabrir la
  * ficha y guardar sin tocarlo no vuelve a cero un "no disponible hace 3 h".
@@ -247,7 +247,7 @@ export async function cambiarEstadoSinGrupo(id, estado, { fuente, usuarioId, mot
 }
 
 /**
- * Baja lógica de la participación (CU-21; no toca al Usuario global — Decisión
+ * Baja lógica de la participación (CU-22; no toca al Usuario global — Decisión
  * A). Desde el 24/09 sólo para quien no está en un grupo: lo exige el
  * controlador, para que la baja no se saltee las reglas del grupo.
  */
@@ -285,7 +285,7 @@ export async function egresar(id, usuarioId = null) {
  * cuenta eliminada.
  *  - En un grupo en la base: sale del grupo (se reabre; si era Líder, queda sin Líder).
  *  - En un grupo en el terreno: no se puede (409 grupo_en_terreno): primero tiene
- *    que volver y ser retirado del grupo (CU-27), que deja motivo y sucesión.
+ *    que volver y ser retirado del grupo (CU-28), que deja motivo y sucesión.
  * Devuelve los operativos que dejó, para la auditoría.
  */
 export async function egresarPorCuentaEliminadaCon(client, usuarioId, autorId) {
@@ -332,7 +332,7 @@ async function dejarOperativosCon(client, usuarioId, autorId, MOTIVO, { porElimi
 }
 
 /**
- * Personal actualmente en el operativo (CU-20). Excluye a quienes ya egresaron.
+ * Personal actualmente en el operativo (CU-21). Excluye a quienes ya egresaron.
  * Es lo que consume la grilla del Coordinador, que refresca por polling.
  */
 export async function listarDeOperativo(operativoId) {

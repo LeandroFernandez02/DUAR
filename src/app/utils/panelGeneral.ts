@@ -1,5 +1,5 @@
 /**
- * Panel general (CU-42): todo lo que muestra sale de esta función, a partir de una
+ * Panel general (CU-43): todo lo que muestra sale de esta función, a partir de una
  * lista de operativos con lo justo para las cifras. Hoy la lista es de ejemplo
  * (data/panelGeneralMock.ts); cuando haya API, el servidor devuelve esta misma forma
  * y la pantalla no cambia.

@@ -1,5 +1,5 @@
 /**
- * Puesto de comando (CU-15; 01/10, migración 016; rehecho el 02/11, migración 030).
+ * Puesto de comando (CU-16; 01/10, migración 016; rehecho el 02/11, migración 030).
  *
  * Un botón «Puesto de Comando» en el encabezado del operativo (en ámbar si no tiene Jefe de
  * Operativo) y, al tocarlo, el detalle:

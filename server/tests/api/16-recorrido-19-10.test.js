@@ -1,10 +1,10 @@
 /**
  * Lo que apareció en el recorrido completo de la aplicación del 19/10 (admin, coordinador y agente):
- *   · CU-02 / CU-16: una cuenta Pendiente que quiere sumarse por QR recibía «tu cuenta no está
+ *   · CU-02 / CU-17: una cuenta Pendiente que quiere sumarse por QR recibía «tu cuenta no está
  *     activa, contactá al administrador» en vez de «confirmá tu correo»;
  *   · CU-10: la reseña que se escribe al finalizar pisaba la descripción del operativo
  *     (ahora va en su propia columna, migración 024);
- *   · CU-16: el QR de un operativo Nuevo explicaba «el operativo está nuevo»;
+ *   · CU-17: el QR de un operativo Nuevo explicaba «el operativo está nuevo»;
  *   · CU-10: el resultado del operativo es obligatorio al finalizar (migración 025).
  */
 import { describe, test, before, after } from 'node:test';
@@ -26,7 +26,7 @@ describe('Recorrido del 19/10', () => {
   before(async () => { ctx = await preparar(); });
   after(terminar);
 
-  test('CU-02 / CU-16 · una cuenta Pendiente que se suma por QR recibe «confirmá tu correo» (email_no_confirmado)', async () => {
+  test('CU-02 / CU-17 · una cuenta Pendiente que se suma por QR recibe «confirmá tu correo» (email_no_confirmado)', async () => {
     const qr = (await ctx.api('GET', `/operativos/${ctx.op}/qr`)).json.qr.token;
     const dni = `9${String(Date.now()).slice(-7)}`;
     const r = await ctx.api('POST', '/auth/registro', {
@@ -70,7 +70,7 @@ describe('Recorrido del 19/10', () => {
     assert.equal(o.resultado, 'SUSPENDIDA');
   });
 
-  test('CU-16 · el QR de un operativo Nuevo explica que hay que iniciarlo desde su panel', async () => {
+  test('CU-17 · el QR de un operativo Nuevo explica que hay que iniciarlo desde su panel', async () => {
     const c = await nuevoOperativo();
     motivo(c, 201);
     const r = await ctx.api('GET', `/operativos/${c.json.operativo.id}/qr`);

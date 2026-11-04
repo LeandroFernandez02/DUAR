@@ -1,6 +1,6 @@
 /**
- * Pestaña "Grupos" del panel de Agentes (CU-24 paso 1) — el tablero del
- * Coordinador para CU-22 a CU-27, contra la API real.
+ * Pestaña "Grupos" del panel de Agentes (CU-25 paso 1) — el tablero del
+ * Coordinador para CU-23 a CU-28, contra la API real.
  *
  * Tiempo real = consulta periódica cada 10 s (decisión del 22/09: Vercel no
  * sostiene WebSockets) más recarga inmediata después de cada acción propia.
@@ -83,7 +83,7 @@ const TableroGrupos = forwardRef<TableroGruposHandle, Props>(function TableroGru
       setPersonal(p.personal);
       setError(null);
     } catch (err) {
-      // CU-24 (Fracaso): se avisa la desconexión en vez de dejar un tablero viejo como si fuera actual.
+      // CU-25 (Fracaso): se avisa la desconexión en vez de dejar un tablero viejo como si fuera actual.
       setError(err instanceof ApiError ? err.message : 'Sin conexión con el servidor: el tablero puede estar desactualizado.');
     } finally {
       setCargando(false);
@@ -109,8 +109,8 @@ const TableroGrupos = forwardRef<TableroGruposHandle, Props>(function TableroGru
   const vigente = (g: GrupoApi | null) => (g ? grupos.find(x => x.id === g.id) ?? g : null);
 
   // Sólo un agente DISPONIBLE entra a un grupo. Sin grupo también puede haber
-  // No disponibles y Replegados (retirados por CU-27 que vuelven): no se muestran
-  // en el tablero (CU-24 obs. 2) y se habilitan desde la sección Agentes o su portal.
+  // No disponibles y Replegados (retirados por CU-28 que vuelven): no se muestran
+  // en el tablero (CU-25 obs. 2) y se habilitan desde la sección Agentes o su portal.
   const sinGrupo: AgenteTablero[] = useMemo(
     () => personal.filter(a => !a.grupoId && a.estado === 'DISPONIBLE'),
     [personal]
@@ -141,7 +141,7 @@ const TableroGrupos = forwardRef<TableroGruposHandle, Props>(function TableroGru
     );
   }
 
-  // CU-24 paso 3.1: tablero vacío.
+  // CU-25 paso 3.1: tablero vacío.
   if (personal.length === 0 && grupos.length === 0) {
     return (
       <Vacio icono={Users} titulo="Aún no hay agentes asignados a este operativo"

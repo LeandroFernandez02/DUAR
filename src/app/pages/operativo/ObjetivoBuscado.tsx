@@ -939,7 +939,7 @@ export default function ObjetivoBuscado() {
   const [lightboxIdx, setLightboxIdx] = useState<number | null>(null);
   const [deleteFotoId, setDeleteFotoId] = useState<string | null>(null);
 
-  // CU-12/13: el operativo cerrado sigue permitiendo CONSULTAR (CU-14), no cargar/editar.
+  // CU-13/13: el operativo cerrado sigue permitiendo CONSULTAR (CU-15), no cargar/editar.
   const soloLectura = operativo.estado === 'finalizado' || operativo.estado === 'eliminado' || soloConsulta;
 
   const cargarObjetivo = useCallback(async () => {

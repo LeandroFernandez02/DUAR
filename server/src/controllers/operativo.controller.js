@@ -1,6 +1,6 @@
 /**
  * CONTROLADOR · Operativos
- *   · CU-08 Crear · CU-09 Modificar · CU-10 Finalizar · CU-11 Consultar
+ *   · CU-08 Crear · CU-09 Modificar · CU-10 Finalizar · CU-12 Consultar
  */
 import * as Operativo from '../models/operativo.model.js';
 import * as Auditoria from '../models/auditoria.model.js';
@@ -15,7 +15,7 @@ const TITULO_DUPLICADO = {
   motivo: 'titulo_duplicado',
 };
 
-/** GET /api/operativos — CU-11, con ?busqueda= y ?estado= */
+/** GET /api/operativos — CU-12, con ?busqueda= y ?estado= */
 export async function listar(req, res, next) {
   try {
     const { busqueda, estado } = req.query;
@@ -127,7 +127,7 @@ export async function actualizar(req, res, next) {
       }
     }
 
-    // CU-36: con el operativo en curso, mover el Punto Cero pide motivo.
+    // CU-37: con el operativo en curso, mover el Punto Cero pide motivo.
     let motivoPuntoCero = null;
     if (b.motivoPuntoCero !== undefined && b.motivoPuntoCero !== null) {
       if (typeof b.motivoPuntoCero !== 'string' || b.motivoPuntoCero.trim().length > MOTIVO_PUNTO_CERO_MAX) {
@@ -176,7 +176,7 @@ export async function activar(req, res, next) {
   } catch (err) { next(err); }
 }
 
-/** GET /api/operativos/:id/finalizar/revision — CU-10 5.1: lo que conviene mirar antes de cerrar. */
+/** GET /api/operativos/:id/finalizar/revision — CU-10 3.1: lo que conviene mirar antes de cerrar. */
 export async function revisionFinalizar(req, res, next) {
   try {
     const previo = await Operativo.buscarPorId(req.params.id);

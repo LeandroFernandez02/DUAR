@@ -1,5 +1,5 @@
 /**
- * MODELO · Informe por operativo (CU-41)
+ * MODELO · Informe por operativo (CU-42)
  *
  * Dos partes:
  *   · El registro de informes emitidos (`informes_operativo`, migración 021):
@@ -49,7 +49,7 @@ export async function finalDe(operativoId) {
 }
 
 /**
- * Lo que muestra la página pública de verificación (CU-41 N1): nada personal
+ * Lo que muestra la página pública de verificación (CU-42 N1): nada personal
  * ni del contenido. Sólo el código, el tipo, las fechas, el operativo por su
  * código corto y la huella guardada.
  */

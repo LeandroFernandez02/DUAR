@@ -1,5 +1,5 @@
 /**
- * CONTROLADOR · Puesto de comando (CU-15; 01/10, migración 016; rehecho el 02/11, migración 030)
+ * CONTROLADOR · Puesto de comando (CU-16; 01/10, migración 016; rehecho el 02/11, migración 030)
  *
  *   GET  /api/operativos/:id/mando           → Jefe de Operativo, turno e historiales
  *   POST /api/operativos/:id/mando/ingreso   { usuarioId?, puesto, trasladar? }

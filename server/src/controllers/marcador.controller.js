@@ -1,7 +1,7 @@
 /**
  * CONTROLADOR · Marcadores del mapa (Módulo 5)
- *   · CU-34 Marcar Punto de Interés, Hallazgo o Instalación SCI
- *   · CU-35 Modificar (y reubicar una instalación) · CU-38 Eliminar
+ *   · CU-35 Marcar Punto de Interés, Hallazgo o Instalación SCI
+ *   · CU-36 Modificar (y reubicar una instalación) · CU-39 Eliminar
  *   · El Líder de Grupo, desde el portal, en su polígono (03/11)
  *
  * Valida la forma del pedido según la clase y audita. Las reglas del hallazgo
@@ -107,7 +107,7 @@ export async function obtener(req, res, next) {
   } catch (err) { next(err); }
 }
 
-/** POST /api/operativos/:id/marcadores — CU-34 */
+/** POST /api/operativos/:id/marcadores — CU-35 */
 export async function crear(req, res, next) {
   try {
     const b = req.body ?? {};
@@ -121,7 +121,7 @@ export async function crear(req, res, next) {
     if (b.clase === 'INSTALACION' && !r.datos.tipoInstalacion) {
       return invalido(res, 'Elegí el tipo de instalación.', 'tipo_invalido');
     }
-    // CU-34 3.1 / 4.1: sin nombre no se guarda (la instalación lo toma de su tipo).
+    // CU-35 3.1 / 4.1: sin nombre no se guarda (la instalación lo toma de su tipo).
     if (b.clase !== 'INSTALACION' && !r.datos.nombre) return invalido(res, 'Ingresá un nombre.', 'nombre_requerido');
     if (!(await operativoEditable(req.params.id, res))) return;
 
@@ -131,7 +131,7 @@ export async function crear(req, res, next) {
   } catch (err) { next(err); }
 }
 
-/** PUT /api/operativos/:id/marcadores/:marcadorId — CU-35 (datos, clase POI→Hallazgo y reubicar una instalación) */
+/** PUT /api/operativos/:id/marcadores/:marcadorId — CU-36 (datos, clase POI→Hallazgo y reubicar una instalación) */
 export async function actualizar(req, res, next) {
   try {
     if (!esUuid(req.params.marcadorId)) return noEncontrado(res);
@@ -147,20 +147,20 @@ export async function actualizar(req, res, next) {
     if (!previo) return noEncontrado(res);
     const r = leerCampos(b, b.clase ?? previo.clase);
     if (r.error) return invalido(res, r.error, r.motivo);
-    // CU-35 3.2 (nombre vacío): no se puede guardar.
+    // CU-36 3.2 (nombre vacío): no se puede guardar.
     if (r.datos.nombre === null) return invalido(res, 'El nombre no puede quedar vacío.', 'nombre_requerido');
 
     await Marcador.actualizar(req.params.id, req.params.marcadorId, {
       ...r.datos, ...(b.clase !== undefined ? { clase: b.clase } : {}), ...(c.lat !== undefined ? c : {}),
     });
     const marcador = await Marcador.detalle(req.params.id, req.params.marcadorId);
-    // Si se reubicó, la auditoría guarda las coordenadas anteriores (CU-35 2.4).
+    // Si se reubicó, la auditoría guarda las coordenadas anteriores (CU-36 2.4).
     await auditar(req, Auditoria.ACCION.MODIFICAR, ENTIDAD, marcador.id, previo, marcador);
     res.json({ marcador });
   } catch (err) { next(err); }
 }
 
-/** DELETE /api/operativos/:id/marcadores/:marcadorId — CU-38 (un hallazgo no se elimina) */
+/** DELETE /api/operativos/:id/marcadores/:marcadorId — CU-39 (un hallazgo no se elimina) */
 export async function eliminar(req, res, next) {
   try {
     if (!esUuid(req.params.marcadorId)) return noEncontrado(res);
@@ -173,7 +173,7 @@ export async function eliminar(req, res, next) {
   } catch (err) { next(err); }
 }
 
-/** POST /api/operativos/:id/marcadores/:marcadorId/fotos — CU-34/35 (puntos de interés y hallazgos) */
+/** POST /api/operativos/:id/marcadores/:marcadorId/fotos — CU-35/35 (puntos de interés y hallazgos) */
 export async function subirFotos(req, res, next) {
   try {
     if (!esUuid(req.params.marcadorId)) return noEncontrado(res);

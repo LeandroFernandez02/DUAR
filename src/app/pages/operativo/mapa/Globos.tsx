@@ -1,5 +1,5 @@
 /**
- * Globos de información al hacer clic en un elemento del mapa (CU-33): track
+ * Globos de información al hacer clic en un elemento del mapa (CU-34): track
  * (con perfil de elevación), punto de interés o hallazgo e instalación SCI.
  * El Punto Cero no tiene globo: abre su panel con el historial (pedido del 27/10).
  */

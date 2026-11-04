@@ -1,5 +1,5 @@
 /**
- * SERVICIO · PDF del Informe por operativo (CU-41)
+ * SERVICIO · PDF del Informe por operativo (CU-42)
  *
  * Arma el documento con pdfmake a partir de `Informe.reunirDatos`, siguiendo el
  * diseño aprobado el 14/10: carátula (datos, cifras, persona buscada) →
@@ -504,7 +504,7 @@ export async function generarPdf(d, meta) {
         fontSize: 7.8,
       },
       {
-        columns: ['Coordinador a cargo', 'Recibido por la Fiscalía'].map((titulo, i) => ({
+        columns: ['Jefe de Operativo', 'Recibido por la Fiscalía'].map((titulo, i) => ({
           stack: [
             linea(230, 0.8, C.tinta),
             { text: titulo, bold: true, margin: [0, 4, 0, 0] },

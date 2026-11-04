@@ -1,5 +1,5 @@
 /**
- * Piezas visuales que comparten los modales de grupos (CU-22 a CU-27) y el
+ * Piezas visuales que comparten los modales de grupos (CU-23 a CU-28) y el
  * portal del Líder. Mismo lenguaje que el modal de extracción original: overlay
  * con desenfoque, encabezado con ícono, botón primario rojo.
  */

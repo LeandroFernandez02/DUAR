@@ -34,7 +34,7 @@ export function mapearOperativo(o: OperativoApi): Operativo {
     descripcion: o.descripcion ?? undefined,
     notaFinal: o.notaFinal ?? undefined,
     resultado: o.resultado ?? undefined,
-    // El backend hoy sólo da la CANTIDAD (CU-11 paso 6), no los IDs reales —
+    // El backend hoy sólo da la CANTIDAD (CU-12 paso 6), no los IDs reales —
     // Módulo 4 (agentes/grupos) todavía no está migrado del todo. Se arma un
     // array del tamaño correcto sólo para que sigan andando los `.length` que
     // ya usaba esta pantalla; nunca se lee como IDs de verdad. El listado real

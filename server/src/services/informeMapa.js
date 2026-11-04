@@ -1,5 +1,5 @@
 /**
- * Mapa del Informe (CU-41): la imagen satelital de la zona (la misma de la
+ * Mapa del Informe (CU-42): la imagen satelital de la zona (la misma de la
  * pantalla del mapa: Esri World Imagery con sus referencias) y, encima, lo que
  * hay en el operativo: polígonos, tracks, radios, Punto Cero, hallazgos,
  * puntos de interés e instalaciones, con escala gráfica y norte.

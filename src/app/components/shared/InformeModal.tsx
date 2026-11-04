@@ -5,7 +5,7 @@ import { toast } from 'sonner';
 import { informesApi, InformeApi, TipoInformeApi, DescargaInformeApi } from '../../services/api';
 
 /**
- * Informe del operativo (CU-41), en un modal: el botón «Informe» del encabezado
+ * Informe del operativo (CU-42), en un modal: el botón «Informe» del encabezado
  * lo abre sobre la pantalla en la que esté el coordinador, sin sacarlo de ahí.
  *   · paso 2: qué se va a emitir (parcial con corte ahora, o el final) y los ya emitidos;
  *   · pasos 3-7: «Generar y descargar» arma el PDF en el servidor, lo guarda con su

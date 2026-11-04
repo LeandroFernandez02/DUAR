@@ -1,7 +1,7 @@
 /**
- * Portal del Agente — «Objetivo buscado» (diseño CALÍVAR, 23/10; CU-14 consultado desde el celular).
+ * Portal del Agente — «Objetivo buscado» (diseño CALÍVAR, 23/10; CU-15 consultado desde el celular).
  * La ficha de la persona u objeto que se busca en el operativo en el que estoy, con sus fotos.
- * Sólo lectura: cargarla y corregirla es del coordinador (CU-12/13).
+ * Sólo lectura: cargarla y corregirla es del coordinador (CU-13/13).
  */
 import { useEffect, useState, type ReactNode } from 'react';
 import { Box, Image as ImagenIcono, Loader2, IdCard, Shirt, FileText, Ruler, User } from 'lucide-react';

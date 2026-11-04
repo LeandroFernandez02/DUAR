@@ -189,7 +189,7 @@ export default function AgenteDashboard() {
                   <PanelTactico />
                   {/* El polígono de mi grupo, para ubicarme (sólo lectura) */}
                   <MiSector />
-                  {/* Módulo 5 · CU-31: el GPX de lo que recorrí (cargar sí, eliminar no) */}
+                  {/* Módulo 5 · CU-32: el GPX de lo que recorrí (cargar sí, eliminar no) */}
                   <MisRecorridos />
                 </>
               ) : <SinOperativo />}

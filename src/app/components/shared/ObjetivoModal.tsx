@@ -404,7 +404,7 @@ function ObjetoView({ objetivo, fotos, onOpenLightbox }: {
 }
 
 /* ─────────────────────────────────────────────────
-   Main ObjetivoModal — CU-14 (vista rápida) + CU-12/13 (edición)
+   Main ObjetivoModal — CU-15 (vista rápida) + CU-13/13 (edición)
 ───────────────────────────────────────────────── */
 export default function ObjetivoModal({ operativoId, onClose, soloConsulta = false }: Props) {
   const [objetivo, setObjetivo] = useState<ObjetivoApi | null>(null);

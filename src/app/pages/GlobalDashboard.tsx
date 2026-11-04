@@ -9,7 +9,7 @@ import MapaProvincia from './panel/MapaProvincia';
 import LineaTiempo from './panel/LineaTiempo';
 
 /**
- * Panel general (CU-42): estadísticas de todos los operativos, para el administrador y los
+ * Panel general (CU-43): estadísticas de todos los operativos, para el administrador y los
  * coordinadores. Qué muestra lo decidió el equipo (doc «Panel general de operativos») y el
  * boceto del 21/10: arriba los operativos por estado; abajo el mapa de la provincia con los
  * datos del operativo elegido y, al costado, agentes, usuarios y las tortas; «Operativos por

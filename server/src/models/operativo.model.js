@@ -1,6 +1,6 @@
 /**
  * MODELO · Operativos
- *   · CU-08 Crear · CU-09 Modificar · CU-10 Finalizar · CU-11 Consultar
+ *   · CU-08 Crear · CU-09 Modificar · CU-10 Finalizar · CU-12 Consultar
  *
  * `punto_cero` es `geometry(Point,4326)` de PostGIS y no se puede devolver
  * crudo: sale como lat/lng con ST_X/ST_Y para que el frontend lo consuma
@@ -47,9 +47,9 @@ const JOIN_JEFE = `
   ) jo ON true`;
 
 /**
- * Vista previa liviana del objetivo para el listado (CU-11): sin fotos ni
+ * Vista previa liviana del objetivo para el listado (CU-12): sin fotos ni
  * URLs firmadas — sólo lo necesario para el badge "Persona/Objeto buscado"
- * de las cards. El detalle completo vive en objetivo.model.js (CU-12..14).
+ * de las cards. El detalle completo vive en objetivo.model.js (CU-13..14).
  */
 const CAMPOS_CON_OBJETIVO = `
   ${CAMPOS},
@@ -72,7 +72,7 @@ export async function buscarPorId(id) {
 }
 
 /**
- * ¿Admite que entre personal? Precondición de CU-16: Iniciado, En planificación o En proceso. Un
+ * ¿Admite que entre personal? Precondición de CU-17: Iniciado, En planificación o En proceso. Un
  * operativo Inactivo por falta de actividad también: el ingreso lo reanuda. Uno pausado a mano no.
  */
 export function admiteIngresos(operativo) {
@@ -81,7 +81,7 @@ export function admiteIngresos(operativo) {
 }
 
 /**
- * CU-11 · listado con búsqueda por título y filtro por estado.
+ * CU-12 · listado con búsqueda por título y filtro por estado.
  * `vigentes` (el filtro por defecto de la pantalla) no es un valor del ENUM:
  * son todos los estados que todavía no se cerraron juntos, así que se resuelve acá, no en el frontend.
  */
@@ -150,7 +150,7 @@ export async function crear({
       [titulo, localidad, fiscalInstruccion, descripcion,
        puntoCeroLng, puntoCeroLat, coordinadorId]
     );
-    // CU-36: el historial del Punto Cero arranca con su definición.
+    // CU-37: el historial del Punto Cero arranca con su definición.
     await PuntoCero.registrarInicial(client, rows[0].id, coordinadorId);
     // Jefe de Operativo opcional al crearlo (02/11): con las mismas reglas que desde el puesto de comando.
     if (jefeId) await Mando.asignarJefeCon(client, { operativoId: rows[0].id, usuarioId: jefeId, autorId: coordinadorId });
@@ -162,7 +162,7 @@ export async function crear({
 /**
  * CU-09 · UPDATE parcial, igual patrón que usuario.model.js: sólo toca las
  * columnas presentes en `campos`. El UUID nunca cambia (Observaciones del CU).
- * Si cambia el Punto Cero, rigen las reglas del CU-36 (historial y motivo
+ * Si cambia el Punto Cero, rigen las reglas del CU-37 (historial y motivo
  * obligatorio con el operativo en curso), en la misma transacción.
  * `jefeId` (02/11): el Jefe de Operativo; null = «No asignado». Si no cambia, no se toca.
  */
@@ -200,7 +200,7 @@ export async function actualizar(id, campos, { usuarioId = null, motivoPuntoCero
         valores
       );
     }
-    // Punto Cero va aparte: tiene historial y, en curso, motivo (CU-36).
+    // Punto Cero va aparte: tiene historial y, en curso, motivo (CU-37).
     if (mueve) {
       await PuntoCero.moverCon(client, id,
         { lat: campos.puntoCeroLat, lng: campos.puntoCeroLng, motivo: motivoPuntoCero }, usuarioId);
@@ -288,9 +288,9 @@ export async function finalizar(id, { notaFinal = null, resultado = null, usuari
     );
     // El puesto de comando también se cierra (presencia de mando, migración 016).
     await Mando.cerrarTodoCon(client, id, usuarioId, 'Operativo finalizado');
-    // Los grupos salen de sus polígonos (CU-30), con el motivo en el historial de cada uno.
+    // Los grupos salen de sus polígonos (CU-31), con el motivo en el historial de cada uno.
     await Asig.cerrarTodasDelOperativo(client, id, usuarioId);
-    // Los grupos vigentes se disuelven con la misma baja lógica del CU-26
+    // Los grupos vigentes se disuelven con la misma baja lógica del CU-27
     // (estado DISUELTO + eliminado_en). Sin esto quedaban grupos "rastrillando"
     // en un operativo cerrado, sin integrantes. lider_id no se toca: es parte
     // del registro histórico del grupo.

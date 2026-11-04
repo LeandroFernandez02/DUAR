@@ -84,7 +84,7 @@ export const query = (text, params) => pool.query(text, params);
 
 /**
  * Ejecuta varias operaciones dentro de UNA transacción.
- * Necesario para los CU que exigen atomicidad (CU-26 disolución, CU-27 extracción).
+ * Necesario para los CU que exigen atomicidad (CU-27 disolución, CU-28 extracción).
  */
 export async function withTransaction(fn) {
   const client = await pool.connect();

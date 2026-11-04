@@ -4,7 +4,7 @@ import { Shield, Search, FileUp, CheckCircle2, XCircle, Loader2 } from 'lucide-r
 import { informesApi, InformeVerificableApi } from '../services/api';
 
 /**
- * Verificar un informe (CU-41 N1). Pública, sin sesión: la abre quien recibió el
+ * Verificar un informe (CU-42 N1). Pública, sin sesión: la abre quien recibió el
  * PDF (por ejemplo la Fiscalía), escaneando el QR o escribiendo el código.
  *
  * La huella SHA-256 se calcula en el navegador: el archivo no viaja a ningún

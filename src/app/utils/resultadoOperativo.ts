@@ -1,7 +1,7 @@
 /**
  * Resultado del operativo que se elige al finalizar (CU-10, migración 025). Espejo de
  * RESULTADOS_OPERATIVO en server/src/utils/validaciones.js. Lo usan la ventana de
- * finalizar, la ficha del operativo y el panel general (CU-42).
+ * finalizar, la ficha del operativo y el panel general (CU-43).
  */
 export type ResultadoOperativo = 'HALLADA_CON_VIDA' | 'HALLADA_SIN_VIDA' | 'OBJETO_HALLADO' | 'SIN_HALLAZGO' | 'SUSPENDIDA';
 

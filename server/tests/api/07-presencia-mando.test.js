@@ -1,5 +1,5 @@
 /**
- * CU-15 · Puesto de comando (01/10, migración 016; rehecho el 02/11, migración 030).
+ * CU-16 · Puesto de comando (01/10, migración 016; rehecho el 02/11, migración 030).
  *
  *  · Turno: el ingreso y el egreso de los coordinadores, por puesto («Coordinador» u
  *    «Operador Mesa Coordinadora»).
@@ -53,7 +53,7 @@ async function operativoTemporal(client) {
   return rows[0].id;
 }
 
-describe('Puesto de comando: turno y Jefe de Operativo (CU-15)', () => {
+describe('Puesto de comando: turno y Jefe de Operativo (CU-16)', () => {
   before(async () => {
     ctx = await preparar();
     hotel = ctx.usuarios.hotel.uid;
@@ -66,7 +66,7 @@ describe('Puesto de comando: turno y Jefe de Operativo (CU-15)', () => {
 
   /* ── Reglas sobre el modelo, en una transacción descartada ── */
 
-  test('CU-15 · un coordinador en el turno de otro operativo no entra sin trasladarse; al trasladarse egresa del otro', async () => {
+  test('CU-16 · un coordinador en el turno de otro operativo no entra sin trasladarse; al trasladarse egresa del otro', async () => {
     await enTransaccionDescartada(async client => {
       const otro = await operativoTemporal(client);
       await Mando.ingresarCon(client, { operativoId: otro, usuarioId: hotel, autorId: hotel, puesto: 'COORDINADOR' });
@@ -83,7 +83,7 @@ describe('Puesto de comando: turno y Jefe de Operativo (CU-15)', () => {
     });
   });
 
-  test('CU-15 · la base impide dos turnos abiertos del mismo coordinador y un puesto inventado', async () => {
+  test('CU-16 · la base impide dos turnos abiertos del mismo coordinador y un puesto inventado', async () => {
     await enTransaccionDescartada(async client => {
       await Mando.ingresarCon(client, { operativoId: ctx.op, usuarioId: india, autorId: india, puesto: 'COORDINADOR' });
       await client.query('SAVEPOINT duplicado');
@@ -129,18 +129,18 @@ describe('Puesto de comando: turno y Jefe de Operativo (CU-15)', () => {
 
   /* ── Turno, contra la API ── */
 
-  test('CU-15 · un administrador tiene que elegir qué coordinador ingresa, y el puesto es obligatorio → 400', async () => {
+  test('CU-16 · un administrador tiene que elegir qué coordinador ingresa, y el puesto es obligatorio → 400', async () => {
     motivo(await comoAdmin('POST', `/operativos/${ctx.op}/mando/ingreso`, { puesto: 'COORDINADOR' }), 400, 'usuario_requerido');
     motivo(await comoAdmin('POST', `/operativos/${ctx.op}/mando/ingreso`, { usuarioId: hotel }), 400, 'puesto_invalido');
     motivo(await comoAdmin('POST', `/operativos/${ctx.op}/mando/ingreso`, { usuarioId: hotel, puesto: 'JEFE' }), 400, 'puesto_invalido');
   });
 
-  test('CU-15 · en el turno sólo se registra a usuarios con rol coordinador (no agentes ni jefes) → 409', async () => {
+  test('CU-16 · en el turno sólo se registra a usuarios con rol coordinador (no agentes ni jefes) → 409', async () => {
     motivo(await comoAdmin('POST', `/operativos/${ctx.op}/mando/ingreso`, { usuarioId: ctx.usuarios.alfa.uid, puesto: 'COORDINADOR' }), 409, 'no_es_coordinador');
     motivo(await comoAdmin('POST', `/operativos/${ctx.op}/mando/ingreso`, { usuarioId: juliet, puesto: 'OPERADOR_MESA' }), 409, 'no_es_coordinador');
   });
 
-  test('CU-15 · un coordinador ingresa como Coordinador y registra a otro como Operador Mesa Coordinadora', async () => {
+  test('CU-16 · un coordinador ingresa como Coordinador y registra a otro como Operador Mesa Coordinadora', async () => {
     motivo(await ingreso('hotel', { puesto: 'COORDINADOR' }), 201);
     const r = await ingreso('hotel', { usuarioId: india, puesto: 'OPERADOR_MESA' });
     motivo(r, 201);
@@ -150,11 +150,11 @@ describe('Puesto de comando: turno y Jefe de Operativo (CU-15)', () => {
     assert.equal(m.jefe, null, 'ingresar al turno no lo hace Jefe ni «a cargo»');
   });
 
-  test('CU-15 · ingresar dos veces → 409 ya_presente', async () => {
+  test('CU-16 · ingresar dos veces → 409 ya_presente', async () => {
     motivo(await ingreso('hotel', { puesto: 'OPERADOR_MESA' }), 409, 'ya_presente');
   });
 
-  test('CU-15 · registrar el egreso de otro coordinador exige motivo; el propio no', async () => {
+  test('CU-16 · registrar el egreso de otro coordinador exige motivo; el propio no', async () => {
     motivo(await egreso('hotel', { usuarioId: india }), 400, 'motivo_requerido');
     motivo(await egreso('hotel', { usuarioId: india, motivo: 'Finalización de turno' }), 200);
     motivo(await egreso('hotel'), 200);
@@ -297,7 +297,7 @@ describe('Puesto de comando: turno y Jefe de Operativo (CU-15)', () => {
     motivo(await ctx.disolver(g.json.grupo.id), 204);
   });
 
-  test('CU-15 · cada movimiento del puesto de comando queda en la auditoría', async () => {
+  test('CU-16 · cada movimiento del puesto de comando queda en la auditoría', async () => {
     const { rows } = await ctx.query(
       `SELECT entidad_afectada AS entidad, valores_nuevos->>'accion' AS accion FROM logs_auditoria
         WHERE entidad_afectada IN ('presencias_mando', 'jefes_operativo') AND registro_id = $1

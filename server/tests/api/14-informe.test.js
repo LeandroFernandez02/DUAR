@@ -1,5 +1,5 @@
 /**
- * Módulo 6 · Informe por operativo (CU-41) y su emisión al finalizar (CU-10 paso 6).
+ * Módulo 6 · Informe por operativo (CU-42) y su emisión al finalizar (CU-10 paso 6).
  *
  * Cada informe queda guardado tal cual con su código y su huella SHA-256: lo
  * que se descarga tiene que ser byte a byte lo registrado, la base no deja
@@ -25,17 +25,17 @@ const informes = (m, ruta = '', body, token) => ctx.api(m, `/operativos/${ctx.op
 const bajar = async url => Buffer.from(await (await fetch(url)).arrayBuffer());
 const sha = buf => createHash('sha256').update(buf).digest('hex');
 
-describe('Módulo 6 · Informe por operativo (CU-41)', () => {
+describe('Módulo 6 · Informe por operativo (CU-42)', () => {
   before(async () => { ctx = await preparar(); });
   after(terminar);
 
-  test('CU-41 2 · con el operativo abierto se emite un informe parcial', async () => {
+  test('CU-42 2 · con el operativo abierto se emite un informe parcial', async () => {
     const r = await informes('GET');
     motivo(r, 200);
     assert.deepEqual(r.json.proximo, { tipo: 'PARCIAL', yaEmitido: false });
   });
 
-  test('CU-41 3-7 · genera el PDF, lo guarda con código y huella, y lo que se descarga es idéntico a lo registrado', async () => {
+  test('CU-42 3-7 · genera el PDF, lo guarda con código y huella, y lo que se descarga es idéntico a lo registrado', async () => {
     const r = await informes('POST');
     motivo(r, 201);
     primero = r.json.informe;
@@ -54,7 +54,7 @@ describe('Módulo 6 · Informe por operativo (CU-41)', () => {
     assert.ok(Math.abs(new Date(fila.corte_en) - Date.now()) < 120_000, 'el corte de un parcial es la hora de emisión');
   });
 
-  test('CU-41 · cada descarga del botón es un informe nuevo, con el número siguiente del operativo', async () => {
+  test('CU-42 · cada descarga del botón es un informe nuevo, con el número siguiente del operativo', async () => {
     const r = await informes('POST');
     motivo(r, 201);
     assert.equal(r.json.informe.numeroEnOperativo, primero.numeroEnOperativo + 1);
@@ -63,14 +63,14 @@ describe('Módulo 6 · Informe por operativo (CU-41)', () => {
     assert.equal(lista[0].codigo, r.json.informe.codigo, 'la lista va del más nuevo al más viejo');
   });
 
-  test('CU-41 N2 · un informe anterior se vuelve a bajar idéntico', async () => {
+  test('CU-42 N2 · un informe anterior se vuelve a bajar idéntico', async () => {
     const r = await informes('GET', `/${primero.id}/descarga`);
     motivo(r, 200);
     assert.equal(sha(await bajar(r.json.url)), primero.sha256);
     motivo(await informes('GET', '/00000000-0000-4000-8000-000000000000/descarga'), 404);
   });
 
-  test('CU-41 N1 · la verificación es pública y no muestra datos personales ni del contenido', async () => {
+  test('CU-42 N1 · la verificación es pública y no muestra datos personales ni del contenido', async () => {
     const r = await api('GET', `/informes/verificar/${primero.codigo.toLowerCase()}`);
     motivo(r, 200);
     assert.deepEqual(Object.keys(r.json.informe).sort(),
@@ -81,12 +81,12 @@ describe('Módulo 6 · Informe por operativo (CU-41)', () => {
     motivo(await api('GET', '/informes/verificar/cualquier-cosa'), 404);
   });
 
-  test('CU-41 · los informes emitidos no se modifican ni se borran (la base lo impide)', async () => {
+  test('CU-42 · los informes emitidos no se modifican ni se borran (la base lo impide)', async () => {
     await assert.rejects(ctx.query(`UPDATE informes_operativo SET sha256 = repeat('0', 64) WHERE id = $1`, [primero.id]), /no se modifican ni se borran/);
     await assert.rejects(ctx.query(`DELETE FROM informes_operativo WHERE id = $1`, [primero.id]), /no se modifican ni se borran/);
   });
 
-  test('CU-41 · un agente no genera informes → 403', async () => {
+  test('CU-42 · un agente no genera informes → 403', async () => {
     motivo(await informes('POST', '', undefined, ctx.usuarios.alfa.token), 403);
   });
 
@@ -117,7 +117,7 @@ describe('Módulo 6 · Informe por operativo (CU-41)', () => {
     assert.equal(n.n, 1);
   });
 
-  test('CU-41 2.1 · si el final no se pudo emitir al finalizar, se emite la próxima vez que se toca «Informe»', async () => {
+  test('CU-42 2.1 · si el final no se pudo emitir al finalizar, se emite la próxima vez que se toca «Informe»', async () => {
     // Simula la falla: el operativo finalizado sin su informe final (el permiso de borrar es sólo para esta prueba).
     const { rows } = await ctx.query(`SELECT archivo_ruta FROM informes_operativo WHERE operativo_id = $1`, [opFinal]);
     await ctx.query(`BEGIN; SET LOCAL duar.limpieza_pruebas = 'si'; DELETE FROM informes_operativo WHERE operativo_id = '${opFinal}'; COMMIT;`);

@@ -87,12 +87,12 @@ export default function Registro() {
    * El token se valida contra el BACKEND, no contra localStorage. Es la
    * corrección de fondo del flujo: el agente escanea con su propio celular, así
    * que el código sólo puede verificarse contra la base, que es lo único que
-   * ambos dispositivos comparten (CU-16 pasos 4-5).
+   * ambos dispositivos comparten (CU-17 pasos 4-5).
    */
   const qrToken = searchParams.get('qr');
   const [accesoQR, setAccesoQR] = useState<OperativoQRApi | null>(null);
   const [cargandoQR, setCargandoQR] = useState(true);
-  /** El servidor dijo que el código venció o ya no es válido (410 `qr_invalido`, CU-16 paso 4.1). */
+  /** El servidor dijo que el código venció o ya no es válido (410 `qr_invalido`, CU-17 paso 4.1). */
   const [qrVencido, setQrVencido] = useState(false);
 
   useEffect(() => {
@@ -179,7 +179,7 @@ export default function Registro() {
   }
 
   /* ────────────────────────────────────────────────────────── */
-  /* Pantalla: QR vencido (CU-16 paso 4.1)                      */
+  /* Pantalla: QR vencido (CU-17 paso 4.1)                      */
   /* Antes caía en «Operativo no encontrado»: con el código      */
   /* vencido el servidor no dice de qué operativo era.           */
   /* ────────────────────────────────────────────────────────── */
@@ -246,7 +246,7 @@ export default function Registro() {
   /* ────────────────────────────────────────────────────────── */
 
   /**
-   * Intenta el alta en el operativo (CU-16 pasos 6-8).
+   * Intenta el alta en el operativo (CU-17 pasos 6-8).
    *
    * La Regla de Ubicuidad la evalúa el BACKEND, no esta pantalla: es él quien
    * conoce todos los operativos y quien tiene el índice que la hace cumplir. Si
@@ -383,7 +383,7 @@ export default function Registro() {
     }
   };
 
-  /** CU-02 paso 7 / CU-16 paso 8 — "Confirmar Ingreso". */
+  /** CU-02 paso 7 / CU-17 paso 8 — "Confirmar Ingreso". */
   const handleConfirmar = () => { void intentarAlta(false); };
 
   /** Reenvía el correo de confirmación (self-service, con cooldown de 2 min). */
@@ -404,7 +404,7 @@ export default function Registro() {
     }
   };
 
-  /** CU-16 paso 6.2 — el agente acepta abandonar el operativo anterior. */
+  /** CU-17 paso 6.2 — el agente acepta abandonar el operativo anterior. */
   const handleDarmeDeAlta = () => { void intentarAlta(true); };
 
   /* ────────────────────────────────────────────────────────── */
@@ -629,7 +629,7 @@ export default function Registro() {
         )}
       </MarcoAcceso>
 
-      {/* ══ MODAL DE CONFLICTO DE OPERATIVO — CU-14, Paso 5.1 / 6. Texto exacto requerido por el caso de uso. ══ */}
+      {/* ══ MODAL DE CONFLICTO DE OPERATIVO — CU-15, Paso 5.1 / 6. Texto exacto requerido por el caso de uso. ══ */}
       {showConflictoModal && operativoConflicto && (
         <div className="fixed inset-0 z-50 flex items-end sm:items-center justify-center p-4"
           style={{ background: 'var(--scrim-modal)' }} onClick={() => setShowConflictoModal(false)}>
@@ -651,7 +651,7 @@ export default function Registro() {
               </button>
             </div>
 
-            {/* Cuerpo: texto exacto del CU-14, Paso 5.1 */}
+            {/* Cuerpo: texto exacto del CU-15, Paso 5.1 */}
             <div className="flex flex-col gap-4" style={{ padding: 20 }}>
               <p style={{ margin: 0, color: 'var(--foreground)', fontSize: 'var(--text-base)', lineHeight: 1.65 }}>
                 Ya te encontrás activo en un operativo,{' '}
@@ -684,9 +684,9 @@ export default function Registro() {
               </AlertaAcceso>
             </div>
 
-            {/* Footer: botones CU-14 */}
+            {/* Footer: botones CU-15 */}
             <div className="flex flex-col gap-2.5" style={{ padding: '0 20px 20px' }}>
-              {/* Botón principal: "Darme de alta" — CU-14, Paso 6 */}
+              {/* Botón principal: "Darme de alta" — CU-15, Paso 6 */}
               <BotonAcceso icono={Check} cargando={loading} onClick={handleDarmeDeAlta}>Darme de alta</BotonAcceso>
               <BotonAcceso tono="secundario" onClick={() => { setShowConflictoModal(false); navigate('/agente'); }}>Quedarme en el operativo actual</BotonAcceso>
             </div>

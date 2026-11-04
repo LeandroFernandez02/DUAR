@@ -6,7 +6,7 @@
  * Uso: npm run test:informe  →  server/tests/INFORME-PRUEBAS.md
  *
  * El nombre de cada prueba empieza con el CU o la regla que verifica, separado
- * por " · " (ej. "CU-22 · crear un grupo..."): de ahí sale la columna CU.
+ * por " · " (ej. "CU-23 · crear un grupo..."): de ahí sale la columna CU.
  */
 const escapar = t => String(t).replace(/\|/g, '\\|').replace(/\r?\n/g, ' ');
 

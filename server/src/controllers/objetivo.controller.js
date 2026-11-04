@@ -1,13 +1,13 @@
 /**
  * CONTROLADOR · Objetivo Buscado
- *   · CU-12 Registrar · CU-13 Actualizar · CU-14 Consultar
+ *   · CU-13 Registrar · CU-14 Actualizar · CU-15 Consultar
  *
- * Precondición de CU-12/13 (no de CU-14): el operativo no puede estar
+ * Precondición de CU-13/13 (no de CU-15): el operativo no puede estar
  * FINALIZADO/ELIMINADO — mismo guard que ya usa CU-09 para modificar el
  * propio operativo (`Operativo.ESTADOS_SOLO_LECTURA`), NO `admiteIngresos`
  * (esa función es más angosta: sólo ACTIVO/EN_PLANIFICACION, pensada para el
- * alta de personal por QR — CU-12 permite además NUEVO y EN_PROCESO).
- * CU-14 (consulta) no tiene esa restricción: debe poder verse aunque el
+ * alta de personal por QR — CU-13 permite además NUEVO y EN_PROCESO).
+ * CU-15 (consulta) no tiene esa restricción: debe poder verse aunque el
  * operativo ya haya finalizado.
  */
 import * as Objetivo from '../models/objetivo.model.js';
@@ -74,7 +74,7 @@ function estadoCerrado(operativo) {
   return Operativo.ESTADOS_SOLO_LECTURA.includes(operativo.estado);
 }
 
-/** GET /api/operativos/:id/objetivo — CU-14 */
+/** GET /api/operativos/:id/objetivo — CU-15 */
 export async function obtener(req, res, next) {
   try {
     const { id: operativoId } = req.params;
@@ -90,7 +90,7 @@ export async function obtener(req, res, next) {
   } catch (err) { next(err); }
 }
 
-/** POST /api/operativos/:id/objetivo — CU-12 */
+/** POST /api/operativos/:id/objetivo — CU-13 */
 export async function crear(req, res, next) {
   try {
     const { id: operativoId } = req.params;
@@ -134,7 +134,7 @@ export async function crear(req, res, next) {
   } catch (err) { next(err); }
 }
 
-/** PUT /api/operativos/:id/objetivo — CU-13 */
+/** PUT /api/operativos/:id/objetivo — CU-14 */
 export async function actualizar(req, res, next) {
   try {
     const { id: operativoId } = req.params;
@@ -156,7 +156,7 @@ export async function actualizar(req, res, next) {
 
     const objetivo = await Objetivo.actualizar(previo.id, b);
 
-    // CU-13 paso 9: "el sistema registra la modificación en el historial de
+    // CU-14 paso 9: "el sistema registra la modificación en el historial de
     // cambios del incidente" — Decisión D, sin tabla nueva.
     await Auditoria.registrar({
       usuarioId: req.usuario.id,
@@ -172,7 +172,7 @@ export async function actualizar(req, res, next) {
   } catch (err) { next(err); }
 }
 
-/** POST /api/operativos/:id/objetivo/fotos — CU-12/13 */
+/** POST /api/operativos/:id/objetivo/fotos — CU-13/13 */
 export async function subirFotos(req, res, next) {
   try {
     const { id: operativoId } = req.params;
@@ -218,7 +218,7 @@ export async function subirFotos(req, res, next) {
   } catch (err) { next(err); }
 }
 
-/** DELETE /api/operativos/:id/objetivo/fotos/:fotoId — CU-12/13 */
+/** DELETE /api/operativos/:id/objetivo/fotos/:fotoId — CU-13/13 */
 export async function eliminarFoto(req, res, next) {
   try {
     const { id: operativoId, fotoId } = req.params;

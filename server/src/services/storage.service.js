@@ -1,13 +1,13 @@
 /**
  * SERVICIO · Fotos del Objetivo Buscado (Supabase Storage)
- *   · CU-12/13/14
+ *   · CU-13/13/14
  *
  * Única excepción a la decisión "no usar supabase-js/Auth" (ver db/README.md):
  * esa decisión es sobre AUTENTICACIÓN y consulta de datos — acá sólo se habla
  * con el Storage API para subir archivos y firmar URLs de lectura. Todo lo
  * demás del sistema sigue yendo 100% por `pg` contra el pooler.
  *
- * El bucket `objetivos-fotos` es PRIVADO (CU-12 Observaciones — "Aislamiento
+ * El bucket `objetivos-fotos` es PRIVADO (CU-13 Observaciones — "Aislamiento
  * de Información": la ficha no debe poder verse desde fuera del operativo).
  * Por eso se usa la SERVICE ROLE KEY, no la anon: el backend necesita
  * escribir/leer sin pasar por las políticas RLS de Storage, y las URLs que
@@ -34,7 +34,7 @@ export function estaConfigurado() {
  * Sube un archivo al bucket privado. Path = `{operativoId}/{uuid}.{ext}` —
  * alcanza con el operativoId porque `objetivo_buscado.operativo_id` es
  * UNIQUE (una ficha por operativo): la carpeta ya aísla la foto por incidente,
- * reforzando a nivel de Storage el mismo aislamiento que exige el CU-12.
+ * reforzando a nivel de Storage el mismo aislamiento que exige el CU-13.
  *
  * Lanza si falla — a diferencia de `email.service.js`, subir la foto SÍ es lo
  * que pidió el Coordinador; el controlador decide cómo responder el error.
@@ -70,9 +70,9 @@ export async function generarUrlFirmada(path, ttlSegundos = 3600) {
   }
 }
 
-/* ── Archivos GPX originales (Módulo 5 · CU-31) ────────────────────────────
+/* ── Archivos GPX originales (Módulo 5 · CU-32) ────────────────────────────
  * Bucket PRIVADO aparte del de las fotos: el .gpx tal como lo subió el agente
- * es la prueba de lo recorrido (los datos del track no se editan, CU-32). El
+ * es la prueba de lo recorrido (los datos del track no se editan, CU-33). El
  * bucket se crea solo la primera vez que hace falta, cerrado y limitado a
  * archivos de texto de hasta 4 MB (el techo de un envío en Vercel).
  */
@@ -116,7 +116,7 @@ export async function urlFirmadaGpx(path, ttlSegundos = 600) {
 }
 
 /**
- * Bytes de una foto del bucket privado (para meterla en el Informe, CU-41).
+ * Bytes de una foto del bucket privado (para meterla en el Informe, CU-42).
  * Nunca lanza: una foto que falta no debe impedir el informe (va un aviso en su lugar).
  */
 export async function descargarFoto(path) {
@@ -127,7 +127,7 @@ export async function descargarFoto(path) {
   } catch { return null; }
 }
 
-/* ── Informes del operativo (CU-41) ───────────────────────────────────────
+/* ── Informes del operativo (CU-42) ───────────────────────────────────────
  * Bucket PRIVADO: la copia idéntica de cada PDF emitido. La huella SHA-256
  * guardada en la base se calcula sobre estos bytes; por eso se suben sin
  * `upsert` (un informe nunca se reemplaza).

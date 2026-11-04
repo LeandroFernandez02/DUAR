@@ -1,5 +1,5 @@
 /**
- * MODELO · Puesto de comando (CU-15; 01/10, migración 016; rehecho el 02/11, migración 030)
+ * MODELO · Puesto de comando (CU-16; 01/10, migración 016; rehecho el 02/11, migración 030)
  *
  * Dos cosas por operativo:
  *   · El TURNO: quiénes están en el puesto de comando y en qué puesto —«Coordinador» u

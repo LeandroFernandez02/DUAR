@@ -2,7 +2,7 @@
  * Arreglos del documento «Testeo» del 15/10 que se prueban contra la API:
  *   · CU-05 / CU-06 / CU-02: correo con forma y dominio válidos, fecha de nacimiento
  *     obligatoria al crear, que exista de verdad y la edad mínima (puntos 15, 23, 24, 27);
- *   · CU-10 5.1: qué hay que revisar antes de finalizar un operativo (punto 17).
+ *   · CU-10 3.1: qué hay que revisar antes de finalizar un operativo (punto 17).
  * Los pedidos rechazados no crean nada: no hay cuentas que limpiar.
  */
 import { describe, test, before, after } from 'node:test';
@@ -82,7 +82,7 @@ describe('Testeo 15/10: datos de la cuenta y cierre del operativo', () => {
     assert.equal(rows.length, 0, 'no quedó creada');
   });
 
-  test('CU-10 5.1 · antes de finalizar se revisan los tracks GPX y los agentes que siguen en actividad', async () => {
+  test('CU-10 3.1 · antes de finalizar se revisan los tracks GPX y los agentes que siguen en actividad', async () => {
     const rev = () => ctx.api('GET', `/operativos/${ctx.op}/finalizar/revision`);
 
     // Con todos Disponibles no hay agentes en actividad; los tracks son los cargados al operativo.
@@ -106,7 +106,7 @@ describe('Testeo 15/10: datos de la cuenta y cierre del operativo', () => {
     assert.deepEqual((await rev()).json.agentesEnActividad, []);
   });
 
-  test('CU-10 5.1 · la revisión no la pide un agente → 403; de un operativo inexistente → 404', async () => {
+  test('CU-10 3.1 · la revisión no la pide un agente → 403; de un operativo inexistente → 404', async () => {
     motivo(await ctx.api('GET', `/operativos/${ctx.op}/finalizar/revision`, undefined, ctx.usuarios.alfa.token), 403);
     motivo(await ctx.api('GET', '/operativos/00000000-0000-4000-8000-000000000000/finalizar/revision'), 404);
   });

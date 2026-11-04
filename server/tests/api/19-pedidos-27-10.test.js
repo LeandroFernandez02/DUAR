@@ -1,8 +1,8 @@
 /**
  * Pedidos del 27/10 sobre el mapa (Módulo 5):
  *   · Distancia automática de cada punto de interés o hallazgo al Punto Cero
- *     (CU-34/35): la calcula la API al leer y sigue al Punto Cero cuando se mueve.
- *   · Instalación SCI «Helibase» (CU-34), distinta del helipunto (migración 029).
+ *     (CU-35/35): la calcula la API al leer y sigue al Punto Cero cuando se mueve.
+ *   · Instalación SCI «Helibase» (CU-35), distinta del helipunto (migración 029).
  */
 import { describe, test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -20,7 +20,7 @@ describe('Pedidos del 27/10 · distancia al Punto Cero y Helibase', () => {
   before(async () => { ctx = await preparar(); });
   after(terminar);
 
-  test('CU-34 · un punto de interés sale con su distancia al Punto Cero, y se recalcula al moverlo', async () => {
+  test('CU-35 · un punto de interés sale con su distancia al Punto Cero, y se recalcula al moverlo', async () => {
     const { puntoCero: p0 } = (await ctx.api('GET', `/operativos/${ctx.op}/punto-cero`)).json;
     // ~1,11 km al norte del Punto Cero vigente.
     const r = await marc('POST', '', { clase: 'POI', nombre: 'Tranquera', lat: p0.lat + 0.01, lng: p0.lng });
@@ -48,7 +48,7 @@ describe('Pedidos del 27/10 · distancia al Punto Cero y Helibase', () => {
     assert.ok(r.json.usuarios.some(u => u.agenteEnOperativo === null), 'quien no está de agente viene en null');
   });
 
-  test('CU-34 · Helibase es un tipo de instalación SCI: toma su nombre', async () => {
+  test('CU-35 · Helibase es un tipo de instalación SCI: toma su nombre', async () => {
     const r = await marc('POST', '', { clase: 'INSTALACION', tipoInstalacion: 'HELIBASE', lat: -31.41, lng: -64.81 });
     motivo(r, 201);
     assert.equal(r.json.marcador.tipoInstalacion, 'HELIBASE');

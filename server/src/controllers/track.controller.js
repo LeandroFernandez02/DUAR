@@ -1,8 +1,8 @@
 /**
  * CONTROLADOR · Tracks GPX (Módulo 5)
- *   · CU-31 Cargar Traza GPX — el coordinador en nombre de un agente (acá) o el
+ *   · CU-32 Cargar Traza GPX — el coordinador en nombre de un agente (acá) o el
  *     propio agente desde su portal (misTracks*, al final).
- *   · CU-32 Modificar (sólo polígono y notas) · CU-38 Eliminar (baja con registro)
+ *   · CU-33 Modificar (sólo polígono y notas) · CU-39 Eliminar (baja con registro)
  *
  * Valida la forma del pedido y audita. El análisis del archivo, el polígono
  * detectado y la cobertura los resuelve track.model.js.
@@ -21,7 +21,7 @@ const esUuid = (v) => typeof v === 'string' && RE_UUID.test(v);
 const invalido = (res, error, motivo = 'datos_invalidos') => res.status(400).json({ error, motivo });
 const noEncontrado = (res) => res.status(404).json({ error: 'El track no existe en este operativo.', motivo: 'track_no_encontrado' });
 
-/** Se pueden mirar los recorridos de un operativo cerrado; no cargarlos ni corregirlos (CU-31, 12/10). */
+/** Se pueden mirar los recorridos de un operativo cerrado; no cargarlos ni corregirlos (CU-32, 12/10). */
 async function operativoEditable(operativoId, res, { soloLectura = false } = {}) {
   const operativo = await Operativo.buscarPorId(operativoId);
   if (!operativo) {
@@ -56,7 +56,7 @@ function faltaArchivo(req, res) {
 
 const nombreArchivo = (req) => String(req.file.originalname).slice(0, 255);
 
-/** POST /api/operativos/:id/tracks/analizar — CU-31 pasos 3 a 5: el resumen, antes de confirmar. */
+/** POST /api/operativos/:id/tracks/analizar — CU-32 pasos 3 a 5: el resumen, antes de confirmar. */
 export async function analizar(req, res, next) {
   try {
     if (faltaArchivo(req, res)) return;
@@ -65,7 +65,7 @@ export async function analizar(req, res, next) {
   } catch (err) { next(err); }
 }
 
-/** POST /api/operativos/:id/tracks — CU-31 flujo alternativo: el coordinador carga en nombre de un agente. */
+/** POST /api/operativos/:id/tracks — CU-32 flujo alternativo: el coordinador carga en nombre de un agente. */
 export async function crear(req, res, next) {
   try {
     if (faltaArchivo(req, res)) return;
@@ -102,7 +102,7 @@ export async function obtener(req, res, next) {
   } catch (err) { next(err); }
 }
 
-/** PUT /api/operativos/:id/tracks/:trackId — CU-32: { poligonoId (null = fuera de polígono), notas }. */
+/** PUT /api/operativos/:id/tracks/:trackId — CU-33: { poligonoId (null = fuera de polígono), notas }. */
 export async function actualizar(req, res, next) {
   try {
     if (!esUuid(req.params.trackId)) return noEncontrado(res);
@@ -129,7 +129,7 @@ export async function actualizar(req, res, next) {
   } catch (err) { next(err); }
 }
 
-/** DELETE /api/operativos/:id/tracks/:trackId — CU-38: baja con registro, deja de sumar cobertura. */
+/** DELETE /api/operativos/:id/tracks/:trackId — CU-39: baja con registro, deja de sumar cobertura. */
 export async function eliminar(req, res, next) {
   try {
     if (!esUuid(req.params.trackId)) return noEncontrado(res);
@@ -142,7 +142,7 @@ export async function eliminar(req, res, next) {
   } catch (err) { next(err); }
 }
 
-/* ── Portal del agente: su propio recorrido (CU-31 flujo principal) ─────── */
+/* ── Portal del agente: su propio recorrido (CU-32 flujo principal) ─────── */
 
 async function miAlta(req, res) {
   const alta = await AgenteOperativo.altaActivaDe(req.usuario.id);

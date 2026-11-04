@@ -58,7 +58,7 @@ app.use('/api/auth', authRoutes);
 app.use('/api/catalogos', catalogoRoutes);
 app.use('/api/usuarios', usuarioRoutes);
 app.use('/api/operativos', operativoRoutes);
-// CU-41 N1: verificar un informe no pide sesión (lo usa la Fiscalía con el QR del PDF).
+// CU-42 N1: verificar un informe no pide sesión (lo usa la Fiscalía con el QR del PDF).
 app.get('/api/informes/verificar/:codigo', informes.verificar);
 app.use('/api/qr', qrRoutes);
 app.use('/api', agenteRoutes);
@@ -81,7 +81,7 @@ app.use((err, _req, res, _next) => {
   // 23505 = unique_violation, 23503 = foreign_key_violation (PostgreSQL)
   if (err.code === '23505') return res.status(409).json({ error: 'Ya existe un registro con esos datos.' });
   if (err.code === '23503') return res.status(409).json({ error: 'Referencia inválida entre entidades.' });
-  // Errores de multer (subida de fotos del objetivo — CU-12/13/14)
+  // Errores de multer (subida de fotos del objetivo — CU-13/13/14)
   if (err.code === 'LIMIT_FILE_SIZE') return res.status(400).json({ error: 'Cada foto puede pesar hasta 8MB.' });
   if (err.code === 'LIMIT_FILE_COUNT' || err.code === 'LIMIT_UNEXPECTED_FILE') {
     return res.status(400).json({ error: 'Se cargaron demasiadas fotos de una vez.' });

@@ -30,10 +30,10 @@ import {
 } from '../utils/validacionOperativo';
 
 /**
- * CU-08..11 (Módulo 3) ya hablan con la API real. CU-12..14 (Objetivo Buscado)
+ * CU-08..11 (Módulo 3) ya hablan con la API real. CU-13..14 (Objetivo Buscado)
  * se cargan aparte, desde la pestaña "Objetivo Buscado" del panel del
  * operativo ya creado (ver src/app/pages/operativo/ObjetivoBuscado.tsx) — así
- * lo describe el CU-12 (paso 1: "accede al panel del operativo específico").
+ * lo describe el CU-13 (paso 1: "accede al panel del operativo específico").
  * Este modal de Crear/Editar Operativo ya NO tiene una pestaña de objetivo:
  * mezclar esa carga acá no está en ningún CU y duplicaba el formulario.
  */
@@ -75,7 +75,7 @@ function estadosDesdeUrl(valor: string | null): EstadoOperativo[] {
 const sonVigentes = (sel: EstadoOperativo[]) => sel.length === VIGENTES.length && VIGENTES.every(v => sel.includes(v));
 
 /* ── form base ── */
-/** Cómo se llama cada estado de agente en el aviso previo al cierre (CU-10 5.1). */
+/** Cómo se llama cada estado de agente en el aviso previo al cierre (CU-10 3.1). */
 const ETIQUETA_ESTADO_AGENTE: Record<string, string> = {
   AGRUPADO: 'Agrupado', DESPLEGADO: 'Desplegado', RASTRILLANDO: 'Rastrillando', REPLEGADO: 'Replegado',
 };
@@ -88,7 +88,7 @@ const emptyForm = {
   punto0lat: '',
   punto0lng: '',
   descripcion: '',
-  motivoPuntoCero: '',   // CU-36: sólo al mover el Punto 0 con el operativo en curso
+  motivoPuntoCero: '',   // CU-37: sólo al mover el Punto 0 con el operativo en curso
   jefeId: '',            // Jefe de Operativo (02/11); vacío = «No asignado»
 };
 
@@ -174,7 +174,7 @@ export default function Operativos() {
   /** Jefe de Operativo (rol del 02/11): ve todo, no crea ni modifica. */
   const soloConsulta = usuario?.rol === ROL_JEFE;
 
-  /* ── Datos REALES desde la API (CU-11) ──────────────────────────────────
+  /* ── Datos REALES desde la API (CU-12) ──────────────────────────────────
    * Igual patrón que Usuarios.tsx: se pide la lista completa y el filtrado
    * por estado / búsqueda sigue siendo client-side (más abajo, sin cambios) —
    * el dataset de un sistema de este tamaño no lo justifica todavía.        */
@@ -216,7 +216,7 @@ export default function Operativos() {
   const [finalizeResultado, setFinalizeResultado] = useState<ResultadoOperativo | ''>('');
   const [finalizeSinResultado, setFinalizeSinResultado] = useState(false);
   const [finalizeStep, setFinalizeStep] = useState<'confirm' | 'revision'>('confirm');
-  /** Lo que conviene revisar antes de cerrar (CU-10 5.1): sin tracks GPX o con agentes todavía en actividad. */
+  /** Lo que conviene revisar antes de cerrar (CU-10 3.1): sin tracks GPX o con agentes todavía en actividad. */
   const [revision, setRevision] = useState<{ tracksCargados: number; agentesEnActividad: { nombre: string; apellido: string; estado: string }[] } | null>(null);
   const [revisando, setRevisando] = useState(false);
   const [finalizando, setFinalizando] = useState(false);
@@ -264,7 +264,7 @@ export default function Operativos() {
    * CU-08 paso 8 (Transición Automática): entrar por primera vez a un
    * operativo NUEVO lo pasa a ACTIVO. Se espera la respuesta antes de navegar
    * para que el panel ya encuentre el estado correcto — si se generara un QR
-   * ahí mismo, la precondición de CU-16 (ACTIVO/EN_PLANIFICACION) tiene que
+   * ahí mismo, la precondición de CU-17 (ACTIVO/EN_PLANIFICACION) tiene que
    * estar cumplida.
    */
   /** Acciones rápidas de cada operativo: QR, Modificar, Finalizar (si no terminó) y Eliminar (sólo los Nuevos). */
@@ -441,7 +441,7 @@ export default function Operativos() {
         fiscalInstruccion: form.fiscal.trim() || null,   // vacío lo deja sin fiscal
         descripcion: form.descripcion || undefined,
         jefeId: form.jefeId || null,   // «No asignado» lo quita (02/11)
-        // El Punto 0 sólo viaja si se movió (CU-36: cada movimiento queda en su historial).
+        // El Punto 0 sólo viaja si se movió (CU-37: cada movimiento queda en su historial).
         ...(puntoCeroMovido ? {
           puntoCeroLat: latVal,
           puntoCeroLng: lngVal,
@@ -500,7 +500,7 @@ export default function Operativos() {
   };
 
   /* read-only mode: operativos finalizados o eliminados no pueden modificarse */
-  /** CU-36: ¿se movió el Punto 0 respecto del guardado? Con el operativo en curso, pide motivo. */
+  /** CU-37: ¿se movió el Punto 0 respecto del guardado? Con el operativo en curso, pide motivo. */
   const puntoCeroMovido = modal === 'edit' && !!selected?.punto0 && (
     Math.abs(parseFloat(form.punto0lat) - selected.punto0.lat) > 1e-7 ||
     Math.abs(parseFloat(form.punto0lng) - selected.punto0.lng) > 1e-7);
@@ -1158,7 +1158,7 @@ export default function Operativos() {
               </>
             )}
 
-            {/* ─────────── STEP: revision (CU-10 5.1) ─────────── */}
+            {/* ─────────── STEP: revision (CU-10 3.1) ─────────── */}
             {finalizeStep === 'revision' && revision && (
               <>
                 <div className="px-5 py-5 flex flex-col gap-4">

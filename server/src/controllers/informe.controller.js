@@ -1,5 +1,5 @@
 /**
- * CONTROLADOR · Informe por operativo (CU-41)
+ * CONTROLADOR · Informe por operativo (CU-42)
  *   · GET  /api/operativos/:id/informes                    qué se va a emitir y los ya emitidos (paso 2)
  *   · POST /api/operativos/:id/informes                    genera y guarda (pasos 3-7)
  *   · GET  /api/operativos/:id/informes/:informeId/descarga copia guardada (N2)
@@ -42,7 +42,7 @@ export async function listar(req, res, next) {
 /**
  * POST /api/operativos/:id/informes
  * Abierto: emite un parcial con corte ahora. Finalizado: devuelve el final
- * (CU-41 2.1); si no se pudo emitir al finalizar, lo emite ahora.
+ * (CU-42 2.1); si no se pudo emitir al finalizar, lo emite ahora.
  */
 export async function generar(req, res, next) {
   try {
@@ -65,7 +65,7 @@ export async function generar(req, res, next) {
 
     await Auditoria.registrar({
       usuarioId: req.usuario.id, accion: Auditoria.ACCION.CREAR, entidad: ENTIDAD, registroId: informe.id,
-      valoresNuevos: { ...publico(informe), operativoId: op.id, motivo: 'Informe por operativo (CU-41)' }, ip: req.ip,
+      valoresNuevos: { ...publico(informe), operativoId: op.id, motivo: 'Informe por operativo (CU-42)' }, ip: req.ip,
     });
     res.status(201).json({ ...(await conUrl(informe, op.titulo)), nuevo: true });
   } catch (err) { next(err); }

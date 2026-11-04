@@ -63,7 +63,7 @@ describe('Ciclo de estados del operativo (24/10)', () => {
     assert.equal((await auditoria(id, INICIADO)).length, 1);
   });
 
-  test('CU-16 · el primer agente que ingresa por QR lo pasa a En planificación; el segundo no cambia nada', async () => {
+  test('CU-17 · el primer agente que ingresa por QR lo pasa a En planificación; el segundo no cambia nada', async () => {
     const c = await nuevoOperativo();
     const id = c.json.operativo.id;
     motivo(await ctx.api('POST', `/operativos/${id}/activar`, {}), 200);
@@ -76,7 +76,7 @@ describe('Ciclo de estados del operativo (24/10)', () => {
     assert.equal((await auditoria(id, 'EN_PLANIFICACION')).length, 1, 'un solo cambio');
   });
 
-  test('CU-24 · cuando un grupo sale al terreno el operativo pasa a En proceso, y no vuelve atrás al regresar', async () => {
+  test('CU-25 · cuando un grupo sale al terreno el operativo pasa a En proceso, y no vuelve atrás al regresar', async () => {
     await ctx.query(`UPDATE operativos SET estado = $2::estado_operativo, pausa_manual = false, estado_previo_pausa = NULL WHERE id = $1`, [ctx.op, 'EN_PLANIFICACION']);
     const G = (await ctx.crearGrupo('Estados', 'alfa')).json.grupo.id;
     await ctx.mover('bravo', G);
@@ -146,7 +146,7 @@ describe('Ciclo de estados del operativo (24/10)', () => {
     motivo(await ctx.api('POST', `/operativos/${id}/pausar`, { motivo: 'Ya está finalizado' }), 409, 'estado_invalido');
   });
 
-  test('CU-37 · un polígono puede tener color propio; null vuelve al del grupo y queda en su historial', async () => {
+  test('CU-38 · un polígono puede tener color propio; null vuelve al del grupo y queda en su historial', async () => {
     const pid = await ctx.poligono('Color propio');
     const ruta = `/operativos/${ctx.op}/poligonos/${pid}`;
     for (const color of ['rojo', '#12345', '#GGGGGG', 123]) motivo(await ctx.api('PUT', ruta, { color }), 400, 'color_invalido');

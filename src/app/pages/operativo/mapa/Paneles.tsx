@@ -1,9 +1,9 @@
 /**
  * Paneles de detalle a la derecha del mapa:
- *   · Polígono (CU-39 Consultar, CU-37 Modificar, CU-30 grupos, CU-40 cobertura)
- *   · Track (CU-32: sólo polígono y notas)
- *   · Punto de interés / hallazgo (CU-35, fotos) · Instalación SCI (CU-35)
- *   · Punto Cero (CU-36, con su historial)
+ *   · Polígono (CU-40 Consultar, CU-38 Modificar, CU-31 grupos, CU-41 cobertura)
+ *   · Track (CU-33: sólo polígono y notas)
+ *   · Punto de interés / hallazgo (CU-36, fotos) · Instalación SCI (CU-36)
+ *   · Punto Cero (CU-37, con su historial)
  */
 import { useEffect, useRef, useState, type ReactNode } from 'react';
 import {
@@ -34,7 +34,7 @@ function useGuardar() {
   return { guardando, error, setError, guardar };
 }
 
-/* ── Texto editable en el lugar (nombre y notas del polígono, CU-37 N1/N2) ── */
+/* ── Texto editable en el lugar (nombre y notas del polígono, CU-38 N1/N2) ── */
 function TextoEditable({ titulo, valor, vacio, multilinea, max, soloLectura, onGuardar, textoBoton }: {
   titulo: string; valor: string | null; vacio: string; multilinea?: boolean; max: number; soloLectura: boolean;
   onGuardar: (v: string) => Promise<unknown>; textoBoton: [string, string];
@@ -67,7 +67,7 @@ function TextoEditable({ titulo, valor, vacio, multilinea, max, soloLectura, onG
   );
 }
 
-/* ── Grupos del polígono (CU-30) ── */
+/* ── Grupos del polígono (CU-31) ── */
 function GruposDelPoligono({ pol, grupos, soloLectura, onAsignar, onQuitar, onCambiar }: {
   pol: PoligonoVista; grupos: GrupoApi[]; soloLectura: boolean;
   onAsignar: (grupoId: string) => Promise<unknown>;
@@ -81,7 +81,7 @@ function GruposDelPoligono({ pol, grupos, soloLectura, onAsignar, onQuitar, onCa
   useEffect(() => { setNuevo(''); setCambiando(null); setReemplazo(''); g.setError(null); }, [pol.id]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const tieneRastrillaje = pol.grupos.some(x => x.clase === 'RASTRILLAJE');
-  // Sólo se asigna un grupo Confirmado que no esté en otro polígono (CU-30).
+  // Sólo se asigna un grupo Confirmado que no esté en otro polígono (CU-31).
   const libres = grupos.filter(x => x.estado === 'CONFIRMADO' && !x.poligonoId);
   const opciones = [
     { value: '', label: libres.length ? 'Elegí un grupo confirmado…' : 'No hay grupos confirmados libres' },
@@ -192,7 +192,7 @@ function ColorDelPoligono({ pol, soloLectura, onGuardar }: { pol: PoligonoVista;
   );
 }
 
-/* ── Historial del polígono (CU-39) ── */
+/* ── Historial del polígono (CU-40) ── */
 function textoEvento(e: EventoPoligonoApi, agenteDe: (trackId: string | null) => string | null): string {
   const d = (e.detalle ?? {}) as Record<string, unknown>;
   const g = e.grupoNombre ?? (d.grupo as string) ?? 'Un grupo';
@@ -304,7 +304,7 @@ export function PanelPoligono({ pol, detalle, grupos, tracks, soloLectura, brech
   );
 }
 
-/* ── Track (CU-32) ── */
+/* ── Track (CU-33) ── */
 export function PanelTrack({ t, detalle, poligonos, soloLectura, onClose, onGuardar, onEliminar }: {
   t: TrackVista; detalle: TrackApi | null; poligonos: PoligonoVista[]; soloLectura: boolean; onClose: () => void;
   onGuardar: (d: { poligonoId?: string | null; notas?: string | null }) => Promise<unknown>; onEliminar: () => void;
@@ -358,7 +358,7 @@ export function PanelTrack({ t, detalle, poligonos, soloLectura, onClose, onGuar
   );
 }
 
-/* ── Punto de interés / hallazgo (CU-35) ── */
+/* ── Punto de interés / hallazgo (CU-36) ── */
 export function PanelMarcador({ m, soloLectura, onClose, onGuardar, onEliminar, onSubirFotos, onQuitarFoto }: {
   m: MarcadorApi; soloLectura: boolean; onClose: () => void;
   onGuardar: (d: { clase?: 'HALLAZGO'; nombre?: string; descripcion?: string | null; detalle?: string | null }) => Promise<unknown>;
@@ -486,7 +486,7 @@ export function PanelMarcador({ m, soloLectura, onClose, onGuardar, onEliminar, 
   );
 }
 
-/* ── Instalación SCI (CU-35) ── */
+/* ── Instalación SCI (CU-36) ── */
 export function GrillaTiposSci({ valor, onChange, disabled }: { valor: TipoInstalacionApi; onChange: (t: TipoInstalacionApi) => void; disabled?: boolean }) {
   return (
     <div style={{ display: 'grid', gridTemplateColumns: '1fr 1fr', gap: 6 }}>
@@ -547,7 +547,7 @@ export function PanelInstalacion({ m, soloLectura, onClose, onGuardar, onReubica
   );
 }
 
-/* ── Punto Cero (CU-36) ── */
+/* ── Punto Cero (CU-37) ── */
 export function PanelPuntoCero({ lat, lng, historial, marcadores, soloLectura, onClose, onActualizar, onMarcador }: {
   lat: number; lng: number; historial: MovimientoPuntoCeroApi[]; marcadores: MarcadorApi[]; soloLectura: boolean;
   onClose: () => void; onActualizar: () => void; onMarcador: (m: MarcadorApi) => void;

@@ -4,7 +4,7 @@
  * Los países NO vienen de una API externa a propósito: REST Countries pasó a
  * exigir cuenta y API key (v5), y una lista que casi no cambia no justifica
  * depender de un tercero — menos todavía en un Puesto de Comando con mala
- * conectividad (CU-14 pide funcionar "en condiciones de baja conectividad").
+ * conectividad (CU-15 pide funcionar "en condiciones de baja conectividad").
  * La lista son los códigos ISO 3166-1 y los nombres en español los da el
  * propio navegador (`Intl.DisplayNames`), así que funciona sin red.
  *

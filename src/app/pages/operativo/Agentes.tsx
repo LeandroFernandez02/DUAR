@@ -71,8 +71,8 @@ function ordenarPorNombre<T extends { nombre: string; apellido: string }>(lista:
 const INTERVALO_MS = 10_000;
 
 /**
- * CU-18..20 (Agentes de Operativo) y, en la sección Grupos, CU-22..27 — todo
- * contra la API real. CU-24 paso 1 ubica el tablero de grupos "dentro del menú
+ * CU-19..20 (Agentes de Operativo) y, en la sección Grupos, CU-23..27 — todo
+ * contra la API real. CU-25 paso 1 ubica el tablero de grupos "dentro del menú
  * del Módulo de Agentes": por eso es la misma pantalla con otra dirección.
  */
 export default function Agentes() {
@@ -113,7 +113,7 @@ export default function Agentes() {
       if (document.visibilityState !== 'visible') return;
       try {
         const { personal } = await agentesOperativoApi.listar(operativo.id);
-        // Quien aparece entre una consulta y otra se sumó solo (alta por QR, CU-16): se avisa.
+        // Quien aparece entre una consulta y otra se sumó solo (alta por QR, CU-17): se avisa.
         const antes = idsVistos.current;
         personal.filter(a => !antes.has(a.id)).forEach(a => toast(`Nuevo agente dado de alta por QR: ${a.nombre} ${a.apellido}`));
         setAgentes(personal);
@@ -174,7 +174,7 @@ export default function Agentes() {
 
   const idsEnOperativo = useMemo(() => new Set(agentes.map(a => a.usuarioId)), [agentes]);
 
-  // Sólo agentes con cuenta ACTIVA (mismo gate que el alta por QR — CU-16
+  // Sólo agentes con cuenta ACTIVA (mismo gate que el alta por QR — CU-17
   // paso 6.1: PENDIENTE/INACTIVO no puede quedar operando).
   const disponibles = useMemo(() =>
     usuarios.filter(u =>
@@ -204,7 +204,7 @@ export default function Agentes() {
   };
 
   /**
-   * Regla de Ubicuidad (CU-18): el que ya está en otro operativo vuelve con el aviso y queda
+   * Regla de Ubicuidad (CU-19): el que ya está en otro operativo vuelve con el aviso y queda
    * seleccionado; el siguiente «Agregar» lo traslada (abandonarAnterior). Antes el aviso
    * preguntaba pero no había forma de confirmar (Testeo 25/10, punto 39).
    */
@@ -236,7 +236,7 @@ export default function Agentes() {
     if (fallidos.size === 0) setModalAdd(false);
   };
 
-  // ── Editar (reutiliza EditarAgenteModal — CU-18) ──
+  // ── Editar (reutiliza EditarAgenteModal — CU-19) ──
   const [editUsuarioId, setEditUsuarioId] = useState<string | null>(null);
   const agenteEnEdicion = agentes.find(a => a.usuarioId === editUsuarioId) ?? null;
 
@@ -395,7 +395,7 @@ export default function Agentes() {
           onClose={() => setHistoria(null)} />
       )}
 
-      {/* ── MODAL: Editar Agente (datos operativos, CU-18) ── */}
+      {/* ── MODAL: Editar Agente (datos operativos, CU-19) ── */}
       {agenteEnEdicion && (
         <EditarAgenteModal
           agente={agenteEnEdicion}

@@ -153,7 +153,7 @@ describe('Pedido del 03/11 · el Líder marca puntos de interés y hallazgos en 
       `SELECT ao.id FROM agentes_operativo ao JOIN usuarios u ON u.id = ao.usuario_id
         WHERE ao.operativo_id = $1 AND u.id = $2 AND ao.fecha_egreso IS NULL`, [ctx.op, ctx.usuarios.bravo.uid]);
     const r = await ctx.api('PUT', `/operativos/${ctx.op}/grupos/${G}`, { liderId: b.id });
-    if (r.status !== 200) return;   // el cambio de Líder tiene sus propias reglas (CU-21): no es lo que se prueba acá
+    if (r.status !== 200) return;   // el cambio de Líder tiene sus propias reglas (CU-22): no es lo que se prueba acá
     motivo(await crear('alfa', punto()), 403, 'no_es_lider');
     motivo(await crear('bravo', punto({ nombre: 'Del nuevo Líder' })), 201);
   });

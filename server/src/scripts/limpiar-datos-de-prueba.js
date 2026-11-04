@@ -34,7 +34,7 @@ const PREFIJOS_OPERATIVOS_DE_PRUEBA = ['PRUEBAS AUTOMÁTICAS - %'];
 const CONFIRMAR = process.argv.includes('--confirmar');
 
 const PASOS = [
-  // Informes (CU-41, migración 021): la base no deja borrarlos salvo en esta
+  // Informes (CU-42, migración 021): la base no deja borrarlos salvo en esta
   // transacción, que lo habilita con SET LOCAL duar.limpieza_pruebas.
   ['informes_operativo', `
     DELETE FROM informes_operativo

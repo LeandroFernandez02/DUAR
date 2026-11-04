@@ -1,5 +1,5 @@
 /**
- * DATOS DE EJEMPLO del panel general (CU-42). Se usan mientras se acuerda la
+ * DATOS DE EJEMPLO del panel general (CU-43). Se usan mientras se acuerda la
  * pantalla con el equipo; después se reemplazan por la respuesta de la API, que
  * va a tener esta misma forma (OperativoPanel). Se generan siempre iguales
  * (semilla fija) y relativos a hoy, para que las cifras no salten ni envejezcan.

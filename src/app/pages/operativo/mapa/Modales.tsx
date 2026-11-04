@@ -1,8 +1,8 @@
 /**
- * Modales del mapa: nuevo polígono (CU-29), cargar GPX en nombre de un agente
- * (CU-31), nuevo marcador (CU-34), nueva instalación (CU-34), actualizar el
- * Punto Cero (CU-36), eliminar (CU-38) y quitar un grupo que está en el
- * terreno (CU-30).
+ * Modales del mapa: nuevo polígono (CU-30), cargar GPX en nombre de un agente
+ * (CU-32), nuevo marcador (CU-35), nueva instalación (CU-35), actualizar el
+ * Punto Cero (CU-37), eliminar (CU-39) y quitar un grupo que está en el
+ * terreno (CU-31).
  */
 import { useEffect, useMemo, useRef, useState } from 'react';
 import { Pentagon, Route, Check, Upload, TriangleAlert, FileUp, FileCheck, X, Trash2, Crosshair, Flag, MapPinPlus, Footprints, Loader2 } from 'lucide-react';
@@ -27,7 +27,7 @@ function useEnvio() {
   return { enviando, error, setError, enviar };
 }
 
-/* ── CU-29 ── */
+/* ── CU-30 ── */
 export function ModalNuevoPoligono({ vertices, grupos, n, onCancel, onGuardar }: {
   vertices: LatLng[]; grupos: GrupoApi[]; n: number; onCancel: () => void;
   onGuardar: (d: { nombre: string; grupoId: string | null; notas: string | null }) => Promise<unknown>;
@@ -56,7 +56,7 @@ export function ModalNuevoPoligono({ vertices, grupos, n, onCancel, onGuardar }:
   );
 }
 
-/* ── CU-31 (el coordinador, en nombre de un agente) ── */
+/* ── CU-32 (el coordinador, en nombre de un agente) ── */
 const normalizar = (s: string) => s.normalize('NFD').replace(/[̀-ͯ]/g, '').toLowerCase();
 
 export function ModalCargarGpx({ operativoId, personal, grupos, onCancel, onCargado }: {
@@ -182,7 +182,7 @@ export function ModalCargarGpx({ operativoId, personal, grupos, onCancel, onCarg
   );
 }
 
-/* ── CU-34: punto de interés o hallazgo ── */
+/* ── CU-35: punto de interés o hallazgo ── */
 export function ModalNuevoMarcador({ ll, onCancel, onGuardar }: {
   ll: LatLng; onCancel: () => void;
   onGuardar: (d: { clase: 'POI' | 'HALLAZGO'; nombre: string; descripcion: string | null; detalle: string | null }) => Promise<unknown>;
@@ -215,7 +215,7 @@ export function ModalNuevoMarcador({ ll, onCancel, onGuardar }: {
   );
 }
 
-/* ── CU-34: instalación SCI ── */
+/* ── CU-35: instalación SCI ── */
 export function ModalNuevaInstalacion({ ll, onCancel, onGuardar }: {
   ll: LatLng; onCancel: () => void;
   onGuardar: (d: { tipoInstalacion: TipoInstalacionApi; nombre: string; responsable: string | null; notas: string | null }) => Promise<unknown>;
@@ -241,7 +241,7 @@ export function ModalNuevaInstalacion({ ll, onCancel, onGuardar }: {
   );
 }
 
-/* ── CU-36 ── */
+/* ── CU-37 ── */
 export function ModalPuntoCero({ desde, hasta, nRadios, requiereMotivo, onCambio, onCancel, onConfirmar }: {
   desde: LatLng; hasta: LatLng; nRadios: number; requiereMotivo: boolean;
   onCambio: (ll: LatLng) => void; onCancel: () => void; onConfirmar: (ll: LatLng, motivo: string | null) => Promise<unknown>;
@@ -287,7 +287,7 @@ export function ModalPuntoCero({ desde, hasta, nRadios, requiereMotivo, onCambio
   );
 }
 
-/* ── CU-38 ── */
+/* ── CU-39 ── */
 export function ModalEliminar({ tipo, nombre, extra, onCancel, onConfirmar }: {
   tipo: string; nombre: string; extra: string; onCancel: () => void; onConfirmar: () => Promise<unknown>;
 }) {

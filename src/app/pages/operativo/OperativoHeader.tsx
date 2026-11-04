@@ -203,8 +203,8 @@ export default function OperativoHeader({ operativo, movil = false, onRecargar, 
             {!compacto && <span>QR Agentes</span>}
           </button>}
 
-          {/* Informe (CU-41). Pasó del sidebar a botón según la Lista de Casos
-              de Uso del 21/09, que además sacó el Portal de Familia (ex CU-44)
+          {/* Informe (CU-42). Pasó del sidebar a botón según la Lista de Casos
+              de Uso del 21/09, que además sacó el Portal de Familia (ex CU-45)
               del alcance de la tesis: este lugar era el del botón "Familia".
               Desde el 15/10 abre un modal, para no sacar al coordinador de lo que estaba haciendo. */}
           <button

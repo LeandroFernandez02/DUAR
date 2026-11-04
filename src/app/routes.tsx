@@ -54,7 +54,7 @@ export const router = createBrowserRouter([
         lazy: cargar(() => import('./pages/RecuperarContrasena')),
       },
       {
-        // CU-41 N1: verificar un informe. Pública: la usa la Fiscalía con el QR del PDF.
+        // CU-42 N1: verificar un informe. Pública: la usa la Fiscalía con el QR del PDF.
         path: 'verificar/:codigo?',
         lazy: cargar(() => import('./pages/VerificarInforme')),
       },
@@ -109,7 +109,7 @@ export const router = createBrowserRouter([
                 lazy: cargar(() => import('./pages/operativo/Mapa')),
               },
               {
-                // El informe (CU-41) es un modal del encabezado desde el 15/10; la dirección vieja lleva al panel.
+                // El informe (CU-42) es un modal del encabezado desde el 15/10; la dirección vieja lleva al panel.
                 path: 'informe',
                 loader: ({ params }) => redirect(`/operativo/${params.id}/dashboard`),
               },

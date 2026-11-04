@@ -2,7 +2,7 @@
  * Portal del Agente — «Mi sector» (diseño CALÍVAR, 23/10): el polígono asignado a mi grupo,
  * para ubicarse en el terreno. Nombre, área, notas del coordinador, las coordenadas de los
  * vértices (para cargar en el GPS) y un mapa chico con la forma. Sólo lectura: el polígono
- * lo dibuja y lo asigna el coordinador (CU-29/30). Sin grupo o sin polígono no se muestra.
+ * lo dibuja y lo asigna el coordinador (CU-30/30). Sin grupo o sin polígono no se muestra.
  *
  * El Líder del grupo, además (pedido del 03/11), marca puntos de interés y hallazgos en su sector,
  * con fotos, y ve los que ya hay en el polígono (en la lista y en el mapa). Lo que marcó sin señal
