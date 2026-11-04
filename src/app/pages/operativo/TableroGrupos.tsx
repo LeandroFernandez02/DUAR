@@ -8,7 +8,7 @@
  * consulta se pausa con la pestaña del navegador oculta y durante un arrastre,
  * para no re-renderizar el tablero debajo del cursor.
  */
-import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useState } from 'react';
+import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { Users, AlertCircle, Loader2, X } from 'lucide-react';
 import { toast } from 'sonner';
 import {
@@ -22,6 +22,7 @@ import LineaTiempoModal from '../../components/shared/LineaTiempoModal';
 import {
   CrearGrupoModal, EditarGrupoModal, AccionGrupoModal, ArmadoAutomaticoModal, DisolverGrupoModal,
 } from '../../components/shared/GrupoModales';
+import { ACCION_INFO, ETIQUETA_ESTADO_GRUPO } from '../../components/shared/grupos/piezas';
 
 const INTERVALO_MS = 10_000;
 
@@ -53,6 +54,27 @@ const TableroGrupos = forwardRef<TableroGruposHandle, Props>(function TableroGru
   const [retirar, setRetirar] = useState<{ grupo: GrupoApi; integrante: IntegranteGrupoApi } | null>(null);
   const [accion, setAccion] = useState<{ grupo: GrupoApi; accion: AccionGrupo } | null>(null);
   const [historia, setHistoria] = useState<GrupoApi | null>(null);
+
+  /**
+   * Cambiar el estado de un grupo (pedido del 03/11): se hace al toque, sin modal de confirmación,
+   * para no cortar el flujo. Sólo se abre el modal cuando falta un dato que elegir: el polígono al
+   * asignar y el estado correcto con su motivo al corregir. Un aviso corto dice qué pasó; si la API
+   * lo rechaza (por ejemplo, el grupo ya estaba en otro estado) el aviso lo dice.
+   */
+  const enCurso = useRef(new Set<string>());
+  const irAAccion = (grupo: GrupoApi, a: AccionGrupo) => {
+    if (a === 'asignar' || a === 'corregir') return setAccion({ grupo, accion: a });
+    if (enCurso.current.has(grupo.id)) return;   // doble toque: ya se está registrando
+    enCurso.current.add(grupo.id);
+    gruposApi.accion(operativoId, grupo.id, { accion: a })
+      .then(r => {
+        toast(r.resultado === 'CONFIRMACION'
+          ? `${grupo.nombre}: ya estaba registrado, lo informó el Líder desde su celular.`
+          : `${grupo.nombre} pasó a ${ETIQUETA_ESTADO_GRUPO[ACCION_INFO[a].hacia]}.`);
+      })
+      .catch(err => toast.error(err instanceof ApiError ? err.message : 'No se pudo registrar el cambio. Revisá la conexión.'))
+      .finally(() => { enCurso.current.delete(grupo.id); void cargar(); });
+  };
 
   const cargar = useCallback(async () => {
     try {
@@ -154,7 +176,7 @@ const TableroGrupos = forwardRef<TableroGruposHandle, Props>(function TableroGru
         onDisolver={setDisolver}
         onRetirar={(grupo, integrante) => setRetirar({ grupo, integrante })}
         onArmadoAutomatico={() => setArmado(true)}
-        onAccion={(grupo, a) => setAccion({ grupo, accion: a })}
+        onAccion={irAAccion}
         onLineaTiempo={setHistoria}
         onAviso={t => toast(t)}
         onNuevoGrupo={() => setCrear(true)}

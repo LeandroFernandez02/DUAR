@@ -13,7 +13,8 @@ interface StatusBadgeProps {
  */
 export const ESTADOS: Record<string, { label: string; bg: string; text: string; dot: string; textDark?: string }> = {
   iniciado: { label: 'Iniciado', bg: '#dcfce7', text: '#15803d', dot: '#16a34a' },
-  activo: { label: 'Iniciado', bg: '#dcfce7', text: '#15803d', dot: '#16a34a' },   // nombre anterior del mismo estado
+  // Estado de un USUARIO (activo, inactivo, eliminado, pendiente). Los operativos ya no usan «activo»: son «iniciado».
+  activo: { label: 'Activo', bg: '#dcfce7', text: '#15803d', dot: '#16a34a' },
   inactivo: { label: 'Inactivo', bg: '#fee2e2', text: '#b91c1c', dot: '#dc2626' },
   'planificación': { label: 'En Planificación', bg: '#fef9c3', text: '#a16207', dot: '#ca8a04' },
   nuevo: { label: 'Nuevo', bg: 'color-mix(in srgb, var(--accent) 20%, transparent)', text: 'var(--foreground)', dot: 'var(--accent)', textDark: '#ffe6d9' },

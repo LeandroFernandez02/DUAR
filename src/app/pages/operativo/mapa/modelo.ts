@@ -46,7 +46,7 @@ export const esInstalacion = (m: MarcadorApi) => m.clase === 'INSTALACION';
 
 export const OVERLAYS_INICIALES: Overlays = {
   radios: true, poligonos: true, trazas: true, marcadores: true, puntoCero: true, instalaciones: true, poi: true, hallazgos: true,
-  etiquetas: true, brechas: false, leyenda: true, coords: true, escala: true, herramientas: true, zoom: true, gruposFlot: true,
+  etiquetas: true, brechas: false, leyenda: false, coords: true, escala: true, herramientas: true, zoom: true, gruposFlot: false,
 };
 
 export interface Preferencias {
