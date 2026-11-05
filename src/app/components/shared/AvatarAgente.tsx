@@ -2,7 +2,7 @@
  * Avatar de un agente del operativo: en vez de las iniciales, un ícono que dice
  * de un vistazo qué papel cumple (28/09), para no llenar la ficha de etiquetas.
  *  · conductor → camión (fucsia): espera al grupo en la camioneta, no rastrea;
- *  · recurso especial (dron, canes, paramédico, caballería, buzos) → estrella (ámbar);
+ *  · recurso especial (K-9, drones, caballería, buceo, motos…) → estrella (ámbar);
  *  · agente de rastrillaje → huellas (turquesa con ícono azul noche si es del DUAR, acero si no).
  * Si es conductor y además tiene una especialidad crítica, manda el camión: el
  * papel en el terreno es manejar. La especialidad sigue escrita en la ficha.

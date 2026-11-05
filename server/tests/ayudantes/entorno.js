@@ -32,19 +32,19 @@ const MOTIVO_REINICIO = 'Reinicio de las pruebas automáticas';
  * especialidad y el conductor son tácticos y se fijan en cada preparación.
  *   · alfa, bravo, charlie → del DUAR, rastrillan: pueden liderar uno de rastrillaje.
  *   · delta, eco           → agentes de rastrillaje que no son del DUAR.
- *   · foxtrot              → del DUAR, recurso especial (Dron).
+ *   · foxtrot              → del DUAR, recurso especial (Drones).
  *   · golf                 → conductor (no rastrilla, entra a cualquier grupo).
  *   · hotel, india         → coordinadores: van al turno del puesto de comando, no al tablero.
  *   · juliet, kilo         → jefes de operativo (02/11): consultan todo y se asignan como Jefe.
  */
 export const USUARIOS = [
-  { clave: 'alfa',    institucion: 'DUAR',                 especialidad: 'Bombero' },
-  { clave: 'bravo',   institucion: 'DUAR',                 especialidad: 'Bombero' },
-  { clave: 'charlie', institucion: 'DUAR',                 especialidad: 'Bombero Voluntario' },
-  { clave: 'delta',   institucion: 'Bomberos Voluntarios', especialidad: 'Bombero Voluntario' },
-  { clave: 'eco',     institucion: 'Policía de Córdoba',   especialidad: 'Policía' },
-  { clave: 'foxtrot', institucion: 'DUAR',                 especialidad: 'Dron' },
-  { clave: 'golf',    institucion: 'Bomberos Voluntarios', especialidad: 'Bombero', conductor: true },
+  { clave: 'alfa',    institucion: 'DUAR',                 especialidad: 'Caminante' },
+  { clave: 'bravo',   institucion: 'DUAR',                 especialidad: 'Caminante' },
+  { clave: 'charlie', institucion: 'DUAR',                 especialidad: 'Caminante' },
+  { clave: 'delta',   institucion: 'Bomberos Voluntarios', especialidad: 'Caminante' },
+  { clave: 'eco',     institucion: 'Policía',              especialidad: 'Caminante' },
+  { clave: 'foxtrot', institucion: 'DUAR',                 especialidad: 'Drones' },
+  { clave: 'golf',    institucion: 'Bomberos Voluntarios', especialidad: 'Caminante', conductor: true },
   { clave: 'hotel',   institucion: 'DUAR',                 rol: 'coordinador' },
   { clave: 'india',   institucion: 'DUAR',                 rol: 'coordinador' },
   { clave: 'juliet',  institucion: 'DUAR',                 rol: 'jefe de operativo' },

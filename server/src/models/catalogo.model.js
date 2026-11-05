@@ -14,7 +14,7 @@ export async function roles() {
 
 export async function instituciones() {
   const { rows } = await query(
-    `SELECT id, nombre, es_duar AS "esDuar" FROM cat_instituciones ORDER BY es_duar DESC, nombre`
+    `SELECT id, nombre, es_duar AS "esDuar" FROM cat_instituciones ORDER BY es_duar DESC, nombre = 'Otros', nombre`
   );
   return rows;
 }
@@ -29,7 +29,7 @@ export async function dotaciones() {
 export async function especialidades() {
   const { rows } = await query(
     `SELECT id, nombre, es_recurso_critico AS "esRecursoCritico"
-       FROM cat_especialidades ORDER BY nombre`
+       FROM cat_especialidades ORDER BY es_recurso_critico, nombre`
   );
   return rows;
 }

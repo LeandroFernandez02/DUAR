@@ -50,7 +50,7 @@ export async function altaActivaDe(usuarioId) {
 }
 
 /**
- * ¿Esa especialidad es de un recurso especial (dron, canes, paramédico…)? Es un
+ * ¿Esa especialidad es de un recurso especial (K-9, drones, buceo…)? Es un
  * dato del catálogo (`cat_especialidades.es_recurso_critico`), no una lista en
  * el código. Sin especialidad, no: es un agente de rastrillaje.
  *

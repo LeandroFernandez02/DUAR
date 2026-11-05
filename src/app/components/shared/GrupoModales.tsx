@@ -70,8 +70,8 @@ function Transicion({ desde, hacia }: { desde: EstadoGrupoApi; hacia: EstadoGrup
 
 /** Qué es cada clase, dicho para el coordinador al crear (decisión del 26/09). */
 const CLASES: { valor: ClaseGrupoApi; titulo: string; detalle: string }[] = [
-  { valor: 'RASTRILLAJE', titulo: 'Grupo de rastrillaje', detalle: 'Agentes que caminan el polígono. Lo lidera alguien del DUAR.' },
-  { valor: 'ESPECIAL', titulo: 'Grupo especial', detalle: 'Drones, canes, paramédicos, caballería o buzos, con agentes de apoyo. Lo lidera cualquiera.' },
+  { valor: 'RASTRILLAJE', titulo: 'Grupo de rastrillaje', detalle: 'Caminantes que recorren el polígono. Lo lidera alguien del DUAR.' },
+  { valor: 'ESPECIAL', titulo: 'Grupo especial', detalle: 'K-9, drones, caballería, buceo, motos, altura… con caminantes de apoyo. Lo lidera cualquiera.' },
 ];
 
 const nombreCompleto = (a: { nombre: string; apellido: string }) => `${a.nombre} ${a.apellido}`;

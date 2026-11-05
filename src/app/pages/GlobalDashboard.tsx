@@ -59,7 +59,7 @@ export default function GlobalDashboard() {
     && isoDia(new Date(o.fin)) >= rango.desde && isoDia(new Date(o.fin)) <= rango.hasta).length;
   const { agentes } = d.actual;
   const enCurso = useMemo(() => todos.filter(o => o.estado === 'INICIADO' || o.estado === 'EN_PROCESO'), [todos]);
-  // Recursos críticos (Canes, Dron, Paramédico, Buzos, Caballería) trabajando ahora en todos los operativos en curso.
+  // Recursos críticos (K-9, Drones, Caballería, Buceo…) trabajando ahora en todos los operativos en curso.
   const recursosCriticos = useMemo(() => RECURSOS_CRITICOS
     .map(nombre => ({ nombre, valor: enCurso.reduce((s, o) => s + (o.recursosCriticos?.[nombre] ?? 0), 0) }))
     .filter(x => x.valor > 0).sort((a, b) => b.valor - a.valor), [enCurso]);

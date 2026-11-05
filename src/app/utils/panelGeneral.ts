@@ -60,7 +60,7 @@ export interface OperativoPanel {
 }
 
 /** Las especialidades marcadas como recurso crítico en cat_especialidades. */
-export const RECURSOS_CRITICOS = ['Canes', 'Dron', 'Paramédico', 'Buzos', 'Caballería'];
+export const RECURSOS_CRITICOS = ['Buceo', 'Caballería', 'Motos', 'Investigación', 'Drones', 'Altura', 'K-9', 'Acuático'];
 
 export interface FiltrosPanel {
   desde: string;             // AAAA-MM-DD

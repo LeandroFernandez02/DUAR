@@ -638,10 +638,7 @@ export default function Usuarios() {
                   className="w-full px-3 py-2 rounded-lg border outline-none"
                   style={fieldStyle}
                 >
-                  {/* Derivadas del catálogo real. Antes esta lista estaba
-                      hardcodeada: incluía "Conductor" (ya no es una
-                      especialidad, es un estado táctico) y le faltaban
-                      Canes, Defensa Civil y Dron. */}
+                  {/* Derivadas del catálogo real (Caminante + recursos especiales). */}
                   <option value="">— No especificado —</option>
                   {catEspecialidades.map(e => (
                     <option key={e.id} value={e.id}>{e.nombre}</option>

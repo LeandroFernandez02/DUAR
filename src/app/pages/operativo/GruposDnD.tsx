@@ -44,7 +44,7 @@ export interface AgenteTablero {
   institucionNombre?: string | null;
   estado: string;
   estadoActualizadoEn: string;
-  /** Dron, canes, paramédico, caballería, buzos: sólo entra a grupos especiales (salvo de conductor). */
+  /** K-9, drones, caballería, buceo, motos…: sólo entra a grupos especiales (salvo de conductor). */
   esRecursoCritico: boolean;
 }
 

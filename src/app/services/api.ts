@@ -473,7 +473,7 @@ export interface PersonalOperativoApi {
   especialidadNombre: string | null;
   institucionNombre: string | null;
   esDuar: boolean;
-  /** Su especialidad táctica es de recurso especial (dron, canes, paramédico, caballería, buzos). */
+  /** Su especialidad táctica es de recurso especial (K-9, drones, caballería, buceo, motos…). */
   esRecursoCritico: boolean;
 }
 

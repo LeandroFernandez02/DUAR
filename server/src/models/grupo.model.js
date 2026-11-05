@@ -10,8 +10,8 @@
  * Desde el 26/09 hay dos CLASES (migración 012), elegidas al crear:
  *   · RASTRILLAJE → agentes que rastrillan, más su conductor; Líder del DUAR y
  *                   binomio (al menos dos que rastrillen).
- *   · ESPECIAL    → recursos especiales (dron, canes, paramédico, caballería,
- *                   buzos) con agentes de apoyo; Líder libre, sin binomio ni mínimo.
+ *   · ESPECIAL    → recursos especiales (K-9, drones, caballería, buceo, motos,
+ *                   altura…) con agentes de apoyo; Líder libre, sin binomio ni mínimo.
  * "Recurso especial" = `cat_especialidades.es_recurso_critico` de la
  * especialidad TÁCTICA del agente (la que se cambia en CU-19).
  *

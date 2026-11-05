@@ -50,16 +50,15 @@ export function grupoEnOperacion(estado: EstadoGrupo): boolean {
  * Los valores espejan las filas reales de `cat_especialidades` (ver catEspecialidades).
  */
 export type Especialidad =
-  | 'paramédico'
-  | 'bombero'
-  | 'bombero voluntario'
-  | 'canes'
-  | 'defensa civil'
-  | 'dron'
+  | 'caminante'
+  | 'buceo'
   | 'caballería'
-  | 'buzos'
-  | 'policía'
-  | 'otra';
+  | 'motos'
+  | 'investigación'
+  | 'drones'
+  | 'altura'
+  | 'k-9'
+  | 'acuático';
 export type ShapeType = 'poligono' | 'circulo' | 'rectangulo';
 export type TipoObjetivo = 'persona' | 'objeto';
 /**
@@ -367,7 +366,7 @@ export const initialData: AppData = {
       rol: 'agente',
       fechaNacimiento: '1997-05-15',
       telefono: '351-5551001',
-      especialidad: 'paramédico',
+      especialidad: 'caminante',
       grupo_sanguineo: 'A+',
       alergias: 'Ninguna',
       institucionId: '11c7a8ed-de50-4f54-a62a-ff170b67a10f', dotacionId: '183397ca-f4fd-4f79-8dc6-3a33809c2a1e', // DUAR · Otros (no estaba en el catálogo oficial)
@@ -385,7 +384,7 @@ export const initialData: AppData = {
       rol: 'agente',
       fechaNacimiento: '1991-03-22',
       telefono: '351-5552002',
-      especialidad: 'bombero',
+      especialidad: 'caminante',
       grupo_sanguineo: 'O+',
       alergias: 'Polen',
       institucionId: 'e9abb177-b4ff-4beb-9200-7c06f07deb5a', // Bomberos Voluntarios
@@ -421,7 +420,7 @@ export const initialData: AppData = {
       rol: 'agente',
       fechaNacimiento: '1988-11-30',
       telefono: '351-5554004',
-      especialidad: 'bombero voluntario',
+      especialidad: 'caminante',
       grupo_sanguineo: 'AB+',
       alergias: 'Penicilina',
       institucionId: 'e9abb177-b4ff-4beb-9200-7c06f07deb5a', // Bomberos Voluntarios
@@ -439,7 +438,7 @@ export const initialData: AppData = {
       rol: 'agente',
       fechaNacimiento: '1995-04-12',
       telefono: '351-5555005',
-      especialidad: 'paramédico',
+      especialidad: 'caminante',
       grupo_sanguineo: 'O-',
       alergias: 'Ninguna',
       institucionId: '11c7a8ed-de50-4f54-a62a-ff170b67a10f', dotacionId: '183397ca-f4fd-4f79-8dc6-3a33809c2a1e', // DUAR · Otros (no estaba en el catálogo oficial)
@@ -475,7 +474,7 @@ export const initialData: AppData = {
       rol: 'agente',
       fechaNacimiento: '2001-01-17',
       telefono: '351-5557007',
-      especialidad: 'bombero',
+      especialidad: 'caminante',
       grupo_sanguineo: 'B+',
       alergias: 'Ninguna',
       institucionId: 'e9abb177-b4ff-4beb-9200-7c06f07deb5a', // Bomberos Voluntarios
@@ -799,19 +798,19 @@ export interface CatEspecialidad {
 }
 
 export const catEspecialidades: CatEspecialidad[] = [
-  { id: 'f9152846-4fe6-4cbe-9cb2-69e2549a5fae', nombre: 'Paramedico',         slug: 'paramédico',          esRecursoCritico: true  },
-  { id: '328cf95c-6ee2-446a-bba7-197e0f00b322', nombre: 'Dron',               slug: 'dron',                esRecursoCritico: true  },
-  { id: '788ad70e-d044-48e3-b6b2-5b7f265ee106', nombre: 'Bombero',            slug: 'bombero',             esRecursoCritico: false },
-  { id: '515dcdee-7b3b-4c4e-8161-c070254df8de', nombre: 'Bombero Voluntario', slug: 'bombero voluntario',  esRecursoCritico: false },
-  // Canes es recurso especial desde el 26/09 (migración 012): trabaja a su ritmo, en su propio grupo.
-  { id: 'eb010f9d-406e-4248-ba27-d88ca045ca4f', nombre: 'Canes',              slug: 'canes',               esRecursoCritico: true  },
-  { id: 'eb016aa1-0c17-4fd3-add0-b31becf1d1b2', nombre: 'Caballería',         slug: 'caballería',          esRecursoCritico: true  },
-  { id: '3b25c85b-483c-43c0-b8a9-596d09468855', nombre: 'Buzos',              slug: 'buzos',               esRecursoCritico: true  },
-  { id: 'e0322446-d6eb-4335-85e3-558d484e2334', nombre: 'Defensa Civil',      slug: 'defensa civil',       esRecursoCritico: false },
-  // Policía rastrilla (29/09, migración 014). Antes sólo existía como institución.
-  { id: '0c55b9bf-f8fe-4651-a813-c612718b1ba9', nombre: 'Policía',            slug: 'policía',             esRecursoCritico: false },
-  // "Otra" siempre al final: existía en la BD pero faltaba acá.
-  { id: 'b99b79b0-6eac-4fd0-83b3-f2296ef5e89d', nombre: 'Otra',               slug: 'otra',                esRecursoCritico: false },
+  // Catálogo del cliente (05/11, migración 033). Caminante es la única de
+  // rastrillaje; el resto son recursos especiales y van a un grupo especial.
+  // Caminante reutiliza el id de "Bombero", Drones el de "Dron", K-9 el de
+  // "Canes" y Buceo el de "Buzos".
+  { id: '788ad70e-d044-48e3-b6b2-5b7f265ee106', nombre: 'Caminante',     slug: 'caminante',     esRecursoCritico: false },
+  { id: '3b25c85b-483c-43c0-b8a9-596d09468855', nombre: 'Buceo',         slug: 'buceo',         esRecursoCritico: true  },
+  { id: 'eb016aa1-0c17-4fd3-add0-b31becf1d1b2', nombre: 'Caballería',    slug: 'caballería',    esRecursoCritico: true  },
+  { id: '70bd0656-4b02-4f96-8448-da34e31eb4de', nombre: 'Motos',         slug: 'motos',         esRecursoCritico: true  },
+  { id: 'd7aff1de-3fde-448e-a3c5-8bcc0d9513bf', nombre: 'Investigación', slug: 'investigación', esRecursoCritico: true  },
+  { id: '328cf95c-6ee2-446a-bba7-197e0f00b322', nombre: 'Drones',        slug: 'drones',        esRecursoCritico: true  },
+  { id: 'ed422a17-c6c4-4918-b409-e39f5a94a1b6', nombre: 'Altura',        slug: 'altura',        esRecursoCritico: true  },
+  { id: 'eb010f9d-406e-4248-ba27-d88ca045ca4f', nombre: 'K-9',           slug: 'k-9',           esRecursoCritico: true  },
+  { id: '4ff8d2fe-647c-4fda-b036-3d315c43d7e9', nombre: 'Acuático',      slug: 'acuático',      esRecursoCritico: true  },
 ];
 
 /* ────────────────────────────────────────────────────────────────────────────
@@ -841,17 +840,24 @@ export interface CatDotacion {
 }
 
 export const catInstituciones: CatInstitucion[] = [
-  { id: '11c7a8ed-de50-4f54-a62a-ff170b67a10f', nombre: 'DUAR',                 esDuar: true  },
-  { id: '7c6d12ff-3af1-417f-b295-27f661281bbc', nombre: 'ETAC',                 esDuar: false },
-  { id: 'e9abb177-b4ff-4beb-9200-7c06f07deb5a', nombre: 'Bomberos Voluntarios', esDuar: false },
-  { id: '80ac6de6-9133-45f1-85c3-d3099894a45a', nombre: 'Policía de Córdoba',   esDuar: false },
-  { id: 'c120cfd5-4e0e-4ac0-baf9-40ac5f7dc4f8', nombre: 'Defensa Civil',        esDuar: false },
-  { id: '14a0e83e-3e0c-40b8-9cb9-5401bdad9c47', nombre: 'Otra',                 esDuar: false },
+  // Lista del cliente (05/11, migración 033). "Policía" y "Otros" conservan el
+  // id de "Policía de Córdoba" y "Otra". ETAC salió del catálogo.
+  { id: '11c7a8ed-de50-4f54-a62a-ff170b67a10f', nombre: 'DUAR',                         esDuar: true  },
+  { id: '80ac6de6-9133-45f1-85c3-d3099894a45a', nombre: 'Policía',                      esDuar: false },
+  { id: 'e9abb177-b4ff-4beb-9200-7c06f07deb5a', nombre: 'Bomberos Voluntarios',         esDuar: false },
+  { id: 'c120cfd5-4e0e-4ac0-baf9-40ac5f7dc4f8', nombre: 'Defensa Civil',                esDuar: false },
+  { id: 'fcc3e594-5ce6-44d7-8aa9-a6f5beb174e6', nombre: 'Guardia Local',                esDuar: false },
+  { id: '87e29fe7-ccfa-47e9-89eb-21b81dc7cb52', nombre: 'Gendarmería',                  esDuar: false },
+  { id: '162f5957-16b5-4619-b49f-b2a09b8f42c0', nombre: 'Policía Federal',              esDuar: false },
+  { id: '1a88c42e-682f-4ade-aaea-cf30d9c185fd', nombre: 'Secretaría Gestión de Riesgo', esDuar: false },
+  { id: '14a0e83e-3e0c-40b8-9cb9-5401bdad9c47', nombre: 'Otros',                        esDuar: false },
 ];
 
 const ID_DUAR = '11c7a8ed-de50-4f54-a62a-ff170b67a10f';
+const ID_POLICIA = '80ac6de6-9133-45f1-85c3-d3099894a45a';
+const ID_BOMBEROS_VOL = 'e9abb177-b4ff-4beb-9200-7c06f07deb5a';
 
-/** Las 11 dotaciones reales del DUAR. Otras instituciones aún no tienen cargadas. */
+/** Dotaciones por institución: DUAR (11), Policía (9) y Bomberos Voluntarios (14). */
 export const catDotaciones: CatDotacion[] = [
   { id: 'a470cfbc-33bb-4f3e-9e06-df96a40d08d4', nombre: 'DUAR Capital (Cuartel Central)',   institucionId: ID_DUAR },
   { id: 'cfc5d89c-9a45-4fac-9bcc-05193d026c88', nombre: 'Miramar',                          institucionId: ID_DUAR },
@@ -864,6 +870,31 @@ export const catDotaciones: CatDotacion[] = [
   { id: '0173f98f-2701-4be1-b4ef-50641d76ecd9', nombre: 'Río Cuarto',                       institucionId: ID_DUAR },
   { id: '80eb1d2f-fe47-4bd5-88b7-4294fcb47d9e', nombre: 'Dique La Quebrada',                institucionId: ID_DUAR },
   { id: '183397ca-f4fd-4f79-8dc6-3a33809c2a1e', nombre: 'Otros',                            institucionId: ID_DUAR },
+  // Policía (05/11, migración 033)
+  { id: 'd77c4166-5a55-4f44-aacc-43f69399ffd9', nombre: 'Investigaciones', institucionId: ID_POLICIA },
+  { id: 'c4816e1e-a8df-4c71-a7f5-55575a443450', nombre: 'DUAR',            institucionId: ID_POLICIA },
+  { id: '4d7a2645-3f00-4b68-81f4-3f33c8365e78', nombre: 'Canes',           institucionId: ID_POLICIA },
+  { id: '218c4c2f-54ed-4009-b103-1b19749b04f3', nombre: 'Drones',          institucionId: ID_POLICIA },
+  { id: '7710eb28-4f2a-4811-9adf-7d5a5af8b9be', nombre: 'Caballería',      institucionId: ID_POLICIA },
+  { id: '639d9a43-b25c-41e1-88b6-3c22d32ab89a', nombre: 'URD',             institucionId: ID_POLICIA },
+  { id: '7805c1f7-a9bf-42d5-a848-fa6114f84388', nombre: 'Patrulla Rural',  institucionId: ID_POLICIA },
+  { id: '9a80486a-d61b-49ae-af86-0fe8413421b2', nombre: 'Caminera',        institucionId: ID_POLICIA },
+  { id: 'ff79ae43-b2a9-4d45-a5a2-87bb7222f8bd', nombre: 'Motos',           institucionId: ID_POLICIA },
+  // Bomberos Voluntarios (05/11): las cuatro propias + las del DUAR menos Capital
+  { id: 'b244f207-9dc1-4ddd-8a9a-3ceaca0dbc85', nombre: 'Villa Allende',                    institucionId: ID_BOMBEROS_VOL },
+  { id: '1f0a2915-7969-4b5e-ba06-747785c643a6', nombre: 'Mendiolaza',                       institucionId: ID_BOMBEROS_VOL },
+  { id: 'dbd0b0cc-6c64-4cdb-a856-eb00788f9e33', nombre: 'Saldán',                           institucionId: ID_BOMBEROS_VOL },
+  { id: 'bab0371e-c2e0-4b12-b408-1da0af216e20', nombre: 'La Caldera',                       institucionId: ID_BOMBEROS_VOL },
+  { id: '0935c5fc-e92d-4a89-869b-7bcca8560819', nombre: 'Miramar',                          institucionId: ID_BOMBEROS_VOL },
+  { id: '79ab4b3d-f8ae-485c-8c45-fb486acf029a', nombre: 'Cruz del Eje',                     institucionId: ID_BOMBEROS_VOL },
+  { id: 'a1139295-a804-4ff5-bf13-6f2ffe727244', nombre: 'Villa Cura Brochero (San Javier)', institucionId: ID_BOMBEROS_VOL },
+  { id: 'af2d22f3-3496-4d97-8604-c11989e997d6', nombre: 'Dique La Viña',                    institucionId: ID_BOMBEROS_VOL },
+  { id: '5b0c0d1e-6a2f-4e8b-9c3d-1f2a3b4c5d61', nombre: 'Carlos Paz (Villa Carlos Paz)',    institucionId: ID_BOMBEROS_VOL },
+  { id: '5b0c0d1e-6a2f-4e8b-9c3d-1f2a3b4c5d62', nombre: 'Potrero de Garay',                 institucionId: ID_BOMBEROS_VOL },
+  { id: '5b0c0d1e-6a2f-4e8b-9c3d-1f2a3b4c5d63', nombre: 'Dique Embalse (Río Tercero)',      institucionId: ID_BOMBEROS_VOL },
+  { id: '5b0c0d1e-6a2f-4e8b-9c3d-1f2a3b4c5d64', nombre: 'Río Cuarto',                       institucionId: ID_BOMBEROS_VOL },
+  { id: '5b0c0d1e-6a2f-4e8b-9c3d-1f2a3b4c5d65', nombre: 'Dique La Quebrada',                institucionId: ID_BOMBEROS_VOL },
+  { id: '5b0c0d1e-6a2f-4e8b-9c3d-1f2a3b4c5d66', nombre: 'Otros',                            institucionId: ID_BOMBEROS_VOL },
 ];
 
 export function getInstitucion(id?: string): CatInstitucion | undefined {
@@ -900,7 +931,7 @@ export function puedeSerLider(u?: { institucionId?: string }): boolean {
   return esDuar(u);
 }
 
-/** Etiqueta legible: "DUAR · Río Cuarto" o sólo "Policía de Córdoba". */
+/** Etiqueta legible: "DUAR · Río Cuarto", "Policía · Canes" o sólo "Defensa Civil". */
 export function institucionLabel(u?: { institucionId?: string; dotacionId?: string }): string {
   const inst = getInstitucion(u?.institucionId);
   if (!inst) return '—';
@@ -966,7 +997,7 @@ export function esRecursoCritico(especialidad?: Especialidad): boolean {
  *      esCaminante = NO es recurso crítico
  *
  * Se lee del catálogo en vez de una lista blanca hardcodeada: así una
- * especialidad nueva (Defensa Civil, Dron, Caballería...) queda clasificada de forma
+ * especialidad nueva (Motos, Altura, Acuático...) queda clasificada de forma
  * explícita y no cae por omisión en "no camina", que es el error peligroso —
  * dejaría al agente fuera del rastrillaje y del Binomio Mínimo (CU-28).
  *

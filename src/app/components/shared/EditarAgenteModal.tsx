@@ -43,16 +43,15 @@ const ESTADOS_ELEGIBLES: EstadoOperativoAgente[] = ['disponible', 'no_disponible
  * estado logístico booleano (esConductor).
  */
 const COLOR_ESPECIALIDAD: Record<Especialidad, string> = {
-  'paramédico':         '#0891b2',
-  'bombero':            '#dc2626',
-  'bombero voluntario': '#ea580c',
-  'canes':              '#65a30d',
-  'defensa civil':      '#0284c7',
-  'dron':               '#7c3aed',
-  'caballería':         '#92400e',
-  'buzos':              '#0369a1',
-  'policía':            '#1e3a8a',
-  'otra':               '#6b7280',
+  'caminante':     '#dc2626',
+  'buceo':         '#0369a1',
+  'caballería':    '#92400e',
+  'motos':         '#475569',
+  'investigación': '#1e3a8a',
+  'drones':        '#7c3aed',
+  'altura':        '#ea580c',
+  'k-9':           '#65a30d',
+  'acuático':      '#0891b2',
 };
 
 const ESPECIALIDADES: { value: Especialidad; label: string; color: string }[] =
