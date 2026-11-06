@@ -251,7 +251,7 @@ export function AppProvider({ children }: { children: React.ReactNode }) {
 
   const [data, setData] = useState<AppData>(() => {
     // Schema version: bump this whenever the data shape changes to force a reset
-    const SCHEMA_VERSION = '9'; // v9: catálogo del cliente (Caminante + recursos especiales, 05/11)
+    const SCHEMA_VERSION = '10'; // v10: DUAR pasa a ser dependencia de Policía (06/11)
     const storedVersion = localStorage.getItem('duar-schema-version');
     if (storedVersion !== SCHEMA_VERSION) {
       // Wipe stale data and start fresh with the updated initialData

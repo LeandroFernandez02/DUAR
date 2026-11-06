@@ -40,8 +40,10 @@ export interface AgenteTablero {
   esDuar: boolean;
   esConductor: boolean;
   especialidadNombre: string | null;
-  /** Dotación. Sólo la trae el listado de personal (no los integrantes de un grupo). */
+  /** Sólo la trae el listado de personal (no los integrantes de un grupo). */
   institucionNombre?: string | null;
+  /** Dependencia (Policía · Canes → "Canes"); si no tiene, se muestra la institución. */
+  dependenciaNombre?: string | null;
   estado: string;
   estadoActualizadoEn: string;
   /** K-9, drones, caballería, buceo, motos…: sólo entra a grupos especiales (salvo de conductor). */
@@ -134,7 +136,7 @@ function FilaTablero({ agente, lider, enGrupo, fijo, motivoFijo, tactil, onDragI
         </p>
         <p style={{ margin: 0, fontSize: 'calc(10.5px * var(--escala-texto))', color: 'var(--muted-foreground)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
           title={enGrupo ? undefined : `Desde ${horaExacta(agente.estadoActualizadoEn)}`}>
-          {agente.especialidadNombre || 'Sin especialidad'}{!enGrupo && ` · ${haceCuanto(agente.estadoActualizadoEn)}`}
+          {[agente.especialidadNombre || 'Sin especialidad', agente.dependenciaNombre || agente.institucionNombre].filter(Boolean).join(' · ')}{!enGrupo && ` · ${haceCuanto(agente.estadoActualizadoEn)}`}
         </p>
         {tactil && (chips.length > 0 || estado) && (
           <div className="flex items-center flex-wrap" style={{ gap: 6, marginTop: 4 }}>{chips}{estado}</div>

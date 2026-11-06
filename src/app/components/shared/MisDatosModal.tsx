@@ -148,7 +148,7 @@ export default function MisDatosModal({ pantalla = false, inicial = 'ver', onClo
       </Bloque>
       <Bloque titulo="Institución" icono={Shield}>
         <div className={`grid ${cols3} gap-3`}>
-          <Dato l="Dotación" v={institucion} /><Dato l="Rol en el sistema" v={rol} /><Dato l="Especialidad" v={especialidadNombrePorId(usuario.especialidadId)} />
+          <Dato l="Institución" v={institucion} /><Dato l="Rol en el sistema" v={rol} /><Dato l="Especialidad" v={especialidadNombrePorId(usuario.especialidadId)} />
         </div>
       </Bloque>
       <Bloque titulo="Datos médicos" icono={HeartPulse}>
@@ -208,9 +208,9 @@ export default function MisDatosModal({ pantalla = false, inicial = 'ver', onClo
             </select>
           </Campo>
           {dotacionesDe(f.institucionId).length > 0 && (
-            <Campo l="Dotación">
+            <Campo l="Dependencia">
               <select value={f.dotacionId} onChange={e => poner('dotacionId', e.target.value)} style={campo}>
-                <option value="">— Seleccioná la dotación —</option>
+                <option value="">— Seleccioná la dependencia —</option>
                 {dotacionesDe(f.institucionId).map(d => <option key={d.id} value={d.id}>{d.nombre}</option>)}
               </select>
             </Campo>

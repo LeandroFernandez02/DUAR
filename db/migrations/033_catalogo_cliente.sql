@@ -14,13 +14,17 @@
 --     Bombero Voluntario, Defensa Civil, Policía) pasan a Caminante: de dónde
 --     viene la persona ya lo dice su institución.
 --   · Institución = de dónde viene. Lista del cliente; Policía y Bomberos
---     Voluntarios suman sus dotaciones (el desplegable aparece solo, como con
---     el DUAR, porque depende de que la institución tenga dotaciones cargadas).
+--     Voluntarios tienen DEPENDENCIAS (en la base siguen siendo
+--     `cat_dotaciones`; en pantalla se llaman "Dependencia", 06/11). El
+--     desplegable aparece sólo si la institución tiene dependencias cargadas.
+--   · El DUAR deja de ser institución: es la dependencia "DUAR" de Policía.
+--     Quien era DUAR pasa a Policía · DUAR; las 11 bases dejan de existir.
 --
 -- QUÉ NO CAMBIA
 --   · `es_recurso_critico` sigue gobernando la clase de grupo y el binomio.
 --   · `es_conductor` sigue siendo la función por operativo.
---   · La regla del Líder sigue en `cat_instituciones.es_duar` (sólo DUAR).
+--   · La regla del Líder se muda a `cat_dotaciones.es_duar`: lidera un grupo
+--     de rastrillaje quien es Policía · DUAR (06/11).
 --
 -- Se reutilizan los UUID existentes al renombrar (Bombero→Caminante,
 -- Dron→Drones, Canes→K-9, Buzos→Buceo, Policía de Córdoba→Policía, Otra→Otros)
@@ -80,11 +84,11 @@ UPDATE public.cat_instituciones SET nombre = 'Policía' WHERE id = '80ac6de6-913
 UPDATE public.cat_instituciones SET nombre = 'Otros'   WHERE id = '14a0e83e-3e0c-40b8-9cb9-5401bdad9c47'; -- era Otra
 
 -- 2.b · Nuevas
-INSERT INTO public.cat_instituciones (id, nombre, es_duar) VALUES
-  ('fcc3e594-5ce6-44d7-8aa9-a6f5beb174e6', 'Guardia Local',                false),
-  ('87e29fe7-ccfa-47e9-89eb-21b81dc7cb52', 'Gendarmería',                  false),
-  ('162f5957-16b5-4619-b49f-b2a09b8f42c0', 'Policía Federal',              false),
-  ('1a88c42e-682f-4ade-aaea-cf30d9c185fd', 'Secretaría Gestión de Riesgo', false)
+INSERT INTO public.cat_instituciones (id, nombre) VALUES
+  ('fcc3e594-5ce6-44d7-8aa9-a6f5beb174e6', 'Guardia Local'),
+  ('87e29fe7-ccfa-47e9-89eb-21b81dc7cb52', 'Gendarmería'),
+  ('162f5957-16b5-4619-b49f-b2a09b8f42c0', 'Policía Federal'),
+  ('1a88c42e-682f-4ade-aaea-cf30d9c185fd', 'Secretaría Gestión de Riesgo')
 ON CONFLICT (nombre) DO NOTHING;
 
 -- 2.c · ETAC no está en la lista del cliente: su gente pasa a "Otros".
@@ -127,13 +131,44 @@ INSERT INTO public.cat_dotaciones (id, nombre, institucion_id) VALUES
   ('5b0c0d1e-6a2f-4e8b-9c3d-1f2a3b4c5d66', 'Otros',                            'e9abb177-b4ff-4beb-9200-7c06f07deb5a')
 ON CONFLICT (institucion_id, nombre) DO NOTHING;
 
+
+-- ############################################################################
+-- [4] El DUAR pasa a ser la dependencia "DUAR" de Policía (06/11)
+-- ############################################################################
+
+-- 4.a · La regla del Líder se lee de la dependencia
+ALTER TABLE public.cat_dotaciones ADD COLUMN IF NOT EXISTS es_duar boolean NOT NULL DEFAULT false;
+COMMENT ON COLUMN public.cat_dotaciones.es_duar IS
+  'TRUE sólo para Policía · DUAR. Único criterio para liderar un grupo de rastrillaje. Nunca inferirlo del nombre (migración 033).';
+UPDATE public.cat_dotaciones SET es_duar = (id = 'c4816e1e-a8df-4c71-a7f5-55575a443450');
+
+-- 4.b · Quien era DUAR (con cualquiera de sus bases) pasa a Policía · DUAR.
+--       Se cambian las dos columnas en la misma sentencia: la FK compuesta
+--       (dotación coherente con la institución) se evalúa con la fila final.
+DO $$
+DECLARE n integer;
+BEGIN
+  UPDATE public.usuarios
+     SET institucion_id = '80ac6de6-9133-45f1-85c3-d3099894a45a',
+         dotacion_id    = 'c4816e1e-a8df-4c71-a7f5-55575a443450'
+   WHERE institucion_id = '11c7a8ed-de50-4f54-a62a-ff170b67a10f';
+  GET DIAGNOSTICS n = ROW_COUNT; RAISE NOTICE 'usuarios pasados de DUAR a Policía · DUAR: %', n;
+END $$;
+
+-- 4.c · Fuera las bases del DUAR y la institución DUAR
+DELETE FROM public.cat_dotaciones    WHERE institucion_id = '11c7a8ed-de50-4f54-a62a-ff170b67a10f';
+DELETE FROM public.cat_instituciones WHERE id             = '11c7a8ed-de50-4f54-a62a-ff170b67a10f';
+
+-- 4.d · La institución ya no decide el Líder
+ALTER TABLE public.cat_instituciones DROP COLUMN IF EXISTS es_duar;
+
 COMMIT;
 
 -- ============================================================================
 --  VERIFICACIÓN
 --  SELECT nombre, es_recurso_critico FROM cat_especialidades ORDER BY es_recurso_critico, nombre;
 --  -- Caminante (f) y 8 recursos especiales (t).
---  SELECT i.nombre, i.es_duar, count(d.id) FROM cat_instituciones i
---    LEFT JOIN cat_dotaciones d ON d.institucion_id = i.id GROUP BY 1, 2 ORDER BY 1;
---  -- DUAR 11 · Policía 9 · Bomberos Voluntarios 14 · el resto 0.
+--  SELECT i.nombre, count(d.id), bool_or(d.es_duar) FROM cat_instituciones i
+--    LEFT JOIN cat_dotaciones d ON d.institucion_id = i.id GROUP BY 1 ORDER BY 1;
+--  -- Policía 9 (una con es_duar) · Bomberos Voluntarios 14 · el resto 0. Sin DUAR.
 -- ============================================================================

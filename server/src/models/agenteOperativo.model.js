@@ -343,11 +343,13 @@ export async function listarDeOperativo(operativoId) {
             e.nombre AS "especialidadNombre",
             COALESCE(e.es_recurso_critico, false) AS "esRecursoCritico",
             i.nombre AS "institucionNombre",
-            i.es_duar AS "esDuar"
+            dd.nombre AS "dependenciaNombre",
+            COALESCE(dd.es_duar, false) AS "esDuar"
        FROM agentes_operativo ao
        JOIN usuarios u ON u.id = ao.usuario_id
        LEFT JOIN cat_especialidades e ON e.id = ao.especialidad_id
        LEFT JOIN cat_instituciones  i ON i.id = u.institucion_id
+       LEFT JOIN cat_dotaciones    dd ON dd.id = u.dotacion_id
       WHERE ao.operativo_id = $1 AND ao.fecha_egreso IS NULL
       ORDER BY ao.fecha_ingreso DESC`,
     [operativoId]

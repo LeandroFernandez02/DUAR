@@ -35,7 +35,7 @@ export const CAMPOS = `
   r.nombre             AS "rol",
   u.institucion_id     AS "institucionId",
   i.nombre             AS "institucionNombre",
-  i.es_duar            AS "esDuar",
+  COALESCE(d.es_duar, false) AS "esDuar",   -- Policía · DUAR (migración 033)
   u.dotacion_id        AS "dotacionId",
   d.nombre             AS "dotacionNombre",
   u.especialidad_id    AS "especialidadId",

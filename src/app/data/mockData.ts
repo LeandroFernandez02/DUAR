@@ -131,12 +131,12 @@ export interface Usuario {
   telefono?: string;
   alergias?: string;
   /**
-   * Institución a la que pertenece (FK a cat_instituciones). Determina, vía
-   * `esDuar()`, si puede ser Líder de grupo. La declara el propio usuario al
-   * registrarse (CU-02).
+   * Institución a la que pertenece (FK a cat_instituciones). La declara el
+   * propio usuario al registrarse (CU-02).
    */
   institucionId?: string;
-  /** Destacamento dentro de esa institución. Sólo si la institución tiene. */
+  /** Dependencia dentro de esa institución (en pantalla "Dependencia"). Con
+   *  Policía · DUAR, `esDuar()` lo habilita a ser Líder. */
   dotacionId?: string;
   /**
    * Especialidad TÉCNICA del perfil global (FK a cat_especialidades).
@@ -351,7 +351,7 @@ export const initialData: AppData = {
       rol: 'coordinador',
       fechaNacimiento: '1984-06-14',
       telefono: '351-4201234',
-      institucionId: '11c7a8ed-de50-4f54-a62a-ff170b67a10f', dotacionId: 'a470cfbc-33bb-4f3e-9e06-df96a40d08d4', // DUAR · Capital
+      institucionId: '80ac6de6-9133-45f1-85c3-d3099894a45a', dotacionId: 'c4816e1e-a8df-4c71-a7f5-55575a443450', // Policía · DUAR
       estado: 'activo',
       createdAt: '2025-01-15',
       emailConfirmado: true,
@@ -369,7 +369,7 @@ export const initialData: AppData = {
       especialidad: 'caminante',
       grupo_sanguineo: 'A+',
       alergias: 'Ninguna',
-      institucionId: '11c7a8ed-de50-4f54-a62a-ff170b67a10f', dotacionId: '183397ca-f4fd-4f79-8dc6-3a33809c2a1e', // DUAR · Otros (no estaba en el catálogo oficial)
+      institucionId: '80ac6de6-9133-45f1-85c3-d3099894a45a', dotacionId: 'c4816e1e-a8df-4c71-a7f5-55575a443450', // Policía · DUAR
       estado: 'activo',
       createdAt: '2025-02-01',
       emailConfirmado: true,
@@ -405,7 +405,7 @@ export const initialData: AppData = {
       // 'Conductor' ya no es especialidad: es esConductor en AgenteOperativo
       grupo_sanguineo: 'B-',
       alergias: 'Ninguna',
-      institucionId: '11c7a8ed-de50-4f54-a62a-ff170b67a10f', dotacionId: 'a470cfbc-33bb-4f3e-9e06-df96a40d08d4', // DUAR · Capital
+      institucionId: '80ac6de6-9133-45f1-85c3-d3099894a45a', dotacionId: 'c4816e1e-a8df-4c71-a7f5-55575a443450', // Policía · DUAR
       estado: 'activo',
       createdAt: '2025-02-10',
       emailConfirmado: true,
@@ -441,7 +441,7 @@ export const initialData: AppData = {
       especialidad: 'caminante',
       grupo_sanguineo: 'O-',
       alergias: 'Ninguna',
-      institucionId: '11c7a8ed-de50-4f54-a62a-ff170b67a10f', dotacionId: '183397ca-f4fd-4f79-8dc6-3a33809c2a1e', // DUAR · Otros (no estaba en el catálogo oficial)
+      institucionId: '80ac6de6-9133-45f1-85c3-d3099894a45a', dotacionId: 'c4816e1e-a8df-4c71-a7f5-55575a443450', // Policía · DUAR
       estado: 'activo',
       createdAt: '2025-02-18',
       emailConfirmado: true,
@@ -459,7 +459,7 @@ export const initialData: AppData = {
       // 'Conductor' ya no es especialidad: es esConductor en AgenteOperativo
       grupo_sanguineo: 'A-',
       alergias: 'Aspirina',
-      institucionId: '11c7a8ed-de50-4f54-a62a-ff170b67a10f', dotacionId: 'a470cfbc-33bb-4f3e-9e06-df96a40d08d4', // DUAR · Capital
+      institucionId: '80ac6de6-9133-45f1-85c3-d3099894a45a', dotacionId: 'c4816e1e-a8df-4c71-a7f5-55575a443450', // Policía · DUAR
       estado: 'inactivo',
       createdAt: '2025-01-25',
       emailConfirmado: true,
@@ -495,7 +495,7 @@ export const initialData: AppData = {
       // 'Conductor' ya no es especialidad: es esConductor en AgenteOperativo
       grupo_sanguineo: 'A+',
       alergias: 'Ninguna',
-      institucionId: '11c7a8ed-de50-4f54-a62a-ff170b67a10f', dotacionId: 'a470cfbc-33bb-4f3e-9e06-df96a40d08d4', // DUAR · Capital
+      institucionId: '80ac6de6-9133-45f1-85c3-d3099894a45a', dotacionId: 'c4816e1e-a8df-4c71-a7f5-55575a443450', // Policía · DUAR
       estado: 'activo',
       createdAt: '2025-03-05',
       emailConfirmado: true,
@@ -828,51 +828,39 @@ export const catEspecialidades: CatEspecialidad[] = [
 export interface CatInstitucion {
   id: string;
   nombre: string;
-  /** Único criterio válido para poder ser Líder de grupo. Es un dato, no el nombre. */
-  esDuar: boolean;
 }
 
 export interface CatDotacion {
   id: string;
   nombre: string;
-  /** Destacamento DENTRO de una institución. */
+  /** Dependencia DENTRO de una institución (en pantalla: "Dependencia"). */
   institucionId: string;
+  /** Sólo Policía · DUAR. Único criterio para poder ser Líder (06/11). Es un dato, no el nombre. */
+  esDuar?: boolean;
 }
 
 export const catInstituciones: CatInstitucion[] = [
   // Lista del cliente (05/11, migración 033). "Policía" y "Otros" conservan el
-  // id de "Policía de Córdoba" y "Otra". ETAC salió del catálogo.
-  { id: '11c7a8ed-de50-4f54-a62a-ff170b67a10f', nombre: 'DUAR',                         esDuar: true  },
-  { id: '80ac6de6-9133-45f1-85c3-d3099894a45a', nombre: 'Policía',                      esDuar: false },
-  { id: 'e9abb177-b4ff-4beb-9200-7c06f07deb5a', nombre: 'Bomberos Voluntarios',         esDuar: false },
-  { id: 'c120cfd5-4e0e-4ac0-baf9-40ac5f7dc4f8', nombre: 'Defensa Civil',                esDuar: false },
-  { id: 'fcc3e594-5ce6-44d7-8aa9-a6f5beb174e6', nombre: 'Guardia Local',                esDuar: false },
-  { id: '87e29fe7-ccfa-47e9-89eb-21b81dc7cb52', nombre: 'Gendarmería',                  esDuar: false },
-  { id: '162f5957-16b5-4619-b49f-b2a09b8f42c0', nombre: 'Policía Federal',              esDuar: false },
-  { id: '1a88c42e-682f-4ade-aaea-cf30d9c185fd', nombre: 'Secretaría Gestión de Riesgo', esDuar: false },
-  { id: '14a0e83e-3e0c-40b8-9cb9-5401bdad9c47', nombre: 'Otros',                        esDuar: false },
+  // id de "Policía de Córdoba" y "Otra". ETAC salió del catálogo y el DUAR pasó
+  // a ser una dependencia de Policía (06/11).
+  { id: '80ac6de6-9133-45f1-85c3-d3099894a45a', nombre: 'Policía' },
+  { id: 'e9abb177-b4ff-4beb-9200-7c06f07deb5a', nombre: 'Bomberos Voluntarios' },
+  { id: 'c120cfd5-4e0e-4ac0-baf9-40ac5f7dc4f8', nombre: 'Defensa Civil' },
+  { id: 'fcc3e594-5ce6-44d7-8aa9-a6f5beb174e6', nombre: 'Guardia Local' },
+  { id: '87e29fe7-ccfa-47e9-89eb-21b81dc7cb52', nombre: 'Gendarmería' },
+  { id: '162f5957-16b5-4619-b49f-b2a09b8f42c0', nombre: 'Policía Federal' },
+  { id: '1a88c42e-682f-4ade-aaea-cf30d9c185fd', nombre: 'Secretaría Gestión de Riesgo' },
+  { id: '14a0e83e-3e0c-40b8-9cb9-5401bdad9c47', nombre: 'Otros' },
 ];
 
-const ID_DUAR = '11c7a8ed-de50-4f54-a62a-ff170b67a10f';
 const ID_POLICIA = '80ac6de6-9133-45f1-85c3-d3099894a45a';
 const ID_BOMBEROS_VOL = 'e9abb177-b4ff-4beb-9200-7c06f07deb5a';
 
-/** Dotaciones por institución: DUAR (11), Policía (9) y Bomberos Voluntarios (14). */
+/** Dependencias por institución: Policía (9) y Bomberos Voluntarios (14). */
 export const catDotaciones: CatDotacion[] = [
-  { id: 'a470cfbc-33bb-4f3e-9e06-df96a40d08d4', nombre: 'DUAR Capital (Cuartel Central)',   institucionId: ID_DUAR },
-  { id: 'cfc5d89c-9a45-4fac-9bcc-05193d026c88', nombre: 'Miramar',                          institucionId: ID_DUAR },
-  { id: '50a48133-503f-4e30-a18a-7a14d44333f4', nombre: 'Cruz del Eje',                     institucionId: ID_DUAR },
-  { id: '3f747c49-7854-4f46-bfaf-0c52bb9b7171', nombre: 'Villa Cura Brochero (San Javier)', institucionId: ID_DUAR },
-  { id: 'c8701839-a1ee-49dd-ba20-800dd4cf9c43', nombre: 'Dique La Viña',                    institucionId: ID_DUAR },
-  { id: 'fb7fbaee-6e45-406f-a975-244fb649142f', nombre: 'Carlos Paz (Villa Carlos Paz)',    institucionId: ID_DUAR },
-  { id: '7a838992-c4b4-4533-ba27-9ccb57f08cc6', nombre: 'Potrero de Garay',                 institucionId: ID_DUAR },
-  { id: 'bb4a7cc6-e42a-446c-b9a0-6a7c04d278a2', nombre: 'Dique Embalse (Río Tercero)',      institucionId: ID_DUAR },
-  { id: '0173f98f-2701-4be1-b4ef-50641d76ecd9', nombre: 'Río Cuarto',                       institucionId: ID_DUAR },
-  { id: '80eb1d2f-fe47-4bd5-88b7-4294fcb47d9e', nombre: 'Dique La Quebrada',                institucionId: ID_DUAR },
-  { id: '183397ca-f4fd-4f79-8dc6-3a33809c2a1e', nombre: 'Otros',                            institucionId: ID_DUAR },
   // Policía (05/11, migración 033)
   { id: 'd77c4166-5a55-4f44-aacc-43f69399ffd9', nombre: 'Investigaciones', institucionId: ID_POLICIA },
-  { id: 'c4816e1e-a8df-4c71-a7f5-55575a443450', nombre: 'DUAR',            institucionId: ID_POLICIA },
+  { id: 'c4816e1e-a8df-4c71-a7f5-55575a443450', nombre: 'DUAR',            institucionId: ID_POLICIA, esDuar: true },
   { id: '4d7a2645-3f00-4b68-81f4-3f33c8365e78', nombre: 'Canes',           institucionId: ID_POLICIA },
   { id: '218c4c2f-54ed-4009-b103-1b19749b04f3', nombre: 'Drones',          institucionId: ID_POLICIA },
   { id: '7710eb28-4f2a-4811-9adf-7d5a5af8b9be', nombre: 'Caballería',      institucionId: ID_POLICIA },
@@ -906,18 +894,17 @@ export function getDotacion(id?: string): CatDotacion | undefined {
 }
 
 /**
- * Dotaciones disponibles para una institución.
- * El formulario muestra el desplegable sólo si esto devuelve algo: hoy pasa
- * únicamente con el DUAR, pero sin ningún "if DUAR" escrito en el código.
- * Cargar comisarías para la Policía lo habilitaría sin tocar una línea.
+ * Dependencias (`cat_dotaciones`) de una institución.
+ * El formulario muestra el desplegable "Dependencia" sólo si esto devuelve
+ * algo: hoy Policía y Bomberos Voluntarios, sin ningún "if" por nombre.
  */
 export function dotacionesDe(institucionId?: string): CatDotacion[] {
   return institucionId ? catDotaciones.filter(d => d.institucionId === institucionId) : [];
 }
 
-/** ¿Pertenece al DUAR? Se lee del catálogo, nunca del nombre. */
-export function esDuar(u?: { institucionId?: string }): boolean {
-  return getInstitucion(u?.institucionId)?.esDuar ?? false;
+/** ¿Es Policía · DUAR? Se lee del catálogo (dependencia con esDuar), nunca del nombre. */
+export function esDuar(u?: { dotacionId?: string }): boolean {
+  return getDotacion(u?.dotacionId)?.esDuar ?? false;
 }
 
 /**
@@ -927,11 +914,11 @@ export function esDuar(u?: { institucionId?: string }): boolean {
  * Se encapsula acá a propósito: si mañana el cliente habilita a otra fuerza,
  * se cambia esta única función y no los ~20 lugares que la consultan.
  */
-export function puedeSerLider(u?: { institucionId?: string }): boolean {
+export function puedeSerLider(u?: { dotacionId?: string }): boolean {
   return esDuar(u);
 }
 
-/** Etiqueta legible: "DUAR · Río Cuarto", "Policía · Canes" o sólo "Defensa Civil". */
+/** Etiqueta legible: "Policía · DUAR", "Bomberos Voluntarios · Saldán" o sólo "Defensa Civil". */
 export function institucionLabel(u?: { institucionId?: string; dotacionId?: string }): string {
   const inst = getInstitucion(u?.institucionId);
   if (!inst) return '—';

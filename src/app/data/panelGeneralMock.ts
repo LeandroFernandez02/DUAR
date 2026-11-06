@@ -29,7 +29,7 @@ const ZONAS: { localidad: string; lat: number; lng: number; peso: number }[] = [
 ];
 const BOLSA = ZONAS.flatMap(z => Array(z.peso).fill(z));
 
-const INSTITUCIONES = ['DUAR', 'Policía', 'Bomberos Voluntarios', 'Defensa Civil', 'Guardia Local', 'Gendarmería', 'Policía Federal', 'Secretaría Gestión de Riesgo', 'Otros'];
+const INSTITUCIONES = ['Policía', 'Bomberos Voluntarios', 'Defensa Civil', 'Guardia Local', 'Gendarmería', 'Policía Federal', 'Secretaría Gestión de Riesgo', 'Otros'];
 const ESPECIALIDADES = ['Caminante', 'Buceo', 'Caballería', 'Motos', 'Investigación', 'Drones', 'Altura', 'K-9', 'Acuático'];
 const COORDINADORES = ['Laura Medina', 'Martín Ferreyra', 'Sofía Quiroga', 'Diego Bustos'];
 const OBJETIVOS: { tipo: 'persona' | 'objeto'; descripcion: string }[] = [
@@ -73,7 +73,7 @@ function generar(): OperativoPanel[] {
     if (fin.getTime() > ahora) continue;
 
     const nInst = 1 + Math.floor(entre(0, 3.5));
-    const instituciones = ['DUAR', ...[...INSTITUCIONES.slice(1)].sort(() => r() - 0.5).slice(0, nInst - 1)];
+    const instituciones = ['Policía', ...[...INSTITUCIONES.slice(1)].sort(() => r() - 0.5).slice(0, nInst - 1)];
     const especialidades = [...ESPECIALIDADES].sort(() => r() - 0.5).slice(0, 1 + Math.floor(entre(0, 4)));
     const nAreas = 1 + Math.floor(entre(0, 3));
     const lat = z.lat + entre(-0.03, 0.03), lng = z.lng + entre(-0.03, 0.03);
@@ -107,7 +107,7 @@ function generar(): OperativoPanel[] {
       id: `mock-actual-${zi}`, titulo: `${elegir(TIPOS)} — ${zz.localidad}`, localidad: `${zz.localidad}, Córdoba`,
       estado, inicio: new Date(ahora - dias * DIA).toISOString(), fin: null, resultado: null, conCoordinador: conCoord,
       agentes, agentesAsignados: agentes.terreno + agentes.base + agentes.noDisponible,
-      instituciones: ['DUAR', 'Bomberos Voluntarios', ...(r() > 0.5 ? ['Policía'] : [])],
+      instituciones: ['Policía', 'Bomberos Voluntarios', ...(r() > 0.5 ? ['Defensa Civil'] : [])],
       especialidades: ['Caminante', 'K-9', ...(r() > 0.5 ? ['Drones'] : [])],
       areas: enCurso ? [area(zz.lat, zz.lng, 1.5), area(zz.lat - 0.015, zz.lng + 0.01, 1.1)] : [],
       puntoCero: [zz.lat + 0.004, zz.lng - 0.006],
@@ -123,7 +123,7 @@ function generar(): OperativoPanel[] {
     id: 'mock-fin-hoy', titulo: `Excursionista extraviado — ${zf.localidad}`, localidad: `${zf.localidad}, Córdoba`,
     estado: 'FINALIZADO', inicio: new Date(ahora - 30 * 3_600_000).toISOString(), fin: new Date(ahora - 2 * 3_600_000).toISOString(),
     resultado: 'HALLADA_CON_VIDA', conCoordinador: true, agentes: { terreno: 0, base: 0, noDisponible: 0 }, agentesAsignados: 9,
-    instituciones: ['DUAR', 'Defensa Civil'], especialidades: ['Caminante', 'K-9'],
+    instituciones: ['Policía', 'Defensa Civil'], especialidades: ['Caminante', 'K-9'],
     areas: [area(zf.lat, zf.lng, 1.6)], puntoCero: [zf.lat, zf.lng], coordinador: null,
     objetivo: OBJETIVOS[0], grupos: { total: 0, enTerreno: 0 },
   });
@@ -133,7 +133,7 @@ function generar(): OperativoPanel[] {
     id: 'mock-largo', titulo: `Turista desaparecido — ${z.localidad}`, localidad: `${z.localidad}, Córdoba`,
     estado: 'INICIADO', inicio: new Date(ahora - 41 * DIA).toISOString(), fin: null, resultado: null,
     conCoordinador: false, agentes: { terreno: 3, base: 4, noDisponible: 1 }, agentesAsignados: 8,
-    instituciones: ['DUAR', 'Policía'], especialidades: ['K-9', 'Drones'],
+    instituciones: ['Policía', 'Gendarmería'], especialidades: ['K-9', 'Drones'],
     areas: [area(z.lat, z.lng, 2.5), area(z.lat + 0.02, z.lng - 0.02, 1.8)],
     puntoCero: [z.lat + 0.01, z.lng - 0.01], coordinador: null,
     objetivo: { tipo: 'persona', descripcion: 'Turista extranjero, 28 años, campera azul' },

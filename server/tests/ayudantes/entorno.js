@@ -30,25 +30,25 @@ const MOTIVO_REINICIO = 'Reinicio de las pruebas automáticas';
 /**
  * Los usuarios de prueba. La institución es global (perfil del usuario); la
  * especialidad y el conductor son tácticos y se fijan en cada preparación.
- *   · alfa, bravo, charlie → del DUAR, rastrillan: pueden liderar uno de rastrillaje.
+ *   · alfa, bravo, charlie → Policía · DUAR, rastrillan: pueden liderar uno de rastrillaje.
  *   · delta, eco           → agentes de rastrillaje que no son del DUAR.
- *   · foxtrot              → del DUAR, recurso especial (Drones).
+ *   · foxtrot              → Policía · DUAR, recurso especial (Drones).
  *   · golf                 → conductor (no rastrilla, entra a cualquier grupo).
  *   · hotel, india         → coordinadores: van al turno del puesto de comando, no al tablero.
  *   · juliet, kilo         → jefes de operativo (02/11): consultan todo y se asignan como Jefe.
  */
 export const USUARIOS = [
-  { clave: 'alfa',    institucion: 'DUAR',                 especialidad: 'Caminante' },
-  { clave: 'bravo',   institucion: 'DUAR',                 especialidad: 'Caminante' },
-  { clave: 'charlie', institucion: 'DUAR',                 especialidad: 'Caminante' },
-  { clave: 'delta',   institucion: 'Bomberos Voluntarios', especialidad: 'Caminante' },
-  { clave: 'eco',     institucion: 'Policía',              especialidad: 'Caminante' },
-  { clave: 'foxtrot', institucion: 'DUAR',                 especialidad: 'Drones' },
-  { clave: 'golf',    institucion: 'Bomberos Voluntarios', especialidad: 'Caminante', conductor: true },
-  { clave: 'hotel',   institucion: 'DUAR',                 rol: 'coordinador' },
-  { clave: 'india',   institucion: 'DUAR',                 rol: 'coordinador' },
-  { clave: 'juliet',  institucion: 'DUAR',                 rol: 'jefe de operativo' },
-  { clave: 'kilo',    institucion: 'DUAR',                 rol: 'jefe de operativo' },
+  { clave: 'alfa',    institucion: 'Policía', dependencia: 'DUAR', especialidad: 'Caminante' },
+  { clave: 'bravo',   institucion: 'Policía', dependencia: 'DUAR', especialidad: 'Caminante' },
+  { clave: 'charlie', institucion: 'Policía', dependencia: 'DUAR', especialidad: 'Caminante' },
+  { clave: 'delta',   institucion: 'Bomberos Voluntarios', dependencia: 'Saldán', especialidad: 'Caminante' },
+  { clave: 'eco',     institucion: 'Policía', dependencia: 'Caminera', especialidad: 'Caminante' },
+  { clave: 'foxtrot', institucion: 'Policía', dependencia: 'DUAR', especialidad: 'Drones' },
+  { clave: 'golf',    institucion: 'Bomberos Voluntarios', dependencia: 'Saldán', especialidad: 'Caminante', conductor: true },
+  { clave: 'hotel',   institucion: 'Policía', dependencia: 'DUAR', rol: 'coordinador' },
+  { clave: 'india',   institucion: 'Policía', dependencia: 'DUAR', rol: 'coordinador' },
+  { clave: 'juliet',  institucion: 'Policía', dependencia: 'DUAR', rol: 'jefe de operativo' },
+  { clave: 'kilo',    institucion: 'Policía', dependencia: 'DUAR', rol: 'jefe de operativo' },
 ];
 export const AGENTES = USUARIOS.filter(u => !u.rol).map(u => u.clave);
 
@@ -119,15 +119,19 @@ async function catalogos() {
   const { rows: inst } = await query(`SELECT id, nombre FROM cat_instituciones`);
   const { rows: esp } = await query(`SELECT id, nombre, es_recurso_critico FROM cat_especialidades`);
   const { rows: dot } = await query(
-    `SELECT d.id FROM cat_dotaciones d JOIN cat_instituciones i ON i.id = d.institucion_id
-      WHERE i.es_duar AND d.nombre = 'DUAR Capital (Cuartel Central)'`
+    `SELECT d.id, d.nombre, i.nombre AS institucion FROM cat_dotaciones d JOIN cat_instituciones i ON i.id = d.institucion_id`
   );
   const por = (filas, n) => {
     const f = filas.find(x => x.nombre === n);
     if (!f) throw new Error(`No existe "${n}" en el catálogo.`);
     return f.id;
   };
-  return { institucion: n => por(inst, n), especialidad: n => por(esp, n), dotacionDuar: dot[0]?.id ?? null };
+  const dependencia = (i, n) => {
+    const f = dot.find(x => x.institucion === i && x.nombre === n);
+    if (!f) throw new Error(`No existe la dependencia "${i} · ${n}" en el catálogo.`);
+    return f.id;
+  };
+  return { institucion: n => por(inst, n), especialidad: n => por(esp, n), dependencia };
 }
 
 /** Confirma el correo de una cuenta como si la persona abriera el enlace que le llegó. */
@@ -151,7 +155,7 @@ async function asegurarUsuarios(admin, cat) {
         dni: String(98000001 + i), nombre: nombre(u.clave), apellido: 'Prueba Automatica',
         email: email(u.clave), password, rol, fechaNacimiento: '1990-05-15',
         institucionId: cat.institucion(u.institucion),
-        dotacionId: u.institucion === 'DUAR' ? cat.dotacionDuar : null,
+        dotacionId: u.dependencia ? cat.dependencia(u.institucion, u.dependencia) : null,
         especialidadId: u.especialidad ? cat.especialidad(u.especialidad) : null,
       }, admin);
       if (r.status !== 201) throw new Error(`No se pudo crear ${email(u.clave)}: ${r.status} ${JSON.stringify(r.json)}`);

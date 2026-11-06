@@ -60,14 +60,14 @@ async function main() {
     console.log(`Administrador ya existía: se reactivó y se reestableció la contraseña.`);
   } else {
     const hash = await bcrypt.hash(ADMIN.password, 10);
-    // La institución del admin es el DUAR, si el catálogo ya está cargado.
-    const { rows: inst } = await query(
-      `SELECT id FROM cat_instituciones WHERE es_duar = true LIMIT 1`
+    // El admin es del DUAR (Policía · DUAR), si el catálogo ya está cargado.
+    const { rows: dep } = await query(
+      `SELECT id, institucion_id FROM cat_dotaciones WHERE es_duar = true LIMIT 1`
     );
     await query(
-      `INSERT INTO usuarios (dni, nombre, apellido, email, password_hash, rol_id, institucion_id)
-       VALUES ($1,$2,$3,$4,$5,$6,$7)`,
-      [ADMIN.dni, ADMIN.nombre, ADMIN.apellido, ADMIN.email, hash, rolAdmin.id, inst[0]?.id ?? null]
+      `INSERT INTO usuarios (dni, nombre, apellido, email, password_hash, rol_id, institucion_id, dotacion_id)
+       VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
+      [ADMIN.dni, ADMIN.nombre, ADMIN.apellido, ADMIN.email, hash, rolAdmin.id, dep[0]?.institucion_id ?? null, dep[0]?.id ?? null]
     );
     console.log('Administrador creado.');
   }

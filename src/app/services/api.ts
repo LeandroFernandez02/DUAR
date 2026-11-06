@@ -161,8 +161,9 @@ export interface UsuarioApi {
 
 export interface Catalogos {
   roles: { id: string; nombre: string }[];
-  instituciones: { id: string; nombre: string; esDuar: boolean }[];
-  dotaciones: { id: string; nombre: string; institucionId: string }[];
+  instituciones: { id: string; nombre: string }[];
+  /** Dependencias (en la base, `cat_dotaciones`). esDuar sólo en Policía · DUAR. */
+  dotaciones: { id: string; nombre: string; institucionId: string; esDuar: boolean }[];
   especialidades: { id: string; nombre: string; esRecursoCritico: boolean }[];
   alergias: { id: string; nombre: string }[];
 }
@@ -472,6 +473,9 @@ export interface PersonalOperativoApi {
   grupoSanguineo: string | null;
   especialidadNombre: string | null;
   institucionNombre: string | null;
+  /** Dependencia (Policía · Canes → "Canes"); null si su institución no tiene. */
+  dependenciaNombre: string | null;
+  /** Policía · DUAR: puede liderar un grupo de rastrillaje. */
   esDuar: boolean;
   /** Su especialidad táctica es de recurso especial (K-9, drones, caballería, buceo, motos…). */
   esRecursoCritico: boolean;
@@ -531,6 +535,8 @@ export interface IntegranteGrupoApi {
   esConductor: boolean;
   esDuar: boolean;
   especialidadNombre: string | null;
+  /** Dependencia o, si su institución no tiene, la institución. */
+  dependenciaNombre: string | null;
   esRecursoCritico: boolean;
 }
 

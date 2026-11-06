@@ -110,8 +110,9 @@ const SELECT_GRUPO = `
              'estado',              ao.estado::text,
              'estadoActualizadoEn', ao.estado_actualizado_en,
              'esConductor',         ao.es_conductor,
-             'esDuar',              COALESCE(i.es_duar, false),
+             'esDuar',              COALESCE(dd.es_duar, false),
              'especialidadNombre',  e.nombre,
+             'dependenciaNombre',   COALESCE(dd.nombre, i.nombre),
              'esRecursoCritico',    COALESCE(e.es_recurso_critico, false)
            ) ORDER BY (ao.id = g.lider_id) DESC, u.apellido, u.nombre)
            FILTER (WHERE ao.id IS NOT NULL),
@@ -121,6 +122,7 @@ const SELECT_GRUPO = `
     LEFT JOIN agentes_operativo  ao ON ao.grupo_id = g.id AND ao.fecha_egreso IS NULL
     LEFT JOIN usuarios            u ON u.id = ao.usuario_id
     LEFT JOIN cat_instituciones   i ON i.id = u.institucion_id
+    LEFT JOIN cat_dotaciones     dd ON dd.id = u.dotacion_id
     LEFT JOIN cat_especialidades  e ON e.id = ao.especialidad_id
 `;
 
@@ -175,12 +177,13 @@ async function bloquearAgente(client, operativoId, agenteOperativoId) {
             ao.estado::text AS estado,
             ao.es_conductor AS "esConductor",
             u.nombre, u.apellido,
-            COALESCE(i.es_duar, false) AS "esDuar",
+            COALESCE(dd.es_duar, false) AS "esDuar",
             ce.nombre AS "especialidadNombre",
             COALESCE(ce.es_recurso_critico, false) AS "esRecursoCritico"
        FROM agentes_operativo ao
        JOIN usuarios u ON u.id = ao.usuario_id
        LEFT JOIN cat_instituciones i ON i.id = u.institucion_id
+       LEFT JOIN cat_dotaciones dd ON dd.id = u.dotacion_id
        LEFT JOIN cat_especialidades ce ON ce.id = ao.especialidad_id
       WHERE ao.id = $1 AND ao.operativo_id = $2 AND ao.fecha_egreso IS NULL
       FOR UPDATE OF ao`,
@@ -195,12 +198,13 @@ async function miembros(client, grupoId) {
   const { rows } = await client.query(
     `SELECT ao.id, ao.estado::text AS estado,
             ao.es_conductor AS "esConductor",
-            COALESCE(i.es_duar, false) AS "esDuar", u.nombre, u.apellido,
+            COALESCE(dd.es_duar, false) AS "esDuar", u.nombre, u.apellido,
             ce.nombre AS "especialidadNombre",
             COALESCE(ce.es_recurso_critico, false) AS "esRecursoCritico"
        FROM agentes_operativo ao
        JOIN usuarios u ON u.id = ao.usuario_id
        LEFT JOIN cat_instituciones i ON i.id = u.institucion_id
+       LEFT JOIN cat_dotaciones dd ON dd.id = u.dotacion_id
        LEFT JOIN cat_especialidades ce ON ce.id = ao.especialidad_id
       WHERE ao.grupo_id = $1 AND ao.fecha_egreso IS NULL
       FOR UPDATE OF ao`,
@@ -891,10 +895,11 @@ export async function armadoAutomatico(operativoId, { tamano }, usuarioId) {
   return withTransaction(async (client) => {
     const { rows: pool } = await client.query(
       `SELECT ao.id,
-              u.nombre, u.apellido, COALESCE(i.es_duar, false) AS "esDuar"
+              u.nombre, u.apellido, COALESCE(dd.es_duar, false) AS "esDuar"
          FROM agentes_operativo ao
          JOIN usuarios u ON u.id = ao.usuario_id
          LEFT JOIN cat_instituciones i ON i.id = u.institucion_id
+         LEFT JOIN cat_dotaciones dd ON dd.id = u.dotacion_id
          LEFT JOIN cat_especialidades ce ON ce.id = ao.especialidad_id
         WHERE ao.operativo_id = $1 AND ao.fecha_egreso IS NULL
           AND ao.grupo_id IS NULL AND ao.estado = 'DISPONIBLE'

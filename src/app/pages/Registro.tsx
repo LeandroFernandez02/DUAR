@@ -502,13 +502,13 @@ export default function Registro() {
 
             <SeccionRegistro n={2} titulo="Institución">
               <div className={fila}>
-                {/* Cambiar de institución limpia la dotación: una base del DUAR no puede quedar colgada de otra fuerza (la BD lo rechaza). */}
+                {/* Cambiar de institución limpia la dependencia: una dependencia no puede quedar colgada de otra institución (la BD lo rechaza). */}
                 <SelectAcceso label="Institución" requerido value={regForm.institucionId} placeholder="— Seleccioná tu institución —"
                   onChange={v => setRegForm({ ...regForm, institucionId: v, dotacionId: '' })}
                   opciones={catInstituciones.map(i => ({ value: i.id, label: i.nombre }))} />
-                {/* Dotación: aparece sólo si la institución tiene destacamentos */}
+                {/* Dependencia: aparece sólo si la institución tiene dependencias */}
                 {dotacionesDe(regForm.institucionId).length > 0 && (
-                  <SelectAcceso label="Dotación" requerido value={regForm.dotacionId} placeholder="— Seleccioná tu dotación —"
+                  <SelectAcceso label="Dependencia" requerido value={regForm.dotacionId} placeholder="— Seleccioná tu dependencia —"
                     onChange={v => setRegForm({ ...regForm, dotacionId: v })}
                     opciones={dotacionesDe(regForm.institucionId).map(d => ({ value: d.id, label: d.nombre }))} />
                 )}

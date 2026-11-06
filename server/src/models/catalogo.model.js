@@ -14,14 +14,16 @@ export async function roles() {
 
 export async function instituciones() {
   const { rows } = await query(
-    `SELECT id, nombre, es_duar AS "esDuar" FROM cat_instituciones ORDER BY es_duar DESC, nombre = 'Otros', nombre`
+    `SELECT id, nombre FROM cat_instituciones
+      ORDER BY nombre <> 'Policía', nombre = 'Otros', nombre`
   );
   return rows;
 }
 
 export async function dotaciones() {
   const { rows } = await query(
-    `SELECT id, nombre, institucion_id AS "institucionId" FROM cat_dotaciones ORDER BY nombre`
+    `SELECT id, nombre, institucion_id AS "institucionId", es_duar AS "esDuar"
+       FROM cat_dotaciones ORDER BY nombre`
   );
   return rows;
 }

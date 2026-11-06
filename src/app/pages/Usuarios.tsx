@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Plus, Search, Edit2, Trash2, X, Shield, ShieldCheck, UserCheck, Footprints, AlertCircle, MailCheck } from 'lucide-react';
 import { toast } from 'sonner';
 import { useApp } from '../context/AppContext';
-import { Usuario, Rol, EstadoUsuario, catInstituciones, catEspecialidades, catAlergias, dotacionesDe, institucionLabel, especialidadNombrePorId } from '../data/mockData';
+import { Usuario, Rol, EstadoUsuario, esDuar, catInstituciones, catEspecialidades, catAlergias, dotacionesDe, institucionLabel, especialidadNombrePorId } from '../data/mockData';
 import { usuariosApi, ApiError, UsuarioApi } from '../services/api';
 import StatusBadge from '../components/shared/StatusBadge';
 import { AccionCabecera } from '../components/layout/Movil';
@@ -79,8 +79,8 @@ function RolPill({ rol }: { rol: Rol }) {
   );
 }
 
-/** Si la institución del usuario es el DUAR (cat_instituciones.es_duar): avatar turquesa y escudo junto a la dotación. */
-const esDelDuar = (u: Usuario) => !!catInstituciones.find(i => i.id === u.institucionId)?.esDuar;
+/** Si es Policía · DUAR (dependencia con es_duar): avatar turquesa y escudo junto a la dependencia. */
+const esDelDuar = (u: Usuario) => esDuar(u);
 const iniciales = (u: Usuario) => `${u.nombre.charAt(0)}${u.apellido.charAt(0)}`.toUpperCase();
 
 function Dotacion({ u }: { u: Usuario }) {
@@ -416,14 +416,14 @@ export default function Usuarios() {
               <div className="flex items-center gap-1.5 flex-wrap mt-3"><RolPill rol={u.rol} /><StatusBadge estado={u.estado} size="sm" /></div>
               <div className="grid grid-cols-2 gap-2 mt-3 pt-3" style={{ borderTop: '1px solid var(--border)' }}>
                 <Dato titulo="DNI">{formatearDni(u.dni)}</Dato>
-                <Dato titulo="Dotación"><Dotacion u={u} /></Dato>
+                <Dato titulo="Dependencia"><Dotacion u={u} /></Dato>
                 <Dato titulo="Especialidad">{u.especialidadId ? especialidadNombrePorId(u.especialidadId) : <span style={{ color: 'var(--muted-foreground)', fontWeight: 400 }}>Sin especialidad</span>}</Dato>
               </div>
             </div>
           ))}
         </div>
       ) : (
-        <TablaFija cols={[{ l: 'Usuario', w: 250 }, { l: 'DNI', w: 120 }, { l: 'Rol', w: 150 }, { l: 'Especialidad', w: 170 }, { l: 'Dotación', w: 220 }, { l: 'Estado', w: 120 }, { l: '', w: 110 }]}>
+        <TablaFija cols={[{ l: 'Usuario', w: 250 }, { l: 'DNI', w: 120 }, { l: 'Rol', w: 150 }, { l: 'Especialidad', w: 170 }, { l: 'Dependencia', w: 220 }, { l: 'Estado', w: 120 }, { l: '', w: 110 }]}>
           <tbody>
             {filtered.map((u, i) => (
               <tr key={u.id} style={{ borderBottom: i < filtered.length - 1 ? '1px solid var(--border)' : 'none', fontSize: 'var(--text-base)', color: 'var(--foreground)' }}>
@@ -592,17 +592,17 @@ export default function Usuarios() {
                 </select>
               </div>
 
-              {/* ── Dotación: sólo si la institución elegida tiene destacamentos ── */}
+              {/* ── Dependencia: sólo si la institución elegida tiene dependencias ── */}
               {dotacionesDe(form.institucionId).length > 0 && (
                 <div>
-                  <label className="block mb-1" style={{ color: 'var(--foreground)', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)' }}>Dotación</label>
+                  <label className="block mb-1" style={{ color: 'var(--foreground)', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)' }}>Dependencia</label>
                   <select
                     value={form.dotacionId}
                     onChange={e => setForm({ ...form, dotacionId: e.target.value })}
                     className="w-full px-3 py-2 rounded-lg border outline-none"
                     style={fieldStyle}
                   >
-                    <option value="">— Seleccioná la dotación —</option>
+                    <option value="">— Seleccioná la dependencia —</option>
                     {dotacionesDe(form.institucionId).map(d => (
                       <option key={d.id} value={d.id}>{d.nombre}</option>
                     ))}
