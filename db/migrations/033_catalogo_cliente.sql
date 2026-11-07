@@ -1,11 +1,11 @@
 -- ═════════════════════════════════════════════════════════════════════════
 -- 033 · Catálogo de instituciones y especialidades del cliente (05/11)
 --
--- ⚠️  RAMA DE PRUEBA `especialidades-cliente`. NO APLICAR a la base de
---     Supabase mientras se compara con la rama principal: la base es una sola
---     y la versión publicada sigue usando el catálogo viejo (Bombero, Dron,
---     Paramédico…). Aplicarla recién si se decide adoptar esta alternativa,
---     junto con el deploy del código de esta rama.
+-- ⚠️  APLICAR EN SUPABASE JUSTO CUANDO SE PUBLICA EL CÓDIGO que lo acompaña
+--     (commit "Tarjeta del tablero de grupos…" en adelante): la versión
+--     anterior del código deja de funcionar con este catálogo y la nueva no
+--     funciona sin él. Se pega entero en el SQL Editor de Supabase.
+--     Probada en un Postgres local; idempotente (se puede correr dos veces).
 --
 -- QUÉ CAMBIA
 --   · Especialidad = lo que la persona HACE en el operativo. Queda una sola de
