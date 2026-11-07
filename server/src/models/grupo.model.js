@@ -112,7 +112,6 @@ const SELECT_GRUPO = `
              'esConductor',         ao.es_conductor,
              'esDuar',              COALESCE(dd.es_duar, false),
              'especialidadNombre',  e.nombre,
-             'dependenciaNombre',   COALESCE(dd.nombre, i.nombre),
              'esRecursoCritico',    COALESCE(e.es_recurso_critico, false)
            ) ORDER BY (ao.id = g.lider_id) DESC, u.apellido, u.nombre)
            FILTER (WHERE ao.id IS NOT NULL),

@@ -535,8 +535,6 @@ export interface IntegranteGrupoApi {
   esConductor: boolean;
   esDuar: boolean;
   especialidadNombre: string | null;
-  /** Dependencia o, si su institución no tiene, la institución. */
-  dependenciaNombre: string | null;
   esRecursoCritico: boolean;
 }
 

@@ -40,10 +40,6 @@ export interface AgenteTablero {
   esDuar: boolean;
   esConductor: boolean;
   especialidadNombre: string | null;
-  /** Sólo la trae el listado de personal (no los integrantes de un grupo). */
-  institucionNombre?: string | null;
-  /** Dependencia (Policía · Canes → "Canes"); si no tiene, se muestra la institución. */
-  dependenciaNombre?: string | null;
   estado: string;
   estadoActualizadoEn: string;
   /** K-9, drones, caballería, buceo, motos…: sólo entra a grupos especiales (salvo de conductor). */
@@ -91,7 +87,12 @@ function Chip({ children, lider }: { children: ReactNode; lider?: boolean }) {
   );
 }
 
-/** Fila de un agente en el tablero. Dentro de un grupo no muestra su estado ni el chip DUAR (sí «Líder»). */
+/**
+ * Fila de un agente en el tablero: nombre, especialidad y estado (sin grupo) o
+ * «Líder» (dentro de un grupo). El nombre ocupa su propia línea y debajo van la
+ * especialidad y el estado, que pasan a otra línea si no entran: así el nombre
+ * se lee entero en mobile, tablet y desktop.
+ */
 function FilaTablero({ agente, lider, enGrupo, fijo, motivoFijo, tactil, onDragInicio, onDragFin, onTactil, onRetirar }: {
   agente: AgenteTablero;
   lider?: boolean;
@@ -108,10 +109,7 @@ function FilaTablero({ agente, lider, enGrupo, fijo, motivoFijo, tactil, onDragI
   onRetirar?: () => void;
 }) {
   const [levantada, setLevantada] = useState(false);
-  const chips = [
-    lider ? <Chip key="l" lider>Líder</Chip> : null,
-    agente.esDuar && !enGrupo ? <Chip key="d">DUAR</Chip> : null,
-  ].filter(Boolean);
+  const chips = lider ? <Chip key="l" lider>Líder</Chip> : null;
   const estado = !enGrupo && <EstadoAgenteBadge estado={agente.estado.toLowerCase() as EstadoOperativoAgente} size="xs" />;
   const html5 = !fijo && !tactil;
 
@@ -130,19 +128,19 @@ function FilaTablero({ agente, lider, enGrupo, fijo, motivoFijo, tactil, onDragI
         cursor: fijo ? 'default' : 'grab', userSelect: 'none', opacity: levantada ? 0.4 : 1,
       }}>
       <AvatarAgente esDuar={agente.esDuar} esConductor={agente.esConductor} esRecursoCritico={agente.esRecursoCritico} tamano={30} />
-      <div style={{ flex: 1, minWidth: 64 }}>
-        <p style={{ margin: 0, fontSize: 'calc(12.5px * var(--escala-texto))', fontWeight: 600, color: 'var(--foreground)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>
+      <div style={{ flex: 1, minWidth: 0 }}>
+        <p style={{ margin: 0, fontSize: 'calc(12.5px * var(--escala-texto))', fontWeight: 600, color: 'var(--foreground)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
+          title={`${agente.nombre} ${agente.apellido}`}>
           {agente.nombre} {agente.apellido}
         </p>
-        <p style={{ margin: 0, fontSize: 'calc(10.5px * var(--escala-texto))', color: 'var(--muted-foreground)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}
-          title={enGrupo ? undefined : `Desde ${horaExacta(agente.estadoActualizadoEn)}`}>
-          {[agente.especialidadNombre || 'Sin especialidad', agente.dependenciaNombre || agente.institucionNombre].filter(Boolean).join(' · ')}{!enGrupo && ` · ${haceCuanto(agente.estadoActualizadoEn)}`}
-        </p>
-        {tactil && (chips.length > 0 || estado) && (
-          <div className="flex items-center flex-wrap" style={{ gap: 6, marginTop: 4 }}>{chips}{estado}</div>
-        )}
+        <div className="flex items-center flex-wrap" style={{ columnGap: 8, rowGap: 4, marginTop: 3 }}>
+          <span style={{ fontSize: 'calc(10.5px * var(--escala-texto))', color: 'var(--muted-foreground)', whiteSpace: 'nowrap' }}
+            title={enGrupo ? undefined : `Desde ${horaExacta(agente.estadoActualizadoEn)}`}>
+            {agente.especialidadNombre || 'Sin especialidad'}
+          </span>
+          {chips}{estado}
+        </div>
       </div>
-      {!tactil && <>{chips}{estado}</>}
       {onRetirar && (
         <span className="flex"><BotonIcono icono={UserMinus} tono="peligro" title={`Retirar del grupo a ${agente.nombre} ${agente.apellido} (CU-28)`} onClick={onRetirar} /></span>
       )}
@@ -555,7 +553,7 @@ export default function GruposDnD({
     return (
       <div ref={raiz} className="flex flex-col" style={{ gap: 12, fontFamily: 'var(--font-family-primary)' }}>
         {banner}
-        <div className="grid items-start" style={{ gap: 16, gridTemplateColumns: tablet ? 'minmax(300px, 320px) minmax(0, 1fr)' : 'minmax(220px, 280px) minmax(0, 1fr)' }}>
+        <div className="grid items-start" style={{ gap: 16, gridTemplateColumns: tablet ? 'minmax(300px, 320px) minmax(0, 1fr)' : 'minmax(260px, 300px) minmax(0, 1fr)' }}>
           {panelSinGrupo}
           {tarjetasGrupos}
         </div>
