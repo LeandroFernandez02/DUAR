@@ -185,9 +185,14 @@ export async function reunirDatos(operativoId, corteEn) {
          FROM eventos_estado e
          JOIN agentes_operativo ao ON ao.id = e.agente_operativo_id JOIN usuarios ua ON ua.id = ao.usuario_id
          LEFT JOIN grupos g ON g.id = e.grupo_id LEFT JOIN usuarios u ON u.id = e.registrado_por
-        WHERE e.operativo_id = $1 AND e.entidad = 'AGENTE' AND e.accion IN ('alta', 'retiro', 'baja')
+        WHERE e.operativo_id = $1 AND e.entidad = 'AGENTE' AND e.accion IN ('alta', 'retiro', 'baja', 'especialidad')
         ORDER BY e.ocurrido_en, e.registrado_en`),
-    q(`SELECT u.apellido, u.nombre, u.dni, i.nombre AS institucion, e.nombre AS especialidad, ao.es_conductor AS "esConductor",
+    // Foto de la participación (migración 034): lo que la persona era EN ESTE operativo, aunque
+    // después cambie de especialidad, institución o dependencia. Sin foto (filas viejas), lo de hoy.
+    q(`SELECT u.apellido, u.nombre, u.dni,
+              COALESCE(ao.institucion_nombre, i.nombre) AS institucion,
+              CASE WHEN ao.institucion_nombre IS NOT NULL THEN ao.dependencia_nombre ELSE d.nombre END AS dependencia,
+              COALESCE(ao.especialidad_nombre, e.nombre) AS especialidad, ao.es_conductor AS "esConductor",
               ao.fecha_ingreso AS "ingreso", ao.fecha_egreso AS "egreso",
               EXISTS (SELECT 1 FROM grupos gl WHERE gl.lider_id = ao.id) AS "fueLider",
               COALESCE((SELECT json_agg(DISTINCT g.nombre) FROM grupos g WHERE g.id = ao.grupo_id OR g.id IN (
@@ -195,6 +200,7 @@ export async function reunirDatos(operativoId, corteEn) {
          FROM agentes_operativo ao
          JOIN usuarios u ON u.id = ao.usuario_id
          LEFT JOIN cat_instituciones i ON i.id = u.institucion_id
+         LEFT JOIN cat_dotaciones d ON d.id = u.dotacion_id
          LEFT JOIN cat_especialidades e ON e.id = ao.especialidad_id
         WHERE ao.operativo_id = $1
         ORDER BY u.apellido, u.nombre, ao.fecha_ingreso`),
@@ -405,6 +411,11 @@ export function armarCronologia(d) {
   }
   for (const e of d.eventosAgente.filter(x => x.accion === 'baja' && x.motivo !== 'Operativo finalizado')) {
     add(e.ocurridoEn, 'Personal', `${e.agente} deja el operativo.`, e.registradoPor, e.motivo ? { nota: `Motivo: ${e.motivo}` } : {});
+  }
+  // Cambios de especialidad durante el operativo (07/11): «De K-9 a Caminante».
+  for (const e of d.eventosAgente.filter(x => x.accion === 'especialidad')) {
+    const como = e.motivo ? e.motivo.replace(/^De /, 'de ') : 'de especialidad';
+    add(e.ocurridoEn, 'Personal', `${e.agente} cambia ${como}.`, e.fuente === 'PORTAL_AGENTE' ? `${e.agente} (desde su perfil)` : e.registradoPor);
   }
 
   for (const g of d.grupos) add(g.creadoEn, 'Grupos', `Se forma ${elDe('grupo', g.nombre)}${g.clase === 'ESPECIAL' ? ' (especial)' : ''}.`, g.creadoPor);

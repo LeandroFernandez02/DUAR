@@ -6,6 +6,7 @@
  */
 import bcrypt from 'bcryptjs';
 import * as Usuario from '../models/usuario.model.js';
+import * as AgenteOperativo from '../models/agenteOperativo.model.js';
 import * as Sesion from '../models/sesion.model.js';
 import * as TokenEmail from '../models/tokenEmail.model.js';
 import * as Auditoria from '../models/auditoria.model.js';
@@ -302,7 +303,17 @@ export async function actualizarMisDatos(req, res, next) {
       return res.status(400).json({ error: 'Datos inválidos.', errores });
     }
 
-    const actualizado = await Usuario.actualizar(req.usuario.id, campos);
+    // Especialidad sincronizada (07/11): si está en un operativo y SIN grupo
+    // (Disponible o No disponible), el cambio llega también al operativo; si
+    // integra un grupo, se rechaza y no se guarda nada.
+    if (campos.especialidadId === '') campos.especialidadId = null;
+    const cambiaEspecialidad = campos.especialidadId !== undefined
+      && (campos.especialidadId ?? null) !== (req.usuario.especialidadId ?? null);
+    const actualizado = await Usuario.actualizar(req.usuario.id, campos, {
+      despuesCon: client => AgenteOperativo.sincronizarDesdePerfil(client, req.usuario.id, {
+        cambiaEspecialidad, especialidadId: campos.especialidadId, autor: req.usuario.id, propio: true,
+      }),
+    });
 
     await Auditoria.registrar({
       usuarioId: req.usuario.id,

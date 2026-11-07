@@ -82,6 +82,7 @@ function describir(e: EventoEstadoApi, vista: 'grupo' | 'agente'): { titulo: str
     case 'disolucion':       return { titulo: `Quedó sin grupo: se disolvió el ${grupo}` };
     case 'cambio_operativo': return { titulo: `Salió del ${grupo}`, detalle: e.motivo ?? undefined };
     case 'baja':             return { titulo: 'Dejó el operativo', detalle: e.motivo ?? undefined };
+    case 'especialidad':     return { titulo: 'Cambió de especialidad', detalle: e.motivo ?? undefined };
     case 'marcar_estado':    return { titulo: `Pasó a ${etiqueta(e.estadoNuevo)}` };
     case 'estado_inicial':   return { titulo: `Estado al empezar el registro: ${etiqueta(e.estadoNuevo)}` };
     case 'cascada':

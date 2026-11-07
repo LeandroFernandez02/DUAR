@@ -283,9 +283,13 @@ export default function EditarAgenteModal({ agente, operativoId, onClose, onSave
             <p style={{
               color: 'var(--foreground)', fontSize: 'var(--text-label)',
               fontWeight: 'var(--font-weight-semibold)', fontFamily: 'var(--font-family-primary)',
-              marginBottom: 10,
+              marginBottom: 2,
             }}>
               Especialidad
+            </p>
+            {/* Especialidad sincronizada (07/11): un solo dato, el del perfil y el del operativo. */}
+            <p style={{ margin: '0 0 10px', fontSize: 'var(--text-small)', color: 'var(--muted-foreground)' }}>
+              Se guarda también en su perfil y queda registrado en la línea de tiempo del operativo.
             </p>
             <div className="grid grid-cols-2 gap-2">
               {/* Sin especialidad */}

@@ -167,7 +167,7 @@ export async function crear({
  * `antesCon(client)`: lo que tiene que pasar en la MISMA transacción antes de guardar (por ejemplo,
  * que deje el operativo al cambiar de rol: si eso falla, el rol no cambia).
  */
-export async function actualizar(id, campos, { antesCon = null } = {}) {
+export async function actualizar(id, campos, { antesCon = null, despuesCon = null } = {}) {
   // alergiaIds se maneja aparte: no es una columna de `usuarios`, es la
   // relación N:M. `undefined` = "no tocar alergias"; `[]` = "vaciarlas
   // deliberadamente" (el usuario destildó todo en el formulario).
@@ -191,7 +191,7 @@ export async function actualizar(id, campos, { antesCon = null } = {}) {
     }
   }
 
-  if (sets.length === 0 && alergiaIds === undefined) return buscarPorId(id);
+  if (sets.length === 0 && alergiaIds === undefined && !despuesCon) return buscarPorId(id);
 
   await withTransaction(async (client) => {
     if (antesCon) await antesCon(client);
@@ -205,6 +205,9 @@ export async function actualizar(id, campos, { antesCon = null } = {}) {
     if (alergiaIds !== undefined) {
       await sincronizarAlergias(client, id, alergiaIds);
     }
+    // Lo que tiene que pasar con el perfil ya guardado, en la misma transacción
+    // (07/11: llevar la especialidad y la foto a su operativo vigente).
+    if (despuesCon) await despuesCon(client);
   });
   return buscarPorId(id);
 }

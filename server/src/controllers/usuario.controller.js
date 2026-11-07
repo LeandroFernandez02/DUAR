@@ -312,8 +312,16 @@ export async function actualizar(req, res, next) {
       if (previo.estado !== 'INACTIVO' && campos.estado !== 'INACTIVO') campos.estado = 'PENDIENTE';
     }
 
+    // Especialidad sincronizada (07/11): el cambio del perfil llega a su operativo vigente
+    // (salvo que integre un grupo: ahí se rechaza todo) y la foto del operativo se refresca.
+    if (campos.especialidadId === '') campos.especialidadId = null;
+    const cambiaEspecialidad = campos.especialidadId !== undefined
+      && (campos.especialidadId ?? null) !== (previo.especialidadId ?? null);
     let actualizado = await Usuario.actualizar(id, campos, {
       antesCon: afectacion ? client => AgenteOperativo.egresarPorCambioDeRolCon(client, id, req.usuario.id, rolNuevo.nombre) : null,
+      despuesCon: client => AgenteOperativo.sincronizarDesdePerfil(client, id, {
+        cambiaEspecialidad, especialidadId: campos.especialidadId, autor: req.usuario.id, propio,
+      }),
     });
 
     // Cambio de contraseña: se hashea aparte, nunca viaja ni se devuelve.

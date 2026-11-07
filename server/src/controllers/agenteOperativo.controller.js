@@ -153,10 +153,12 @@ export async function actualizar(req, res, next) {
       }
     }
 
-    const agente = await AgenteOperativo.actualizar(previo.id, {
-      especialidadId: especialidadNueva,
-      esConductor: b.esConductor,
-    });
+    // Especialidad sincronizada (07/11): se cambia en este operativo y en el
+    // perfil, y queda en la línea de tiempo («De K-9 a Caminante»).
+    if (especialidadNueva !== undefined && (especialidadNueva ?? null) !== (previo.especialidadId ?? null)) {
+      await AgenteOperativo.cambiarEspecialidadDesdeOperativo(previo.id, especialidadNueva, { autor: req.usuario.id });
+    }
+    const agente = await AgenteOperativo.actualizar(previo.id, { esConductor: b.esConductor });
 
     // Cambiar el conductor de alguien que está en un grupo puede cambiar el
     // estado que le corresponde (Regla 1): se recalcula.

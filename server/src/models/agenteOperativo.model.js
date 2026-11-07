@@ -12,6 +12,7 @@ import { ESTADOS_AGENTE, ESTADOS_AGENTE_ELEGIBLES, ETIQUETA_AGENTE } from './est
 import * as Evento from './evento.model.js';
 import * as Grupo from './grupo.model.js';
 import * as Mando from './mando.model.js';
+import { ReglaError } from './reglaError.js';
 
 /**
  * Los 7 valores del enum `estado_agente` (migración 010). El catálogo y sus
@@ -138,6 +139,14 @@ export async function darDeAlta({
        RETURNING id`,
       [usuarioId, operativoId, especialidadId]
     );
+    // Especialidad sincronizada (07/11): si el alta la trae distinta de la del
+    // perfil, el perfil queda igual que el operativo.
+    await client.query(
+      `UPDATE usuarios SET especialidad_id = $2, actualizado_en = CURRENT_TIMESTAMP
+        WHERE id = $1 AND especialidad_id IS DISTINCT FROM $2`,
+      [usuarioId, especialidadId]
+    );
+    await actualizarFoto(client, rows[0].id);
     await Evento.registrar(client, {
       operativoId, entidad: 'AGENTE', agenteOperativoId: rows[0].id, accion: 'alta',
       estadoNuevo: 'DISPONIBLE', registradoPor: autor, fuente,
@@ -169,6 +178,114 @@ export async function buscarActivoDeOperativo(operativoId, usuarioId) {
     [operativoId, usuarioId]
   );
   return rows[0] ?? null;
+}
+
+/**
+ * FOTO de la participación (migración 034, 07/11). El informe es un documento
+ * legal: tiene que mostrar la especialidad, la institución y la dependencia
+ * que la persona tenía EN ESTE operativo, aunque después cambien. Mientras la
+ * participación está vigente se mantiene al día; al egresar (o al finalizar el
+ * operativo) queda congelada, porque esta sentencia sólo toca filas vigentes.
+ */
+export async function actualizarFoto(client, agenteOperativoId) {
+  await client.query(
+    `UPDATE agentes_operativo ao
+        SET especialidad_nombre = (SELECT e.nombre FROM cat_especialidades e WHERE e.id = ao.especialidad_id),
+            institucion_nombre  = (SELECT i.nombre FROM usuarios u JOIN cat_instituciones i ON i.id = u.institucion_id
+                                    WHERE u.id = ao.usuario_id),
+            dependencia_nombre  = (SELECT d.nombre FROM usuarios u JOIN cat_dotaciones d ON d.id = u.dotacion_id
+                                    WHERE u.id = ao.usuario_id)
+      WHERE ao.id = $1 AND ao.fecha_egreso IS NULL`,
+    [agenteOperativoId]
+  );
+}
+
+const nombreEspecialidad = async (client, id) => {
+  if (!id) return 'sin especialidad';
+  const { rows } = await client.query(`SELECT nombre FROM cat_especialidades WHERE id = $1`, [id]);
+  return rows[0]?.nombre ?? 'sin especialidad';
+};
+
+/**
+ * Cambia la especialidad de una participación vigente y deja el registro en la
+ * línea de tiempo (acción 'especialidad', «De K-9 a Caminante»). Lo usan los
+ * dos caminos de la sincronización (07/11): desde el operativo (CU-19, que
+ * además actualiza el perfil) y desde el perfil (que ya lo guardó).
+ * Las reglas de grupo las valida quien llama.
+ */
+async function registrarCambioDeEspecialidad(client, ao, especialidadId, { autor, fuente }) {
+  const antes = await nombreEspecialidad(client, ao.especialidadId);
+  const despues = await nombreEspecialidad(client, especialidadId);
+  await client.query(`UPDATE agentes_operativo SET especialidad_id = $2 WHERE id = $1`, [ao.id, especialidadId]);
+  await Evento.registrar(client, {
+    operativoId: ao.operativoId, entidad: 'AGENTE', agenteOperativoId: ao.id, grupoId: ao.grupoId ?? null,
+    accion: 'especialidad', registradoPor: autor, fuente,
+    motivo: `De ${antes} a ${despues}`,
+  });
+}
+
+/**
+ * Desde el OPERATIVO (CU-19): cambia la especialidad en este operativo y en el
+ * perfil de la persona, en la misma transacción (07/11).
+ */
+export async function cambiarEspecialidadDesdeOperativo(agenteOperativoId, especialidadId, { autor }) {
+  await withTransaction(async (client) => {
+    const { rows: [ao] } = await client.query(
+      `SELECT id, operativo_id AS "operativoId", usuario_id AS "usuarioId", grupo_id AS "grupoId",
+              especialidad_id AS "especialidadId"
+         FROM agentes_operativo WHERE id = $1 AND fecha_egreso IS NULL FOR UPDATE`,
+      [agenteOperativoId]
+    );
+    if (!ao) throw new ReglaError(404, 'agente_no_encontrado', 'El agente no está activo en el operativo.');
+    if ((ao.especialidadId ?? null) === (especialidadId ?? null)) return;
+    await registrarCambioDeEspecialidad(client, ao, especialidadId, { autor, fuente: 'COORDINADOR' });
+    await client.query(
+      `UPDATE usuarios SET especialidad_id = $2, actualizado_en = CURRENT_TIMESTAMP WHERE id = $1`,
+      [ao.usuarioId, especialidadId]
+    );
+    await actualizarFoto(client, ao.id);
+  });
+  return buscarPorId(agenteOperativoId);
+}
+
+/**
+ * Desde el PERFIL (Usuarios o «Mis datos»), dentro de la transacción que lo
+ * guarda y DESPUÉS de guardarlo: lleva el cambio a su participación vigente.
+ *
+ *  · Especialidad: mientras integre un grupo (esté rastrillando o no) no se
+ *    cambia — ni la propia persona ni un administrador. Sin grupo (Disponible
+ *    o No disponible) sí, y queda en la línea de tiempo del operativo.
+ *  · Institución y dependencia: siempre se refrescan en la foto.
+ *
+ * Si la regla rechaza el cambio, lanza ReglaError y el perfil tampoco se guarda.
+ */
+export async function sincronizarDesdePerfil(client, usuarioId, { cambiaEspecialidad, especialidadId, autor, propio }) {
+  const { rows: [ao] } = await client.query(
+    `SELECT ao.id, ao.operativo_id AS "operativoId", ao.grupo_id AS "grupoId",
+            ao.especialidad_id AS "especialidadId",
+            g.nombre AS "grupoNombre", o.titulo AS "operativoTitulo",
+            u.nombre || ' ' || u.apellido AS persona
+       FROM agentes_operativo ao
+       JOIN operativos o ON o.id = ao.operativo_id
+       JOIN usuarios u ON u.id = ao.usuario_id
+       LEFT JOIN grupos g ON g.id = ao.grupo_id
+      WHERE ao.usuario_id = $1 AND ao.fecha_egreso IS NULL
+      FOR UPDATE OF ao`,
+    [usuarioId]
+  );
+  if (!ao) return;
+
+  if (cambiaEspecialidad && (ao.especialidadId ?? null) !== (especialidadId ?? null)) {
+    if (ao.grupoId) {
+      const grupo = /^grupo\b/i.test(ao.grupoNombre ?? '') ? ao.grupoNombre : `grupo ${ao.grupoNombre ?? ''}`.trim();
+      throw new ReglaError(409, 'especialidad_en_grupo', propio
+        ? `Estás en el ${grupo} del operativo «${ao.operativoTitulo}»: mientras integres un grupo no podés cambiar tu especialidad. Pedile al coordinador que te saque del grupo.`
+        : `${ao.persona} está en el ${grupo} del operativo «${ao.operativoTitulo}»: mientras integre un grupo no se puede cambiar su especialidad. Sacalo del grupo primero.`);
+    }
+    await registrarCambioDeEspecialidad(client, ao, especialidadId,
+      { autor, fuente: propio ? 'PORTAL_AGENTE' : 'COORDINADOR' });
+  }
+  await actualizarFoto(client, ao.id);
 }
 
 /**

@@ -478,7 +478,7 @@ export async function generarPdf(d, meta) {
       const grupos = [p.grupos.join(', '), rol].filter(Boolean).join(' · ');
       const color = p.egreso && !final ? C.tenue : C.tinta;
       return [
-        { text: `${p.apellido}, ${p.nombre}`, color }, mono(formatoDni(p.dni), { color }), { text: p.institucion ?? '—', color },
+        { text: `${p.apellido}, ${p.nombre}`, color }, mono(formatoDni(p.dni), { color }), { text: [p.institucion, p.dependencia].filter(Boolean).join(' · ') || '—', color },
         { text: p.especialidad || '—', color }, { text: grupos || '—', color },
         mono(fechaCorta(p.ingreso), { color, fontSize: 6.8 }), p.egreso ? mono(fechaCorta(p.egreso), { color, fontSize: 6.8 }) : '—',
       ];
