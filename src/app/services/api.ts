@@ -492,7 +492,7 @@ export const agentesOperativoApi = {
    * CU-19: datos tácticos. `estado` sólo para quien NO está en un grupo
    * (Disponible / No disponible); con grupo el backend responde 409 `agente_en_grupo`.
    */
-  actualizar: (operativoId: string, usuarioId: string, datos: { estado?: EstadoAgenteApi; especialidadId?: string | null; esConductor?: boolean }) =>
+  actualizar: (operativoId: string, usuarioId: string, datos: { estado?: EstadoAgenteApi; especialidadId?: string | null }) =>
     api.put<{ agente: PersonalOperativoApi }>(`/operativos/${operativoId}/agentes/${usuarioId}`, datos),
   /** Baja lógica: cierra la participación, no toca al Usuario global. */
   quitar: (operativoId: string, usuarioId: string) =>

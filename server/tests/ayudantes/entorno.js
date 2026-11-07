@@ -29,7 +29,7 @@ const MOTIVO_REINICIO = 'Reinicio de las pruebas automáticas';
 
 /**
  * Los usuarios de prueba. La institución es global (perfil del usuario); la
- * especialidad y el conductor son tácticos y se fijan en cada preparación.
+ * especialidad (Conductor incluido, migración 035) se fija en cada preparación.
  *   · alfa, bravo, charlie → Policía · DUAR, rastrillan: pueden liderar uno de rastrillaje.
  *   · delta, eco           → agentes de rastrillaje que no son del DUAR.
  *   · foxtrot              → Policía · DUAR, recurso especial (Drones).
@@ -44,7 +44,7 @@ export const USUARIOS = [
   { clave: 'delta',   institucion: 'Bomberos Voluntarios', dependencia: 'Saldán', especialidad: 'Caminante' },
   { clave: 'eco',     institucion: 'Policía', dependencia: 'Caminera', especialidad: 'Caminante' },
   { clave: 'foxtrot', institucion: 'Policía', dependencia: 'DUAR', especialidad: 'Drones' },
-  { clave: 'golf',    institucion: 'Bomberos Voluntarios', dependencia: 'Saldán', especialidad: 'Caminante', conductor: true },
+  { clave: 'golf',    institucion: 'Bomberos Voluntarios', dependencia: 'Saldán', especialidad: 'Conductor' },
   { clave: 'hotel',   institucion: 'Policía', dependencia: 'DUAR', rol: 'coordinador' },
   { clave: 'india',   institucion: 'Policía', dependencia: 'DUAR', rol: 'coordinador' },
   { clave: 'juliet',  institucion: 'Policía', dependencia: 'DUAR', rol: 'jefe de operativo' },
@@ -300,7 +300,7 @@ export function cuadrado(i = 0, lado = 0.005) {
   return { type: 'Polygon', coordinates: [[[x, y], [x + lado, y], [x + lado, y - lado], [x, y - lado], [x, y]]] };
 }
 
-/** Todos los agentes en el operativo, Disponibles, con la especialidad y el conductor de base. */
+/** Todos los agentes en el operativo, Disponibles, con su especialidad de base. */
 async function asegurarAgentes(admin, op, usuarios, cat) {
   const { rows } = await query(
     `SELECT usuario_id FROM agentes_operativo WHERE operativo_id = $1 AND fecha_egreso IS NULL`, [op]);
@@ -312,7 +312,7 @@ async function asegurarAgentes(admin, op, usuarios, cat) {
       if (r.status !== 201) throw new Error(`No se pudo sumar a ${u.email}: ${JSON.stringify(r.json)}`);
     }
     const r = await api('PUT', `/operativos/${op}/agentes/${u.uid}`, {
-      estado: 'DISPONIBLE', especialidadId: cat.especialidad(u.especialidad), esConductor: !!u.conductor,
+      estado: 'DISPONIBLE', especialidadId: cat.especialidad(u.especialidad),
     }, admin);
     if (r.status !== 200) throw new Error(`No se pudo reiniciar a ${u.email}: ${JSON.stringify(r.json)}`);
   }
@@ -371,6 +371,9 @@ export async function preparar() {
       api('POST', `/operativos/${op}/grupos/mover`, { agenteOperativoId: ctx.agentes[clave].id, destinoGrupoId }, admin),
     disolver: grupoId => api('DELETE', `/operativos/${op}/grupos/${grupoId}`, undefined, admin),
     cu17: (clave, body) => api('PUT', `/operativos/${op}/agentes/${usuarios[clave].uid}`, body, admin),
+    /** CU-19 · cambiar la especialidad por nombre ("Conductor", "Drones"…). */
+    especialidad: (clave, nombreEsp) => api('PUT', `/operativos/${op}/agentes/${usuarios[clave].uid}`,
+      { especialidadId: cat.especialidad(nombreEsp) }, admin),
     /** Estado de cada agente de prueba en el operativo, leído de la base. */
     agentes: {},
     async refrescar() {

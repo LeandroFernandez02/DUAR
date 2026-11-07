@@ -30,7 +30,7 @@ export async function dotaciones() {
 
 export async function especialidades() {
   const { rows } = await query(
-    `SELECT id, nombre, es_recurso_critico AS "esRecursoCritico"
+    `SELECT id, nombre, es_recurso_critico AS "esRecursoCritico", es_conductor AS "esConductor"
        FROM cat_especialidades ORDER BY es_recurso_critico, nombre`
   );
   return rows;

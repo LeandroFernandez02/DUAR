@@ -56,14 +56,14 @@ describe('Grupos: composición y clases (CU-23, CU-26, CU-27)', () => {
     motivo(await ctx.mover('foxtrot', G), 409, 'recurso_especial_en_rastrillaje');
   });
 
-  test('CU-26 · un recurso especial que va de conductor sí entra a uno de rastrillaje', async () => {
-    motivo(await ctx.cu17('foxtrot', { esConductor: true }), 200);
+  test('CU-26 · como Conductor (especialidad, migración 035) sí entra a uno de rastrillaje', async () => {
+    motivo(await ctx.especialidad('foxtrot', 'Conductor'), 200);
     motivo(await ctx.mover('foxtrot', G), 200);
     assert.equal((await ctx.refrescar()).foxtrot.grupoId, G);
   });
 
-  test('CU-19 · no se le saca el conductor a un recurso especial dentro de uno de rastrillaje → 409', async () => {
-    motivo(await ctx.cu17('foxtrot', { esConductor: false }), 409, 'recurso_especial_en_rastrillaje');
+  test('CU-19 · dentro de uno de rastrillaje no vuelve a ser recurso especial → 409', async () => {
+    motivo(await ctx.especialidad('foxtrot', 'Drones'), 409, 'recurso_especial_en_rastrillaje');
   });
 
   test('CU-26 · sacarlo arrastrando a "Sin grupo" lo deja Disponible', async () => {
@@ -71,7 +71,7 @@ describe('Grupos: composición y clases (CU-23, CU-26, CU-27)', () => {
     const a = await ctx.refrescar();
     assert.equal(a.foxtrot.grupoId, null);
     assert.equal(a.foxtrot.estado, 'DISPONIBLE');
-    motivo(await ctx.cu17('foxtrot', { esConductor: false }), 200);
+    motivo(await ctx.especialidad('foxtrot', 'Drones'), 200);
   });
 
   test('CU-23 · confirmar con una sola persona que rastrilla (el conductor no cuenta) → 409 binomio_minimo', async () => {

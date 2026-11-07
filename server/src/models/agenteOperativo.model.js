@@ -58,6 +58,13 @@ export async function altaActivaDe(usuarioId) {
  * Desde el 29/09 no hay "caminante" que inferir ni sobrescribir: rastrilla todo
  * el que no es conductor, y la especialidad decide a qué clase de grupo entra.
  */
+/** ¿Es la especialidad "Conductor"? (migración 035: el conductor es una especialidad). */
+export async function esEspecialidadConductor(especialidadId) {
+  if (!especialidadId) return false;
+  const { rows } = await query(`SELECT es_conductor FROM cat_especialidades WHERE id = $1`, [especialidadId]);
+  return rows[0]?.es_conductor ?? false;
+}
+
 export async function esRecursoCritico(especialidadId) {
   if (!especialidadId) return false;
   const { rows } = await query(
@@ -297,9 +304,9 @@ export async function sincronizarDesdePerfil(client, usuarioId, { cambiaEspecial
  * 24/09 sólo se elige el estado de quien no está en un grupo (Regla 1).
  */
 export async function actualizar(id, campos) {
+  // es_conductor ya no se escribe: lo deriva la base de la especialidad (migración 035).
   const permitidos = {
     especialidadId: 'especialidad_id',
-    esConductor: 'es_conductor',
   };
 
   const sets = [];

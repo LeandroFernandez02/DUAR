@@ -72,14 +72,14 @@ describe('Grupos: ciclo de estados y Regla 1 (CU-25, CU-19, CU-27)', () => {
     motivo(await ctx.cu17('bravo', { estado: 'NO_DISPONIBLE' }), 409, 'agente_en_grupo');
   });
 
-  test('CU-19 · el Líder de un grupo de rastrillaje no puede pasar a ser conductor → 409', async () => {
-    motivo(await ctx.cu17('alfa', { esConductor: true }), 409, 'lider_conductor');
+  test('CU-19 · el Líder de un grupo de rastrillaje no puede pasar a ser Conductor → 409', async () => {
+    motivo(await ctx.especialidad('alfa', 'Conductor'), 409, 'lider_conductor');
   });
 
-  test('CU-19 · sacarle el conductor a alguien que rastrilla lo pone a rastrillar (Regla 1)', async () => {
-    motivo(await ctx.cu17('golf', { esConductor: false }), 200);
+  test('CU-19 · el Conductor que pasa a Caminante se pone a rastrillar (Regla 1)', async () => {
+    motivo(await ctx.especialidad('golf', 'Caminante'), 200);
     assert.equal((await estados(['golf'])).golf, 'RASTRILLANDO');
-    motivo(await ctx.cu17('golf', { esConductor: true }), 200);
+    motivo(await ctx.especialidad('golf', 'Conductor'), 200);
     assert.equal((await estados(['golf'])).golf, 'DESPLEGADO');
   });
 

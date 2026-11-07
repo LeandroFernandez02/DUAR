@@ -1,16 +1,12 @@
 /**
  * EditarAgenteModal — CU-19 (Editar Agentes de Operativo)
  *
- * Modifica los datos TÁCTICOS del agente dentro de ESTE operativo, escribiendo
- * sobre su AgenteOperativo y nunca sobre el Usuario global (Decisión A):
+ * Modifica los datos del agente dentro de ESTE operativo:
  *  – Estado táctico: sólo si NO está en un grupo (Disponible / No disponible).
  *    Con grupo, el estado lo define el grupo (Regla 1, 24/09) y se muestra.
- *  – Especialidad técnica: lo que el agente SABE HACER (override local)
- *  – Especialidad: además define si es agente de rastrillaje o recurso especial
- *    (dato del catálogo, `es_recurso_critico`)
- *  – Conductor: maneja la camioneta y espera al grupo; no rastrilla y entra a
- *    cualquier grupo. Desde el 29/09 no hay "caminante": rastrilla todo el que
- *    no es conductor.
+ *  – Especialidad: se guarda también en su perfil (sincronizada, 07/11) y
+ *    define si es Caminante, recurso especial o Conductor (este último maneja,
+ *    no rastrilla y entra a cualquier grupo; migración 035).
  *
  * Los datos personales se gestionan desde la pestaña Usuarios.
  */
@@ -39,8 +35,8 @@ const ESTADOS_ELEGIBLES: EstadoOperativoAgente[] = ['disponible', 'no_disponible
 
 /**
  * Especialidades TÉCNICAS, derivadas del catálogo (espejo de cat_especialidades).
- * "Conductor" ya no figura acá: dejó de ser una especialidad para pasar a ser un
- * estado logístico booleano (esConductor).
+ * "Conductor" es una especialidad más desde el 07/11 (migración 035): un agente
+ * es una sola cosa a la vez. La marca táctica esConductor la deriva la base.
  */
 const COLOR_ESPECIALIDAD: Record<Especialidad, string> = {
   'caminante':     '#dc2626',
@@ -52,6 +48,7 @@ const COLOR_ESPECIALIDAD: Record<Especialidad, string> = {
   'altura':        '#ea580c',
   'k-9':           '#65a30d',
   'acuático':      '#0891b2',
+  'conductor':     '#0f766e',
 };
 
 const ESPECIALIDADES: { value: Especialidad; label: string; color: string }[] =
@@ -90,7 +87,6 @@ export default function EditarAgenteModal({ agente, operativoId, onClose, onSave
   const [estadoOp, setEstadoOp] = useState<EstadoOperativoAgente>(estadoInicial);
   // La especialidad táctica sobrescribe a la global sólo dentro de este operativo.
   const [especialidad, setEspecialidad] = useState<Especialidad | ''>(especialidadInicial);
-  const [conductor, setConductor] = useState<boolean>(agente.esConductor);
   const [saving, setSaving] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [saved, setSaved] = useState(false);
@@ -105,7 +101,6 @@ export default function EditarAgenteModal({ agente, operativoId, onClose, onSave
         // Con grupo, el estado lo define el grupo: no se manda.
         ...(enGrupo ? {} : { estado: estadoOp.toUpperCase() as EstadoAgenteApi }),
         especialidadId: especialidadSlugAId(especialidad),
-        esConductor: conductor,
       });
       setSaved(true);
       onSaved();
@@ -122,8 +117,7 @@ export default function EditarAgenteModal({ agente, operativoId, onClose, onSave
 
   const hasChanges = (
     (estadoOp || '') !== estadoInicial ||
-    (especialidad || '') !== especialidadInicial ||
-    conductor !== agente.esConductor
+    (especialidad || '') !== especialidadInicial
   );
 
   return (
@@ -356,63 +350,14 @@ export default function EditarAgenteModal({ agente, operativoId, onClose, onSave
             </div>
           </div>
 
-          {/* Divider */}
-          <div style={{ height: 1, background: 'var(--border)' }} />
-
-          {/* ── Conductor (estado logístico físico) ── */}
-          <div>
+          {especialidad === 'conductor' && (
             <p style={{
-              color: 'var(--foreground)', fontSize: 'var(--text-label)',
-              fontWeight: 'var(--font-weight-semibold)', fontFamily: 'var(--font-family-primary)',
-              marginBottom: 10,
+              margin: '-8px 0 0', color: 'var(--muted-foreground)', fontSize: 'calc(11px * var(--escala-texto))',
+              fontFamily: 'var(--font-family-primary)',
             }}>
-              Conductor
+              Conductor: no rastrilla, espera al grupo con el vehículo (queda Desplegado mientras el grupo rastrilla) y puede ir en cualquier grupo.
             </p>
-            <div className="grid grid-cols-2 gap-2">
-              {[
-                { value: false, label: 'No conductor' },
-                { value: true,  label: 'Conductor' },
-              ].map(opt => {
-                const isSelected = conductor === opt.value;
-                return (
-                  <button
-                    key={String(opt.value)}
-                    onClick={() => setConductor(opt.value)}
-                    className="flex items-center gap-2.5 px-3 py-2.5 rounded-[var(--radius-input)] transition-all text-left"
-                    style={{
-                      border: isSelected ? '2px solid var(--primary)' : '1.5px solid var(--border)',
-                      background: isSelected ? 'color-mix(in srgb, var(--primary) 6%, transparent)' : 'var(--card)',
-                      cursor: 'pointer',
-                    }}
-                  >
-                    <span style={{
-                      width: 8, height: 8, borderRadius: '50%', flexShrink: 0,
-                      background: isSelected ? 'var(--primary)' : '#d1d5db',
-                    }} />
-                    <span style={{
-                      color: isSelected ? 'var(--primary)' : 'var(--foreground)',
-                      fontSize: 'var(--text-label)',
-                      fontWeight: isSelected ? 'var(--font-weight-semibold)' : 'var(--font-weight-medium)',
-                      fontFamily: 'var(--font-family-primary)',
-                    }}>
-                      {opt.label}
-                    </span>
-                    {isSelected && (
-                      <Check size={12} style={{ color: 'var(--primary)', marginLeft: 'auto' }} />
-                    )}
-                  </button>
-                );
-              })}
-            </div>
-            {conductor && (
-              <p className="mt-2" style={{
-                color: 'var(--muted-foreground)', fontSize: 'calc(11px * var(--escala-texto))',
-                fontFamily: 'var(--font-family-primary)',
-              }}>
-                No rastrilla: espera al grupo con la camioneta (queda Desplegado mientras el grupo rastrilla). Puede ir en cualquier grupo.
-              </p>
-            )}
-          </div>
+          )}
         </div>
 
         {/* ── Footer ── */}

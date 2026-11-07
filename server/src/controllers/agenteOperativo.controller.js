@@ -90,7 +90,7 @@ export async function agregar(req, res, next) {
 
 /**
  * PUT /api/operativos/:id/agentes/:usuarioId
- * body: { estado?, especialidadId?, esConductor? }
+ * body: { estado?, especialidadId? }  — el conductor es una especialidad (migración 035).
  */
 export async function actualizar(req, res, next) {
   try {
@@ -123,29 +123,25 @@ export async function actualizar(req, res, next) {
       });
     }
 
-    // Un grupo de rastrillaje no lleva recursos especiales (26/09), salvo de
-    // conductor (29/09). Si con la especialidad o el conductor nuevos dejaría de
-    // poder estar en su grupo, primero hay que sacarlo.
+    // Especialidad sincronizada (07/11) y "Conductor" como especialidad (migración 035):
+    // un agente es una sola cosa a la vez. Las reglas del conductor siguen igual.
     const especialidadNueva = b.especialidadId === '' ? null : b.especialidadId;
-    const conductorNuevo = typeof b.esConductor === 'boolean' ? b.esConductor : previo.esConductor;
-    if (previo.grupoId
-        && ((especialidadNueva !== undefined && especialidadNueva !== previo.especialidadId)
-            || conductorNuevo !== previo.esConductor)) {
+    const cambiaEspecialidad = especialidadNueva !== undefined
+      && (especialidadNueva ?? null) !== (previo.especialidadId ?? null);
+
+    if (cambiaEspecialidad && previo.grupoId) {
       const grupo = await Grupo.estadoDeGrupo(previo.grupoId);
-      const critico = await AgenteOperativo.esRecursoCritico(
-        especialidadNueva !== undefined ? especialidadNueva : previo.especialidadId);
+      const critico = await AgenteOperativo.esRecursoCritico(especialidadNueva);
+      const conductorNuevo = await AgenteOperativo.esEspecialidadConductor(especialidadNueva);
+      // Un grupo de rastrillaje no lleva recursos especiales (26/09), salvo de conductor (29/09).
       if (grupo?.clase === 'RASTRILLAJE' && !Grupo.entraARastrillaje({ esRecursoCritico: critico, esConductor: conductorNuevo })) {
         return res.status(409).json({
-          error: `Está en el ${grupo.nombre}, que es de rastrillaje: así sería un recurso especial que no va de conductor. Sacalo del grupo primero.`,
+          error: `Está en el ${grupo.nombre}, que es de rastrillaje: con esa especialidad sería un recurso especial. Sacalo del grupo primero.`,
           motivo: 'recurso_especial_en_rastrillaje',
         });
       }
-    }
-
-    // El Líder de un grupo de rastrillaje camina con su grupo: no puede ser conductor (29/09).
-    if (previo.grupoId && conductorNuevo && !previo.esConductor) {
-      const grupo = await Grupo.estadoDeGrupo(previo.grupoId);
-      if (grupo?.clase === 'RASTRILLAJE' && grupo.liderId === previo.id) {
+      // El Líder de un grupo de rastrillaje camina con su grupo: no puede ser el conductor (29/09).
+      if (conductorNuevo && grupo?.clase === 'RASTRILLAJE' && grupo.liderId === previo.id) {
         return res.status(409).json({
           error: `Es el Líder del ${grupo.nombre}, que es de rastrillaje: el Líder camina con su grupo y no puede ser el conductor. Cambiá el Líder primero.`,
           motivo: 'lider_conductor',
@@ -153,16 +149,15 @@ export async function actualizar(req, res, next) {
       }
     }
 
-    // Especialidad sincronizada (07/11): se cambia en este operativo y en el
-    // perfil, y queda en la línea de tiempo («De K-9 a Caminante»).
-    if (especialidadNueva !== undefined && (especialidadNueva ?? null) !== (previo.especialidadId ?? null)) {
+    // Se cambia en este operativo y en el perfil, y queda en la línea de tiempo.
+    if (cambiaEspecialidad) {
       await AgenteOperativo.cambiarEspecialidadDesdeOperativo(previo.id, especialidadNueva, { autor: req.usuario.id });
     }
-    const agente = await AgenteOperativo.actualizar(previo.id, { esConductor: b.esConductor });
+    const agente = await AgenteOperativo.buscarPorId(previo.id);
 
-    // Cambiar el conductor de alguien que está en un grupo puede cambiar el
-    // estado que le corresponde (Regla 1): se recalcula.
-    if (previo.grupoId && b.esConductor !== undefined) {
+    // Pasar a Conductor (o dejar de serlo) dentro de un grupo cambia el estado que
+    // le corresponde (Regla 1): se recalcula.
+    if (previo.grupoId && agente.esConductor !== previo.esConductor) {
       await Grupo.recalcularIntegrante(previo.id, req.usuario.id);
     }
 

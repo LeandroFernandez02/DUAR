@@ -58,7 +58,8 @@ export type Especialidad =
   | 'drones'
   | 'altura'
   | 'k-9'
-  | 'acuático';
+  | 'acuático'
+  | 'conductor';
 export type ShapeType = 'poligono' | 'circulo' | 'rectangulo';
 export type TipoObjetivo = 'persona' | 'objeto';
 /**
@@ -402,7 +403,6 @@ export const initialData: AppData = {
       rol: 'agente',
       fechaNacimiento: '1999-07-08',
       telefono: '351-5553003',
-      // 'Conductor' ya no es especialidad: es esConductor en AgenteOperativo
       grupo_sanguineo: 'B-',
       alergias: 'Ninguna',
       institucionId: '80ac6de6-9133-45f1-85c3-d3099894a45a', dotacionId: 'c4816e1e-a8df-4c71-a7f5-55575a443450', // Policía · DUAR
@@ -456,7 +456,6 @@ export const initialData: AppData = {
       rol: 'agente',
       fechaNacimiento: '1982-09-25',
       telefono: '351-5556006',
-      // 'Conductor' ya no es especialidad: es esConductor en AgenteOperativo
       grupo_sanguineo: 'A-',
       alergias: 'Aspirina',
       institucionId: '80ac6de6-9133-45f1-85c3-d3099894a45a', dotacionId: 'c4816e1e-a8df-4c71-a7f5-55575a443450', // Policía · DUAR
@@ -492,7 +491,6 @@ export const initialData: AppData = {
       rol: 'agente',
       fechaNacimiento: '1986-06-03',
       telefono: '351-5558008',
-      // 'Conductor' ya no es especialidad: es esConductor en AgenteOperativo
       grupo_sanguineo: 'A+',
       alergias: 'Ninguna',
       institucionId: '80ac6de6-9133-45f1-85c3-d3099894a45a', dotacionId: 'c4816e1e-a8df-4c71-a7f5-55575a443450', // Policía · DUAR
@@ -795,6 +793,8 @@ export interface CatEspecialidad {
   nombre: string;              // nombre tal cual está en la BD
   slug: Especialidad;          // clave que usa el frontend
   esRecursoCritico: boolean;
+  /** Sólo "Conductor" (migración 035): maneja, no rastrilla y entra a cualquier grupo. */
+  esConductor?: boolean;
 }
 
 export const catEspecialidades: CatEspecialidad[] = [
@@ -811,6 +811,8 @@ export const catEspecialidades: CatEspecialidad[] = [
   { id: 'ed422a17-c6c4-4918-b409-e39f5a94a1b6', nombre: 'Altura',        slug: 'altura',        esRecursoCritico: true  },
   { id: 'eb010f9d-406e-4248-ba27-d88ca045ca4f', nombre: 'K-9',           slug: 'k-9',           esRecursoCritico: true  },
   { id: '4ff8d2fe-647c-4fda-b036-3d315c43d7e9', nombre: 'Acuático',      slug: 'acuático',      esRecursoCritico: true  },
+  // El conductor pasó a ser una especialidad (07/11, migración 035): un agente es una sola cosa a la vez.
+  { id: '39c9654d-b11c-487d-a3ca-45636957d599', nombre: 'Conductor',     slug: 'conductor',     esRecursoCritico: false, esConductor: true },
 ];
 
 /* ────────────────────────────────────────────────────────────────────────────
