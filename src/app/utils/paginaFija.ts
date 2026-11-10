@@ -18,9 +18,14 @@ export function usePaginaFija() {
   useEffect(() => {
     const html = document.documentElement;
     html.classList.add('pagina-fija');
+    // Tira fija del color del encabezado bajo el reloj: iOS tiñe la transparencia con ella (theme.css).
+    const franja = document.createElement('div');
+    franja.className = 'franja-reloj';
+    franja.setAttribute('aria-hidden', 'true');
+    document.body.appendChild(franja);
     const quitarGestos = bloquearArrastres();
     const quitarAlto = ajustarAltoIphone();
-    return () => { html.classList.remove('pagina-fija'); quitarGestos(); quitarAlto(); };
+    return () => { html.classList.remove('pagina-fija'); franja.remove(); quitarGestos(); quitarAlto(); };
   }, []);
 }
 

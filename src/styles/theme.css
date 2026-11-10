@@ -469,19 +469,18 @@ html.pagina-fija .scroll-contenido { overscroll-behavior: contain; }
 }
 
 /* iPhone en modo translúcido (10/11).
-   1) Arriba: iOS tiñe la transparencia de la zona del reloj con el color de fondo de la página,
-      así que el fondo es el del encabezado (claro, o gris oscuro en modo oscuro).
-   2) Abajo: iOS a veces calcula la ventana más corta que la pantalla y deja una franja debajo
-      del menú donde sólo pinta el fondo de la página. El fondo lleva una segunda capa con el
-      azul noche del menú que arranca en la mitad y sigue más allá del final: esa franja se ve
-      como parte del menú.
+   1) Abajo: iOS a veces calcula la ventana más corta que la pantalla y deja una franja debajo
+      del menú donde no dibuja la app: sólo pinta el COLOR DE FONDO de la página. Ese fondo es el
+      azul noche del menú, así la franja se ve como parte del menú (con fondo blanco el menú
+      quedaba «cortado»).
+   2) Arriba: para teñir la transparencia del reloj iOS toma el color de un elemento fijo pegado
+      al borde de arriba. Esa tira (.franja-reloj, en los layouts) tiene el color del encabezado.
    3) Sin rebote en ningún borde. */
-html.pagina-fija {
-  background-color: var(--cabecera-movil);
-  background-image: linear-gradient(to bottom, var(--cabecera-movil) 0 50%, var(--sidebar) 50% 100%);
-  background-size: 100% calc(100% + 400px);
-  background-repeat: no-repeat;
-}
+html.pagina-fija { background: var(--sidebar); }
 html.pagina-fija body { background: transparent; }
+.franja-reloj {
+  position: fixed; top: 0; left: 0; right: 0; height: env(safe-area-inset-top);
+  background: var(--cabecera-movil); z-index: 49; pointer-events: none;
+}
 html.ventana-corta nav[aria-label="Secciones"] { padding-bottom: 0 !important; }
 html { overscroll-behavior-y: none; }
