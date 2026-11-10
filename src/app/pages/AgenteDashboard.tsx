@@ -145,7 +145,7 @@ export default function AgenteDashboard() {
   );
 
   return (
-    <div className="flex flex-col" style={{ height: '100%', background: 'var(--background)', fontFamily: 'var(--font-family-primary)' }}>
+    <div className="flex flex-col relative" style={{ height: '100%', background: 'var(--background)', fontFamily: 'var(--font-family-primary)' }}>
       <Cabecera op={operativo} />
 
       <main className="scroll-contenido flex-1 min-h-0 overflow-y-auto overflow-x-hidden relative">

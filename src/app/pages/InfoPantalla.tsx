@@ -10,6 +10,15 @@ import { esInstalada, plataforma } from '../utils/instalacion';
  * navegador (ventana, pantalla y zonas del reloj y de la barra de inicio), para ajustar el
  * diseño del iPhone con números y no a ojo. Se llega desde la guía de instalación.
  */
+function altoLvh() {
+  const d = document.createElement('div');
+  d.style.cssText = 'position:absolute;visibility:hidden;height:100lvh;width:1px;top:0';
+  document.body.appendChild(d);
+  const h = d.getBoundingClientRect().height;
+  d.remove();
+  return String(Math.round(h));
+}
+
 function medir() {
   const sonda = document.createElement('div');
   sonda.style.cssText = 'position:fixed;visibility:hidden;pointer-events:none;padding:env(safe-area-inset-top) env(safe-area-inset-right) env(safe-area-inset-bottom) env(safe-area-inset-left)';
@@ -23,7 +32,7 @@ function medir() {
     ['Modo', esInstalada() ? 'App instalada' : 'Navegador'],
     ['Barra del reloj', z.arriba !== '0px' && esInstalada() ? 'Translúcida' : esInstalada() ? 'Blanca (reinstalar el ícono)' : '—'],
     ['Versión', __VERSION_APP__],
-    ['Ventana corta', document.documentElement.classList.contains('ventana-corta') ? 'sí' : 'no'],
+    ['Alto completo (100lvh)', altoLvh()],
     ['Teléfono', plataforma()],
     ['Ventana (ancho × alto)', `${window.innerWidth} × ${window.innerHeight}`],
     ['Pantalla (ancho × alto)', `${screen.width} × ${screen.height}`],

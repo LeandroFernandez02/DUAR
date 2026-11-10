@@ -469,18 +469,25 @@ html.pagina-fija .scroll-contenido { overscroll-behavior: contain; }
 }
 
 /* iPhone en modo translúcido (10/11).
-   1) Abajo: iOS a veces calcula la ventana más corta que la pantalla y deja una franja debajo
-      del menú donde no dibuja la app: sólo pinta el COLOR DE FONDO de la página. Ese fondo es el
-      azul noche del menú, así la franja se ve como parte del menú (con fondo blanco el menú
-      quedaba «cortado»).
-   2) Arriba: para teñir la transparencia del reloj iOS toma el color de un elemento fijo pegado
-      al borde de arriba. Esa tira (.franja-reloj, en los layouts) tiene el color del encabezado.
-   3) Sin rebote en ningún borde. */
-html.pagina-fija { background: var(--sidebar); }
-html.pagina-fija body { background: transparent; }
-.franja-reloj {
-  position: fixed; top: 0; left: 0; right: 0; height: env(safe-area-inset-top);
-  background: var(--cabecera-movil); z-index: 49; pointer-events: none;
+   1) App instalada: la pantalla mide 100lvh (el alto completo) y NO usa posición fija. iOS le
+      resta a 100% / 100dvh la zona del reloj y, con la página en posición fija, recortaba la
+      app ~60 puntos antes del borde: el menú quedaba alto y cortado. Así llega hasta abajo.
+   2) La transparencia del reloj toma el color de fondo de la página: es el del encabezado
+      (clara en modo claro, gris en modo oscuro), como al principio.
+   3) Sin rebote en ningún borde (además, utils/paginaFija.ts cancela los arrastres). */
+@media (display-mode: standalone) {
+  html.pagina-fija, html.pagina-fija body {
+    position: static; height: 100lvh; overflow: hidden;
+  }
 }
-html.ventana-corta nav[aria-label="Secciones"] { padding-bottom: 0 !important; }
+@media (display-mode: standalone) {
+  /* Lo fijo se ubica respecto de la ventana corta de iOS: los fondos de los modales se estiran
+     al alto completo y la hoja de Perfil se apoya en la pantalla (no en la ventana) para quedar
+     pegada al menú. */
+  html.pagina-fija .fixed.inset-0,
+  html.pagina-fija [style*="position: fixed"][style*="inset: 0"] { bottom: auto !important; height: 100lvh !important; }
+  html.pagina-fija .hoja-perfil, html.pagina-fija .hoja-perfil-fondo { position: absolute !important; }
+}
+html.pagina-fija { background: var(--cabecera-movil); }
+html.pagina-fija body { background: transparent; }
 html { overscroll-behavior-y: none; }

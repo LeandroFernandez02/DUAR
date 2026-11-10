@@ -10,22 +10,15 @@ import { useEffect } from 'react';
  *  1. La página queda fija (clase `pagina-fija`, ver theme.css).
  *  2. Todo arrastre que no desplaza una lista/panel con scroll se cancela: así el menú inferior,
  *     los encabezados y los bordes de cada lista nunca arrastran la app entera.
- *  3. iPhone con la app instalada en modo translúcido: iOS calcula la ventana más corta que la
- *     pantalla (le resta la zona del reloj) y queda una franja debajo del menú. Esa franja se
- *     pinta del color del menú (theme.css) y el menú no suma su margen inferior.
+ *  3. App instalada en el iPhone: la pantalla mide 100lvh y no usa posición fija, así el menú
+ *     llega al borde de abajo (ver theme.css).
  */
 export function usePaginaFija() {
   useEffect(() => {
     const html = document.documentElement;
     html.classList.add('pagina-fija');
-    // Tira fija del color del encabezado bajo el reloj: iOS tiñe la transparencia con ella (theme.css).
-    const franja = document.createElement('div');
-    franja.className = 'franja-reloj';
-    franja.setAttribute('aria-hidden', 'true');
-    document.body.appendChild(franja);
     const quitarGestos = bloquearArrastres();
-    const quitarAlto = ajustarAltoIphone();
-    return () => { html.classList.remove('pagina-fija'); franja.remove(); quitarGestos(); quitarAlto(); };
+    return () => { html.classList.remove('pagina-fija'); quitarGestos(); };
   }, []);
 }
 
@@ -74,42 +67,5 @@ function bloquearArrastres() {
   return () => {
     document.removeEventListener('touchstart', inicio);
     document.removeEventListener('touchmove', mover);
-  };
-}
-
-function esIphoneInstalado() {
-  const nav = window.navigator as Navigator & { standalone?: boolean };
-  return nav.standalone === true;
-}
-
-function zonaRelojArriba() {
-  const sonda = document.createElement('div');
-  sonda.style.cssText = 'position:fixed;visibility:hidden;pointer-events:none;padding-top:env(safe-area-inset-top)';
-  document.body.appendChild(sonda);
-  const v = parseFloat(getComputedStyle(sonda).paddingTop) || 0;
-  sonda.remove();
-  return v;
-}
-
-function ajustarAltoIphone() {
-  if (!esIphoneInstalado()) return () => {};
-  const html = document.documentElement;
-  const aplicar = () => {
-    // screen no gira en iOS: el alto de la pantalla es el lado largo en vertical y el corto en horizontal.
-    const vertical = window.innerHeight >= window.innerWidth;
-    const alto = vertical ? Math.max(screen.width, screen.height) : Math.min(screen.width, screen.height);
-    // iOS dibuja la app sólo hasta el alto de ventana que calcula (si se la estira, lo de abajo se
-    // corta: prueba 10/11). Cuando la ventana queda corta, la franja de abajo ya separa el menú
-    // de la barra de inicio, así que el menú no suma su margen inferior (no queda tan alto).
-    html.classList.toggle('ventana-corta', zonaRelojArriba() > 0 && window.innerHeight < alto - 1);
-  };
-  aplicar();
-  const tarde = () => setTimeout(aplicar, 300); // iOS informa el tamaño nuevo un rato después de girar
-  window.addEventListener('resize', aplicar);
-  window.addEventListener('orientationchange', tarde);
-  return () => {
-    window.removeEventListener('resize', aplicar);
-    window.removeEventListener('orientationchange', tarde);
-    html.classList.remove('ventana-corta');
   };
 }
