@@ -5,6 +5,7 @@ import { CabeceraMovil, BarraInferior, HojaPerfil } from './Movil';
 import MisDatosModal from '../shared/MisDatosModal';
 import { useApp } from '../../context/AppContext';
 import { useEsCompacto } from '../../utils/useAncho';
+import { usePaginaFija } from '../../utils/paginaFija';
 
 /** Título y leyenda de cada sección global en la barra superior de mobile (diseño CALÍVAR). */
 const CABECERAS: Record<string, [string, string]> = {
@@ -25,6 +26,7 @@ export default function MainLayout() {
   const compacto = useEsCompacto();
   const [perfil, setPerfil] = useState(false);
   const [misDatos, setMisDatos] = useState(false);
+  usePaginaFija();
 
   // La hoja de Perfil no queda abierta sobre la pantalla siguiente.
   useEffect(() => { setPerfil(false); }, [location.pathname]);

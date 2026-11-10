@@ -78,7 +78,9 @@ export function BarraInferior({ items, activo, perfilAbierto, onPerfil, onNavega
       style={{
         // Debajo de los modales (z-index 50): con 60 tapaba sus botones en el celular (Testeo 25/10, punto 47).
         // Sigue encima de la hoja de Perfil (46/47), que sube desde arriba del menú.
-        zIndex: 48, background: 'var(--sidebar)', borderTop: '1px solid var(--sidebar-border)', padding: '0 6px env(safe-area-inset-bottom)' }}>
+        zIndex: 48, background: 'var(--sidebar)', borderTop: '1px solid var(--sidebar-border)', padding: '0 6px env(safe-area-inset-bottom)',
+        // Arrastrar el menú con el dedo no mueve nada (10/11): los toques siguen funcionando.
+        touchAction: 'none' }}>
       {items.map(it => {
         const on = activo(it.path);
         return (

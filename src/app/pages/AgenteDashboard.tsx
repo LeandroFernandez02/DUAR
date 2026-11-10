@@ -8,6 +8,7 @@
  * Lo que el coordinador cambia (estado, grupo, polígono) llega solo por la consulta periódica de
  * cada tarjeta, y lo que marca el agente lo ve el coordinador en su tablero (Módulo 4).
  */
+import { usePaginaFija } from '../utils/paginaFija';
 import { useEffect, useState } from 'react';
 import { Navigate, useLocation } from 'react-router';
 import { MapPin, Calendar, RadioTower, Target, Search, MailWarning, RefreshCw } from 'lucide-react';
@@ -82,6 +83,7 @@ function SinOperativo() {
 }
 
 export default function AgenteDashboard() {
+  usePaginaFija();
   const { isAuthenticated, usuario, logout } = useApp();
   const { search } = useLocation();
   const seccion = new URLSearchParams(search).get('seccion') === 'objetivo' ? 'objetivo' : 'operativo';

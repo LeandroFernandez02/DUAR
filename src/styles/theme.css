@@ -436,3 +436,11 @@ html {
 @media (hover: none) and (pointer: coarse) {
   input, select, textarea { font-size: max(16px, var(--text-base)) !important; }
 }
+
+/* Página fija (10/11): en las pantallas con menú inferior la página no se mueve; sólo se desplaza
+   el contenido de cada sección. Evita que el iPhone «levante» toda la app al arrastrar el menú. */
+html.pagina-fija, html.pagina-fija body {
+  position: fixed; inset: 0; width: 100%; height: 100%;
+  overflow: hidden; overscroll-behavior: none;
+}
+html.pagina-fija .scroll-contenido { overscroll-behavior: contain; }
