@@ -466,3 +466,10 @@ html.pagina-fija .scroll-contenido { overscroll-behavior: contain; }
     padding-bottom: env(safe-area-inset-bottom);
   }
 }
+
+/* iPhone en modo translúcido (10/11). Dos seguros para el borde de abajo:
+   1) Si el iPhone dejara una franja sin cubrir debajo del menú inferior (pasó antes), esa franja
+      toma el azul noche del menú en vez de verse clara: parece parte del menú.
+   2) Sin rebote en ningún borde: ni la página ni el menú se «levantan» al arrastrar. */
+html.pagina-fija, html.pagina-fija body { background: var(--sidebar); }
+html { overscroll-behavior-y: none; }

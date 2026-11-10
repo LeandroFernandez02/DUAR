@@ -59,6 +59,11 @@ export const router = createBrowserRouter([
         lazy: cargar(() => import('./pages/GuiaInstalacion')),
       },
       {
+        // Tamaños de pantalla del celular, para ajustar el diseño con números (10/11). Pública.
+        path: 'pantalla',
+        lazy: cargar(() => import('./pages/InfoPantalla')),
+      },
+      {
         // CU-42 N1: verificar un informe. Pública: la usa la Fiscalía con el QR del PDF.
         path: 'verificar/:codigo?',
         lazy: cargar(() => import('./pages/VerificarInforme')),

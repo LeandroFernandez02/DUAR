@@ -1,6 +1,6 @@
 import { useEffect, useState, type ReactNode } from 'react';
 import { useNavigate } from 'react-router';
-import { CheckCircle2, Download, MoreVertical, PlusSquare, RefreshCw, Share, Smartphone, WifiOff } from 'lucide-react';
+import { CheckCircle2, Download, MoreVertical, PlusSquare, RefreshCw, Ruler, Share, Smartphone, WifiOff } from 'lucide-react';
 import { MarcoAcceso, TituloAcceso, BotonAcceso, EnlaceAcceso, AlertaAcceso } from '../components/auth/Acceso';
 import { alCambiarInstalacion, esInstalada, instalarDirecto, plataforma, puedeInstalarDirecto, type Plataforma } from '../utils/instalacion';
 
@@ -86,6 +86,10 @@ export default function GuiaInstalacion() {
         <Consejo icono={Smartphone}>Desde ahí, abrí siempre CALÍVAR <strong>tocando el ícono</strong>: entra directo, sin la barra del navegador.</Consejo>
         <Consejo icono={WifiOff}>Sin señal la app abre igual, pero los datos nuevos se ven y se guardan cuando vuelve la conexión.</Consejo>
         <Consejo icono={RefreshCw}>Cuando haya una versión nueva te va a aparecer un aviso. Tocá <strong>«Actualizar»</strong>.</Consejo>
+        <Consejo icono={Ruler}>
+          ¿Algo no se ve bien en tu celular? <a href="/pantalla" onClick={e => { e.preventDefault(); navigate('/pantalla'); }}
+            style={{ color: 'var(--foreground)', textDecoration: 'underline', textDecorationColor: 'var(--primary)', textUnderlineOffset: 3 }}>Información de pantalla</a>.
+        </Consejo>
       </div>
     </MarcoAcceso>
   );
