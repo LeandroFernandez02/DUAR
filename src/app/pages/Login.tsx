@@ -1,10 +1,11 @@
 import { useState } from 'react';
-import { Navigate } from 'react-router';
-import { Mail, UserX, WifiOff, ShieldAlert } from 'lucide-react';
+import { Navigate, useNavigate } from 'react-router';
+import { Mail, UserX, WifiOff, ShieldAlert, Smartphone } from 'lucide-react';
 import { filtrarEmail, EMAIL_MAX } from '../utils/validacionUsuario';
 import { useApp } from '../context/AppContext';
 import { MarcoAcceso, TituloAcceso, CampoAcceso, CampoContrasenaAcceso, AlertaAcceso, BotonAcceso, EnlaceAcceso } from '../components/auth/Acceso';
 import RecuperarContrasena from '../components/auth/RecuperarContrasena';
+import { esInstalada } from '../utils/instalacion';
 
 /**
  * Iniciar sesión (CU-01) y Recuperar contraseña (CU-03), con el diseño CALÍVAR (23/10): logo
@@ -13,6 +14,7 @@ import RecuperarContrasena from '../components/auth/RecuperarContrasena';
  */
 export default function Login() {
   const { login, isAuthenticated, usuario } = useApp();
+  const navigate = useNavigate();
   const [vista, setVista] = useState<'login' | 'recuperar'>('login');
   const [email, setEmail] = useState('');
   const [password, setPassword] = useState('');
@@ -49,7 +51,19 @@ export default function Login() {
   if (vista === 'recuperar') return <MarcoAcceso><RecuperarContrasena onVolver={() => setVista('login')} /></MarcoAcceso>;
 
   return (
-    <MarcoAcceso pie="¿Sos agente? Registrate escaneando el QR del operativo.">
+    <MarcoAcceso pie={<>
+      ¿Sos agente? Registrate escaneando el QR del operativo.
+      {/* App instalable (10/11): desde la app ya instalada no hace falta la guía. */}
+      {!esInstalada() && (
+        <button type="button" onClick={() => navigate('/instalar')} className="flex items-center justify-center gap-1.5"
+          style={{ margin: '14px auto 0', background: 'none', border: 'none', padding: 4, cursor: 'pointer', color: 'var(--foreground)',
+            fontFamily: 'var(--font-family-primary)', fontSize: 'var(--text-label)', fontWeight: 600,
+            textDecoration: 'underline', textUnderlineOffset: 3, textDecorationColor: 'var(--primary)' }}>
+          <Smartphone size={15} style={{ color: 'var(--primary)' }} />
+          Guía de instalación en el celular
+        </button>
+      )}
+    </>}>
       <form onSubmit={handleSubmit} noValidate className="flex flex-col gap-4">
         <TituloAcceso titulo="Iniciar Sesión" texto="Ingresá tus credenciales para acceder al sistema." />
         <CampoAcceso label="Correo electrónico" icono={Mail} type="email" value={email} maxLength={EMAIL_MAX}

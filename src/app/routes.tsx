@@ -54,6 +54,11 @@ export const router = createBrowserRouter([
         lazy: cargar(() => import('./pages/RecuperarContrasena')),
       },
       {
+        // Guía para instalar CALÍVAR en el celular (10/11). Pública: se llega desde el login.
+        path: 'instalar',
+        lazy: cargar(() => import('./pages/GuiaInstalacion')),
+      },
+      {
         // CU-42 N1: verificar un informe. Pública: la usa la Fiscalía con el QR del PDF.
         path: 'verificar/:codigo?',
         lazy: cargar(() => import('./pages/VerificarInforme')),

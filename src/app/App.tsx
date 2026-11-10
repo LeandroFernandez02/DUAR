@@ -4,6 +4,7 @@ import { router } from './routes';
 import { AppProvider } from './context/AppContext';
 import { useEsCompacto } from './utils/useAncho';
 import AvisoSinConexion from './components/shared/AvisoSinConexion';
+import ActualizacionApp from './components/shared/ActualizacionApp';
 
 /**
  * AppProvider wraps RouterProvider so ALL route components (MainLayout,
@@ -17,6 +18,7 @@ export default function App() {
     <AppProvider>
       <RouterProvider router={router} />
       <AvisoSinConexion />
+      <ActualizacionApp />
       <Toaster
         position="bottom-center"
         offset={compacto ? 84 : 24}
