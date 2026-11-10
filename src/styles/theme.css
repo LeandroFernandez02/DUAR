@@ -428,3 +428,11 @@ html {
 /* Globos de información al 80 % en mobile */
 .mapa-movil .leaflet-popup-content { zoom: .8; }
 .mapa-movil .leaflet-popup-content-wrapper { border-radius: 12px; }
+
+/* iPhone (10/11): Safari hace zoom solo al tocar un campo con letra de menos de 16 px, y la app
+   queda agrandada y corrida. En pantallas táctiles los campos usan al menos 16 px (o más, si la
+   persona eligió texto Grande o Muy grande). No se bloquea el zoom con los dedos: en Android eso
+   también le quitaría la posibilidad de agrandar a quien lo necesita. */
+@media (hover: none) and (pointer: coarse) {
+  input, select, textarea { font-size: max(16px, var(--text-base)) !important; }
+}
