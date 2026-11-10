@@ -30,13 +30,17 @@ export function Buscador({ value, onChange, placeholder }: { value: string; onCh
 export type VistaListado = 'card' | 'list';
 
 /**
- * Vista de un listado (Operativos, Usuarios, Agentes): por defecto «Lista». Si la persona la cambia, se
- * recuerda para sus próximas sesiones (en este navegador, por usuario y por listado).
+ * Vista de un listado (Operativos, Usuarios, Agentes): por defecto «Lista», salvo en el celular
+ * (< 600 px), donde arranca en «Tarjetas»: la tabla no entra y cortaba títulos y estados (repaso
+ * en celular, 10/11). Si la persona la cambia, se recuerda para sus próximas sesiones (en este
+ * navegador, por usuario y por listado).
  */
 export function useVistaListado(listado: string, usuarioId?: string): [VistaListado, (v: VistaListado) => void] {
   const clave = `duar-vista:${usuarioId ?? 'anonimo'}:${listado}`;
   const leer = (): VistaListado => {
-    try { const v = localStorage.getItem(clave); return v === 'card' || v === 'list' ? v : 'list'; } catch { return 'list'; }
+    const porDefecto: VistaListado =
+      typeof window !== 'undefined' && window.matchMedia?.('(max-width: 599px)').matches ? 'card' : 'list';
+    try { const v = localStorage.getItem(clave); return v === 'card' || v === 'list' ? v : porDefecto; } catch { return porDefecto; }
   };
   const [vista, setVista] = useState<VistaListado>(leer);
   const elegir = (v: VistaListado) => {
@@ -114,7 +118,8 @@ export function Dato({ titulo, children }: { titulo: string; children: ReactNode
   return (
     <div className="min-w-0">
       <p style={{ margin: 0, fontSize: 'calc(9.5px * var(--escala-texto))', fontWeight: 600, textTransform: 'uppercase', letterSpacing: 'var(--tracking-overline)', color: 'var(--muted-foreground)' }}>{titulo}</p>
-      <div className="truncate" style={{ margin: '2px 0 0', fontSize: 'var(--text-label)', fontWeight: 500, color: 'var(--foreground)' }}>{children}</div>
+      {/* Sin cortar: en el celular las tarjetas son angostas y «Bomberos Voluntarios · Saldán» quedaba a medias. */}
+      <div style={{ margin: '2px 0 0', fontSize: 'var(--text-label)', fontWeight: 500, color: 'var(--foreground)', overflowWrap: 'anywhere' }}>{children}</div>
     </div>
   );
 }

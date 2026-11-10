@@ -232,8 +232,8 @@ export default function OperativoHeader({ operativo, movil = false, onRecargar, 
             {!compacto && <span>Informe</span>}
           </button>
 
-          {/* Separador */}
-          <div style={{ width: 1, height: 28, background: 'var(--border)', flexShrink: 0 }} />
+          {/* Separador (en el celular se oculta para que la fila entre completa) */}
+          <div className="separador-acciones" style={{ width: 1, height: 28, background: 'var(--border)', flexShrink: 0 }} />
 
           {/* Día del operativo */}
           <div

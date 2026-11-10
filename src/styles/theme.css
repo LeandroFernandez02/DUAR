@@ -406,6 +406,13 @@ html {
 .cabecera-op .acciones-op { flex-wrap: nowrap; overflow-x: auto; scrollbar-width: none; width: 100%; padding-bottom: 2px; }
 .cabecera-op .acciones-op::-webkit-scrollbar { display: none; }
 .cabecera-op .acciones-op > * { flex-shrink: 0; }
+/* Celular (repaso del 10/11): sin separador y con menos espacio entre botones, la fila entra
+   completa en 390 px; antes el chip del clima quedaba cortado sin que se notara que había más. */
+@media (max-width: 599px) {
+  .cabecera-op .acciones-op { gap: 6px; }
+  .cabecera-op .acciones-op .separador-acciones { display: none; }
+  .cabecera-op .acciones-op > .px-3 { padding-left: 8px; padding-right: 8px; }
+}
 
 /* ── Mapa en mobile y tablet (< 1024 px, diseño CALÍVAR 04 §4.2–4.3) ──────────────
    El mapa sube 20 px por debajo de las esquinas redondeadas de la barra superior: lo anclado arriba baja 20 px. */

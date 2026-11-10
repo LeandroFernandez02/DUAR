@@ -961,6 +961,8 @@ export const catAlergias: CatAlergia[] = [
   { id: '62facb83-09dd-405f-b3df-da4fd2960ed2', nombre: 'Picadura de hormigas o arañas' },
   { id: '73e86bdb-031e-49d7-8d40-54b7a48d89ce', nombre: 'Látex (Guantes médicos)' },
   { id: '1052f1c7-e3a0-4723-be8a-9b9f7fa7793d', nombre: 'Cintas adhesivas o apósitos' },
+  // Existía en la base y faltaba acá (repaso en celular, 10/11).
+  { id: '23bf4505-5c1b-4ef6-9ecf-ee8d8adb2546', nombre: 'Otras' },
 ];
 
 /** Nombres de las alergias del usuario a partir de sus ids, para mostrar en tablas/detalle. */
