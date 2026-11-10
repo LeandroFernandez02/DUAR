@@ -20,7 +20,7 @@ export default function ActualizacionApp() {
   return (
     <div role="status" className="flex items-center gap-3"
       style={{
-        position: 'fixed', left: 16, right: 16, bottom: compacto ? 'calc(84px + env(safe-area-inset-bottom))' : 24, zIndex: 3000, margin: '0 auto', maxWidth: 460,
+        position: 'fixed', left: 16, right: 16, bottom: compacto ? 84 : 24, zIndex: 3000, margin: '0 auto', maxWidth: 460,
         padding: '10px 12px 10px 14px', borderRadius: 'var(--radius-card)', background: 'var(--sidebar)', color: '#fff',
         boxShadow: 'var(--elevation-md, 0 8px 24px rgba(0,0,0,.25))', fontFamily: 'var(--font-family-primary)',
       }}>

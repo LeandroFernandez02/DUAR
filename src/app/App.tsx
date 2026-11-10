@@ -21,8 +21,8 @@ export default function App() {
       <ActualizacionApp />
       <Toaster
         position="bottom-center"
-        offset={compacto ? 'calc(84px + env(safe-area-inset-bottom))' : 24}
-        mobileOffset="calc(84px + env(safe-area-inset-bottom))"
+        offset={compacto ? 84 : 24}
+        mobileOffset={84}
         toastOptions={{
           style: {
             fontFamily: 'var(--font-family-primary)',

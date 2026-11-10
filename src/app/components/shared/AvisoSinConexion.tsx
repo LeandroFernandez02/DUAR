@@ -18,7 +18,7 @@ export default function AvisoSinConexion() {
   if (enLinea) return null;
   return (
     <div role="alert" className="flex items-center justify-center gap-2"
-      style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 3000, padding: 'calc(8px + env(safe-area-inset-top)) 16px 8px',
+      style={{ position: 'fixed', top: 0, left: 0, right: 0, zIndex: 3000, padding: '8px 16px',
         background: '#b45309', color: '#fff', fontFamily: 'var(--font-family-primary)', fontSize: 'var(--text-label)', fontWeight: 600 }}>
       <WifiOff size={15} style={{ flexShrink: 0 }} />
       Sin conexión a internet. Lo que intentes guardar no se va a registrar hasta que vuelva la conexión.

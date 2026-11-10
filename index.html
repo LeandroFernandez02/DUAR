@@ -10,15 +10,14 @@
       <link rel="icon" type="image/png" sizes="32x32" href="/calivar/calivar-icono-32.png" />
       <link rel="apple-touch-icon" href="/calivar/calivar-icono-180.png" />
       <!-- App instalable (10/11): color de la barra y datos para «Agregar a inicio» del iPhone.
-           La app se dibuja DEBAJO del reloj («black-translucent») y el encabezado ocupa esa zona,
-           sin franja blanca. Para que no vuelva el borroso ni el hueco abajo (pruebas del 10/11):
-           la página queda fija a la pantalla (theme.css, «pagina-fija») y los modales respetan la
-           zona del reloj y la barra de inicio. El color lo ajusta main.tsx según el tema. -->
+           La barra de estado del iPhone va «default» (opaca, la app empieza debajo): con
+           «black-translucent» iOS difuminaba los encabezados y dejaba una franja vacía debajo
+           del menú inferior (prueba en iPhone, 10/11). El color lo ajusta main.tsx según el tema. -->
       <meta name="theme-color" content="#ffffff" />
       <meta name="apple-mobile-web-app-capable" content="yes" />
       <meta name="mobile-web-app-capable" content="yes" />
       <meta name="apple-mobile-web-app-title" content="CALÍVAR" />
-      <meta name="apple-mobile-web-app-status-bar-style" content="black-translucent" />
+      <meta name="apple-mobile-web-app-status-bar-style" content="default" />
       <meta name="description" content="CALÍVAR: sistema de búsqueda y rastrillaje del DUAR (Córdoba)." />
       <meta name="robots" content="noindex, nofollow" />
       <style>html, body { height: 100%; margin: 0; } #root { height: 100%; }</style>
