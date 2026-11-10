@@ -46,7 +46,9 @@ export default defineConfig({
         scope: '/',
         display: 'standalone',
         background_color: '#0b1e2d',
-        theme_color: '#ffffff',
+        // Android pinta la barra de gestos de abajo con este color (la de arriba sigue el
+        // theme-color de la página): es el azul noche del menú inferior, así se ven como una sola pieza.
+        theme_color: '#0b1e2d',
         icons: [
           { src: '/calivar/calivar-icono-192.png', sizes: '192x192', type: 'image/png' },
           { src: '/calivar/calivar-icono-512.png', sizes: '512x512', type: 'image/png' },
