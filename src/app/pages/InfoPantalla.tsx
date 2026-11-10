@@ -23,7 +23,7 @@ function medir() {
     ['Modo', esInstalada() ? 'App instalada' : 'Navegador'],
     ['Barra del reloj', z.arriba !== '0px' && esInstalada() ? 'Translúcida' : esInstalada() ? 'Blanca (reinstalar el ícono)' : '—'],
     ['Versión', __VERSION_APP__],
-    ['Alto de la app', document.documentElement.style.getPropertyValue('--alto-app') || 'normal'],
+    ['Ventana corta', document.documentElement.classList.contains('ventana-corta') ? 'sí' : 'no'],
     ['Teléfono', plataforma()],
     ['Ventana (ancho × alto)', `${window.innerWidth} × ${window.innerHeight}`],
     ['Pantalla (ancho × alto)', `${screen.width} × ${screen.height}`],

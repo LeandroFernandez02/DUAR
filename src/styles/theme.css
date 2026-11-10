@@ -441,8 +441,7 @@ html {
    el contenido de cada sección. Evita que el iPhone «levante» toda la app al arrastrar el menú. */
 html.pagina-fija, html.pagina-fija body {
   position: fixed; top: 0; left: 0; right: 0; width: 100%;
-  /* --alto-app: alto real de la pantalla en el iPhone instalado (ver utils/paginaFija.ts). */
-  height: var(--alto-app, 100%);
+  height: 100%;
   overflow: hidden; overscroll-behavior: none;
 }
 html.pagina-fija .scroll-contenido { overscroll-behavior: contain; }
@@ -469,9 +468,20 @@ html.pagina-fija .scroll-contenido { overscroll-behavior: contain; }
   }
 }
 
-/* iPhone en modo translúcido (10/11). Dos seguros para el borde de abajo:
-   1) Si el iPhone dejara una franja sin cubrir debajo del menú inferior (pasó antes), esa franja
-      toma el azul noche del menú en vez de verse clara: parece parte del menú.
-   2) Sin rebote en ningún borde: ni la página ni el menú se «levantan» al arrastrar. */
-html.pagina-fija, html.pagina-fija body { background: var(--sidebar); }
+/* iPhone en modo translúcido (10/11).
+   1) Arriba: iOS tiñe la transparencia de la zona del reloj con el color de fondo de la página,
+      así que el fondo es el del encabezado (claro, o gris oscuro en modo oscuro).
+   2) Abajo: iOS a veces calcula la ventana más corta que la pantalla y deja una franja debajo
+      del menú donde sólo pinta el fondo de la página. El fondo lleva una segunda capa con el
+      azul noche del menú que arranca en la mitad y sigue más allá del final: esa franja se ve
+      como parte del menú.
+   3) Sin rebote en ningún borde. */
+html.pagina-fija {
+  background-color: var(--cabecera-movil);
+  background-image: linear-gradient(to bottom, var(--cabecera-movil) 0 50%, var(--sidebar) 50% 100%);
+  background-size: 100% calc(100% + 400px);
+  background-repeat: no-repeat;
+}
+html.pagina-fija body { background: transparent; }
+html.ventana-corta nav[aria-label="Secciones"] { padding-bottom: 0 !important; }
 html { overscroll-behavior-y: none; }

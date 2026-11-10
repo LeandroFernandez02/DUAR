@@ -11,8 +11,8 @@ import { useEffect } from 'react';
  *  2. Todo arrastre que no desplaza una lista/panel con scroll se cancela: así el menú inferior,
  *     los encabezados y los bordes de cada lista nunca arrastran la app entera.
  *  3. iPhone con la app instalada en modo translúcido: iOS calcula la ventana más corta que la
- *     pantalla (le resta la zona del reloj) y quedaba una franja vacía debajo del menú. La app
- *     toma el alto real de la pantalla, así el menú queda pegado al borde de abajo.
+ *     pantalla (le resta la zona del reloj) y queda una franja debajo del menú. Esa franja se
+ *     pinta del color del menú (theme.css) y el menú no suma su margen inferior.
  */
 export function usePaginaFija() {
   useEffect(() => {
@@ -93,13 +93,10 @@ function ajustarAltoIphone() {
     // screen no gira en iOS: el alto de la pantalla es el lado largo en vertical y el corto en horizontal.
     const vertical = window.innerHeight >= window.innerWidth;
     const alto = vertical ? Math.max(screen.width, screen.height) : Math.min(screen.width, screen.height);
-    // Sólo en modo translúcido (la app ocupa la zona del reloj) y si iOS dejó la ventana corta.
-    // En el modo de barra blanca la ventana empieza debajo del reloj y su alto ya es el correcto.
-    if (zonaRelojArriba() > 0 && window.innerHeight < alto - 1) {
-      html.style.setProperty('--alto-app', `${alto}px`);
-    } else {
-      html.style.removeProperty('--alto-app');
-    }
+    // iOS dibuja la app sólo hasta el alto de ventana que calcula (si se la estira, lo de abajo se
+    // corta: prueba 10/11). Cuando la ventana queda corta, la franja de abajo ya separa el menú
+    // de la barra de inicio, así que el menú no suma su margen inferior (no queda tan alto).
+    html.classList.toggle('ventana-corta', zonaRelojArriba() > 0 && window.innerHeight < alto - 1);
   };
   aplicar();
   const tarde = () => setTimeout(aplicar, 300); // iOS informa el tamaño nuevo un rato después de girar
@@ -108,6 +105,6 @@ function ajustarAltoIphone() {
   return () => {
     window.removeEventListener('resize', aplicar);
     window.removeEventListener('orientationchange', tarde);
-    html.style.removeProperty('--alto-app');
+    html.classList.remove('ventana-corta');
   };
 }
