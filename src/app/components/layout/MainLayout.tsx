@@ -54,7 +54,7 @@ export default function MainLayout() {
 
   const [titulo, leyenda] = CABECERAS[location.pathname] ?? ['', ''];
   return (
-    <div className="flex flex-col overflow-hidden relative" style={{ height: '100dvh', background: 'var(--background)', color: 'var(--foreground)' }}>
+    <div className="flex flex-col overflow-hidden relative" style={{ height: '100%', background: 'var(--background)', color: 'var(--foreground)' }}>
       {!enOperativo && <CabeceraMovil titulo={titulo} subtitulo={leyenda} />}
       <main className={`scroll-contenido contenido-movil${enOperativo ? '' : ' global'} flex-1 min-h-0 overflow-x-hidden relative ${enOperativo ? 'overflow-hidden' : 'overflow-y-auto'}`}>
         <Outlet />
