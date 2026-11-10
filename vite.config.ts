@@ -18,6 +18,10 @@ function figmaAssetResolver() {
 }
 
 export default defineConfig({
+  // Versión visible en /pantalla: commit publicado en Vercel (o "local") y fecha de compilación.
+  define: {
+    __VERSION_APP__: JSON.stringify(`${(process.env.VERCEL_GIT_COMMIT_SHA || 'local').slice(0, 7)} · ${new Date().toISOString().slice(0, 16).replace('T', ' ')}`),
+  },
   plugins: [
     figmaAssetResolver(),
     // The React and Tailwind plugins are both required for Make, even if
@@ -53,9 +57,20 @@ export default defineConfig({
         // Se guarda la app (pantallas, estilos, íconos) para que abra sin señal.
         globPatterns: ['**/*.{js,css,html,svg,png,woff2}'],
         maximumFileSizeToCacheInBytes: 4 * 1024 * 1024,
-        navigateFallback: '/index.html',
+        // La página (index.html) se pide SIEMPRE al servidor primero y sólo sin señal se usa la
+        // guardada. Antes se servía la guardada: Safari mostraba una versión vieja y el iPhone
+        // instalaba la app con la configuración vieja de la barra del reloj (10/11).
+        navigateFallback: null,
+        runtimeCaching: [{
+          urlPattern: ({ request, url }) => request.mode === 'navigate' && !url.pathname.startsWith('/api/'),
+          handler: 'NetworkFirst',
+          options: {
+            cacheName: 'paginas',
+            networkTimeoutSeconds: 5,
+            precacheFallback: { fallbackURL: '/index.html' },
+          },
+        }],
         // Los datos NUNCA se sirven guardados: /api va siempre al servidor (son en vivo y legales).
-        navigateFallbackDenylist: [/^\/api\//],
         cleanupOutdatedCaches: true,
       },
     }),

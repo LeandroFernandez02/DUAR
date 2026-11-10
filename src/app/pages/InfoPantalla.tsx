@@ -1,3 +1,4 @@
+declare const __VERSION_APP__: string;
 import { useEffect, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { Ruler } from 'lucide-react';
@@ -20,6 +21,9 @@ function medir() {
   const vv = window.visualViewport;
   return [
     ['Modo', esInstalada() ? 'App instalada' : 'Navegador'],
+    ['Barra del reloj', z.arriba !== '0px' && esInstalada() ? 'Translúcida' : esInstalada() ? 'Blanca (reinstalar el ícono)' : '—'],
+    ['Versión', __VERSION_APP__],
+    ['Alto de la app', document.documentElement.style.getPropertyValue('--alto-app') || 'normal'],
     ['Teléfono', plataforma()],
     ['Ventana (ancho × alto)', `${window.innerWidth} × ${window.innerHeight}`],
     ['Pantalla (ancho × alto)', `${screen.width} × ${screen.height}`],
