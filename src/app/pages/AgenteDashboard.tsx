@@ -35,7 +35,7 @@ function formatDate(iso: string): string {
 /** Barra superior: el operativo en el que estoy (o el logo, si no estoy en ninguno). */
 function Cabecera({ op }: { op: OperativoApi | null }) {
   return (
-    <header className="shrink-0 relative" style={{ zIndex: 5, background: 'var(--cabecera-movil)', borderRadius: '0 0 20px 20px', boxShadow: 'var(--cabecera-movil-sombra)', padding: 'calc(env(safe-area-inset-top) + 16px) 16px 16px' }}>
+    <header className="shrink-0 relative" style={{ zIndex: 5, background: 'var(--cabecera-movil)', borderRadius: '0 0 20px 20px', boxShadow: 'var(--cabecera-movil-sombra)', padding: 'calc(var(--reloj-arriba) + 16px) 16px 16px' }}>
       <div style={{ maxWidth: 640, margin: '0 auto' }}>
         {op ? (
           <>

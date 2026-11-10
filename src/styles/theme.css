@@ -453,7 +453,7 @@ html.pagina-fija .scroll-contenido { overscroll-behavior: contain; }
   .fixed.inset-0.items-center,
   .fixed.inset-0.items-end,
   [style*="position: fixed"][style*="inset: 0"] {
-    padding-top: max(1rem, env(safe-area-inset-top)) !important;
+    padding-top: max(1rem, var(--reloj-arriba)) !important;
     padding-bottom: max(1rem, env(safe-area-inset-bottom)) !important;
   }
   .fixed.inset-0.items-center > *,
@@ -463,7 +463,7 @@ html.pagina-fija .scroll-contenido { overscroll-behavior: contain; }
   }
   /* Visores a pantalla completa (fotos del objetivo): su barra de arriba baja del reloj. */
   .fixed.inset-0.flex-col:not([aria-label="Mis datos"]) {
-    padding-top: env(safe-area-inset-top);
+    padding-top: var(--reloj-arriba);
     padding-bottom: env(safe-area-inset-bottom);
   }
 }
@@ -491,3 +491,12 @@ html.pagina-fija .scroll-contenido { overscroll-behavior: contain; }
 html.pagina-fija { background: var(--cabecera-movil); }
 html.pagina-fija body { background: transparent; }
 html { overscroll-behavior-y: none; }
+
+/* iPhone con la app instalada (10/11): iOS pone una transparencia (vidrio) debajo del reloj que
+   baja un poco más que la zona del reloj y tapaba el borde de arriba de los modales y el título
+   del encabezado. Sólo ahí, el contenido de arriba baja 24 px más. En el resto de los celulares
+   y en la computadora --reloj-arriba es exactamente la zona del reloj. */
+:root { --reloj-arriba: env(safe-area-inset-top); }
+@media (orientation: portrait) {
+  html.ios-app { --reloj-arriba: calc(env(safe-area-inset-top) + 24px); }
+}

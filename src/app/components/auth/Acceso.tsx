@@ -138,7 +138,7 @@ export function EnlaceAcceso({ children, onClick }: { children: ReactNode; onCli
 /** Layout de todas las pantallas de acceso: logo vertical y tarjeta centrada; `arriba` va entre los dos (p. ej. el operativo del QR). */
 export function MarcoAcceso({ children, pie, arriba }: { children: ReactNode; pie?: ReactNode; arriba?: ReactNode }) {
   return (
-    <div className="flex items-center justify-center" style={{ minHeight: '100dvh', padding: 'calc(32px + env(safe-area-inset-top)) 20px calc(32px + env(safe-area-inset-bottom))', background: 'var(--background)', fontFamily: 'var(--font-family-primary)', color: 'var(--foreground)' }}>
+    <div className="flex items-center justify-center" style={{ minHeight: '100dvh', padding: 'calc(32px + var(--reloj-arriba)) 20px calc(32px + env(safe-area-inset-bottom))', background: 'var(--background)', fontFamily: 'var(--font-family-primary)', color: 'var(--foreground)' }}>
       <div className="w-full flex flex-col items-center gap-6" style={{ maxWidth: 420 }}>
         <div className="flex flex-col items-center" style={{ gap: 8 }}>
           <Logo variante="vertical" tono="auto" ancho={160} alto={100} />
