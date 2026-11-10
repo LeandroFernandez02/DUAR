@@ -444,3 +444,25 @@ html.pagina-fija, html.pagina-fija body {
   overflow: hidden; overscroll-behavior: none;
 }
 html.pagina-fija .scroll-contenido { overscroll-behavior: contain; }
+
+/* iPhone con la app instalada (10/11): la app se dibuja debajo del reloj y de la barra de inicio.
+   Los modales respetan esas zonas, así nada queda bajo el reloj (donde iOS difumina lo que pasa
+   por abajo). La altura del modal se limita al espacio que queda dentro del margen. */
+@media (hover: none) and (pointer: coarse) {
+  .fixed.inset-0.items-center,
+  .fixed.inset-0.items-end,
+  [style*="position: fixed"][style*="inset: 0"] {
+    padding-top: max(1rem, env(safe-area-inset-top)) !important;
+    padding-bottom: max(1rem, env(safe-area-inset-bottom)) !important;
+  }
+  .fixed.inset-0.items-center > *,
+  .fixed.inset-0.items-end > *,
+  [style*="position: fixed"][style*="inset: 0"] > * {
+    max-height: 100% !important;
+  }
+  /* Visores a pantalla completa (fotos del objetivo): su barra de arriba baja del reloj. */
+  .fixed.inset-0.flex-col:not([aria-label="Mis datos"]) {
+    padding-top: env(safe-area-inset-top);
+    padding-bottom: env(safe-area-inset-bottom);
+  }
+}
