@@ -285,7 +285,7 @@ export default function MisDatosModal({ pantalla = false, inicial = 'ver', onClo
   if (pantalla) return (
     <div role="dialog" aria-label="Mis datos" className="fixed inset-0 flex flex-col" style={{ zIndex: 90, background: 'var(--background)' }}>
       <header className="flex items-center gap-2 shrink-0"
-        style={{ padding: 'calc(var(--reloj-arriba) + 10px) 8px 10px', background: 'var(--cabecera-movil)', borderRadius: '0 0 20px 20px', boxShadow: 'var(--cabecera-movil-sombra)' }}>
+        style={{ padding: 'calc(env(safe-area-inset-top) + 10px) 8px 10px', background: 'var(--cabecera-movil)', borderRadius: '0 0 20px 20px', boxShadow: 'var(--cabecera-movil-sombra)' }}>
         <button type="button" onClick={modo === 'ver' ? onClose : cancelar} aria-label="Volver" className="flex items-center justify-center"
           style={{ width: 44, height: 44, borderRadius: 12, border: 'none', background: 'none', cursor: 'pointer', color: 'var(--foreground)' }}>
           <ArrowLeft size={20} />

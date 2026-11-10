@@ -41,13 +41,13 @@ export function CabeceraMovil({ titulo, subtitulo, onVolver, children }: { titul
     </button>
   );
   if (children) return (
-    <header className="flex items-start gap-1 shrink-0 relative" style={{ ...sombra, zIndex: 5, padding: 'calc(var(--reloj-arriba) + 10px) 12px 6px 8px' }}>
+    <header className="flex items-start gap-1 shrink-0 relative" style={{ ...sombra, zIndex: 5, padding: 'calc(env(safe-area-inset-top) + 10px) 12px 6px 8px' }}>
       {volver}
       <div className="cabecera-op flex-1 min-w-0">{children}</div>
     </header>
   );
   return (
-    <header className="flex flex-col shrink-0 relative" style={{ ...sombra, zIndex: 5, padding: 'calc(var(--reloj-arriba) + 20px) 16px 0' }}>
+    <header className="flex flex-col shrink-0 relative" style={{ ...sombra, zIndex: 5, padding: 'calc(env(safe-area-inset-top) + 20px) 16px 0' }}>
       <div className="flex items-center gap-2 min-w-0" style={{ paddingBottom: 20 }}>
         <div className="flex items-center gap-2 min-w-0 flex-1">
           {volver}

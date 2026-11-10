@@ -493,8 +493,8 @@ html.pagina-fija body { background: transparent; }
 html { overscroll-behavior-y: none; }
 
 /* iPhone con la app instalada (10/11): iOS pone una transparencia (vidrio) debajo del reloj que
-   baja un poco más que la zona del reloj y tapaba el borde de arriba de los modales y el título
-   del encabezado. Sólo ahí, el contenido de arriba baja 24 px más. En el resto de los celulares
+   baja un poco más que la zona del reloj y tapaba el borde de arriba de los modales. Sólo ahí, los
+   modales y visores bajan 24 px más (los encabezados no: quedan pegados a la zona del reloj). En el resto de los celulares
    y en la computadora --reloj-arriba es exactamente la zona del reloj. */
 :root { --reloj-arriba: env(safe-area-inset-top); }
 @media (orientation: portrait) {
