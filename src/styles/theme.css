@@ -500,3 +500,32 @@ html { overscroll-behavior-y: none; }
 @media (orientation: portrait) {
   html.ios-app { --reloj-arriba: calc(env(safe-area-inset-top) + 24px); }
 }
+
+/* Paneles de control (diseño v2, 11/11): listas con scroll sin barra, grillas de Centro de Comando
+   y escala para pantallas muy grandes (proyector / mesa de comando). */
+.sin-barra { scrollbar-width: none; -ms-overflow-style: none; }
+.sin-barra::-webkit-scrollbar { display: none; }
+.panel-raiz { padding: clamp(12px, 2.2vw, 32px); display: flex; flex-direction: column; gap: 20px; box-sizing: border-box; font-family: var(--font-family-primary); }
+.cc-bloque { display: flex; flex-direction: column; gap: 16px; width: 100%; }
+.cc-grid { display: grid; grid-template-columns: minmax(0, 1fr); gap: 24px; align-items: stretch; width: 100%; }
+.cc-izq { display: flex; flex-direction: column; gap: 24px; min-width: 0; }
+.cc-der { display: flex; min-width: 0; }
+.cc-kpis { display: grid; grid-template-columns: repeat(auto-fit, minmax(150px, 1fr)); gap: 16px; width: 100%; }
+@media (min-width: 1280px) {
+  .cc-grid { grid-template-columns: repeat(12, minmax(0, 1fr)); }
+  .cc-izq, .cc-der { grid-column: span 6; }
+}
+@media (max-width: 639px) {
+  .panel-raiz { gap: 14px; }
+  .cc-grid { gap: 16px; }
+  .rc-fila { flex-direction: column !important; height: auto !important; }
+  .rc-fila > * { width: 100% !important; max-width: none !important; flex: 0 0 auto !important; }
+  .grupos-fila { flex-direction: column; align-items: stretch !important; }
+  .grupos-fila > * { flex: 0 0 auto !important; max-width: none !important; }
+  .grupos-fila > .waffle { margin: 0 auto !important; }
+}
+@media (min-width: 2400px) { .panel-raiz { zoom: 1.2; } }
+@media (min-width: 3000px) { .panel-raiz { zoom: 1.5; } }
+@media (min-width: 3800px) { .panel-raiz { zoom: 1.9; } }
+@keyframes reloj-ping { 0% { box-shadow: 0 0 0 0 rgba(16,185,129,.6); } 70% { box-shadow: 0 0 0 7px rgba(16,185,129,0); } 100% { box-shadow: 0 0 0 0 rgba(16,185,129,0); } }
+.fila-otras:hover { background: var(--muted); }

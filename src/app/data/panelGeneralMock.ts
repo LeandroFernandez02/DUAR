@@ -58,7 +58,7 @@ function generar(): OperativoPanel[] {
   const ahora = Date.now();
   const DIA = 86_400_000;
   const ops: OperativoPanel[] = [];
-  for (let i = 0; i < 34; i++) {
+  for (let i = 0; i < 80; i++) {
     const z = elegir(BOLSA);
     // Más operativos en verano y en las vacaciones de invierno (estacionalidad).
     const haceDias = Math.floor(entre(2, 420));
@@ -97,18 +97,20 @@ function generar(): OperativoPanel[] {
       grupos: { total: 0, enTerreno: 0 },
     });
   }
-  // Tres en curso ahora (uno sin coordinador a cargo) y uno nuevo sin activar.
-  const actuales: [number, number, boolean, EstadoOperativoPanel][] = [[0, 1.2, true, 'INICIADO'], [1, 3.5, false, 'INICIADO'], [6, 0.4, true, 'EN_PROCESO'], [4, 0.1, true, 'NUEVO']];
+  // Los de ahora (ciclo de estados del 24/10): en proceso, en planificación (uno sin coordinador),
+  // uno recién iniciado, uno nuevo sin activar y uno inactivo hace más de 48 h.
+  const actuales: [number, number, boolean, EstadoOperativoPanel][] = [[0, 1.2, true, 'EN_PROCESO'], [1, 3.5, false, 'EN_PLANIFICACION'], [6, 0.4, true, 'EN_PROCESO'],
+    [2, 0.8, true, 'EN_PLANIFICACION'], [5, 0.2, true, 'INICIADO'], [4, 0.1, true, 'NUEVO'], [8, 4.5, true, 'INACTIVO']];
   for (const [zi, dias, conCoord, estado] of actuales) {
     const zz = ZONAS[zi];
-    const enCurso = estado !== 'NUEVO';
+    const enCurso = estado !== 'NUEVO' && estado !== 'INICIADO';
     const agentes = enCurso ? { terreno: Math.floor(entre(6, 20)), base: Math.floor(entre(3, 10)), noDisponible: Math.floor(entre(0, 3)) } : { terreno: 0, base: 0, noDisponible: 0 };
     ops.push({
       id: `mock-actual-${zi}`, titulo: `${elegir(TIPOS)} — ${zz.localidad}`, localidad: `${zz.localidad}, Córdoba`,
       estado, inicio: new Date(ahora - dias * DIA).toISOString(), fin: null, resultado: null, conCoordinador: conCoord,
       agentes, agentesAsignados: agentes.terreno + agentes.base + agentes.noDisponible,
-      instituciones: ['Policía', 'Bomberos Voluntarios', ...(r() > 0.5 ? ['Defensa Civil'] : [])],
-      especialidades: ['Caminante', 'K-9', ...(r() > 0.5 ? ['Drones'] : [])],
+      instituciones: ['Policía', ...[...INSTITUCIONES.slice(1)].sort(() => r() - 0.5).slice(0, 2 + Math.floor(entre(0, 4)))],
+      especialidades: ['Caminante', ...[...ESPECIALIDADES.slice(1)].sort(() => r() - 0.5).slice(0, 3 + Math.floor(entre(0, 4)))],
       areas: enCurso ? [area(zz.lat, zz.lng, 1.5), area(zz.lat - 0.015, zz.lng + 0.01, 1.1)] : [],
       puntoCero: [zz.lat + 0.004, zz.lng - 0.006],
       coordinador: conCoord ? COORDINADORES[zi % COORDINADORES.length] : null,
@@ -131,7 +133,7 @@ function generar(): OperativoPanel[] {
   const z = ZONAS[3];
   ops.push({
     id: 'mock-largo', titulo: `Turista desaparecido — ${z.localidad}`, localidad: `${z.localidad}, Córdoba`,
-    estado: 'INICIADO', inicio: new Date(ahora - 41 * DIA).toISOString(), fin: null, resultado: null,
+    estado: 'EN_PROCESO', inicio: new Date(ahora - 41 * DIA).toISOString(), fin: null, resultado: null,
     conCoordinador: false, agentes: { terreno: 3, base: 4, noDisponible: 1 }, agentesAsignados: 8,
     instituciones: ['Policía', 'Gendarmería'], especialidades: ['K-9', 'Drones'],
     areas: [area(z.lat, z.lng, 2.5), area(z.lat + 0.02, z.lng - 0.02, 1.8)],
@@ -140,7 +142,34 @@ function generar(): OperativoPanel[] {
     grupos: { total: 2, enTerreno: 1 },
     recursosCriticos: { 'K-9': 2, Drones: 1 },
   });
+  ops.forEach(completar);
   return ops.sort((a, b) => a.inicio.localeCompare(b.inicio));
+}
+
+/**
+ * Panel v2 (11/11): cuántos agentes aportó cada institución y cuántos hubo de cada especialidad
+ * (catálogo real), y la cobertura de rastrillaje. Se reparte el total de agentes del operativo.
+ */
+function completar(o: OperativoPanel) {
+  const n = Math.max(o.agentesAsignados, o.estado === 'NUEVO' || o.estado === 'INICIADO' ? 0 : 4);
+  const repartir = (claves: string[], pesoPrimero: number) => {
+    const m: Record<string, number> = {};
+    if (!n || !claves.length) return m;
+    const pesos = claves.map((_, i) => (i === 0 ? pesoPrimero : 0.6 + r()));
+    const suma = pesos.reduce((a, b) => a + b, 0);
+    let resto = n;
+    claves.forEach((k, i) => {
+      const v = i === claves.length - 1 ? resto : Math.min(resto, Math.max(1, Math.round((n * pesos[i]) / suma)));
+      if (v > 0) { m[k] = v; resto -= v; }
+    });
+    return m;
+  };
+  o.aporte = repartir(o.instituciones, 2.5);
+  const esp = ['Caminante', 'Conductor', ...o.especialidades.filter(e => e !== 'Caminante')];
+  o.porEspecialidad = repartir(esp, 3);
+  const enMarcha = o.estado === 'EN_PROCESO' || o.estado === 'FINALIZADO' || o.estado === 'INACTIVO';
+  o.coberturaHa = enMarcha ? Math.round(entre(40, 220)) : 0;
+  o.tracksKm = enMarcha ? Math.round(entre(8, 45)) : 0;
 }
 
 export const OPERATIVOS_PANEL_MOCK: OperativoPanel[] = generar();

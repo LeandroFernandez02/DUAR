@@ -459,6 +459,24 @@ async function dejarOperativosCon(client, usuarioId, autorId, MOTIVO, { porElimi
  * Personal actualmente en el operativo (CU-21). Excluye a quienes ya egresaron.
  * Es lo que consume la grilla del Coordinador, que refresca por polling.
  */
+/**
+ * Panel del operativo (11/11), «Evolución de despliegue»: TODAS las participaciones, también
+ * las cerradas, con la institución de la foto legal (migración 034) o la del perfil si falta.
+ */
+export async function despliegueDeOperativo(operativoId) {
+  const { rows } = await query(
+    `SELECT ao.fecha_ingreso AS "fechaIngreso", ao.fecha_egreso AS "fechaEgreso",
+            COALESCE(ao.institucion_nombre, i.nombre) AS "institucionNombre"
+       FROM agentes_operativo ao
+       JOIN usuarios u ON u.id = ao.usuario_id
+       LEFT JOIN cat_instituciones i ON i.id = u.institucion_id
+      WHERE ao.operativo_id = $1
+      ORDER BY ao.fecha_ingreso`,
+    [operativoId]
+  );
+  return rows;
+}
+
 export async function listarDeOperativo(operativoId) {
   const { rows } = await query(
     `SELECT ${CAMPOS},

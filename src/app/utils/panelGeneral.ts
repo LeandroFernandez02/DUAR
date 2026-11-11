@@ -25,8 +25,9 @@ export const ESTADO_BADGE: Record<EstadoOperativoPanel, string> = {
   NUEVO: 'nuevo', EN_PLANIFICACION: 'planificación', INICIADO: 'iniciado', EN_PROCESO: 'en_proceso',
   INACTIVO: 'inactivo', FINALIZADO: 'finalizado',
 };
-const EN_CURSO: EstadoOperativoPanel[] = ['INICIADO', 'EN_PROCESO'];
-const SIN_ACTIVAR: EstadoOperativoPanel[] = ['NUEVO', 'EN_PLANIFICACION'];
+// Ciclo de estados del 24/10: Iniciado → En planificación → En proceso (Inactivo es una pausa).
+const EN_CURSO: EstadoOperativoPanel[] = ['INICIADO', 'EN_PLANIFICACION', 'EN_PROCESO'];
+const SIN_ACTIVAR: EstadoOperativoPanel[] = ['NUEVO'];
 
 export interface OperativoPanel {
   id: string;
@@ -57,6 +58,13 @@ export interface OperativoPanel {
   grupos: { total: number; enTerreno: number };
   /** Agentes con especialidad de recurso crítico (cat_especialidades.es_recurso_critico) trabajando ahora, por especialidad. */
   recursosCriticos?: Record<string, number>;
+  /** Agentes que aportó cada institución al operativo (panel v2, 11/11). */
+  aporte?: Record<string, number>;
+  /** Agentes por especialidad del catálogo en el operativo (panel v2). */
+  porEspecialidad?: Record<string, number>;
+  /** Cobertura de rastrillaje del operativo: hectáreas cubiertas y km de tracks (panel v2). */
+  coberturaHa?: number;
+  tracksKm?: number;
 }
 
 /** Las especialidades marcadas como recurso crítico en cat_especialidades. */

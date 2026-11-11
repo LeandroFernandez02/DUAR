@@ -103,7 +103,7 @@ export const router = createBrowserRouter([
               },
               {
                 path: 'dashboard',
-                lazy: cargar(() => import('./pages/operativo/Dashboard')),
+                lazy: cargar(() => import('./pages/operativo/PanelOperativo')),
               },
               {
                 path: 'agentes',

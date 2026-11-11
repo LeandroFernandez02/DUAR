@@ -1,6 +1,6 @@
 import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
-import { Flame, Radio, Users, Calendar, MapPin, RadioTower, ArrowRight, Plus, Minus, Maximize2 } from 'lucide-react';
+import { Flame, Radio, Users, Calendar, MapPin, RadioTower, ArrowRight, Plus, Minus, Maximize2, PanelRightClose, PanelRightOpen } from 'lucide-react';
 import { CONTORNO_CORDOBA } from '../../data/contornoCordoba';
 import { DEPARTAMENTOS_CORDOBA, LOCALIDADES_CORDOBA } from '../../data/divisionesCordoba';
 import type { OperativoPanel, EstadoOperativoPanel } from '../../utils/panelGeneral';
@@ -9,7 +9,8 @@ import StatusBadge, { colorDeEstado } from '../../components/shared/StatusBadge'
 import { fechaHoraArgentina } from '../../utils/fechaArgentina';
 
 /** Color de cada estado: el mismo del badge y de la tarjeta en la sección Operativos. */
-const colorEstado = (e: EstadoOperativoPanel) => colorDeEstado(ESTADO_BADGE[e]);
+const colorBadge = (e: EstadoOperativoPanel) => colorDeEstado(ESTADO_BADGE[e]);
+let colorEstado = colorBadge;
 
 /**
  * Mapa ilustrado de la provincia de Córdoba (panel general, versión 2). No usa mapa
@@ -70,12 +71,21 @@ type Vista = 'calor' | 'curso';
  * período si se mira un año o un mes). `historial`: los que suman calor. Los elige el panel según
  * la línea de tiempo.
  */
-export default function MapaProvincia({ historial, puntos, etiquetaPuntos, isDark, encabezado, apilado = false }: {
+export default function MapaProvincia({ historial, puntos, etiquetaPuntos, isDark, encabezado, apilado = false, vistaInicial = 'curso', periodo, colorDe }: {
   historial: OperativoPanel[]; puntos: OperativoPanel[]; etiquetaPuntos: string; isDark: boolean; encabezado?: React.ReactNode;
-  /** Panel angosto (menos de 4 columnas): el mapa arriba, centrado, y la ficha debajo. Ancho: el mapa toma toda la altura y la ficha va al costado. */
+  /** Panel angosto: el mapa arriba, centrado, y la ficha debajo. Ancho: el mapa toma toda la altura y la ficha va al costado. */
   apilado?: boolean;
+  vistaInicial?: Vista;
+  /** Texto del período y cobertura de rastrillaje (panel v2): «Dónde más se busca» la muestra abajo. */
+  periodo?: { sub: string; corta: string; ha: number; km: number };
+  /** Color de cada estado (panel v2: los acentos del diseño). Sin él, el del badge. */
+  colorDe?: (e: EstadoOperativoPanel) => string;
 }) {
-  const [vista, setVista] = useState<Vista>('curso');
+  colorEstado = colorDe ?? colorBadge;
+  const [vista, setVista] = useState<Vista>(vistaInicial);
+  // Panel de datos ocultable (panel v2): oculto, el mapa usa todo el ancho.
+  const [panel, setPanel] = useState(true);
+  const expandido = !panel && !apilado;
   const enCurso = puntos;
   const [elegidoId, setElegidoId] = useState<string | null>(null);
   const [sobre, setSobre] = useState<{ o: OperativoPanel; x: number; y: number } | null>(null);
@@ -156,12 +166,19 @@ export default function MapaProvincia({ historial, puntos, etiquetaPuntos, isDar
             </button>
           ))}
         </div>
+        <button type="button" onClick={() => { setPanel(v => !v); setEnc(ENTERO); }} aria-pressed={!panel}
+          aria-label={panel ? 'Ocultar panel de datos' : 'Mostrar panel de datos'} title={panel ? 'Ocultar panel de datos' : 'Mostrar panel de datos'}
+          className="inline-flex items-center rounded-[var(--radius-button)]"
+          style={{ padding: '6px 8px', border: '1px solid var(--border)', background: 'transparent', color: 'var(--foreground)', cursor: 'pointer' }}>
+          {panel ? <PanelRightClose size={14} /> : <PanelRightOpen size={14} />}
+        </button>
       </div>
 
       <div className={`flex gap-4 min-h-0 ${apilado ? 'flex-col' : 'flex-row flex-1'}`}>
         {/* El mapa toma toda la altura disponible y su ancho sale de la proporción de la provincia */}
         <div className="relative shrink-0" style={apilado
           ? { width: 'min(100%, 360px)', aspectRatio: `${W} / ${H}`, alignSelf: 'center' }
+          : expandido ? { height: '100%', aspectRatio: `${W} / ${H}`, maxWidth: '100%', margin: '0 auto' }
           : { height: '100%', aspectRatio: `${W} / ${H}`, maxWidth: '58%' }}>
           <svg ref={svgRef} viewBox={`0 0 ${W.toFixed(0)} ${H.toFixed(0)}`} className="w-full h-full select-none" role="img"
             onPointerDown={empezarArrastre} onDoubleClick={ev => { const p = aSvg(ev.clientX, ev.clientY); setEnc(e => acercar(e, 2, p.x, p.y)); }}
@@ -256,11 +273,11 @@ export default function MapaProvincia({ historial, puntos, etiquetaPuntos, isDar
         </div>
 
         {/* «Datos»: la ficha del operativo elegido (en curso) o dónde más se busca (calor). Si no entra, scrollea sola. */}
-        <div className={apilado ? 'min-w-0' : 'flex-1 min-w-0 min-h-0 overflow-y-auto'}>
+        {panel && <div className={apilado ? 'min-w-0' : 'flex-1 min-w-0 min-h-0 overflow-y-auto sin-barra'}>
           {vista === 'curso'
-            ? (elegido ? <Ficha o={elegido} /> : <p style={{ fontSize: 'var(--text-label)', color: 'var(--muted-foreground)' }}>No hay operativos en este período.</p>)
-            : <ZonasCalientes historial={historial} />}
-        </div>
+            ? (elegido ? <Ficha o={elegido} /> : <p style={{ fontSize: 'var(--text-label)', color: 'var(--muted-foreground)' }}>No hay operativos para mostrar.</p>)
+            : <ZonasCalientes historial={historial} periodo={periodo} />}
+        </div>}
       </div>
     </div>
   );
@@ -312,14 +329,14 @@ function Ficha({ o }: { o: OperativoPanel }) {
 }
 
 /** En la vista de calor, al costado: las localidades con más operativos. */
-function ZonasCalientes({ historial }: { historial: OperativoPanel[] }) {
+function ZonasCalientes({ historial, periodo }: { historial: OperativoPanel[]; periodo?: { sub: string; corta: string; ha: number; km: number } }) {
   const porLocalidad = new Map<string, number>();
   for (const o of historial) porLocalidad.set(o.localidad, (porLocalidad.get(o.localidad) ?? 0) + 1);
   const top = [...porLocalidad].sort((a, b) => b[1] - a[1]).slice(0, 6);
   return (
     <div className="rounded-[var(--radius-card)] p-4" style={{ background: 'var(--muted)' }}>
       <p style={{ fontSize: 'var(--text-base)', fontWeight: 600, color: 'var(--foreground)' }}>Dónde más se busca</p>
-      <p className="mb-3" style={{ fontSize: 'calc(12px * var(--escala-texto))', color: 'var(--muted-foreground)' }}>Localidades con más operativos en el período</p>
+      <p className="mb-3" style={{ fontSize: 'calc(12px * var(--escala-texto))', color: 'var(--muted-foreground)' }}>Localidades con más operativos · {periodo?.sub ?? 'en el período'}</p>
       <ul className="flex flex-col gap-2.5">
         {top.map(([loc, n]) => (
           <li key={loc}>
@@ -329,7 +346,21 @@ function ZonasCalientes({ historial }: { historial: OperativoPanel[] }) {
             </div>
           </li>
         ))}
+        {!top.length && <li style={{ fontSize: 'calc(12px * var(--escala-texto))', color: 'var(--muted-foreground)' }}>Sin operativos en el período.</li>}
       </ul>
+      {periodo && (
+        <div style={{ marginTop: 14, paddingTop: 12, borderTop: '1px solid var(--border)' }}>
+          <p style={{ margin: '0 0 8px', fontSize: 'calc(11px * var(--escala-texto))', fontWeight: 600, letterSpacing: '0.06em', textTransform: 'uppercase', color: 'var(--muted-foreground)' }}>Cobertura de rastrillaje · {periodo.corta}</p>
+          <div className="flex gap-2 flex-wrap">
+            {([['Área cubierta', `${periodo.ha.toLocaleString('es-AR')} ha`], ['Tracks registrados', `${periodo.km.toLocaleString('es-AR')} km`]] as const).map(([l, v]) => (
+              <span key={l} className="inline-flex flex-col rounded-[var(--radius-md)]" style={{ padding: '4px 10px', border: '1px solid var(--border)', background: 'var(--card)' }}>
+                <span style={{ fontSize: 'calc(11px * var(--escala-texto))', color: 'var(--muted-foreground)' }}>{l}</span>
+                <strong className="tabular-nums" style={{ fontSize: 'var(--text-label)', color: 'var(--foreground)' }}>{v}</strong>
+              </span>
+            ))}
+          </div>
+        </div>
+      )}
     </div>
   );
 }

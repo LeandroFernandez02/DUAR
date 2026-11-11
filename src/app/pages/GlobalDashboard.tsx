@@ -1,185 +1,357 @@
-import { useLayoutEffect, useMemo, useRef, useState, type CSSProperties } from 'react';
-import { Radio, Users, UserCheck, ShieldAlert, Flag, Building2, Map as MapaIcono, CalendarRange, FilePlus2 } from 'lucide-react';
+import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { Siren, Map as MapaIcono, FilePlus2, Users, Radio, CalendarClock, Flag, Building2, Crosshair, CalendarRange, Calendar, ArrowRight, X, TriangleAlert, type LucideIcon } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { OPERATIVOS_PANEL_MOCK, USUARIOS_ACTIVOS_MOCK } from '../data/panelGeneralMock';
-import { calcularPanel, agruparPorciones, rangoDe, RECURSOS_CRITICOS, ESTADO_BADGE, type Periodo, type FiltrosPanel } from '../utils/panelGeneral';
-import { colorDeEstado } from '../components/shared/StatusBadge';
-import { Torta, OperativosPorMes, SERIES } from './panel/Graficos';
+import { OPERATIVOS_PANEL_MOCK } from '../data/panelGeneralMock';
+import { calcularPanel, formatoDuracion, type EstadoOperativoPanel, type OperativoPanel, type Mes } from '../utils/panelGeneral';
+import { OperativosPorMes } from './panel/Graficos';
 import MapaProvincia from './panel/MapaProvincia';
-import LineaTiempo from './panel/LineaTiempo';
+import { ACENTO, Marco, Segmentado, chico, globo, tarjeta, tinte, useDemora, useMedida, isoLocal, estiloEspecialidad, ESPECIALIDADES_PANEL, colorInstitucion, sigla } from './panel/comunes';
 
 /**
- * Panel general (CU-43): estadísticas de todos los operativos, para el administrador y los
- * coordinadores. Qué muestra lo decidió el equipo (doc «Panel general de operativos») y el
- * boceto del 21/10: arriba los operativos por estado; abajo el mapa de la provincia con los
- * datos del operativo elegido y, al costado, agentes, usuarios y las tortas; «Operativos por
- * mes» al final. Diseño CALÍVAR (23/10): la grilla depende del ancho del propio panel —4 columnas
- * desde 1100 px (y entonces entra en la pantalla sin scroll), 2 hasta 760 px, 1 más angosto—, así
- * en una notebook con el menú abierto no quedan 4 columnas apretadas.
+ * Panel general (CU-43), diseño v2 aprobado (11/11, «handoff-dashboards»): Situación ahora (siempre
+ * tiempo real), Dónde estamos operando y quién aporta (mapa + aporte por institución + especialidades)
+ * y Operativos por mes. El filtro de período (Hoy / 7 días / Este mes / Personalizado, o arrastrando
+ * sobre el gráfico de meses) afecta los finalizados, el mapa de calor, las instituciones y las
+ * especialidades.
  *
- * La línea de tiempo del encabezado (22/10) elige el período: hoy (al entrar), un año entero
- * o un mes, y deja pasar de año en año hasta el actual.
- *
- * Por ahora con datos de ejemplo (data/panelGeneralMock.ts); las cifras se calculan en
- * utils/panelGeneral.ts, que después recibe los datos reales con la misma forma.
+ * Datos de ejemplo (data/panelGeneralMock.ts) con el catálogo real de instituciones y especialidades;
+ * las cifras se calculan en utils/panelGeneral.ts, que después recibe la respuesta de la API.
  */
 
-const estiloTarjeta = { background: 'var(--card)', boxShadow: 'var(--elevation-sm)', border: '1px solid var(--card-border)' } as const;
-const sinFiltros = { estado: '', localidad: '', institucion: '' } as const;
-const isoDia = (x: Date) => `${x.getFullYear()}-${String(x.getMonth() + 1).padStart(2, '0')}-${String(x.getDate()).padStart(2, '0')}`;
+type Modo = 'hoy' | '7d' | 'mes' | 'rango';
+type Filtro = 'plan' | 'proceso' | 'inact' | null;
+
+const COLOR_ESTADO: Record<EstadoOperativoPanel, string> = {
+  NUEVO: ACENTO.grisClaro, INICIADO: ACENTO.celeste, EN_PLANIFICACION: ACENTO.ambar, EN_PROCESO: ACENTO.verde, INACTIVO: ACENTO.naranja, FINALIZADO: ACENTO.gris,
+};
+const FILTROS: Record<Exclude<Filtro, null>, [EstadoOperativoPanel, string]> = {
+  plan: ['EN_PLANIFICACION', 'En planificación'], proceso: ['EN_PROCESO', 'En proceso'], inact: ['INACTIVO', 'Inactivos (+48h)'],
+};
+const EN_MAPA: EstadoOperativoPanel[] = ['INICIADO', 'EN_PLANIFICACION', 'EN_PROCESO', 'INACTIVO'];
+const fAr = (s: string) => (s ? s.split('-').reverse().join('/') : 'dd/mm/aaaa');
 
 export default function GlobalDashboard() {
   const { isDark } = useApp();
-  const series = SERIES;
   const todos = OPERATIVOS_PANEL_MOCK;
-  const [periodo, setPeriodo] = useState<Periodo>({ tipo: 'hoy' });
-  const rango = rangoDe(periodo);
-  const esHoy = periodo.tipo === 'hoy';
-  const anioElegido = periodo.tipo === 'hoy' ? new Date().getFullYear() : periodo.anio;
+  const hoy = new Date();
+  const hoyIso = isoLocal(hoy);
 
-  const d = useMemo(() => calcularPanel(todos, { desde: rango.desde, hasta: rango.hasta, ...sinFiltros } as FiltrosPanel), [todos, rango.desde, rango.hasta]);
-  const anioMin = useMemo(() => Math.min(...todos.map(o => new Date(o.inicio).getFullYear())), [todos]);
+  const [modo, setModo] = useState<Modo>('mes');
+  const [desde, setDesde] = useState(''), [hasta, setHasta] = useState('');
+  const [sel, setSel] = useState<{ a: number; b: number } | null>(null);
+  const [filtro, setFiltro] = useState<Filtro>(null);
+  const [todasInst, setTodasInst] = useState(false);
 
-  // Barras de la línea de tiempo: operativos iniciados por mes del año que se está mirando.
-  const iniciadosPorMes = (anio: number) => Array.from({ length: 12 }, (_, m) =>
-    todos.filter(o => { const f = new Date(o.inicio); return f.getFullYear() === anio && f.getMonth() === m; }).length);
+  // Rango del período elegido (fechas locales).
+  const rango = useMemo(() => {
+    if (modo === 'hoy') return { desde: hoyIso, hasta: hoyIso };
+    if (modo === '7d') { const d = new Date(); d.setDate(d.getDate() - 6); return { desde: isoLocal(d), hasta: hoyIso }; }
+    if (modo === 'mes') return { desde: isoLocal(new Date(hoy.getFullYear(), hoy.getMonth(), 1)), hasta: hoyIso };
+    return { desde: desde || hoyIso, hasta: hasta || hoyIso };
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [modo, desde, hasta, hoyIso]);
+  const sub = modo === 'hoy' ? 'hoy' : modo === '7d' ? 'últimos 7 días' : modo === 'mes' ? 'este mes' : 'período seleccionado';
+  const subP = modo === 'rango' ? 'en el período seleccionado' : `en el período: ${sub}`;
+  const leyenda = modo === 'hoy' ? `Mostrando: Hoy · datos en tiempo real (${hoy.toLocaleDateString('es-AR')})`
+    : modo === '7d' ? `Mostrando: Últimos 7 días (hasta ${hoy.toLocaleDateString('es-AR')})`
+    : modo === 'mes' ? `Mostrando: Este mes (${hoy.toLocaleDateString('es-AR', { month: 'long', year: 'numeric' })})`
+    : `Mostrando: ${fAr(rango.desde)} → ${fAr(rango.hasta)}`;
 
-  // «Operativos por mes»: hoy = los últimos 12 meses; un año o un mes = los 12 meses de ese año.
-  const meses = useMemo(() => {
-    const hoy = new Date();
-    const desde = esHoy ? new Date(hoy.getFullYear() - 1, hoy.getMonth() + 1, 1) : new Date(anioElegido, 0, 1);
-    const hasta = esHoy ? hoy : new Date(Math.min(new Date(anioElegido, 11, 31).getTime(), hoy.getTime()));
-    return calcularPanel(todos, { desde: isoDia(desde), hasta: isoDia(hasta), ...sinFiltros } as FiltrosPanel).meses;
-  }, [todos, esHoy, anioElegido]);
+  const d = useMemo(() => calcularPanel(todos, { ...rango, estado: '', localidad: '', institucion: '' }), [todos, rango]);
+  const per = d.filtrados;
+  const ahora = (e: EstadoOperativoPanel) => todos.filter(o => o.estado === e).length;
+  const finalizados = per.filter(o => o.estado === 'FINALIZADO' && o.fin && isoLocal(new Date(o.fin)) >= rango.desde && isoLocal(new Date(o.fin)) <= rango.hasta);
+  const promedio = finalizados.length ? finalizados.reduce((s, o) => s + (new Date(o.fin!).getTime() - new Date(o.inicio).getTime()) / 3.6e6, 0) / finalizados.length : null;
 
-  // Operativos por estado en el período. Los finalizados cuentan si terminaron dentro del período.
-  const enPeriodo = d.filtrados;
-  const cuenta = (...estados: string[]) => enPeriodo.filter(o => estados.includes(o.estado)).length;
-  const finalizados = enPeriodo.filter(o => o.estado === 'FINALIZADO' && o.fin
-    && isoDia(new Date(o.fin)) >= rango.desde && isoDia(new Date(o.fin)) <= rango.hasta).length;
-  const { agentes } = d.actual;
-  const enCurso = useMemo(() => todos.filter(o => o.estado === 'INICIADO' || o.estado === 'EN_PROCESO'), [todos]);
-  // Recursos críticos (K-9, Drones, Caballería, Buceo…) trabajando ahora en todos los operativos en curso.
-  const recursosCriticos = useMemo(() => RECURSOS_CRITICOS
-    .map(nombre => ({ nombre, valor: enCurso.reduce((s, o) => s + (o.recursosCriticos?.[nombre] ?? 0), 0) }))
-    .filter(x => x.valor > 0).sort((a, b) => b.valor - a.valor), [enCurso]);
+  // Aporte por institución y especialidades del período (agentes, catálogo real).
+  const suma = (f: (o: OperativoPanel) => Record<string, number> | undefined) => {
+    const m: Record<string, number> = {};
+    for (const o of per) for (const [k, v] of Object.entries(f(o) ?? {})) m[k] = (m[k] ?? 0) + v;
+    return Object.entries(m).map(([nombre, valor]) => ({ nombre, valor })).sort((a, b) => b.valor - a.valor);
+  };
+  const instituciones = suma(o => o.aporte);
+  const especialidades = ESPECIALIDADES_PANEL.map(e => ({ ...e, valor: per.reduce((s, o) => s + (o.porEspecialidad?.[e.nombre] ?? 0), 0) }));
+  const cobertura = { ha: per.reduce((s, o) => s + (o.coberturaHa ?? 0), 0), km: per.reduce((s, o) => s + (o.tracksKm ?? 0), 0) };
 
-  // La grilla y las tortas se adaptan al ancho y al alto del propio panel (no de la ventana).
+  // Operativos por mes: siempre los últimos 12 meses (arrastrar elige un rango).
+  const meses: Mes[] = useMemo(() => {
+    const ini = new Date(hoy.getFullYear(), hoy.getMonth() - 11, 1);
+    return calcularPanel(todos, { desde: isoLocal(ini), hasta: hoyIso, estado: '', localidad: '', institucion: '' }).meses.slice(-12);
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [todos, hoyIso]);
+  const elegirMeses = (a: number, b: number) => {
+    const [ya, ma] = meses[a].clave.split('-').map(Number), [yb, mb] = meses[b].clave.split('-').map(Number);
+    const fin = isoLocal(new Date(yb, mb, 0));
+    setSel({ a, b }); setDesde(`${ya}-${String(ma).padStart(2, '0')}-01`); setHasta(fin > hoyIso ? hoyIso : fin); setModo('rango');
+  };
+  const atajo = (m: Modo) => { setSel(null); setModo(m); };
+
+  const puntos = todos.filter(o => (filtro ? o.estado === FILTROS[filtro][0] : EN_MAPA.includes(o.estado)));
+  const alternar = (f: Exclude<Filtro, null>) => setFiltro(x => (x === f ? null : f));
+
+  // Diseño de Centro de Comando desde 1100 px de ancho del propio panel.
   const raiz = useRef<HTMLDivElement>(null);
-  const [med, setMed] = useState({ w: 0, h: 0 });
+  const [ancho, setAncho] = useState(0);
   useLayoutEffect(() => {
-    const el = raiz.current;
-    if (!el) return;
-    const medir = () => {
-      const cont = el.parentElement ?? el;
-      setMed(m => (m.w === el.clientWidth && m.h === cont.clientHeight ? m : { w: el.clientWidth, h: cont.clientHeight }));
-    };
+    const el = raiz.current; if (!el) return;
+    const medir = () => setAncho(el.clientWidth);
     medir();
-    const ro = new ResizeObserver(medir);
-    ro.observe(el);
-    if (el.parentElement) ro.observe(el.parentElement);
+    const ro = new ResizeObserver(medir); ro.observe(el);
     return () => ro.disconnect();
   }, []);
-  const ancho = med.w >= 1100, angosto = med.w < 760;
-  const diametro = med.w && med.w < 1300 ? Math.min(88, med.h >= 860 ? 108 : 88) : med.h >= 1000 ? 132 : med.h >= 860 ? 108 : med.h >= 740 ? 88 : 70;
-  const columnas = ancho ? 'repeat(4, minmax(0, 1fr))' : angosto ? 'minmax(0, 1fr)' : 'repeat(2, minmax(0, 1fr))';
-  /** Lugar en la grilla de 4 columnas; en las angostas cada tarjeta sigue el orden natural. */
-  const en = (col: string, fila: string): CSSProperties => (ancho ? { gridColumn: col, gridRow: fila } : {});
-  const todoElAncho: CSSProperties = ancho ? {} : { gridColumn: '1 / -1' };
-
-  const enElPeriodo = esHoy ? 'en los operativos de hoy' : `en los operativos de ${periodo.tipo === 'mes' ? rango.etiqueta.toLowerCase() : rango.etiqueta}`;
-  const detalleEstado = esHoy ? 'Ahora' : rango.etiqueta;
+  const amplio = ancho >= 1100;
 
   return (
-    <div ref={raiz} className="p-4 lg:p-6 flex flex-col gap-4"
-      style={{ fontFamily: 'var(--font-family-primary)', height: ancho ? '100%' : 'auto', minHeight: ancho ? 640 : 0, visibility: med.w ? 'visible' : 'hidden' }}>
-      <div className="pc-cabecera flex items-center gap-x-6 gap-y-3 flex-wrap">
+    <div ref={raiz} className="panel-raiz" style={{ visibility: ancho ? 'visible' : 'hidden' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: '12px 24px', flexWrap: 'wrap' }}>
         <div>
-          <h1 style={{ margin: '0 0 4px', color: 'var(--foreground)', fontSize: 'var(--text-h2)', fontWeight: 'var(--font-weight-bold)' }}>Panel de Control</h1>
-          <p style={{ margin: 0, color: 'var(--muted-foreground)', fontSize: 'var(--text-base)' }}>Estadísticas Generales de Todos los Operativos</p>
+          <h1 style={{ margin: '0 0 4px', fontSize: 'var(--text-h2)', fontWeight: 700, color: 'var(--foreground)' }}>Panel de Control</h1>
+          <p style={{ margin: 0, fontSize: 'var(--text-base)', color: 'var(--muted-foreground)' }}>Estadísticas Generales de Todos los Operativos</p>
         </div>
-        <div className="pc-linea ml-auto max-w-full overflow-x-auto">
-          <LineaTiempo periodo={periodo} onCambiar={setPeriodo} anioMin={anioMin} iniciadosPorMes={iniciadosPorMes} />
+        <div style={{ marginLeft: 'auto', maxWidth: '100%' }}>
+          <FiltroTiempo modo={modo} setModo={atajo} desde={desde} hasta={hasta} hoyIso={hoyIso} leyenda={leyenda}
+            setDesde={v => { setSel(null); setDesde(v); if (hasta && v > hasta) setHasta(v); if (!hasta) setHasta(hoyIso); setModo('rango'); }}
+            setHasta={v => { setSel(null); setHasta(v > hoyIso ? hoyIso : v); if (!desde) setDesde(v); setModo('rango'); }} />
         </div>
       </div>
 
-      {/* Operativos por estado en el período */}
-      <div className="grid gap-4" style={{ gridTemplateColumns: columnas }}>
-        <Indicador valor={cuenta('INICIADO')} etiqueta="Operativos activos" detalle={detalleEstado} icono={Radio} color={colorDeEstado(ESTADO_BADGE.INICIADO)} />
-        <Indicador valor={cuenta('NUEVO', 'EN_PLANIFICACION')} etiqueta="Operativos nuevos" detalle="Todavía sin activar" icono={FilePlus2} color={colorDeEstado(ESTADO_BADGE.NUEVO)} />
-        <Indicador valor={cuenta('EN_PROCESO')} etiqueta="Operativos en proceso" detalle={detalleEstado} icono={CalendarRange} color={colorDeEstado(ESTADO_BADGE.EN_PROCESO)} />
-        <Indicador valor={finalizados} etiqueta="Operativos finalizados" detalle={esHoy ? 'Hoy' : rango.etiqueta} icono={Flag} color={colorDeEstado(ESTADO_BADGE.FINALIZADO)} />
-      </div>
+      <Marco icono={Siren} titulo="Situación ahora">
+        <div style={{ display: 'grid', gridTemplateColumns: 'repeat(auto-fit, minmax(180px, 1fr))', gap: 16 }}>
+          <Indicador valor={ahora('INICIADO')} etiqueta="Iniciado" detalle="Pendiente de configurar zona y recursos en el sistema" icono={FilePlus2} color={ACENTO.celeste} />
+          <Indicador valor={ahora('EN_PLANIFICACION')} etiqueta="En planificación" detalle="Definiendo grupos de rescate y cuadrículas de búsqueda" icono={Users} color={ACENTO.ambar}
+            onClick={() => alternar('plan')} activo={filtro === 'plan'} />
+          <Indicador valor={ahora('EN_PROCESO')} etiqueta="En proceso" detalle="Operativos con personal desplegado en terreno en este momento" icono={Radio} color={ACENTO.verde}
+            onClick={() => alternar('proceso')} activo={filtro === 'proceso'} />
+          <Indicador valor={ahora('INACTIVO')} etiqueta="Inactivos (+48h)" detalle="Operativo sin actualizaciones hace más de 48 horas (Requiere atención o cierre)" icono={CalendarClock}
+            color={ACENTO.rojo} alerta={ahora('INACTIVO') > 0} onClick={() => alternar('inact')} activo={filtro === 'inact'} />
+          <Indicador valor={finalizados.length} etiqueta="Finalizados" icono={Flag} color={ACENTO.gris}
+            detalle={`Acumulado del período seleccionado${promedio !== null ? ` · ⏱ Duración promedio: ${formatoDuracion(promedio)}` : ''}`} />
+        </div>
+      </Marco>
 
-      {/* Mapa + datos | agentes, usuarios, tortas y operativos por mes: con 4 columnas ocupa el resto de la pantalla, sin scroll */}
-      <div className="grid gap-4 min-h-0"
-        style={{ gridTemplateColumns: columnas, gridTemplateRows: ancho ? 'auto minmax(0, 1fr) minmax(0, 1fr)' : 'none', flex: ancho ? 1 : 'none' }}>
-        <section className="rounded-[var(--radius-card)] p-4 flex flex-col min-h-0" style={{ ...estiloTarjeta, ...en('1 / span 2', '1 / span 3'), ...todoElAncho }}>
-          <MapaProvincia apilado={!ancho} historial={enPeriodo} isDark={isDark}
-            puntos={esHoy ? enCurso : enPeriodo} etiquetaPuntos={esHoy ? 'Operativos en curso' : 'Operativos del período'}
-            encabezado={<div className="mr-auto -mb-2"><TituloTarjeta icono={MapaIcono} titulo="Mapa de la provincia" /></div>} />
-        </section>
-
-        {/* Agentes y usuarios (23/10): sólo dos, siempre de ahora */}
-        <Indicador estilo={en('3', '1')} valor={agentes.terreno + agentes.base + agentes.noDisponible} etiqueta="Agentes en operativos"
-          detalle={`Ahora · en ${enCurso.length} ${enCurso.length === 1 ? 'operativo' : 'operativos'} en curso`} icono={Users} />
-        <Indicador estilo={en('4', '1')} valor={USUARIOS_ACTIVOS_MOCK.total} etiqueta="Usuarios activos"
-          detalle={`Cuentas activas · ${USUARIOS_ACTIVOS_MOCK.agentes} agentes`} icono={UserCheck} />
-
-        {/* Cada torta en su tarjeta: instituciones del período y recursos críticos trabajando ahora */}
-        <section className="rounded-[var(--radius-card)] px-4 py-3 flex flex-col min-w-0" style={{ ...estiloTarjeta, ...en('3', '2'), minHeight: ancho ? 0 : 170 }}>
-          <TituloTarjeta icono={Building2} titulo="Instituciones" aclaracion={enElPeriodo} unaLinea />
-          <div className="flex-1 min-h-0 flex items-center overflow-y-auto">
-            <Torta datos={agruparPorciones(d.instituciones, 5)} colores={series} unidad="operativos" diametro={ancho ? diametro : 96} compacta />
+      <Marco icono={MapaIcono} titulo="Dónde estamos operando y quién aporta">
+        <div style={{ display: 'flex', flexWrap: amplio ? 'nowrap' : 'wrap', gap: 16, height: amplio ? 680 : 'auto', alignItems: 'stretch' }}>
+          <section style={{ ...tarjeta, padding: 16, display: 'flex', flexDirection: 'column', minHeight: amplio ? 0 : 520, flex: amplio ? '6 1 0' : '1 1 100%', overflow: amplio ? 'hidden' : 'visible' }}>
+            <MapaProvincia key={filtro ?? 'todos'} vistaInicial={filtro ? 'curso' : 'calor'} apilado={!amplio} historial={per} isDark={isDark}
+              puntos={puntos} etiquetaPuntos="Operativos en curso" colorDe={e => COLOR_ESTADO[e]}
+              periodo={{ sub: subP, corta: sub, ha: cobertura.ha, km: cobertura.km }}
+              encabezado={<div style={{ marginRight: 'auto' }}>{filtro
+                ? <button type="button" onClick={() => setFiltro(null)} style={chip}>Filtrando: {FILTROS[filtro][1]} <X size={12} /></button>
+                : <TituloTarjeta icono={MapaIcono} titulo="Mapa de la provincia" />}</div>} />
+          </section>
+          <div style={{ flex: amplio ? '4 1 0' : '1 1 100%', minWidth: 0, minHeight: 0, display: 'flex', flexDirection: 'column', gap: 16 }}>
+            <section style={{ ...tarjeta, flex: '1 1 0', minHeight: amplio ? 0 : 310, padding: '12px 16px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+              <TituloTarjeta icono={Building2} titulo="Aporte por institución" aclaracion={subP} />
+              <Instituciones datos={instituciones} todas={todasInst} setTodas={setTodasInst} />
+            </section>
+            <section style={{ ...tarjeta, flex: '1 1 0', minHeight: amplio ? 0 : 340, padding: '12px 16px', display: 'flex', flexDirection: 'column', overflow: 'hidden' }}>
+              <div style={{ display: 'flex', alignItems: 'center', gap: 10, marginBottom: 8 }}>
+                <div style={{ width: 34, height: 34, borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, background: tinte(ACENTO.naranja) }}><Crosshair size={16} color={ACENTO.naranja} /></div>
+                <div style={{ minWidth: 0, flex: 1 }}>
+                  <h2 style={{ margin: 0, fontSize: 'var(--text-base)', fontWeight: 700, color: 'var(--foreground)', textTransform: 'uppercase', letterSpacing: '0.02em' }}>Especialidades críticas</h2>
+                  <p style={{ margin: 0, fontSize: chico, color: 'var(--muted-foreground)' }}>Total en todos los operativos del período</p>
+                </div>
+              </div>
+              <Mosaico datos={especialidades} />
+            </section>
           </div>
-        </section>
-        <section className="rounded-[var(--radius-card)] px-4 py-3 flex flex-col min-w-0" style={{ ...estiloTarjeta, ...en('4', '2'), minHeight: ancho ? 0 : 170 }}>
-          <TituloTarjeta icono={ShieldAlert} titulo="Recursos críticos" aclaracion="trabajando ahora" unaLinea />
-          <div className="flex-1 min-h-0 flex items-center overflow-y-auto">
-            <Torta datos={recursosCriticos} colores={series} unidad="agentes" diametro={ancho ? diametro : 96} compacta />
-          </div>
-        </section>
+        </div>
+      </Marco>
 
-        {/* Operativos por mes en lugar de la torta de especialidad (22/10) */}
-        <section className="rounded-[var(--radius-card)] px-4 py-3 flex flex-col min-h-0"
-          style={{ ...estiloTarjeta, ...en('3 / span 2', '3'), ...(ancho ? {} : { gridColumn: '1 / -1', height: 260 }) }}>
-          <TituloTarjeta icono={CalendarRange} titulo="Operativos por mes" aclaracion={esHoy ? 'últimos 12 meses' : `año ${anioElegido}`} />
-          <div className="flex-1 min-h-0">
-            <OperativosPorMes meses={meses} colorBarras={series[0]} colorLinea={series[1]} compacto />
-          </div>
-        </section>
-      </div>
+      <section style={{ ...tarjeta, padding: '12px 20px', display: 'flex', flexDirection: 'column', height: 240, flexShrink: 0 }}>
+        <div style={{ display: 'flex', alignItems: 'center', gap: 12, flexWrap: 'wrap' }}>
+          <TituloTarjeta icono={CalendarRange} titulo="Operativos por mes" aclaracion="últimos 12 meses · arrastrá para filtrar" />
+          {sel && <button type="button" onClick={() => { setSel(null); setModo('mes'); setDesde(''); setHasta(''); }} style={{ ...chip, marginBottom: 8 }}>
+            {sel.a === sel.b ? meses[sel.a].etiqueta : `${meses[sel.a].etiqueta} → ${meses[sel.b].etiqueta}`} <X size={12} />
+          </button>}
+        </div>
+        <div style={{ flex: 1, minHeight: 0 }}>
+          <OperativosPorMes meses={meses} colorBarras={ACENTO.verde} colorLinea={isDark ? '#F8FAFC' : '#0B1E2D'} tope={5} paso={5}
+            fijo={sel ? undefined : meses.length - 1} seleccion={sel} onSeleccion={elegirMeses} />
+        </div>
+      </section>
     </div>
   );
 }
 
-function TituloTarjeta({ icono: I, titulo, aclaracion, unaLinea = false }: { icono: typeof Radio; titulo: string; aclaracion?: string; unaLinea?: boolean }) {
+const chip = {
+  display: 'inline-flex', alignItems: 'center', gap: 6, padding: '2px 10px', borderRadius: 999, border: '1px solid var(--border)', background: 'var(--muted)',
+  cursor: 'pointer', color: 'var(--foreground)', fontFamily: 'var(--font-family-primary)', fontSize: chico, fontWeight: 600,
+} as const;
+
+function TituloTarjeta({ icono: I, titulo, aclaracion }: { icono: LucideIcon; titulo: string; aclaracion?: string }) {
   return (
-    <div className={`flex items-baseline gap-2 mb-2 min-w-0 ${unaLinea ? 'whitespace-nowrap overflow-hidden' : 'flex-wrap'}`} title={aclaracion ? `${titulo} · ${aclaracion}` : undefined}>
-      <I size={15} style={{ color: 'var(--primary)', alignSelf: 'center' }} />
-      <h2 style={{ fontSize: 'var(--text-base)', fontWeight: 'var(--font-weight-semibold)', color: 'var(--foreground)' }}>{titulo}</h2>
-      {aclaracion && <span className={unaLinea ? 'truncate' : ''} style={{ fontSize: 'calc(12px * var(--escala-texto))', color: 'var(--muted-foreground)' }}>{aclaracion}</span>}
+    <div title={aclaracion ? `${titulo} · ${aclaracion}` : undefined} style={{ display: 'flex', alignItems: 'center', gap: 8, marginBottom: 8, minWidth: 0, whiteSpace: 'nowrap', overflow: 'hidden' }}>
+      <I size={15} color="var(--primary)" style={{ flexShrink: 0 }} />
+      <h2 style={{ margin: 0, fontSize: 'var(--text-base)', fontWeight: 600, color: 'var(--foreground)' }}>{titulo}</h2>
+      {aclaracion && <span style={{ fontSize: chico, color: 'var(--muted-foreground)', overflow: 'hidden', textOverflow: 'ellipsis' }}>{aclaracion}</span>}
     </div>
   );
 }
 
-/** Tarjeta chica con una cifra (estados, agentes y usuarios). */
-/** `color`: el del estado de operativo que cuenta (mismo que el badge y el mapa); sin él, el turquesa del sistema. */
-function Indicador({ valor, etiqueta, detalle, icono: I, color, estilo }: {
-  valor: number; etiqueta: string; detalle?: string; icono: typeof Radio; color?: string; estilo?: CSSProperties;
+/** Indicador de «Situación ahora»: ícono 42 px, número y etiqueta; el detalle va en el globo. */
+function Indicador({ valor, etiqueta, detalle, icono: I, color, onClick, activo, alerta }: {
+  valor: number; etiqueta: string; detalle: string; icono: LucideIcon; color: string; onClick?: () => void; activo?: boolean; alerta?: boolean;
 }) {
+  const d = useDemora();
+  const [hov, setHov] = useState(false);
   return (
-    <div className="rounded-[var(--radius-card)] flex items-center gap-3"
-      style={{ ...estiloTarjeta, padding: '10px 16px', ...(color ? { borderLeft: `4px solid ${color}` } : {}), ...estilo }}>
-      <div className="w-9 h-9 rounded-[var(--radius-md)] flex items-center justify-center shrink-0"
-        style={{ background: `color-mix(in srgb, ${color ?? 'var(--primary)'} 12%, transparent)` }}>
-        <I size={17} style={{ color: color ?? 'var(--primary)' }} />
+    <div onMouseEnter={() => { setHov(true); d.entrar(); }} onMouseLeave={() => { setHov(false); d.salir(); }} onClick={onClick}
+      role={onClick ? 'button' : undefined} tabIndex={onClick ? 0 : undefined} aria-pressed={onClick ? !!activo : undefined}
+      onKeyDown={onClick ? e => { if (e.key === 'Enter') onClick(); } : undefined}
+      style={{ ...tarjeta, position: 'relative', cursor: onClick ? 'pointer' : 'default', display: 'flex', alignItems: 'center', gap: 14, padding: '12px 22px',
+        borderLeft: `4px solid ${color}`, transition: 'transform .15s ease, box-shadow .15s ease',
+        ...(hov ? { transform: 'translateY(-2px)', boxShadow: 'var(--elevation-md)' } : {}),
+        ...(alerta ? { background: `color-mix(in srgb, ${ACENTO.rojo} 7%, var(--card))`, border: `1px solid color-mix(in srgb, ${ACENTO.rojo} 35%, transparent)`, borderLeft: `4px solid ${ACENTO.rojo}` } : {}),
+        ...(activo ? { outline: `2px solid ${color}`, outlineOffset: -1 } : {}) }}>
+      <div style={{ width: 42, height: 42, borderRadius: 'var(--radius-md)', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0, background: tinte(color, 12) }}><I size={20} color={color} /></div>
+      <div style={{ minWidth: 0 }}>
+        <p style={{ margin: 0, fontSize: 'calc(28px * var(--escala-texto, 1))', lineHeight: 1.05, fontWeight: 700, color: 'var(--foreground)', fontVariantNumeric: 'tabular-nums' }}>{valor}</p>
+        <p style={{ margin: '2px 0 0', fontSize: chico, lineHeight: 1.3, fontWeight: 500, color: 'var(--muted-foreground)', whiteSpace: 'nowrap', display: 'flex', alignItems: 'center', gap: 4 }}>
+          {alerta && <TriangleAlert size={12} color={ACENTO.rojoFuerte} />}{etiqueta}
+        </p>
       </div>
-      <div className="min-w-0">
-        <p className="tabular-nums" style={{ fontSize: 'calc(22px * var(--escala-texto))', lineHeight: 1.1, fontWeight: 700, color: 'var(--foreground)' }}>{valor}</p>
-        <p className="leading-tight" style={{ fontSize: 'var(--text-label)', color: 'var(--foreground)', fontWeight: 'var(--font-weight-semibold)' }}>{etiqueta}</p>
-        {detalle && <p className="leading-tight" style={{ fontSize: 'calc(11px * var(--escala-texto))', color: 'var(--muted-foreground)' }}>{detalle}</p>}
-      </div>
+      {d.ver && <div role="tooltip" style={{ ...globo, left: '50%', top: 'calc(100% + 10px)', transform: 'translateX(-50%)' }}>{detalle}</div>}
     </div>
   );
 }
+
+/** Período: Hoy / Últimos 7 días / Este mes / Personalizado (desde → hasta, nunca después de hoy). */
+function FiltroTiempo({ modo, setModo, desde, hasta, setDesde, setHasta, leyenda, hoyIso }: {
+  modo: Modo; setModo: (m: Modo) => void; desde: string; hasta: string; setDesde: (v: string) => void; setHasta: (v: string) => void; leyenda: string; hoyIso: string;
+}) {
+  const [abierto, setAbierto] = useState(false);
+  const pill = (act: boolean) => ({
+    display: 'inline-flex', alignItems: 'center', gap: 6, padding: '6px 12px', borderRadius: 'var(--radius-button)', cursor: 'pointer',
+    fontFamily: 'var(--font-family-primary)', fontSize: 'var(--text-label)', fontWeight: 600, border: act ? '1px solid transparent' : '1px solid var(--border)',
+    background: act ? 'var(--primary)' : 'var(--muted)', color: act ? 'var(--primary-foreground)' : 'var(--foreground)',
+  }) as const;
+  const campo = (lbl: string, v: string, f: (v: string) => void, min?: string, max?: string): ReactNode => (
+    <label style={{ display: 'inline-flex', alignItems: 'center', gap: 6, padding: '4px 10px', borderRadius: 'var(--radius-button)', border: '1px solid var(--border)', background: 'var(--muted)', fontSize: 'var(--text-label)', color: 'var(--muted-foreground)' }}>
+      <Calendar size={14} />{lbl}
+      <input type="date" value={v} min={min} max={max} onChange={e => e.target.value && f(e.target.value)}
+        style={{ background: 'transparent', border: 'none', color: 'var(--foreground)', fontFamily: 'var(--font-family-primary)', fontSize: 'var(--text-label)', colorScheme: 'light dark' }} />
+    </label>
+  );
+  return (
+    <div style={{ display: 'flex', flexDirection: 'column', alignItems: 'flex-end', gap: 6, maxWidth: '100%' }}>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end', whiteSpace: 'nowrap', maxWidth: '100%' }}>
+        <button type="button" onClick={() => setModo('hoy')} style={pill(modo === 'hoy')}>
+          <span style={{ width: 8, height: 8, borderRadius: '50%', background: modo === 'hoy' ? 'currentColor' : ACENTO.rojo }} />Hoy
+        </button>
+        <button type="button" onClick={() => setModo('7d')} style={pill(modo === '7d')}>Últimos 7 días</button>
+        <button type="button" onClick={() => setModo('mes')} style={pill(modo === 'mes')}>Este mes</button>
+        <span style={{ width: 1, height: 22, background: 'var(--border)', flexShrink: 0 }} />
+        <button type="button" onClick={() => setAbierto(a => !a)} aria-expanded={abierto || modo === 'rango'} style={pill(modo === 'rango')}><Calendar size={14} />Personalizado</button>
+      </div>
+      {(abierto || modo === 'rango') && (
+        <div style={{ display: 'flex', alignItems: 'center', gap: 8, flexWrap: 'wrap', justifyContent: 'flex-end' }}>
+          {campo('Desde', desde, setDesde, undefined, hasta || hoyIso)}
+          <ArrowRight size={14} color="var(--muted-foreground)" />
+          {campo('Hasta', hasta, setHasta, desde || undefined, hoyIso)}
+        </div>
+      )}
+      <span style={{ fontSize: chico, color: 'var(--muted-foreground)', textAlign: 'right' }}>{leyenda}</span>
+      <span style={{ fontSize: 'calc(11px * var(--escala-texto, 1))', color: 'var(--muted-foreground)', textAlign: 'right' }}>
+        También podés arrastrar sobre el gráfico "Operativos por mes". Los indicadores de estado siempre son de ahora.
+      </span>
+    </div>
+  );
+}
+
+/** Aporte por institución: Top 4 + «Otras» (barra apilada y lista), o todas con scroll interno. */
+function Instituciones({ datos, todas, setTodas }: { datos: { nombre: string; valor: number }[]; todas: boolean; setTodas: (v: boolean) => void }) {
+  const total = datos.reduce((s, x) => s + x.valor, 0);
+  const top = datos.slice(0, 4), resto = datos.slice(4), sumaResto = resto.reduce((s, x) => s + x.valor, 0);
+  const filas = [...top.map((x, i) => ({ ...x, c: colorInstitucion(i), sig: sigla(x.nombre), otras: false })),
+    ...(resto.length ? [{ nombre: `+${resto.length} Otras instituciones`, valor: sumaResto, c: ACENTO.grisClaro, sig: `+${resto.length}`, otras: true }] : [])];
+  const pct = (v: number) => (total ? `${Math.round((v / total) * 100)}%` : '0%');
+  const avatar = (txt: string, c: string) => (
+    <span style={{ width: 24, height: 24, borderRadius: 8, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 'calc(10px * var(--escala-texto, 1))', fontWeight: 700,
+      color: 'var(--foreground)', background: tinte(c, 22), border: `1px solid ${tinte(c, 45)}` }}>{txt}</span>
+  );
+  const fila = (x: { nombre: string; valor: number; c: string; sig: string; otras?: boolean }, k: number) => (
+    <div key={x.nombre} onClick={x.otras ? () => setTodas(true) : undefined} role={x.otras ? 'button' : undefined} tabIndex={x.otras ? 0 : undefined}
+      onKeyDown={x.otras ? e => { if (e.key === 'Enter') setTodas(true); } : undefined} className={x.otras ? 'fila-otras' : undefined}
+      style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '5px 4px', margin: '0 -4px', borderRadius: 'var(--radius-md)', cursor: x.otras ? 'pointer' : 'default',
+        borderTop: k ? '1px dashed var(--border)' : 'none', fontSize: 'var(--text-label)' }}>
+      {avatar(x.sig, x.c)}
+      <span style={{ flex: 1, minWidth: 0, color: 'var(--foreground)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{x.nombre}{x.otras && <span style={{ marginLeft: 6, color: 'var(--muted-foreground)' }}>→</span>}</span>
+      <strong style={{ color: 'var(--foreground)', fontVariantNumeric: 'tabular-nums' }}>{x.valor}</strong>
+      <span style={{ minWidth: 40, textAlign: 'center', padding: '1px 6px', borderRadius: 999, background: 'var(--muted)', color: 'var(--muted-foreground)', fontSize: 'calc(11px * var(--escala-texto, 1))', fontVariantNumeric: 'tabular-nums' }}>{pct(x.valor)}</span>
+    </div>
+  );
+  return (
+    <>
+      <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '4px 0 10px', flexWrap: 'nowrap', minWidth: 0 }}>
+        <span style={{ fontSize: 'calc(28px * var(--escala-texto, 1))', lineHeight: 1, fontWeight: 700, color: 'var(--foreground)', fontVariantNumeric: 'tabular-nums' }}>{total}</span>
+        <span style={{ fontSize: 'var(--text-label)', color: 'var(--muted-foreground)', whiteSpace: 'nowrap', overflow: 'hidden', textOverflow: 'ellipsis' }}>agentes movilizados</span>
+        <div style={{ marginLeft: 'auto' }}>
+          <Segmentado redondo etiqueta="Vista de instituciones" valor={todas} onCambiar={setTodas} opciones={[[false, 'Top 4'], [true, `Todas (${datos.length})`]]} />
+        </div>
+      </div>
+      <div role="img" aria-label={`Aporte por institución: ${filas.map(x => `${x.nombre} ${x.valor}`).join(', ')}`} style={{ display: 'flex', gap: 2, height: 12, marginBottom: 10 }}>
+        {total ? filas.map(x => <span key={x.nombre} title={`${x.nombre}: ${x.valor}`} style={{ flex: x.valor, minWidth: 0, borderRadius: 6, background: x.c }} />)
+          : <span style={{ flex: 1, borderRadius: 6, background: 'var(--muted)' }} />}
+      </div>
+      <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
+        <div style={{ height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', visibility: todas ? 'hidden' : 'visible' }}>
+          {filas.length ? filas.map(fila) : <p style={{ margin: 0, fontSize: 'var(--text-label)', color: 'var(--muted-foreground)' }}>Sin agentes movilizados en el período.</p>}
+        </div>
+        {todas && (
+          <div style={{ position: 'absolute', inset: 0 }}>
+            <div className="sin-barra" style={{ height: '100%', overflowY: 'auto', paddingBottom: 18, paddingRight: 14 }}>
+              {datos.map((x, i) => fila({ ...x, c: i < 4 ? colorInstitucion(i) : ACENTO.grisClaro, sig: sigla(x.nombre) }, i))}
+            </div>
+            <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 26, pointerEvents: 'none', background: 'linear-gradient(to bottom, transparent, var(--card))' }} />
+          </div>
+        )}
+      </div>
+    </>
+  );
+}
+
+/** Treemap «squarified» de las especialidades del período. */
+function mosaico<T extends { v: number }>(items: T[], W: number, H: number) {
+  const tot = items.reduce((a, f) => a + f.v, 0) || 1, A = W * H;
+  const rem = items.map(f => ({ f, a: (f.v / tot) * A }));
+  const out: { f: T; x: number; y: number; w: number; h: number }[] = [];
+  let x = 0, y = 0, w = W, h = H;
+  const peor = (row: typeof rem, lado: number) => {
+    const s = row.reduce((a, r) => a + r.a, 0), mx = Math.max(...row.map(r => r.a)), mn = Math.min(...row.map(r => r.a));
+    return Math.max((lado * lado * mx) / (s * s), (s * s) / (lado * lado * mn));
+  };
+  while (rem.length) {
+    const lado = Math.min(w, h), row = [rem.shift()!];
+    while (rem.length && peor([...row, rem[0]], lado) <= peor(row, lado)) row.push(rem.shift()!);
+    const s = row.reduce((a, r) => a + r.a, 0);
+    if (w >= h) { const cw = s / h; let yy = y; for (const r of row) { const rh = r.a / cw; out.push({ f: r.f, x, y: yy, w: cw, h: rh }); yy += rh; } x += cw; w -= cw; }
+    else { const ch = s / w; let xx = x; for (const r of row) { const rw = r.a / ch; out.push({ f: r.f, x: xx, y, w: rw, h: ch }); xx += rw; } y += ch; h -= ch; }
+  }
+  return out;
+}
+
+function Mosaico({ datos }: { datos: { nombre: string; valor: number }[] }) {
+  const [ref, med] = useMedida<HTMLDivElement>();
+  const filas = datos.filter(x => x.valor > 0).map(x => ({ ...estiloEspecialidad(x.nombre), v: x.valor })).sort((a, b) => b.v - a.v);
+  const rects = med.w && med.h && filas.length ? mosaico(filas, med.w, med.h) : [];
+  return (
+    <div ref={ref} role="img" aria-label={`Especialidades: ${filas.map(f => `${f.nombre} ${f.v}`).join(', ')}`}
+      style={{ position: 'relative', flex: 1, minHeight: 0, borderRadius: 'var(--radius-md)', overflow: 'hidden' }}>
+      {!filas.length && <p style={{ margin: 0, fontSize: 'var(--text-label)', color: 'var(--muted-foreground)' }}>Sin agentes en el período.</p>}
+      {rects.map(r => {
+        const f = r.f, grande = r.w >= 96 && r.h >= 66, medio = r.w >= 46 && r.h >= 42, g = 1.5, I = f.icono;
+        return (
+          <div key={f.nombre} title={`${f.nombre}: ${f.v} en total`}
+            style={{ position: 'absolute', left: r.x + g, top: r.y + g, width: Math.max(0, r.w - 2 * g), height: Math.max(0, r.h - 2 * g), borderRadius: 6, boxSizing: 'border-box',
+              background: `color-mix(in srgb, ${f.color} 62%, white)`, color: '#0F172A', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2, overflow: 'hidden', transition: 'all .5s ease' }}>
+            {(grande || medio) && <I size={grande ? 18 : 14} color="#0F172A" />}
+            <strong style={{ fontSize: grande ? 'calc(22px * var(--escala-texto, 1))' : 'calc(15px * var(--escala-texto, 1))', fontWeight: 800, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{f.v}</strong>
+            {grande && <span style={{ fontSize: 'calc(11px * var(--escala-texto, 1))', fontWeight: 600, lineHeight: 1.1, maxWidth: '92%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.nombre}</span>}
+          </div>
+        );
+      })}
+    </div>
+  );
+}
+

@@ -47,6 +47,8 @@ router.post('/:id/qr/refrescar', requiereSesion, gestores, qr.refrescar);
 
 // La grilla del personal: la consulta el Coordinador por polling.
 router.get('/:id/personal', requiereSesion, consulta, qr.personal);
+// Panel del operativo: cuántos hubo cada día, por institución (incluye a quienes ya se fueron).
+router.get('/:id/despliegue', requiereSesion, consulta, qr.despliegue);
 
 // El alta la hace el propio agente con su sesión, tras escanear el QR.
 router.post('/:id/alta', requiereSesion, registro.altaEnOperativo);

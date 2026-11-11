@@ -108,6 +108,13 @@ export async function validar(req, res, next) {
  * La grilla del Coordinador. Se consulta por polling: el CU-17 paso 9 pedía
  * WebSockets, pero el sistema corre en Vercel serverless, que no los soporta.
  */
+/** Panel del operativo: entradas y salidas de todo el personal (también el que ya se fue). */
+export async function despliegue(req, res, next) {
+  try {
+    res.json({ participaciones: await AgenteOperativo.despliegueDeOperativo(req.params.id) });
+  } catch (err) { next(err); }
+}
+
 export async function personal(req, res, next) {
   try {
     res.json({ personal: await AgenteOperativo.listarDeOperativo(req.params.id) });
