@@ -719,6 +719,43 @@ export interface PoligonoDetalleApi extends PoligonoApi {
   historial: EventoPoligonoApi[];
 }
 
+/* ── Paneles de control (11/11): una respuesta liviana por panel ─────────── */
+
+/** Polígono para el panel: sin forma ni brechas. */
+export interface PoligonoPanelApi {
+  id: string; nombre: string; coberturaPct: number; creadoEn: string;
+  grupos: { id: string; nombre: string; clase: ClaseGrupoApi; estado: EstadoGrupoApi; color: string | null }[];
+}
+/** Track para el panel: sin trazado. */
+export interface TrackPanelApi { poligonoId: string | null; distanciaM: number; fin: string | null; cargadoEn: string }
+
+export interface PanelOperativoApi {
+  personal: PersonalOperativoApi[];
+  grupos: GrupoApi[];
+  poligonos: PoligonoPanelApi[];
+  marcadores: { poi: number; hallazgos: number };
+  /** Radios del Punto 0, en metros. */
+  radios: number[];
+  tracks: TrackPanelApi[];
+  participaciones: { fechaIngreso: string; fechaEgreso: string | null; institucionNombre: string | null; tramos: { desde: string; hasta: string | null }[] }[];
+  cobertura: EventoCoberturaApi[];
+}
+
+/** Un operativo para el Panel general (la forma de utils/panelGeneral.ts → OperativoPanel). */
+export interface OperativoPanelApi {
+  id: string; titulo: string; localidad: string; estado: string; inicio: string; fin: string | null; resultado: string | null;
+  puntoCero: [number | null, number | null]; coordinador: string | null; conCoordinador: boolean;
+  agentes: { terreno: number; base: number; noDisponible: number }; agentesAsignados: number;
+  instituciones: string[]; especialidades: string[];
+  aporte: Record<string, number>; aporteDependencias: Record<string, Record<string, number>>; porEspecialidad: Record<string, number>;
+  coberturaHa: number; tracksKm: number; grupos: { total: number; enTerreno: number };
+}
+
+export const panelApi = {
+  general: () => api.get<{ operativos: OperativoPanelApi[] }>('/operativos/panel-general'),
+  operativo: (operativoId: string) => api.get<PanelOperativoApi>(`/operativos/${operativoId}/panel`),
+};
+
 /** Un punto del historial de cobertura de un polígono (panel del operativo). `pct` sólo en los recálculos desde el 11/11. */
 export interface EventoCoberturaApi { poligonoId: string; tipo: string; en: string; pct: number | null }
 

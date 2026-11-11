@@ -18,6 +18,7 @@ import * as tracks from '../controllers/track.controller.js';
 import * as marcadores from '../controllers/marcador.controller.js';
 import * as puntoCero from '../controllers/puntoCero.controller.js';
 import * as informes from '../controllers/informe.controller.js';
+import * as panel from '../controllers/panel.controller.js';
 import { requiereSesion, requiereRol } from '../middleware/auth.middleware.js';
 import { subirFotosMiddleware, subirGpxMiddleware } from '../middleware/upload.middleware.js';
 
@@ -32,7 +33,10 @@ const consulta = requiereRol('administrador', 'coordinador', 'jefe de operativo'
 
 router.get( '/',              requiereSesion, consulta, operativos.listar);     // CU-12
 router.post('/',              requiereSesion, gestores, operativos.crear);      // CU-08
+// Paneles de control (11/11): una respuesta liviana por panel. Va antes de '/:id'.
+router.get( '/panel-general', requiereSesion, consulta, panel.general);       // CU-43
 router.get( '/:id',           requiereSesion, consulta, operativos.obtener);
+router.get( '/:id/panel',     requiereSesion, consulta, panel.operativo);
 router.put( '/:id',           requiereSesion, gestores, operativos.actualizar); // CU-09
 router.post('/:id/activar',   requiereSesion, gestores, operativos.activar);    // CU-08 paso 8
 router.post('/:id/pausar',    requiereSesion, gestores, operativos.pausar);     // pausa manual (24/10)

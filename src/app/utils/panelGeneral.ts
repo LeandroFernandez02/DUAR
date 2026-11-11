@@ -1,8 +1,7 @@
 /**
  * Panel general (CU-43): todo lo que muestra sale de esta función, a partir de una
- * lista de operativos con lo justo para las cifras. Hoy la lista es de ejemplo
- * (data/panelGeneralMock.ts); cuando haya API, el servidor devuelve esta misma forma
- * y la pantalla no cambia.
+ * lista de operativos con lo justo para las cifras, que devuelve el servidor
+ * (GET /operativos/panel-general, server/src/models/panel.model.js).
  *
  * Qué se ve (decidido con el equipo, doc «Panel general de operativos»):
  *  1. Situación actual — siempre de ahora y de todos los operativos (sin filtros).

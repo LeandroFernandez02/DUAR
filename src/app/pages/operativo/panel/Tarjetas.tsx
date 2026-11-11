@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { UsersRound, ShieldAlert, TrendingUp, MapPin, Pentagon, ChartColumn, ChevronDown } from 'lucide-react';
-import type { EventoCoberturaApi, GrupoApi, PersonalOperativoApi, PoligonoApi, TrackApi } from '../../../services/api';
+import type { EventoCoberturaApi, GrupoApi, PersonalOperativoApi, PoligonoPanelApi, TrackPanelApi } from '../../../services/api';
 import { ACENTO, chico, globo, tarjeta, tinte, Tit, InfoTip, BotonPildora, TipDemora, ScrollFade, Segmentado, useMedida, useDemora, CajaIcono, colorInstitucion } from '../../panel/comunes';
 import { gruposPorEstado, recursos, curvaAvance, despliegue, ejeLindo, type Participacion, type VistaDespliegue } from './datosPanel';
 
@@ -158,7 +158,7 @@ const fmtHora = (t: number, conDia: boolean) => {
   return conDia ? `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')} ${hora}` : hora;
 };
 
-export function Avance({ poligonos, tracks, eventos, inicioOp, actual }: { poligonos: PoligonoApi[]; tracks: TrackApi[]; eventos: EventoCoberturaApi[] | null; inicioOp: string; actual: number }) {
+export function Avance({ poligonos, tracks, eventos, inicioOp, actual }: { poligonos: PoligonoPanelApi[]; tracks: TrackPanelApi[]; eventos: EventoCoberturaApi[] | null; inicioOp: string; actual: number }) {
   const [ref, { w: W, h: H }] = useMedida<HTMLDivElement>(220, 150);
   const [hv, setHv] = useState<number | null>(null);
   const { pts, estimados, total } = curvaAvance(eventos, poligonos, tracks, inicioOp);
@@ -234,13 +234,13 @@ function MediaDona({ pct, color }: { pct: number; color: string }) {
   );
 }
 
-export function Poligonos({ poligonos, grupos }: { poligonos: PoligonoApi[]; grupos: GrupoApi[] }) {
+export function Poligonos({ poligonos, grupos }: { poligonos: PoligonoPanelApi[]; grupos: GrupoApi[] }) {
   const [ver, setVer] = useState(false);
-  const pct = (p: PoligonoApi) => Math.min(100, Math.round(p.coberturaPct));
+  const pct = (p: PoligonoPanelApi) => Math.min(100, Math.round(p.coberturaPct));
   const activos = poligonos.filter(p => pct(p) < 100).sort((a, b) => pct(b) - pct(a));
   const completos = poligonos.filter(p => pct(p) >= 100);
   const sutil = { padding: '2px 8px', borderRadius: 'var(--radius-sm)', background: 'var(--muted)', fontSize: chico, color: 'var(--muted-foreground)', whiteSpace: 'nowrap' } as const;
-  const fila = (p: PoligonoApi, i: number, arr: PoligonoApi[]) => {
+  const fila = (p: PoligonoPanelApi, i: number, arr: PoligonoPanelApi[]) => {
     const ok = pct(p) >= 100;
     const g = p.grupos.find(x => x.clase === 'RASTRILLAJE') ?? p.grupos[0];
     const n = g ? grupos.find(x => x.id === g.id)?.integrantes.length ?? 0 : 0;

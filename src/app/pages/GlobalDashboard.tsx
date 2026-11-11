@@ -1,7 +1,8 @@
-import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
 import { ChevronDown, ChevronUp, Siren, Map as MapaIcono, FilePlus2, Users, Radio, CalendarClock, Flag, Building2, Crosshair, CalendarRange, Calendar, ArrowRight, X, TriangleAlert, type LucideIcon } from 'lucide-react';
 import { useApp } from '../context/AppContext';
-import { OPERATIVOS_PANEL_MOCK } from '../data/panelGeneralMock';
+import { panelApi, type OperativoPanelApi } from '../services/api';
+import { leerPanel, guardarPanel } from '../utils/memoriaPanel';
 import { calcularPanel, formatoDuracion, type EstadoOperativoPanel, type OperativoPanel, type Mes } from '../utils/panelGeneral';
 import { OperativosPorMes } from './panel/Graficos';
 import MapaProvincia from './panel/MapaProvincia';
@@ -14,8 +15,9 @@ import { ACENTO, Marco, Segmentado, ScrollFade, chico, globo, tarjeta, tinte, us
  * sobre el gráfico de meses) afecta los finalizados, el mapa de calor, las instituciones y las
  * especialidades.
  *
- * Datos de ejemplo (data/panelGeneralMock.ts) con el catálogo real de instituciones y especialidades;
- * las cifras se calculan en utils/panelGeneral.ts, que después recibe la respuesta de la API.
+ * Datos reales del sistema en un solo pedido liviano (GET /operativos/panel-general); las cifras
+ * del período se calculan en utils/panelGeneral.ts. El último dato se muestra al instante al volver
+ * a entrar y se actualiza cada minuto.
  */
 
 type Modo = 'hoy' | '7d' | 'mes' | 'rango';
@@ -32,7 +34,7 @@ const fAr = (s: string) => (s ? s.split('-').reverse().join('/') : 'dd/mm/aaaa')
 
 export default function GlobalDashboard() {
   const { isDark } = useApp();
-  const todos = OPERATIVOS_PANEL_MOCK;
+  const { todos, cargando, error } = useOperativosPanel();
   const hoy = new Date();
   const hoyIso = isoLocal(hoy);
 
@@ -95,7 +97,9 @@ export default function GlobalDashboard() {
   };
   const atajo = (m: Modo) => { setSel(null); setModo(m); };
 
-  const puntos = todos.filter(o => (filtro ? o.estado === FILTROS[filtro][0] : EN_MAPA.includes(o.estado)));
+  // En el mapa sólo los que tienen Punto Cero cargado.
+  const conPunto = (o: OperativoPanel) => o.puntoCero.every(n => typeof n === 'number' && Number.isFinite(n));
+  const puntos = todos.filter(o => conPunto(o) && (filtro ? o.estado === FILTROS[filtro][0] : EN_MAPA.includes(o.estado)));
   const alternar = (f: Exclude<Filtro, null>) => setFiltro(x => (x === f ? null : f));
 
   // Diseño de Centro de Comando desde 1100 px de ancho del propio panel.
@@ -116,6 +120,8 @@ export default function GlobalDashboard() {
         <div>
           <h1 style={{ margin: '0 0 4px', fontSize: 'var(--text-h2)', fontWeight: 700, color: 'var(--foreground)' }}>Panel de Control</h1>
           <p style={{ margin: 0, fontSize: 'var(--text-base)', color: 'var(--muted-foreground)' }}>Estadísticas Generales de Todos los Operativos</p>
+          {(cargando || error) && <p role="status" style={{ margin: '4px 0 0', fontSize: chico, color: error ? ACENTO.naranja : 'var(--muted-foreground)' }}>
+            {error ? 'No se pudieron actualizar los datos. Se reintenta en un minuto.' : 'Cargando datos…'}</p>}
         </div>
         <div style={{ marginLeft: 'auto', maxWidth: '100%' }}>
           <FiltroTiempo modo={modo} setModo={atajo} desde={desde} hasta={hasta} hoyIso={hoyIso} leyenda={leyenda}
@@ -141,7 +147,7 @@ export default function GlobalDashboard() {
       <Marco icono={MapaIcono} titulo="Dónde estamos operando y quién aporta">
         <div style={{ display: 'flex', flexWrap: amplio ? 'nowrap' : 'wrap', gap: 16, height: amplio ? 680 : 'auto', alignItems: 'stretch' }}>
           <section style={{ ...tarjeta, padding: 16, display: 'flex', flexDirection: 'column', minHeight: amplio ? 0 : 520, flex: amplio ? '6 1 0' : '1 1 100%', overflow: amplio ? 'hidden' : 'visible' }}>
-            <MapaProvincia key={filtro ?? 'todos'} vistaInicial={filtro ? 'curso' : 'calor'} apilado={!amplio} historial={per} isDark={isDark}
+            <MapaProvincia key={filtro ?? 'todos'} vistaInicial={filtro ? 'curso' : 'calor'} apilado={!amplio} historial={per.filter(conPunto)} isDark={isDark}
               puntos={puntos} etiquetaPuntos="Operativos en curso" colorDe={e => COLOR_ESTADO[e]}
               periodo={{ sub: subP, corta: sub, ha: cobertura.ha, km: cobertura.km }}
               encabezado={<div style={{ marginRight: 'auto' }}>{filtro
@@ -181,6 +187,36 @@ export default function GlobalDashboard() {
       </section>
     </div>
   );
+}
+
+/** Operativos del panel: el último dato al instante (si hay) y se actualiza cada minuto con la pestaña a la vista. */
+function useOperativosPanel() {
+  const [todos, setTodos] = useState<OperativoPanel[]>(() => leerPanel<OperativoPanel[]>('general') ?? []);
+  const [cargando, setCargando] = useState(() => !leerPanel('general'));
+  const [error, setError] = useState(false);
+  useEffect(() => {
+    let vigente = true;
+    const cargar = async () => {
+      try {
+        const { operativos } = await panelApi.general();
+        if (!vigente) return;
+        const lista = operativos.map(aOperativoPanel);
+        setTodos(lista); guardarPanel('general', lista); setError(false);
+      } catch { if (vigente) setError(true); }
+      finally { if (vigente) setCargando(false); }
+    };
+    cargar();
+    const id = setInterval(() => { if (document.visibilityState === 'visible') cargar(); }, 60_000);
+    return () => { vigente = false; clearInterval(id); };
+  }, []);
+  return { todos, cargando, error };
+}
+
+function aOperativoPanel(o: OperativoPanelApi): OperativoPanel {
+  return {
+    ...o, estado: o.estado as EstadoOperativoPanel, resultado: o.resultado as OperativoPanel['resultado'],
+    puntoCero: [o.puntoCero[0] ?? NaN, o.puntoCero[1] ?? NaN], areas: [], objetivo: null,
+  };
 }
 
 const chip = {

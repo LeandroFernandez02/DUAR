@@ -1,14 +1,17 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
-  agentesOperativoApi, gruposApi, poligonosApi, marcadoresApi, puntoCeroApi, tracksApi,
-  type PersonalOperativoApi, type GrupoApi, type PoligonoApi, type MarcadorApi, type RadioApi, type TrackApi, type EstadoGrupoApi, type EventoCoberturaApi,
+  panelApi,
+  type PersonalOperativoApi, type GrupoApi, type PoligonoPanelApi, type TrackPanelApi, type EstadoGrupoApi, type EventoCoberturaApi,
 } from '../../../services/api';
 import { ESPECIALIDADES_PANEL, ACENTO } from '../../panel/comunes';
+import { leerPanel, guardarPanel } from '../../../utils/memoriaPanel';
 
 /**
  * Panel del operativo (diseño v2, 11/11): todo sale de los datos reales del operativo —
  * personal, grupos, polígonos (cobertura), marcadores, radios del Punto 0, tracks GPX y las
- * entradas/salidas del personal— y se refresca cada 30 s mientras la pestaña está a la vista.
+ * entradas/salidas del personal— en UN solo pedido liviano (GET /operativos/:id/panel). Se
+ * refresca cada 30 s mientras la pestaña está a la vista, y el último dato se muestra al
+ * instante al volver a entrar (utils/memoriaPanel.ts).
  */
 
 /** Una participación con sus tramos en terreno (Desplegado, Rastrillando o Replegado). */
@@ -17,12 +20,12 @@ export type Participacion = { fechaIngreso: string; fechaEgreso: string | null; 
 export interface DatosCrudos {
   personal: PersonalOperativoApi[];
   grupos: GrupoApi[];
-  poligonos: PoligonoApi[];
-  marcadores: MarcadorApi[];
-  radios: RadioApi[];
-  tracks: TrackApi[];
+  poligonos: PoligonoPanelApi[];
+  marcadores: { poi: number; hallazgos: number };
+  /** Radios del Punto 0, en metros. */
+  radios: number[];
+  tracks: TrackPanelApi[];
   participaciones: Participacion[];
-  /** Historial de cobertura de los polígonos; null si el servidor todavía no lo ofrece. */
   cobertura: EventoCoberturaApi[] | null;
 }
 
@@ -30,33 +33,21 @@ const REFRESCO_MS = 30_000;
 const EN_TERRENO = new Set(['DESPLEGADO', 'RASTRILLANDO', 'REPLEGADO']);
 
 export function useDatosPanel(operativoId: string) {
-  const [datos, setDatos] = useState<DatosCrudos | null>(null);
+  const clave = `operativo:${operativoId}`;
+  const [datos, setDatos] = useState<DatosCrudos | null>(() => leerPanel<DatosCrudos>(clave));
   const [error, setError] = useState(false);
 
   const cargar = useCallback(async () => {
-    // Cada fuente por separado: si una falla, el resto del panel igual se ve.
-    const seguro = <T,>(p: Promise<T>, vacio: T) => p.catch(() => vacio);
-    const [p, g, pol, m, r, t, d, cob] = await Promise.all([
-      seguro(agentesOperativoApi.listar(operativoId), null),
-      seguro(gruposApi.listar(operativoId), { grupos: [] }),
-      seguro(poligonosApi.listar(operativoId), { poligonos: [] }),
-      seguro(marcadoresApi.listar(operativoId), { marcadores: [] }),
-      seguro(puntoCeroApi.listarRadios(operativoId), { radios: [] }),
-      seguro(tracksApi.listar(operativoId), { tracks: [] }),
-      seguro(agentesOperativoApi.despliegue(operativoId), null),
-      seguro(poligonosApi.historialCobertura(operativoId), null),
-    ]);
-    if (!p) { setError(true); return; }
-    setError(false);
-    setDatos({
-      personal: p.personal, grupos: g.grupos.filter(x => x.estado !== 'DISUELTO'), poligonos: pol.poligonos,
-      marcadores: m.marcadores, radios: r.radios, tracks: t.tracks,
-      // Sin el historial (servidor viejo), se arma con el personal de ahora.
-      participaciones: d?.participaciones ?? p.personal.map(a => ({ fechaIngreso: a.fechaIngreso, fechaEgreso: a.fechaEgreso, institucionNombre: a.institucionNombre,
-        tramos: EN_TERRENO.has(a.estado) ? [{ desde: a.estadoActualizadoEn, hasta: null }] : [] })),
-      cobertura: cob?.eventos ?? null,
-    });
-  }, [operativoId]);
+    try {
+      const r = await panelApi.operativo(operativoId);
+      const d: DatosCrudos = { ...r, grupos: r.grupos.filter(x => x.estado !== 'DISUELTO') };
+      setError(false);
+      setDatos(d);
+      guardarPanel(clave, d);
+    } catch {
+      setError(true);
+    }
+  }, [operativoId, clave]);
 
   useEffect(() => {
     cargar();
@@ -102,7 +93,7 @@ export function recursos(personal: PersonalOperativoApi[]) {
 }
 
 /** Cobertura media de los polígonos (0–100). */
-export const coberturaMedia = (pol: PoligonoApi[]) =>
+export const coberturaMedia = (pol: PoligonoPanelApi[]) =>
   pol.length ? Math.round(pol.reduce((s, p) => s + Math.min(100, p.coberturaPct), 0) / pol.length) : 0;
 
 const CAMBIA_COBERTURA = new Set(['GEOMETRIA', 'TRACK_CARGADO', 'TRACK_REASIGNADO', 'TRACK_ELIMINADO']);
@@ -116,7 +107,7 @@ const CAMBIA_COBERTURA = new Set(['GEOMETRIA', 'TRACK_CARGADO', 'TRACK_REASIGNAD
  * de hoy según los km de sus recorridos (`estimados` dice cuántos son). Un polígono cuenta
  * desde que se creó hasta que se eliminó, así agregar o borrar uno no cambia el pasado.
  */
-export function curvaAvance(eventos: EventoCoberturaApi[] | null, poligonos: PoligonoApi[], tracks: TrackApi[], inicioOp: string) {
+export function curvaAvance(eventos: EventoCoberturaApi[] | null, poligonos: PoligonoPanelApi[], tracks: TrackPanelApi[], inicioOp: string) {
   const ahora = Date.now();
   const ms = (iso: string) => new Date(iso).getTime();
   const actual = new Map(poligonos.map(p => [p.id, Math.min(100, p.coberturaPct)]));

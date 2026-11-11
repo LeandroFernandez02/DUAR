@@ -2,7 +2,7 @@ import { useEffect, useRef, useState } from 'react';
 import { useNavigate } from 'react-router';
 import { Flame, Radio, Users, Calendar, MapPin, RadioTower, ArrowRight, Plus, Minus, Maximize2, PanelRightClose, PanelRightOpen } from 'lucide-react';
 import { CONTORNO_CORDOBA } from '../../data/contornoCordoba';
-import { DEPARTAMENTOS_CORDOBA, LOCALIDADES_CORDOBA } from '../../data/divisionesCordoba';
+import type { DEPARTAMENTOS_CORDOBA as DeptosTipo, LOCALIDADES_CORDOBA as LocsTipo } from '../../data/divisionesCordoba';
 import type { OperativoPanel, EstadoOperativoPanel } from '../../utils/panelGeneral';
 import { ESTADO_BADGE, ETIQUETA_ESTADO } from '../../utils/panelGeneral';
 import StatusBadge, { colorDeEstado } from '../../components/shared/StatusBadge';
@@ -37,8 +37,17 @@ const H = Math.round((MAX_LAT - MIN_LAT) * ESCALA + PAD * 2);
 const xy = (lat: number, lon: number): [number, number] => [PAD + (lon - MIN_LON) * K * ESCALA, PAD + (MAX_LAT - lat) * ESCALA];
 const trazo = (anillo: [number, number][]) => anillo.map(([lon, lat], i) => `${i ? 'L' : 'M'}${xy(lat, lon).map(n => n.toFixed(2)).join(' ')}`).join(' ') + ' Z';
 const CONTORNO = trazo(CONTORNO_CORDOBA as [number, number][]);
-const DEPARTAMENTOS = DEPARTAMENTOS_CORDOBA.map(d => ({ nombre: d.nombre, d: d.anillos.map(trazo).join(' ') }));
-const LOCALIDADES = LOCALIDADES_CORDOBA.map(l => ({ ...l, d: l.anillos.map(trazo).join(' '), xy: xy(l.centro[1], l.centro[0]) }));
+// Departamentos y localidades (~220 KB) se cargan aparte, después de dibujar el mapa (11/11):
+// el contorno y los operativos aparecen enseguida y las divisiones se suman al llegar.
+const armarDivisiones = (deptos: typeof DeptosTipo, locs: typeof LocsTipo) => ({
+  DEPARTAMENTOS: deptos.map(d => ({ nombre: d.nombre, d: d.anillos.map(trazo).join(' ') })),
+  LOCALIDADES: locs.map(l => ({ ...l, d: l.anillos.map(trazo).join(' '), xy: xy(l.centro[1], l.centro[0]) })),
+});
+type Divisiones = ReturnType<typeof armarDivisiones>;
+let divisiones: Divisiones | null = null;
+let pedido: Promise<Divisiones> | null = null;
+const cargarDivisiones = () => (pedido ??= import('../../data/divisionesCordoba')
+  .then(m => (divisiones = armarDivisiones(m.DEPARTAMENTOS_CORDOBA, m.LOCALIDADES_CORDOBA))));
 
 /** Zoom: de 1 (provincia entera) a 16. Desde 3,5 se leen los nombres de los municipios; desde 7, también los de las comunas. */
 const ZOOM_MAX = 16;
@@ -82,6 +91,10 @@ export default function MapaProvincia({ historial, puntos, etiquetaPuntos, isDar
   colorDe?: (e: EstadoOperativoPanel) => string;
 }) {
   colorEstado = colorDe ?? colorBadge;
+  const [div, setDiv] = useState<Divisiones | null>(divisiones);
+  useEffect(() => { if (!div) cargarDivisiones().then(setDiv).catch(() => { pedido = null; }); }, [div]);
+  const LOCALIDADES = div?.LOCALIDADES ?? [];
+  const DEPARTAMENTOS = div?.DEPARTAMENTOS ?? [];
   const [vista, setVista] = useState<Vista>(vistaInicial);
   // Panel de datos ocultable (panel v2): oculto, el mapa usa todo el ancho.
   const [panel, setPanel] = useState(true);
@@ -289,8 +302,6 @@ export default function MapaProvincia({ historial, puntos, etiquetaPuntos, isDar
  */
 function Ficha({ o }: { o: OperativoPanel }) {
   const navigate = useNavigate();
-  // Los datos de ejemplo no existen en la base: el botón queda visible pero sin entrar hasta tener la API del panel.
-  const deEjemplo = o.id.startsWith('mock-');
   // Igual que mandoDe() en Operativos.tsx: en ámbar sólo si está activo y nadie está a cargo.
   const alerta = !o.coordinador && o.estado === 'INICIADO';
   const fila = (I: typeof Users, texto: React.ReactNode, color = 'var(--muted-foreground)') => (
@@ -311,16 +322,15 @@ function Ficha({ o }: { o: OperativoPanel }) {
           {fila(MapPin, o.localidad)}
           {fila(Calendar, fechaHoraArgentina(o.inicio))}
           {fila(Users, `${o.agentesAsignados} agente${o.agentesAsignados !== 1 ? 's' : ''} asignado${o.agentesAsignados !== 1 ? 's' : ''}`)}
-          {fila(RadioTower, o.coordinador ?? 'Sin coordinador a cargo', alerta ? '#b45309' : 'var(--muted-foreground)')}
+          {fila(RadioTower, o.coordinador ? `Jefe: ${o.coordinador}` : 'Sin Jefe de Operativo', alerta ? '#b45309' : 'var(--muted-foreground)')}
         </div>
       </div>
       {/* Acceder al panel del operativo, igual que en su tarjeta de la sección Operativos */}
       <div className="flex justify-end px-4 py-2.5" style={{ borderTop: '1px solid var(--border)', background: 'var(--muted)' }}>
-        <button onClick={() => navigate(`/operativo/${o.id}/dashboard`)} disabled={deEjemplo}
-          title={deEjemplo ? 'Operativo de ejemplo: se va a poder entrar cuando el panel use los datos reales' : 'Acceder al panel del operativo'}
-          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg disabled:opacity-60"
+        <button onClick={() => navigate(`/operativo/${o.id}/dashboard`)} title="Acceder al panel del operativo"
+          className="flex items-center gap-1.5 px-3 py-1.5 rounded-lg"
           style={{ color: 'var(--primary)', background: 'color-mix(in srgb, var(--primary) 8%, transparent)', border: '1px solid color-mix(in srgb, var(--primary) 18%, transparent)',
-            fontFamily: 'var(--font-family-primary)', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)', cursor: deEjemplo ? 'not-allowed' : 'pointer' }}>
+            fontFamily: 'var(--font-family-primary)', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)', cursor: 'pointer' }}>
           Panel <ArrowRight size={13} />
         </button>
       </div>

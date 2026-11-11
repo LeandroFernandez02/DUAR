@@ -59,7 +59,9 @@ export function OperativosPorMes({ meses, colorBarras, colorLinea, tope: topeFij
   const linea = pts.map((p, i) => {
     if (!i) return `M ${p[0]} ${p[1]}`;
     const p0 = pts[i - 2] ?? pts[i - 1], p1 = pts[i - 1], p3 = pts[i + 1] ?? p;
-    return `C ${p1[0] + (p[0] - p0[0]) / 6} ${p1[1] + (p[1] - p0[1]) / 6} ${p[0] - (p3[0] - p1[0]) / 6} ${p[1] - (p3[1] - p1[1]) / 6} ${p[0]} ${p[1]}`;
+    // Los puntos de control no bajan del 0: la curva no se dibuja por debajo del eje.
+    const piso = (v: number) => Math.min(y(0), v);
+    return `C ${p1[0] + (p[0] - p0[0]) / 6} ${piso(p1[1] + (p[1] - p0[1]) / 6)} ${p[0] - (p3[0] - p1[0]) / 6} ${piso(p[1] - (p3[1] - p1[1]) / 6)} ${p[0]} ${p[1]}`;
   }).join(' ');
   const ff = { fontSize: 'calc(11px * var(--escala-texto, 1))', fill: 'var(--muted-foreground)', fontFamily: 'var(--font-family-primary)' };
 

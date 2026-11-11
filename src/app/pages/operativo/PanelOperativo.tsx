@@ -40,9 +40,8 @@ export default function PanelOperativo() {
   const pol = datos.poligonos;
   const completos = pol.filter(p => p.coberturaPct >= 100).length;
   const conGrupo = pol.filter(p => p.grupos.length > 0).length;
-  const radioKm = datos.radios.length ? Math.max(...datos.radios.map(r => r.radioM)) / 1000 : null;
-  const pois = datos.marcadores.filter(m => m.clase === 'POI').length;
-  const hallazgos = datos.marcadores.filter(m => m.clase === 'HALLAZGO').length;
+  const radioKm = datos.radios.length ? Math.max(...datos.radios) / 1000 : null;
+  const { poi: pois, hallazgos } = datos.marcadores;
 
   return (
     <div className="panel-raiz">
