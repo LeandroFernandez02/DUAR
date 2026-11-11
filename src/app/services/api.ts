@@ -719,7 +719,13 @@ export interface PoligonoDetalleApi extends PoligonoApi {
   historial: EventoPoligonoApi[];
 }
 
+/** Un punto del historial de cobertura de un polígono (panel del operativo). `pct` sólo en los recálculos desde el 11/11. */
+export interface EventoCoberturaApi { poligonoId: string; tipo: string; en: string; pct: number | null }
+
 export const poligonosApi = {
+  /** Panel del operativo: cobertura de cada polígono en el tiempo (incluye los eliminados). */
+  historialCobertura: (operativoId: string) =>
+    api.get<{ eventos: EventoCoberturaApi[] }>(`/operativos/${operativoId}/poligonos-cobertura`),
   listar: (operativoId: string) =>
     api.get<{ poligonos: PoligonoApi[] }>(`/operativos/${operativoId}/poligonos`),
   /** CU-40 */

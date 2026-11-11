@@ -149,11 +149,11 @@ export async function crear(operativoId, { agenteOperativoId, buffer, archivoNom
       await client.query(`UPDATE tracks_gpx SET archivo_ruta = $2 WHERE id = $1`, [nuevo.id, ruta]);
 
       if (m.poligono) {
+        const coberturaPct = await recalcularCoberturaCon(client, m.poligono.id);
         await Asig.registrarEvento(client, {
           poligonoId: m.poligono.id, operativoId, tipo: 'TRACK_CARGADO', trackId: nuevo.id,
-          detalle: { deteccionPct: m.deteccionPct, distanciaM: m.distanciaM }, usuarioId: cargadoPor,
+          detalle: { deteccionPct: m.deteccionPct, distanciaM: m.distanciaM, coberturaPct }, usuarioId: cargadoPor,
         });
-        await recalcularCoberturaCon(client, m.poligono.id);
       }
       return nuevo.id;
     });
@@ -218,18 +218,18 @@ export async function actualizar(operativoId, trackId, { poligonoId, notas }, us
       const { rows: [anterior] } = await client.query(`SELECT nombre FROM poligonos WHERE id = $1`, [previo.poligonoId]);
       await client.query(`UPDATE tracks_gpx SET poligono_id = $2 WHERE id = $1`, [trackId, poligonoId]);
       if (previo.poligonoId) {
+        const coberturaPct = await recalcularCoberturaCon(client, previo.poligonoId);
         await Asig.registrarEvento(client, {
           poligonoId: previo.poligonoId, operativoId, tipo: 'TRACK_REASIGNADO', trackId,
-          detalle: { hacia: nuevo?.nombre ?? 'Fuera de polígono' }, usuarioId,
+          detalle: { hacia: nuevo?.nombre ?? 'Fuera de polígono', coberturaPct }, usuarioId,
         });
-        await recalcularCoberturaCon(client, previo.poligonoId);
       }
       if (nuevo) {
+        const coberturaPct = await recalcularCoberturaCon(client, nuevo.id);
         await Asig.registrarEvento(client, {
           poligonoId: nuevo.id, operativoId, tipo: 'TRACK_REASIGNADO', trackId,
-          detalle: { desde: anterior?.nombre ?? 'Fuera de polígono' }, usuarioId,
+          detalle: { desde: anterior?.nombre ?? 'Fuera de polígono', coberturaPct }, usuarioId,
         });
-        await recalcularCoberturaCon(client, nuevo.id);
       }
     }
     if (notas !== undefined && (notas ?? '') !== (previo.notas ?? '')) {
@@ -248,10 +248,10 @@ export async function eliminar(operativoId, trackId, usuarioId) {
       [trackId, usuarioId]
     );
     if (previo.poligonoId) {
+      const coberturaPct = await recalcularCoberturaCon(client, previo.poligonoId);
       await Asig.registrarEvento(client, {
-        poligonoId: previo.poligonoId, operativoId, tipo: 'TRACK_ELIMINADO', trackId, usuarioId,
+        poligonoId: previo.poligonoId, operativoId, tipo: 'TRACK_ELIMINADO', trackId, detalle: { coberturaPct }, usuarioId,
       });
-      await recalcularCoberturaCon(client, previo.poligonoId);
     }
   });
 }

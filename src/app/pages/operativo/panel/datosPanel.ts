@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import {
   agentesOperativoApi, gruposApi, poligonosApi, marcadoresApi, puntoCeroApi, tracksApi,
-  type PersonalOperativoApi, type GrupoApi, type PoligonoApi, type MarcadorApi, type RadioApi, type TrackApi, type EstadoGrupoApi,
+  type PersonalOperativoApi, type GrupoApi, type PoligonoApi, type MarcadorApi, type RadioApi, type TrackApi, type EstadoGrupoApi, type EventoCoberturaApi,
 } from '../../../services/api';
 import { ESPECIALIDADES_PANEL, ACENTO } from '../../panel/comunes';
 
@@ -22,6 +22,8 @@ export interface DatosCrudos {
   radios: RadioApi[];
   tracks: TrackApi[];
   participaciones: Participacion[];
+  /** Historial de cobertura de los polígonos; null si el servidor todavía no lo ofrece. */
+  cobertura: EventoCoberturaApi[] | null;
 }
 
 const REFRESCO_MS = 30_000;
@@ -34,7 +36,7 @@ export function useDatosPanel(operativoId: string) {
   const cargar = useCallback(async () => {
     // Cada fuente por separado: si una falla, el resto del panel igual se ve.
     const seguro = <T,>(p: Promise<T>, vacio: T) => p.catch(() => vacio);
-    const [p, g, pol, m, r, t, d] = await Promise.all([
+    const [p, g, pol, m, r, t, d, cob] = await Promise.all([
       seguro(agentesOperativoApi.listar(operativoId), null),
       seguro(gruposApi.listar(operativoId), { grupos: [] }),
       seguro(poligonosApi.listar(operativoId), { poligonos: [] }),
@@ -42,6 +44,7 @@ export function useDatosPanel(operativoId: string) {
       seguro(puntoCeroApi.listarRadios(operativoId), { radios: [] }),
       seguro(tracksApi.listar(operativoId), { tracks: [] }),
       seguro(agentesOperativoApi.despliegue(operativoId), null),
+      seguro(poligonosApi.historialCobertura(operativoId), null),
     ]);
     if (!p) { setError(true); return; }
     setError(false);
@@ -51,6 +54,7 @@ export function useDatosPanel(operativoId: string) {
       // Sin el historial (servidor viejo), se arma con el personal de ahora.
       participaciones: d?.participaciones ?? p.personal.map(a => ({ fechaIngreso: a.fechaIngreso, fechaEgreso: a.fechaEgreso, institucionNombre: a.institucionNombre,
         tramos: EN_TERRENO.has(a.estado) ? [{ desde: a.estadoActualizadoEn, hasta: null }] : [] })),
+      cobertura: cob?.eventos ?? null,
     });
   }, [operativoId]);
 
@@ -101,21 +105,56 @@ export function recursos(personal: PersonalOperativoApi[]) {
 export const coberturaMedia = (pol: PoligonoApi[]) =>
   pol.length ? Math.round(pol.reduce((s, p) => s + Math.min(100, p.coberturaPct), 0) / pol.length) : 0;
 
+const CAMBIA_COBERTURA = new Set(['GEOMETRIA', 'TRACK_CARGADO', 'TRACK_REASIGNADO', 'TRACK_ELIMINADO']);
+
 /**
- * Curva del avance: la cobertura de hoy repartida en el tiempo según los km de tracks que se
- * fueron cargando (cada track suma en la hora en que terminó). Es una estimación: la base sólo
- * guarda la cobertura actual de cada polígono.
+ * Curva del avance: cobertura media de los polígonos vigentes en cada momento.
+ *
+ * Desde el 11/11 cada recálculo de cobertura queda en el historial del polígono con su
+ * porcentaje (detalle.coberturaPct): esos polígonos tienen la curva EXACTA. Los que tienen
+ * recorridos cargados antes no guardaron ese dato: su curva se estima repartiendo su cobertura
+ * de hoy según los km de sus recorridos (`estimados` dice cuántos son). Un polígono cuenta
+ * desde que se creó hasta que se eliminó, así agregar o borrar uno no cambia el pasado.
  */
-export function curvaAvance(tracks: TrackApi[], actual: number, inicioOp: string): { t: number; v: number }[] {
+export function curvaAvance(eventos: EventoCoberturaApi[] | null, poligonos: PoligonoApi[], tracks: TrackApi[], inicioOp: string) {
   const ahora = Date.now();
-  const conHora = tracks.map(t => ({ t: new Date(t.fin ?? t.cargadoEn).getTime(), km: t.distanciaM })).filter(x => x.t <= ahora).sort((a, b) => a.t - b.t);
-  const desde = Math.min(new Date(inicioOp).getTime(), conHora[0]?.t ?? ahora);
-  const total = conHora.reduce((s, x) => s + x.km, 0);
-  const pts = [{ t: desde, v: 0 }];
-  let acc = 0;
-  for (const x of conHora) { acc += x.km; pts.push({ t: x.t, v: total ? Math.round(actual * acc / total) : 0 }); }
-  if (pts[pts.length - 1].t < ahora) pts.push({ t: ahora, v: total ? actual : 0 });
-  return pts;
+  const ms = (iso: string) => new Date(iso).getTime();
+  const actual = new Map(poligonos.map(p => [p.id, Math.min(100, p.coberturaPct)]));
+  const ids = new Set([...poligonos.map(p => p.id), ...(eventos ?? []).map(e => e.poligonoId)]);
+  type Serie = { desde: number; hasta: number; puntos: { t: number; v: number }[] };
+  const series: Serie[] = [];
+  let estimados = 0;
+  for (const id of ids) {
+    const ev = (eventos ?? []).filter(e => e.poligonoId === id);
+    const creado = ev.find(e => e.tipo === 'CREADO');
+    const desde = creado ? ms(creado.en) : ms(poligonos.find(p => p.id === id)?.creadoEn ?? inicioOp);
+    const borrado = ev.find(e => e.tipo === 'ELIMINADO');
+    const hasta = borrado ? ms(borrado.en) : Infinity;
+    const cambios = ev.filter(e => CAMBIA_COBERTURA.has(e.tipo));
+    const exacto = eventos !== null && cambios.every(e => e.pct !== null);
+    let puntos: { t: number; v: number }[];
+    if (exacto) {
+      puntos = [{ t: desde, v: 0 }, ...cambios.map(e => ({ t: ms(e.en), v: Math.min(100, e.pct ?? 0) }))];
+    } else {
+      estimados++;
+      const final = actual.get(id) ?? [...cambios].reverse().find(e => e.pct !== null)?.pct ?? 0;
+      const suyos = tracks.filter(t => t.poligonoId === id).map(t => ({ t: ms(t.fin ?? t.cargadoEn), km: t.distanciaM })).sort((a, b) => a.t - b.t);
+      const total = suyos.reduce((s, x) => s + x.km, 0);
+      let acc = 0;
+      puntos = [{ t: desde, v: 0 }, ...suyos.map(x => { acc += x.km; return { t: Math.max(x.t, desde), v: total ? (final * acc) / total : final }; })];
+      if (!suyos.length && final) puntos.push({ t: desde, v: final });
+    }
+    series.push({ desde, hasta, puntos });
+  }
+  const valorEn = (s: Serie, t: number) => { let v = 0; for (const p of s.puntos) { if (p.t <= t) v = p.v; else break; } return v; };
+  const inicio = Math.min(ms(inicioOp), ...series.map(s => s.desde));
+  const tiempos = [...new Set([inicio, ...series.flatMap(s => [s.desde, ...(Number.isFinite(s.hasta) ? [s.hasta] : []), ...s.puntos.map(p => p.t)]), ahora])]
+    .filter(t => t >= inicio && t <= ahora).sort((a, b) => a - b);
+  const pts = tiempos.map(t => {
+    const vivos = series.filter(s => s.desde <= t && s.hasta > t);
+    return { t, v: vivos.length ? Math.round(vivos.reduce((x, s) => x + valorEn(s, t), 0) / vivos.length) : 0 };
+  });
+  return { pts, estimados, total: series.length };
 }
 
 export type VistaDespliegue = '7d' | 'sem' | 'mes';

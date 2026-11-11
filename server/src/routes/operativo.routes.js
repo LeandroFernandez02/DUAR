@@ -87,6 +87,7 @@ router.put( '/:id/mando/jefe',    requiereSesion, consulta, mando.jefe);
 // Módulo 5 · Mapa Operacional: polígonos y sus grupos (CU-30, 30, 37, 38, 39).
 router.get(   '/:id/poligonos',                                     requiereSesion, consulta, poligonos.listar);
 router.post(  '/:id/poligonos',                                     requiereSesion, gestores, poligonos.crear);        // CU-30
+router.get(   '/:id/poligonos-cobertura',                           requiereSesion, consulta, poligonos.historialCobertura); // panel: avance
 router.get(   '/:id/poligonos/:poligonoId',                         requiereSesion, consulta, poligonos.obtener);      // CU-40
 router.put(   '/:id/poligonos/:poligonoId',                         requiereSesion, gestores, poligonos.actualizar);   // CU-38
 router.delete('/:id/poligonos/:poligonoId',                         requiereSesion, gestores, poligonos.eliminar);     // CU-39

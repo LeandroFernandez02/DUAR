@@ -126,7 +126,7 @@ function comoErrorDePoligono(err) {
  * Guarda también los km recorridos dentro y las brechas (lo no revisado).
  */
 export async function recalcularCoberturaCon(client, poligonoId) {
-  await client.query(
+  const { rows } = await client.query(
     `WITH p AS (SELECT id, geom, area_m2 FROM poligonos WHERE id = $1),
           trazas AS (SELECT ST_Force2D(geom) AS g FROM tracks_gpx WHERE poligono_id = $1 AND eliminado_en IS NULL),
           franjas AS (SELECT ST_Union(ST_Buffer(g::geography, $2)::geometry) AS g FROM trazas),
@@ -142,9 +142,31 @@ export async function recalcularCoberturaCon(client, poligonoId) {
             brechas       = CASE WHEN c.g IS NULL THEN NULL ELSE ST_Difference(p.geom, c.g) END,
             cobertura_calculada_en = CURRENT_TIMESTAMP
        FROM p, cubierto c, recorrido r
-      WHERE pol.id = p.id`,
+      WHERE pol.id = p.id
+     RETURNING pol.cobertura_pct::float AS pct`,
     [poligonoId, ANCHO_BARRIDO_M]
   );
+  // Panel del operativo (11/11): quien llama guarda este valor en el evento del historial
+  // (detalle.coberturaPct), así la curva de avance muestra la cobertura que hubo en cada momento.
+  return rows[0]?.pct ?? 0;
+}
+
+/**
+ * Panel del operativo: la cobertura de cada polígono a lo largo del tiempo, sacada de su
+ * historial (creado, eliminado y cada recálculo con detalle.coberturaPct). Incluye los
+ * polígonos eliminados, para que la curva no cambie hacia atrás.
+ */
+export async function historialCobertura(operativoId) {
+  const { rows } = await query(
+    `SELECT pe.poligono_id AS "poligonoId", pe.tipo, pe.registrado_en AS en,
+            (pe.detalle->>'coberturaPct')::float AS pct
+       FROM poligono_eventos pe
+      WHERE pe.operativo_id = $1
+        AND pe.tipo IN ('CREADO', 'ELIMINADO', 'GEOMETRIA', 'TRACK_CARGADO', 'TRACK_REASIGNADO', 'TRACK_ELIMINADO')
+      ORDER BY pe.registrado_en`,
+    [operativoId]
+  );
+  return rows;
 }
 
 /* ── CU-30 · Dibujar ───────────────────────────────────────────────────── */
@@ -209,12 +231,12 @@ export async function actualizar(operativoId, poligonoId, { nombre, notas, geojs
             WHERE id = $1 RETURNING round(area_m2)::int AS "areaM2"`,
           [poligonoId, geojson]
         );
+        // La cobertura sólo cuenta lo recorrido dentro de la forma nueva.
+        const coberturaPct = await recalcularCoberturaCon(client, poligonoId);
         await Asig.registrarEvento(client, {
           poligonoId, operativoId, tipo: 'GEOMETRIA',
-          detalle: { areaAnteriorM2: actual.areaM2, areaNuevaM2: rows[0].areaM2 }, usuarioId,
+          detalle: { areaAnteriorM2: actual.areaM2, areaNuevaM2: rows[0].areaM2, coberturaPct }, usuarioId,
         });
-        // La cobertura sólo cuenta lo recorrido dentro de la forma nueva.
-        await recalcularCoberturaCon(client, poligonoId);
       }
     });
     return detalle(operativoId, poligonoId);

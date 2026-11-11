@@ -81,6 +81,13 @@ function leerGeometria(g) {
 }
 
 /** GET /api/operativos/:id/poligonos — los polígonos vigentes (CU-34 / CU-40). */
+/** Panel del operativo: cobertura de cada polígono en el tiempo (curva de avance del rastrillaje). */
+export async function historialCobertura(req, res, next) {
+  try {
+    res.json({ eventos: await Poligono.historialCobertura(req.params.id) });
+  } catch (err) { next(err); }
+}
+
 export async function listar(req, res, next) {
   try {
     if (!(await operativoEditable(req, res, { soloLectura: true }))) return;

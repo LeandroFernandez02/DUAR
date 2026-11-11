@@ -78,7 +78,7 @@ export default function PanelOperativo() {
               <Kpi icono={MapPin} color={ACENTO.naranja} valor={pois} unidad="poi" etiqueta="Puntos de Interés"
                 tip={`Marcadores de alta probabilidad de hallazgo o evidencia${hallazgos ? ` · ${hallazgos} hallazgo${hallazgos === 1 ? '' : 's'} registrado${hallazgos === 1 ? '' : 's'}` : ''}`} />
             </div>
-            <Avance poligonos={pol} tracks={datos.tracks} inicioOp={operativo.fechaInicio} actual={coberturaMedia(pol)} />
+            <Avance poligonos={pol} tracks={datos.tracks} eventos={datos.cobertura} inicioOp={operativo.fechaInicio} actual={coberturaMedia(pol)} />
           </div>
           <div className="cc-der"><Poligonos poligonos={pol} grupos={datos.grupos} /></div>
         </div>

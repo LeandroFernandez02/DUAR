@@ -1,6 +1,6 @@
 import { useEffect, useState } from 'react';
 import { UsersRound, ShieldAlert, TrendingUp, MapPin, Pentagon, ChartColumn, ChevronDown } from 'lucide-react';
-import type { GrupoApi, PersonalOperativoApi, PoligonoApi, TrackApi } from '../../../services/api';
+import type { EventoCoberturaApi, GrupoApi, PersonalOperativoApi, PoligonoApi, TrackApi } from '../../../services/api';
 import { ACENTO, chico, globo, tarjeta, tinte, Tit, InfoTip, BotonPildora, TipDemora, ScrollFade, Segmentado, useMedida, useDemora, CajaIcono, colorInstitucion } from '../../panel/comunes';
 import { gruposPorEstado, recursos, curvaAvance, despliegue, ejeLindo, type Participacion, type VistaDespliegue } from './datosPanel';
 
@@ -158,17 +158,18 @@ const fmtHora = (t: number, conDia: boolean) => {
   return conDia ? `${String(d.getDate()).padStart(2, '0')}/${String(d.getMonth() + 1).padStart(2, '0')} ${hora}` : hora;
 };
 
-export function Avance({ poligonos, tracks, inicioOp, actual }: { poligonos: PoligonoApi[]; tracks: TrackApi[]; inicioOp: string; actual: number }) {
+export function Avance({ poligonos, tracks, eventos, inicioOp, actual }: { poligonos: PoligonoApi[]; tracks: TrackApi[]; eventos: EventoCoberturaApi[] | null; inicioOp: string; actual: number }) {
   const [ref, { w: W, h: H }] = useMedida<HTMLDivElement>(220, 150);
   const [hv, setHv] = useState<number | null>(null);
-  const pts = curvaAvance(tracks, actual, inicioOp);
+  const { pts, estimados, total } = curvaAvance(eventos, poligonos, tracks, inicioOp);
   const km = tracks.reduce((s, t) => s + t.distanciaM, 0) / 1000;
   const t0 = pts[0].t, t1 = Math.max(pts[pts.length - 1].t, t0 + 3_600_000);
   const conDia = t1 - t0 > 36 * 3_600_000;
   const L = 36, R = 8, T = 10, B = 22;
   const x = (t: number) => L + ((t - t0) / (t1 - t0)) * (W - L - R);
   const y = (v: number) => T + ((100 - v) / 100) * (H - T - B);
-  const linea = pts.map((p, i) => `${i ? 'L' : 'M'}${x(p.t)} ${y(p.v)}`).join(' ');
+  // En escalones: la cobertura cambia de golpe en cada recálculo (al cargar un recorrido), no de a poco.
+  const linea = pts.map((p, i) => (i ? `H${x(p.t)} V${y(p.v)}` : `M${x(p.t)} ${y(p.v)}`)).join(' ');
   const ult = pts[pts.length - 1];
   const marcas = Array.from({ length: 6 }, (_, i) => t0 + ((t1 - t0) * i) / 5);
   const cerca = (px: number) => pts.reduce((m, p, i) => (Math.abs(x(p.t) - px) < Math.abs(x(pts[m].t) - px) ? i : m), 0);
@@ -179,7 +180,7 @@ export function Avance({ poligonos, tracks, inicioOp, actual }: { poligonos: Pol
         <div>
           <div style={{ display: 'flex', alignItems: 'center', gap: 6 }}>
             <h2 style={{ margin: 0, fontSize: 'var(--text-label)', fontWeight: 700, color: 'var(--foreground)', whiteSpace: 'nowrap' }}>Avance del rastrillaje</h2>
-            <InfoTip texto="Cobertura media de los polígonos. La curva reparte la cobertura de hoy según los km de tracks cargados en cada momento." />
+            <InfoTip texto={`Cobertura media de los polígonos en cada momento.${estimados ? ` ${estimados} de ${total} polígono${total === 1 ? '' : 's'} tiene${estimados === 1 ? '' : 'n'} recorridos cargados antes del 11/11: su tramo de la curva es estimado.` : ''}`} />
           </div>
           <p style={{ margin: '4px 0 0', display: 'flex', alignItems: 'baseline', gap: 8, flexWrap: 'wrap' }}>
             <span style={{ fontSize: 'calc(28px * var(--escala-texto, 1))', fontWeight: 700, lineHeight: 1, color: 'var(--foreground)', fontVariantNumeric: 'tabular-nums' }}>{actual}%</span>
