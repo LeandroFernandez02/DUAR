@@ -142,7 +142,8 @@ export default function Agentes() {
         `${a.nombre} ${a.apellido}`.toLowerCase().includes(q) ||
         a.dni.toLowerCase().includes(q) ||
         (a.especialidadNombre ?? '').toLowerCase().includes(q) ||
-        (a.institucionNombre ?? '').toLowerCase().includes(q)
+        (a.institucionNombre ?? '').toLowerCase().includes(q) ||
+        (a.dependenciaNombre ?? '').toLowerCase().includes(q)
       ), q);
     }
     return list;
@@ -190,6 +191,7 @@ export default function Agentes() {
       `${u.nombre} ${u.apellido}`.toLowerCase().includes(q) ||
       u.dni.toLowerCase().includes(q) ||
       (u.institucionNombre ?? '').toLowerCase().includes(q) ||
+      (u.dotacionNombre ?? '').toLowerCase().includes(q) ||
       (u.especialidadNombre ?? '').toLowerCase().includes(q)
     ), q);
   }, [disponibles, busquedaUsuario]);
@@ -298,7 +300,7 @@ export default function Agentes() {
         {agentes.length > 0 && (
           <div className="mb-5" style={tarjetaBase}>
             <div className="flex items-center gap-3" style={{ padding: '16px 16px 12px' }}>
-              <Buscador value={query} onChange={setQuery} placeholder="Buscar por nombre, DNI, dependencia, especialidad..." />
+              <Buscador value={query} onChange={setQuery} placeholder="Buscar por nombre, DNI, institución, especialidad..." />
               <SelectorVista value={vista} onChange={setVista} />
             </div>
             <BarraFiltros>
@@ -353,7 +355,7 @@ export default function Agentes() {
                 </div>
                 <div className="mt-3"><EstadoConTiempo agente={agente} /></div>
                 <div className="grid grid-cols-2 gap-2 mt-3 pt-3" style={{ borderTop: '1px solid var(--border)' }}>
-                  <Dato titulo="Dependencia"><Dotacion agente={agente} /></Dato>
+                  <Dato titulo="Institución"><Dotacion agente={agente} /></Dato>
                   <Dato titulo="Especialidad">
                     {agente.especialidadNombre ?? <span style={{ color: 'var(--muted-foreground)', fontWeight: 400 }}>Sin especialidad</span>}
                   </Dato>
@@ -362,7 +364,7 @@ export default function Agentes() {
             ))}
           </div>
         ) : (
-          <TablaFija cols={[{ l: 'Agente', w: 270 }, { l: 'Estado Op.', w: 250 }, { l: 'Dependencia', w: 230 }, { l: 'Especialidad', w: 180 }, { l: '', w: 130 }]}>
+          <TablaFija cols={[{ l: 'Agente', w: 270 }, { l: 'Estado Op.', w: 250 }, { l: 'Institución', w: 230 }, { l: 'Especialidad', w: 180 }, { l: '', w: 130 }]}>
             <tbody>
               {filtrados.map((agente, i) => (
                 <tr key={agente.id} style={{ borderBottom: i < filtrados.length - 1 ? '1px solid var(--border)' : 'none', fontSize: 'var(--text-base)', color: 'var(--foreground)' }}>
@@ -422,7 +424,7 @@ export default function Agentes() {
               : seleccionados.size > 1 ? `Agregar ${seleccionados.size} agentes` : 'Agregar agente'}
           </Button>
         </>}>
-        <div className="mb-3"><Buscador value={busquedaUsuario} onChange={setBusquedaUsuario} placeholder="Buscar por nombre, apellido, DNI, dependencia, especialidad…" /></div>
+        <div className="mb-3"><Buscador value={busquedaUsuario} onChange={setBusquedaUsuario} placeholder="Buscar por nombre, apellido, DNI, institución, especialidad…" /></div>
         {loadingUsuarios ? (
           <div className="flex items-center justify-center py-12" style={{ color: 'var(--muted-foreground)' }}>
             <Loader2 size={20} className="animate-spin mr-2" /> Cargando…
@@ -456,7 +458,7 @@ export default function Agentes() {
                     <div className="min-w-0 flex-1">
                       <p className="truncate" style={{ margin: 0, fontSize: 'var(--text-label)', fontWeight: 600, color: 'var(--foreground)' }}>{u.nombre} {u.apellido}</p>
                       <p className="truncate" style={{ margin: '1px 0 0', fontSize: 'calc(11px * var(--escala-texto))', color: 'var(--muted-foreground)' }}>
-                        {[u.institucionNombre, u.especialidadNombre].filter(Boolean).join(' · ') || 'Sin dependencia'}
+                        {[u.institucionNombre, u.especialidadNombre].filter(Boolean).join(' · ') || 'Sin institución'}
                       </p>
                     </div>
                     <div style={{ width: 20, height: 20, borderRadius: 6, flexShrink: 0, border: isSelected ? '2px solid var(--primary)' : '2px solid var(--border)', background: isSelected ? 'var(--primary)' : 'transparent', display: 'flex', alignItems: 'center', justifyContent: 'center', transition: 'all .13s' }}>

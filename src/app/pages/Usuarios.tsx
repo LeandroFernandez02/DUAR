@@ -416,14 +416,14 @@ export default function Usuarios() {
               <div className="flex items-center gap-1.5 flex-wrap mt-3"><RolPill rol={u.rol} /><StatusBadge estado={u.estado} size="sm" /></div>
               <div className="grid grid-cols-2 gap-2 mt-3 pt-3" style={{ borderTop: '1px solid var(--border)' }}>
                 <Dato titulo="DNI">{formatearDni(u.dni)}</Dato>
-                <Dato titulo="Dependencia"><Dotacion u={u} /></Dato>
+                <Dato titulo="Institución"><Dotacion u={u} /></Dato>
                 <Dato titulo="Especialidad">{u.especialidadId ? especialidadNombrePorId(u.especialidadId) : <span style={{ color: 'var(--muted-foreground)', fontWeight: 400 }}>Sin especialidad</span>}</Dato>
               </div>
             </div>
           ))}
         </div>
       ) : (
-        <TablaFija cols={[{ l: 'Usuario', w: 250 }, { l: 'DNI', w: 120 }, { l: 'Rol', w: 150 }, { l: 'Especialidad', w: 170 }, { l: 'Dependencia', w: 220 }, { l: 'Estado', w: 120 }, { l: '', w: 110 }]}>
+        <TablaFija cols={[{ l: 'Usuario', w: 250 }, { l: 'DNI', w: 120 }, { l: 'Rol', w: 150 }, { l: 'Especialidad', w: 170 }, { l: 'Institución', w: 220 }, { l: 'Estado', w: 120 }, { l: '', w: 110 }]}>
           <tbody>
             {filtered.map((u, i) => (
               <tr key={u.id} style={{ borderBottom: i < filtered.length - 1 ? '1px solid var(--border)' : 'none', fontSize: 'var(--text-base)', color: 'var(--foreground)' }}>
