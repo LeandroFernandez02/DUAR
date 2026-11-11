@@ -11,7 +11,8 @@ import { ESPECIALIDADES_PANEL, ACENTO } from '../../panel/comunes';
  * entradas/salidas del personal— y se refresca cada 30 s mientras la pestaña está a la vista.
  */
 
-export type Participacion = { fechaIngreso: string; fechaEgreso: string | null; institucionNombre: string | null };
+/** Una participación con sus tramos en terreno (Desplegado, Rastrillando o Replegado). */
+export type Participacion = { fechaIngreso: string; fechaEgreso: string | null; institucionNombre: string | null; tramos: { desde: string; hasta: string | null }[] };
 
 export interface DatosCrudos {
   personal: PersonalOperativoApi[];
@@ -24,6 +25,7 @@ export interface DatosCrudos {
 }
 
 const REFRESCO_MS = 30_000;
+const EN_TERRENO = new Set(['DESPLEGADO', 'RASTRILLANDO', 'REPLEGADO']);
 
 export function useDatosPanel(operativoId: string) {
   const [datos, setDatos] = useState<DatosCrudos | null>(null);
@@ -47,7 +49,8 @@ export function useDatosPanel(operativoId: string) {
       personal: p.personal, grupos: g.grupos.filter(x => x.estado !== 'DISUELTO'), poligonos: pol.poligonos,
       marcadores: m.marcadores, radios: r.radios, tracks: t.tracks,
       // Sin el historial (servidor viejo), se arma con el personal de ahora.
-      participaciones: d?.participaciones ?? p.personal.map(a => ({ fechaIngreso: a.fechaIngreso, fechaEgreso: a.fechaEgreso, institucionNombre: a.institucionNombre })),
+      participaciones: d?.participaciones ?? p.personal.map(a => ({ fechaIngreso: a.fechaIngreso, fechaEgreso: a.fechaEgreso, institucionNombre: a.institucionNombre,
+        tramos: EN_TERRENO.has(a.estado) ? [{ desde: a.estadoActualizadoEn, hasta: null }] : [] })),
     });
   }, [operativoId]);
 
@@ -62,7 +65,6 @@ export function useDatosPanel(operativoId: string) {
 
 /* ── Cálculos ───────────────────────────────────────────────────────────── */
 
-const EN_TERRENO = new Set(['DESPLEGADO', 'RASTRILLANDO', 'REPLEGADO']);
 const esHoy = (iso: string) => new Date(iso).toDateString() === new Date().toDateString();
 
 export function fuerza(personal: PersonalOperativoApi[]) {
@@ -120,8 +122,9 @@ export type VistaDespliegue = '7d' | 'sem' | 'mes';
 export interface ColumnaDespliegue { etiqueta: string; porInst: Record<string, number> | null }
 
 /**
- * Personal presente en cada día / semana / mes del operativo, por institución (cuenta una vez
- * por período a cada persona que estuvo). Los días que todavía no pasaron quedan vacíos.
+ * Agentes que estuvieron EN TERRENO (Desplegado, Rastrillando o Replegado) al menos una vez en
+ * cada día / semana / mes del operativo, por institución: cada persona cuenta una vez por período.
+ * Los días que todavía no pasaron quedan vacíos.
  */
 export function despliegue(part: Participacion[], inicioOp: string, finOp: string | undefined, vista: VistaDespliegue): ColumnaDespliegue[] {
   const DIA = 86_400_000;
@@ -131,8 +134,8 @@ export function despliegue(part: Participacion[], inicioOp: string, finOp: strin
   const contar = (a: number, b: number) => {
     const m: Record<string, number> = {};
     for (const p of part) {
-      const e = new Date(p.fechaIngreso).getTime(), s = p.fechaEgreso ? new Date(p.fechaEgreso).getTime() : Infinity;
-      if (e < b && s >= a) { const k = p.institucionNombre ?? 'Sin institución'; m[k] = (m[k] ?? 0) + 1; }
+      const estuvo = p.tramos.some(t => new Date(t.desde).getTime() < b && (t.hasta ? new Date(t.hasta).getTime() : Infinity) >= a);
+      if (estuvo) { const k = p.institucionNombre ?? 'Sin institución'; m[k] = (m[k] ?? 0) + 1; }
     }
     return m;
   };

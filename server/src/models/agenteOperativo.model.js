@@ -461,20 +461,52 @@ async function dejarOperativosCon(client, usuarioId, autorId, MOTIVO, { porElimi
  */
 /**
  * Panel del operativo (11/11), «Evolución de despliegue»: TODAS las participaciones, también
- * las cerradas, con la institución de la foto legal (migración 034) o la del perfil si falta.
+ * las cerradas, con la institución de la foto legal (migración 034) o la del perfil si falta, y
+ * los TRAMOS EN TERRENO de cada una (Desplegado, Rastrillando o Replegado), armados con la línea
+ * de tiempo del agente (eventos_estado aplicados, en el mismo orden que la cronología).
  */
+const EN_TERRENO = new Set(['DESPLEGADO', 'RASTRILLANDO', 'REPLEGADO']);
+
 export async function despliegueDeOperativo(operativoId) {
-  const { rows } = await query(
-    `SELECT ao.fecha_ingreso AS "fechaIngreso", ao.fecha_egreso AS "fechaEgreso",
-            COALESCE(ao.institucion_nombre, i.nombre) AS "institucionNombre"
-       FROM agentes_operativo ao
-       JOIN usuarios u ON u.id = ao.usuario_id
-       LEFT JOIN cat_instituciones i ON i.id = u.institucion_id
-      WHERE ao.operativo_id = $1
-      ORDER BY ao.fecha_ingreso`,
-    [operativoId]
-  );
-  return rows;
+  const [{ rows: part }, { rows: ev }] = await Promise.all([
+    query(
+      `SELECT ao.id, ao.fecha_ingreso AS "fechaIngreso", ao.fecha_egreso AS "fechaEgreso",
+              COALESCE(ao.institucion_nombre, i.nombre) AS "institucionNombre"
+         FROM agentes_operativo ao
+         JOIN usuarios u ON u.id = ao.usuario_id
+         LEFT JOIN cat_instituciones i ON i.id = u.institucion_id
+        WHERE ao.operativo_id = $1
+        ORDER BY ao.fecha_ingreso`,
+      [operativoId]
+    ),
+    query(
+      `SELECT e.agente_operativo_id AS id, e.estado_nuevo AS estado, e.ocurrido_en AS en, e.accion
+         FROM eventos_estado e
+        WHERE e.operativo_id = $1 AND e.entidad = 'AGENTE' AND e.resultado = 'APLICADO'
+          AND e.agente_operativo_id IS NOT NULL
+          AND (e.estado_nuevo IS NOT NULL OR e.accion IN ('baja', 'retiro', 'cambio_operativo'))
+        ORDER BY e.ocurrido_en, e.registrado_en`,
+      [operativoId]
+    ),
+  ]);
+  const porAgente = new Map();
+  for (const e of ev) {
+    if (!porAgente.has(e.id)) porAgente.set(e.id, []);
+    porAgente.get(e.id).push(e);
+  }
+  return part.map(p => {
+    const tramos = [];
+    let desde = null;
+    for (const e of porAgente.get(p.id) ?? []) {
+      const enTerreno = EN_TERRENO.has(e.estado);
+      if (enTerreno && desde === null) desde = e.en;
+      else if (!enTerreno && desde !== null) { tramos.push({ desde, hasta: e.en }); desde = null; }
+    }
+    // Sigue en terreno: hasta su egreso (si se fue) o abierto.
+    if (desde !== null) tramos.push({ desde, hasta: p.fechaEgreso ?? null });
+    const { id: _id, ...resto } = p;
+    return { ...resto, tramos };
+  });
 }
 
 export async function listarDeOperativo(operativoId) {

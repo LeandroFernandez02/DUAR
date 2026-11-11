@@ -60,6 +60,8 @@ export interface OperativoPanel {
   recursosCriticos?: Record<string, number>;
   /** Agentes que aportó cada institución al operativo (panel v2, 11/11). */
   aporte?: Record<string, number>;
+  /** Agentes por dependencia dentro de cada institución que las tiene (Policía → DUAR, Canes…). */
+  aporteDependencias?: Record<string, Record<string, number>>;
   /** Agentes por especialidad del catálogo en el operativo (panel v2). */
   porEspecialidad?: Record<string, number>;
   /** Cobertura de rastrillaje del operativo: hectáreas cubiertas y km de tracks (panel v2). */

@@ -179,7 +179,7 @@ export function ScrollFade({ children, minHeight = 0 }: { children: ReactNode; m
   });
   return (
     <div style={{ position: 'relative', flex: 1, minHeight }}>
-      <div ref={ref} className="sin-barra" onScroll={medir} style={{ position: 'absolute', inset: 0, overflowY: 'auto', paddingBottom: 8 }}>{children}</div>
+      <div ref={ref} className="sin-barra" onScroll={medir} style={{ position: 'absolute', inset: 0, overflowY: 'auto', overflowX: 'hidden', padding: '0 4px 8px', margin: '0 -4px' }}>{children}</div>
       {mas && <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 32, pointerEvents: 'none', background: 'linear-gradient(to bottom, transparent, var(--card))' }} />}
     </div>
   );

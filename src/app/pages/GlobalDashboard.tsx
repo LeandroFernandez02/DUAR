@@ -1,11 +1,11 @@
 import { useLayoutEffect, useMemo, useRef, useState, type ReactNode } from 'react';
-import { Siren, Map as MapaIcono, FilePlus2, Users, Radio, CalendarClock, Flag, Building2, Crosshair, CalendarRange, Calendar, ArrowRight, X, TriangleAlert, type LucideIcon } from 'lucide-react';
+import { ChevronDown, ChevronUp, Siren, Map as MapaIcono, FilePlus2, Users, Radio, CalendarClock, Flag, Building2, Crosshair, CalendarRange, Calendar, ArrowRight, X, TriangleAlert, type LucideIcon } from 'lucide-react';
 import { useApp } from '../context/AppContext';
 import { OPERATIVOS_PANEL_MOCK } from '../data/panelGeneralMock';
 import { calcularPanel, formatoDuracion, type EstadoOperativoPanel, type OperativoPanel, type Mes } from '../utils/panelGeneral';
 import { OperativosPorMes } from './panel/Graficos';
 import MapaProvincia from './panel/MapaProvincia';
-import { ACENTO, Marco, Segmentado, chico, globo, tarjeta, tinte, useDemora, useMedida, isoLocal, estiloEspecialidad, ESPECIALIDADES_PANEL, colorInstitucion, sigla } from './panel/comunes';
+import { ACENTO, Marco, Segmentado, ScrollFade, chico, globo, tarjeta, tinte, useDemora, useMedida, isoLocal, estiloEspecialidad, ESPECIALIDADES_PANEL, colorInstitucion, sigla } from './panel/comunes';
 
 /**
  * Panel general (CU-43), diseño v2 aprobado (11/11, «handoff-dashboards»): Situación ahora (siempre
@@ -69,7 +69,16 @@ export default function GlobalDashboard() {
     for (const o of per) for (const [k, v] of Object.entries(f(o) ?? {})) m[k] = (m[k] ?? 0) + v;
     return Object.entries(m).map(([nombre, valor]) => ({ nombre, valor })).sort((a, b) => b.valor - a.valor);
   };
-  const instituciones = suma(o => o.aporte);
+  const dependencias: Record<string, { nombre: string; valor: number }[]> = {};
+  for (const o of per) for (const [inst, deps] of Object.entries(o.aporteDependencias ?? {})) {
+    const lista = dependencias[inst] ?? (dependencias[inst] = []);
+    for (const [nombre, valor] of Object.entries(deps)) {
+      const x = lista.find(d => d.nombre === nombre);
+      if (x) x.valor += valor; else lista.push({ nombre, valor });
+    }
+  }
+  for (const l of Object.values(dependencias)) l.sort((a, b) => b.valor - a.valor);
+  const instituciones = suma(o => o.aporte).map(x => ({ ...x, dependencias: dependencias[x.nombre] }));
   const especialidades = ESPECIALIDADES_PANEL.map(e => ({ ...e, valor: per.reduce((s, o) => s + (o.porEspecialidad?.[e.nombre] ?? 0), 0) }));
   const cobertura = { ha: per.reduce((s, o) => s + (o.coberturaHa ?? 0), 0), km: per.reduce((s, o) => s + (o.tracksKm ?? 0), 0) };
 
@@ -260,27 +269,62 @@ function FiltroTiempo({ modo, setModo, desde, hasta, setDesde, setHasta, leyenda
 }
 
 /** Aporte por institución: Top 4 + «Otras» (barra apilada y lista), o todas con scroll interno. */
-function Instituciones({ datos, todas, setTodas }: { datos: { nombre: string; valor: number }[]; todas: boolean; setTodas: (v: boolean) => void }) {
+type FilaInst = { nombre: string; valor: number; dependencias?: { nombre: string; valor: number }[] };
+
+/**
+ * Aporte por institución: Top 4 + «Otras» (barra apilada y lista), o todas. Las instituciones con
+ * dependencias (Policía) se despliegan al tocarlas y muestran cuánto aportó cada dependencia.
+ */
+function Instituciones({ datos, todas, setTodas }: { datos: FilaInst[]; todas: boolean; setTodas: (v: boolean) => void }) {
+  const [abierta, setAbierta] = useState<string | null>(null);
   const total = datos.reduce((s, x) => s + x.valor, 0);
   const top = datos.slice(0, 4), resto = datos.slice(4), sumaResto = resto.reduce((s, x) => s + x.valor, 0);
-  const filas = [...top.map((x, i) => ({ ...x, c: colorInstitucion(i), sig: sigla(x.nombre), otras: false })),
+  type Fila = FilaInst & { c: string; sig: string; otras?: boolean };
+  const filas: Fila[] = [...top.map((x, i) => ({ ...x, c: colorInstitucion(i), sig: sigla(x.nombre) })),
     ...(resto.length ? [{ nombre: `+${resto.length} Otras instituciones`, valor: sumaResto, c: ACENTO.grisClaro, sig: `+${resto.length}`, otras: true }] : [])];
-  const pct = (v: number) => (total ? `${Math.round((v / total) * 100)}%` : '0%');
+  const pct = (v: number, de = total) => (de ? `${Math.round((v / de) * 100)}%` : '0%');
+  const pildora = (txt: string, titulo?: string) => (
+    <span title={titulo} style={{ minWidth: 40, textAlign: 'center', padding: '1px 6px', borderRadius: 999, background: 'var(--muted)', color: 'var(--muted-foreground)', fontSize: 'calc(11px * var(--escala-texto, 1))', fontVariantNumeric: 'tabular-nums' }}>{txt}</span>
+  );
   const avatar = (txt: string, c: string) => (
     <span style={{ width: 24, height: 24, borderRadius: 8, flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', fontSize: 'calc(10px * var(--escala-texto, 1))', fontWeight: 700,
       color: 'var(--foreground)', background: tinte(c, 22), border: `1px solid ${tinte(c, 45)}` }}>{txt}</span>
   );
-  const fila = (x: { nombre: string; valor: number; c: string; sig: string; otras?: boolean }, k: number) => (
-    <div key={x.nombre} onClick={x.otras ? () => setTodas(true) : undefined} role={x.otras ? 'button' : undefined} tabIndex={x.otras ? 0 : undefined}
-      onKeyDown={x.otras ? e => { if (e.key === 'Enter') setTodas(true); } : undefined} className={x.otras ? 'fila-otras' : undefined}
-      style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '5px 4px', margin: '0 -4px', borderRadius: 'var(--radius-md)', cursor: x.otras ? 'pointer' : 'default',
-        borderTop: k ? '1px dashed var(--border)' : 'none', fontSize: 'var(--text-label)' }}>
-      {avatar(x.sig, x.c)}
-      <span style={{ flex: 1, minWidth: 0, color: 'var(--foreground)', fontWeight: 500, overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{x.nombre}{x.otras && <span style={{ marginLeft: 6, color: 'var(--muted-foreground)' }}>→</span>}</span>
-      <strong style={{ color: 'var(--foreground)', fontVariantNumeric: 'tabular-nums' }}>{x.valor}</strong>
-      <span style={{ minWidth: 40, textAlign: 'center', padding: '1px 6px', borderRadius: 999, background: 'var(--muted)', color: 'var(--muted-foreground)', fontSize: 'calc(11px * var(--escala-texto, 1))', fontVariantNumeric: 'tabular-nums' }}>{pct(x.valor)}</span>
-    </div>
-  );
+  const fila = (x: Fila, k: number) => {
+    const deps = x.dependencias?.length ? x.dependencias : null;
+    const abre = !!deps && abierta === x.nombre;
+    const accion = x.otras ? () => setTodas(true) : deps ? () => setAbierta(a => (a === x.nombre ? null : x.nombre)) : undefined;
+    const Flecha = abre ? ChevronUp : ChevronDown;
+    return (
+      <div key={x.nombre} style={{ borderTop: k ? '1px dashed var(--border)' : 'none' }}>
+        <div onClick={accion} role={accion ? 'button' : undefined} tabIndex={accion ? 0 : undefined} aria-expanded={deps ? abre : undefined}
+          onKeyDown={accion ? e => { if (e.key === 'Enter' || e.key === ' ') { e.preventDefault(); accion(); } } : undefined} className={accion ? 'fila-otras' : undefined}
+          title={deps ? (abre ? 'Ocultar dependencias' : 'Ver el aporte de cada dependencia') : undefined}
+          style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '5px 4px', margin: '0 -4px', borderRadius: 'var(--radius-md)', cursor: accion ? 'pointer' : 'default', fontSize: 'var(--text-label)' }}>
+          {avatar(x.sig, x.c)}
+          <span style={{ flex: 1, minWidth: 0, display: 'flex', alignItems: 'center', gap: 6, color: 'var(--foreground)', fontWeight: 500 }}>
+            <span style={{ overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{x.nombre}</span>
+            {x.otras && <span style={{ color: 'var(--muted-foreground)' }}>→</span>}
+            {deps && <Flecha size={14} color="var(--muted-foreground)" style={{ flexShrink: 0 }} />}
+          </span>
+          <strong style={{ color: 'var(--foreground)', fontVariantNumeric: 'tabular-nums' }}>{x.valor}</strong>
+          {pildora(pct(x.valor))}
+        </div>
+        {abre && deps && (
+          <div role="list" aria-label={`Dependencias de ${x.nombre}`} style={{ margin: '2px 0 6px 34px', paddingLeft: 10, borderLeft: `2px solid ${tinte(x.c, 45)}`, display: 'flex', flexDirection: 'column', gap: 2 }}>
+            {deps.map(dp => (
+              <div key={dp.nombre} role="listitem" style={{ display: 'flex', alignItems: 'center', gap: 10, padding: '3px 0', fontSize: chico }}>
+                <span style={{ flex: 1, minWidth: 0, color: 'var(--foreground)', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{dp.nombre}</span>
+                <strong style={{ color: 'var(--foreground)', fontVariantNumeric: 'tabular-nums' }}>{dp.valor}</strong>
+                {pildora(pct(dp.valor, x.valor), `Porcentaje dentro de ${x.nombre}`)}
+              </div>
+            ))}
+          </div>
+        )}
+      </div>
+    );
+  };
+  const lista = todas ? datos.map((x, i) => ({ ...x, c: i < 4 ? colorInstitucion(i) : ACENTO.grisClaro, sig: sigla(x.nombre) })) : filas;
   return (
     <>
       <div style={{ display: 'flex', alignItems: 'center', gap: 8, margin: '4px 0 10px', flexWrap: 'nowrap', minWidth: 0 }}>
@@ -294,19 +338,14 @@ function Instituciones({ datos, todas, setTodas }: { datos: { nombre: string; va
         {total ? filas.map(x => <span key={x.nombre} title={`${x.nombre}: ${x.valor}`} style={{ flex: x.valor, minWidth: 0, borderRadius: 6, background: x.c }} />)
           : <span style={{ flex: 1, borderRadius: 6, background: 'var(--muted)' }} />}
       </div>
-      <div style={{ flex: 1, minHeight: 0, position: 'relative' }}>
-        <div style={{ height: '100%', display: 'flex', flexDirection: 'column', justifyContent: 'center', visibility: todas ? 'hidden' : 'visible' }}>
-          {filas.length ? filas.map(fila) : <p style={{ margin: 0, fontSize: 'var(--text-label)', color: 'var(--muted-foreground)' }}>Sin agentes movilizados en el período.</p>}
-        </div>
-        {todas && (
-          <div style={{ position: 'absolute', inset: 0 }}>
-            <div className="sin-barra" style={{ height: '100%', overflowY: 'auto', paddingBottom: 18, paddingRight: 14 }}>
-              {datos.map((x, i) => fila({ ...x, c: i < 4 ? colorInstitucion(i) : ACENTO.grisClaro, sig: sigla(x.nombre) }, i))}
-            </div>
-            <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 26, pointerEvents: 'none', background: 'linear-gradient(to bottom, transparent, var(--card))' }} />
+      {/* Con todo cerrado la lista queda centrada; si algo no entra (Todas o una dependencia abierta) se desplaza sola. */}
+      <ScrollFade>
+        <div style={{ minHeight: '100%', display: 'flex', flexDirection: 'column', paddingRight: todas ? 14 : 0 }}>
+          <div style={{ margin: todas ? '0 0 auto' : 'auto 0' }}>
+            {lista.length ? lista.map(fila) : <p style={{ margin: 0, fontSize: 'var(--text-label)', color: 'var(--muted-foreground)' }}>Sin agentes movilizados en el período.</p>}
           </div>
-        )}
-      </div>
+        </div>
+      </ScrollFade>
     </>
   );
 }

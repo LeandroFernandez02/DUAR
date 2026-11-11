@@ -487,7 +487,7 @@ export const agentesOperativoApi = {
     api.get<{ personal: PersonalOperativoApi[] }>(`/operativos/${operativoId}/personal`),
   /** Panel del operativo: todas las participaciones (también las cerradas) para la evolución del despliegue. */
   despliegue: (operativoId: string) =>
-    api.get<{ participaciones: { fechaIngreso: string; fechaEgreso: string | null; institucionNombre: string | null }[] }>(`/operativos/${operativoId}/despliegue`),
+    api.get<{ participaciones: { fechaIngreso: string; fechaEgreso: string | null; institucionNombre: string | null; tramos: { desde: string; hasta: string | null }[] }[] }>(`/operativos/${operativoId}/despliegue`),
   /** CU-19: alta directa por el Coordinador (sin QR). */
   agregar: (operativoId: string, datos: { usuarioId: string; especialidadId?: string; abandonarAnterior?: boolean }) =>
     api.post<{ agente: PersonalOperativoApi }>(`/operativos/${operativoId}/agentes`, datos),

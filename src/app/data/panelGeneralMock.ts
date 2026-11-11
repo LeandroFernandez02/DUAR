@@ -5,6 +5,7 @@
  * (semilla fija) y relativos a hoy, para que las cifras no salten ni envejezcan.
  */
 import type { OperativoPanel, EstadoOperativoPanel, ResultadoOperativo } from '../utils/panelGeneral';
+import { catDotaciones, catInstituciones } from './mockData';
 
 /** Generador con semilla: el mismo «azar» en cada carga. */
 function semilla(s: number) {
@@ -165,6 +166,20 @@ function completar(o: OperativoPanel) {
     return m;
   };
   o.aporte = repartir(o.instituciones, 2.5);
+  // Los de Policía se reparten entre sus dependencias del catálogo (DUAR, la que más aporta).
+  const policia = o.aporte['Policía'] ?? 0;
+  if (policia) {
+    const idPolicia = catInstituciones.find(i => i.nombre === 'Policía')?.id;
+    const deps = catDotaciones.filter(d => d.institucionId === idPolicia).map(d => d.nombre).sort(() => r() - 0.5);
+    const elegidas = ['DUAR', ...deps.filter(d => d !== 'DUAR').slice(0, 1 + Math.floor(entre(0, 4)))];
+    const m: Record<string, number> = {};
+    let resto = policia;
+    elegidas.forEach((d, i) => {
+      const v = i === elegidas.length - 1 ? resto : Math.min(resto, Math.max(1, Math.round(policia * (i === 0 ? 0.5 : 0.5 / (elegidas.length - 1)))));
+      if (v > 0) { m[d] = v; resto -= v; }
+    });
+    o.aporteDependencias = { Policía: m };
+  }
   const esp = ['Caminante', 'Conductor', ...o.especialidades.filter(e => e !== 'Caminante')];
   o.porEspecialidad = repartir(esp, 3);
   const enMarcha = o.estado === 'EN_PROCESO' || o.estado === 'FINALIZADO' || o.estado === 'INACTIVO';

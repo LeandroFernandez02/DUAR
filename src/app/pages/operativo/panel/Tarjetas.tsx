@@ -319,7 +319,7 @@ export function EvolucionDespliegue({ participaciones, inicio, fin }: { particip
   );
   return (
     <section style={{ ...tarjeta, padding: 20 }}>
-      <Tit icono={ChartColumn} sub="Agentes en el operativo en cada período, por institución" der={der}>Evolución de Despliegue Diario</Tit>
+      <Tit icono={ChartColumn} sub="Agentes que estuvieron en terreno (desplegados, rastrillando o replegados) en cada período, por institución" der={der}>Evolución de Despliegue Diario</Tit>
       <div style={{ display: 'flex', gap: 10 }}>
         <div style={{ position: 'relative', width: 28, height: H, flexShrink: 0 }}>
           {ticks.map(v => <span key={v} style={{ position: 'absolute', right: 0, bottom: (v / tope) * H, transform: 'translateY(50%)', fontSize: 'calc(10px * var(--escala-texto, 1))', color: 'var(--muted-foreground)', fontVariantNumeric: 'tabular-nums' }}>{v}</span>)}
@@ -343,7 +343,7 @@ export function EvolucionDespliegue({ participaciones, inicio, fin }: { particip
                     </div>
                     {hv && hv.d === di && pos[hv.i] !== undefined && (
                       <div role="tooltip" style={{ ...globo, left: 'calc(50% + min(28px, 30%) + 12px)', bottom: (pos[hv.i] / tope) * H, transform: 'translateY(50%)', zIndex: 5, whiteSpace: 'nowrap', maxWidth: 'none' }}>
-                        <strong style={{ display: 'block' }}>{c.etiqueta} - {hv.i}</strong>{c.porInst![hv.i]} agente{c.porInst![hv.i] === 1 ? '' : 's'} en el operativo
+                        <strong style={{ display: 'block' }}>{c.etiqueta} - {hv.i}</strong>{c.porInst![hv.i]} agente{c.porInst![hv.i] === 1 ? '' : 's'} en terreno
                       </div>
                     )}
                   </div>
