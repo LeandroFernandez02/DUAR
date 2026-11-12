@@ -297,9 +297,6 @@ function FiltroTiempo({ modo, setModo, desde, hasta, setDesde, setHasta, leyenda
         </div>
       )}
       <span style={{ fontSize: chico, color: 'var(--muted-foreground)', textAlign: 'right' }}>{leyenda}</span>
-      <span style={{ fontSize: 'calc(11px * var(--escala-texto, 1))', color: 'var(--muted-foreground)', textAlign: 'right' }}>
-        También podés arrastrar sobre el gráfico "Operativos por mes". Los indicadores de estado siempre son de ahora.
-      </span>
     </div>
   );
 }
