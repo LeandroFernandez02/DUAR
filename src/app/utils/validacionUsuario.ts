@@ -180,6 +180,17 @@ export function formatearDni(v: string | null | undefined): string {
 }
 
 /**
+ * ¿El DNI coincide con lo que se escribió en un buscador? Acepta el DNI con o sin
+ * puntos ("45.084.716", "45084716" o una parte), porque en pantalla se muestra con
+ * puntos y en la base se guarda sólo con dígitos (QA 13/11, QA-01).
+ */
+export function coincideDni(dni: string | null | undefined, busqueda: string): boolean {
+  const q = busqueda.trim();
+  if (!q || !/^[\d.\s]+$/.test(q)) return false;
+  return soloDigitos(dni ?? '').includes(soloDigitos(q));
+}
+
+/**
  * Formatea un teléfono celular para mostrarlo (3512283143 → "351-228-3143").
  * Asume código de área de 3 dígitos (el caso de Córdoba capital e interior
  * que maneja el sistema); si algún día hace falta un área de 2 o 4 dígitos,

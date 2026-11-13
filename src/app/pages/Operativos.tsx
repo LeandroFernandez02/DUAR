@@ -118,7 +118,7 @@ function labelStyle(): React.CSSProperties {
 
 function errStyle(base: React.CSSProperties, hasError: boolean): React.CSSProperties {
   return hasError
-    ? { ...base, border: '1.5px solid var(--primary)', background: 'color-mix(in srgb, var(--primary) 4%, transparent)' }
+    ? { ...base, border: '1.5px solid var(--destructive)', background: 'color-mix(in srgb, var(--destructive) 4%, transparent)' }
     : base;
 }
 
@@ -127,6 +127,13 @@ function errorCoordenada(valor: string, max: number): string {
   if (!valor.trim()) return 'Obligatorio';
   const n = parseFloat(valor);
   return Number.isNaN(n) || n < -max || n > max ? `Coordenada inválida: entre −${max} y ${max}` : 'Revisá este campo';
+}
+
+/** Escrita pero fuera de rango (o no es un número): se avisa al escribir, sin esperar a Guardar (QA 13/11, QA-08). */
+function fueraDeRango(valor: string, max: number): boolean {
+  if (!valor.trim()) return false;
+  const n = parseFloat(valor);
+  return Number.isNaN(n) || n < -max || n > max;
 }
 
 function readOnlyInputStyle(): React.CSSProperties {
@@ -199,6 +206,16 @@ export default function Operativos() {
 
   const [modal, setModal] = useState<ModalType>(null);
   const [selected, setSelected] = useState<Operativo | null>(null);
+
+  // Esc cierra el formulario de alta/edición (QA 13/11, QA-07), salvo que esté abierto el mapa para elegir el Punto 0.
+  useEffect(() => {
+    if (modal !== 'create' && modal !== 'edit') return;
+    const alTeclear = (e: KeyboardEvent) => {
+      if (e.key === 'Escape' && !document.querySelector('[data-submodal]')) setModal(null);
+    };
+    document.addEventListener('keydown', alTeclear);
+    return () => document.removeEventListener('keydown', alTeclear);
+  }, [modal]);
   const [form, setForm] = useState(emptyForm);
   const [formErrors, setFormErrors] = useState<Set<string>>(new Set());
   const [formErrorMsg, setFormErrorMsg] = useState('');
@@ -656,6 +673,7 @@ export default function Operativos() {
       {/* ════ CREATE / EDIT MODAL ════ */}
       {(modal === 'create' || modal === 'edit') && (
         <div
+          role="dialog" aria-modal="true" aria-labelledby="titulo-modal-operativo"
           style={{
             position: 'fixed', inset: 0, zIndex: 50,
             background: 'var(--scrim-modal)',
@@ -682,7 +700,7 @@ export default function Operativos() {
               style={{ borderBottom: '1px solid var(--border)' }}
             >
               <div>
-                <h2 style={{ color: 'var(--foreground)', fontSize: 'var(--text-h2)', fontWeight: 'var(--font-weight-semibold)', fontFamily: 'var(--font-family-primary)' }}>
+                <h2 id="titulo-modal-operativo" style={{ color: 'var(--foreground)', fontSize: 'var(--text-h2)', fontWeight: 'var(--font-weight-semibold)', fontFamily: 'var(--font-family-primary)' }}>
                   {modal === 'create' ? 'Nuevo Operativo' : 'Modificar Operativo'}
                 </h2>
                 {modal === 'create' && (
@@ -692,7 +710,7 @@ export default function Operativos() {
                   </p>
                 )}
               </div>
-              <button onClick={() => setModal(null)} style={{ color: 'var(--muted-foreground)', background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
+              <button onClick={() => setModal(null)} aria-label="Cerrar" style={{ color: 'var(--muted-foreground)', background: 'none', border: 'none', cursor: 'pointer', padding: 4 }}>
                 <X size={18} />
               </button>
             </div>
@@ -748,8 +766,9 @@ export default function Operativos() {
                         placeholder="Ej: Búsqueda Cerro Champaquí — García Juan"
                         className="w-full px-3 py-2.5 rounded-lg border outline-none"
                         style={isEditReadOnly ? readOnlyInputStyle() : errStyle(inputStyle(), formErrors.has('nombre'))}
+                        aria-invalid={formErrors.has('nombre')}
                       />
-                      {!isEditReadOnly && formErrors.has('nombre') && <span style={{ color: 'var(--destructive)', fontSize: 'calc(11px * var(--escala-texto))', fontFamily: 'var(--font-family-primary)' }}>Revisá este campo</span>}
+                      {!isEditReadOnly && formErrors.has('nombre') && <span style={{ color: 'var(--destructive)', fontSize: 'calc(11px * var(--escala-texto))', fontFamily: 'var(--font-family-primary)' }}>{form.nombre.trim() ? 'Revisá este campo' : 'Obligatorio'}</span>}
                     </div>
 
                     {/* Provincia + Localidad (lista Georef; se guarda como "Localidad, Provincia") */}
@@ -791,6 +810,7 @@ export default function Operativos() {
                         placeholder="Nombre y apellido del fiscal a cargo"
                         className="w-full px-3 py-2.5 rounded-lg border outline-none"
                         style={isEditReadOnly ? readOnlyInputStyle() : errStyle(inputStyle(), formErrors.has('fiscal'))}
+                        aria-invalid={formErrors.has('fiscal')}
                       />
                       {!isEditReadOnly && formErrors.has('fiscal') && <span style={{ color: 'var(--destructive)', fontSize: 'calc(11px * var(--escala-texto))', fontFamily: 'var(--font-family-primary)' }}>Revisá este campo</span>}
                     </div>
@@ -839,7 +859,7 @@ export default function Operativos() {
                     </p>
                     <div
                       className="rounded-[var(--radius-input)] p-4 flex flex-col gap-3"
-                      style={{ background: 'var(--muted)', border: (formErrors.has('punto0lat') || formErrors.has('punto0lng')) ? '1.5px solid var(--destructive)' : '1px solid var(--border)' }}
+                      style={{ background: 'var(--muted)', border: (formErrors.has('punto0lat') || formErrors.has('punto0lng') || fueraDeRango(form.punto0lat, 90) || fueraDeRango(form.punto0lng, 180)) ? '1.5px solid var(--destructive)' : '1px solid var(--border)' }}
                     >
                       <div className="flex items-start gap-2">
                         <Crosshair size={14} style={{ color: 'var(--primary)', marginTop: 2, flexShrink: 0 }} />
@@ -873,9 +893,10 @@ export default function Operativos() {
                             onChange={isEditReadOnly ? undefined : e => { setForm({ ...form, punto0lat: e.target.value }); setFormErrors(p => { const n = new Set(p); n.delete('punto0lat'); return n; }); }}
                             placeholder="Ej: –31.99300"
                             className="w-full px-3 py-2.5 rounded-lg border outline-none"
-                            style={isEditReadOnly ? readOnlyInputStyle() : errStyle(inputStyle(), formErrors.has('punto0lat'))}
+                            style={isEditReadOnly ? readOnlyInputStyle() : errStyle(inputStyle(), formErrors.has('punto0lat') || fueraDeRango(form.punto0lat, 90))}
+                            aria-invalid={formErrors.has('punto0lat') || fueraDeRango(form.punto0lat, 90)}
                           />
-                          {!isEditReadOnly && formErrors.has('punto0lat') && <span style={{ color: 'var(--destructive)', fontSize: 'calc(11px * var(--escala-texto))', fontFamily: 'var(--font-family-primary)' }}>{errorCoordenada(form.punto0lat, 90)}</span>}
+                          {!isEditReadOnly && (formErrors.has('punto0lat') || fueraDeRango(form.punto0lat, 90)) && <span style={{ color: 'var(--destructive)', fontSize: 'calc(11px * var(--escala-texto))', fontFamily: 'var(--font-family-primary)' }}>{errorCoordenada(form.punto0lat, 90)}</span>}
                         </div>
                         <div>
                           <label style={labelStyle()}>Longitud *</label>
@@ -889,9 +910,10 @@ export default function Operativos() {
                             onChange={isEditReadOnly ? undefined : e => { setForm({ ...form, punto0lng: e.target.value }); setFormErrors(p => { const n = new Set(p); n.delete('punto0lng'); return n; }); }}
                             placeholder="Ej: –64.92300"
                             className="w-full px-3 py-2.5 rounded-lg border outline-none"
-                            style={isEditReadOnly ? readOnlyInputStyle() : errStyle(inputStyle(), formErrors.has('punto0lng'))}
+                            style={isEditReadOnly ? readOnlyInputStyle() : errStyle(inputStyle(), formErrors.has('punto0lng') || fueraDeRango(form.punto0lng, 180))}
+                            aria-invalid={formErrors.has('punto0lng') || fueraDeRango(form.punto0lng, 180)}
                           />
-                          {!isEditReadOnly && formErrors.has('punto0lng') && <span style={{ color: 'var(--destructive)', fontSize: 'calc(11px * var(--escala-texto))', fontFamily: 'var(--font-family-primary)' }}>{errorCoordenada(form.punto0lng, 180)}</span>}
+                          {!isEditReadOnly && (formErrors.has('punto0lng') || fueraDeRango(form.punto0lng, 180)) && <span style={{ color: 'var(--destructive)', fontSize: 'calc(11px * var(--escala-texto))', fontFamily: 'var(--font-family-primary)' }}>{errorCoordenada(form.punto0lng, 180)}</span>}
                         </div>
                       </div>
 
@@ -913,7 +935,7 @@ export default function Operativos() {
                         </div>
                       )}
 
-                      {form.punto0lat && form.punto0lng ? (
+                      {form.punto0lat && form.punto0lng && !fueraDeRango(form.punto0lat, 90) && !fueraDeRango(form.punto0lng, 180) ? (
                         <div
                           className="flex items-center gap-2 px-3 py-1.5 rounded-[var(--radius-button)]"
                           style={{ background: 'color-mix(in srgb, var(--primary) 7%, transparent)', border: '1px solid color-mix(in srgb, var(--primary) 20%, transparent)' }}

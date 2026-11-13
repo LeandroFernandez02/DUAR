@@ -6,7 +6,7 @@ import { leerPanel, guardarPanel } from '../utils/memoriaPanel';
 import { calcularPanel, formatoDuracion, type EstadoOperativoPanel, type OperativoPanel, type Mes } from '../utils/panelGeneral';
 import { OperativosPorMes } from './panel/Graficos';
 import MapaProvincia from './panel/MapaProvincia';
-import { ACENTO, Marco, Segmentado, ScrollFade, chico, globo, tarjeta, tinte, useDemora, useMedida, isoLocal, estiloEspecialidad, ESPECIALIDADES_PANEL, colorInstitucion, sigla } from './panel/comunes';
+import { ACENTO, Marco, Segmentado, ScrollFade, chico, globo, tarjeta, tinte, useDemora, useMedida, isoLocal, estiloEspecialidad, ESPECIALIDADES_CRITICAS, colorInstitucion, sigla } from './panel/comunes';
 
 /**
  * Panel general (CU-43), diseño v2 aprobado (11/11, «handoff-dashboards»): Situación ahora (siempre
@@ -81,7 +81,7 @@ export default function GlobalDashboard() {
   }
   for (const l of Object.values(dependencias)) l.sort((a, b) => b.valor - a.valor);
   const instituciones = suma(o => o.aporte).map(x => ({ ...x, dependencias: dependencias[x.nombre] }));
-  const especialidades = ESPECIALIDADES_PANEL.map(e => ({ ...e, valor: per.reduce((s, o) => s + (o.porEspecialidad?.[e.nombre] ?? 0), 0) }));
+  const especialidades = ESPECIALIDADES_CRITICAS.map(e => ({ ...e, valor: per.reduce((s, o) => s + (o.porEspecialidad?.[e.nombre] ?? 0), 0) }));
   const cobertura = { ha: per.reduce((s, o) => s + (o.coberturaHa ?? 0), 0), km: per.reduce((s, o) => s + (o.tracksKm ?? 0), 0) };
 
   // Operativos por mes: siempre los últimos 12 meses (arrastrar elige un rango).
@@ -410,7 +410,7 @@ function Mosaico({ datos }: { datos: { nombre: string; valor: number }[] }) {
   return (
     <div ref={ref} role="img" aria-label={`Especialidades: ${filas.map(f => `${f.nombre} ${f.v}`).join(', ')}`}
       style={{ position: 'relative', flex: 1, minHeight: 0, borderRadius: 'var(--radius-md)', overflow: 'hidden' }}>
-      {!filas.length && <p style={{ margin: 0, fontSize: 'var(--text-label)', color: 'var(--muted-foreground)' }}>Sin agentes en el período.</p>}
+      {!filas.length && <p style={{ margin: 0, fontSize: 'var(--text-label)', color: 'var(--muted-foreground)' }}>Sin recursos especiales en el período.</p>}
       {rects.map(r => {
         const f = r.f, grande = r.w >= 96 && r.h >= 66, medio = r.w >= 46 && r.h >= 42, g = 1.5, I = f.icono;
         return (
@@ -419,7 +419,7 @@ function Mosaico({ datos }: { datos: { nombre: string; valor: number }[] }) {
               background: `color-mix(in srgb, ${f.color} 62%, white)`, color: '#0F172A', display: 'flex', flexDirection: 'column', alignItems: 'center', justifyContent: 'center', gap: 2, overflow: 'hidden', transition: 'all .5s ease' }}>
             {(grande || medio) && <I size={grande ? 18 : 14} color="#0F172A" />}
             <strong style={{ fontSize: grande ? 'calc(22px * var(--escala-texto, 1))' : 'calc(15px * var(--escala-texto, 1))', fontWeight: 800, lineHeight: 1, fontVariantNumeric: 'tabular-nums' }}>{f.v}</strong>
-            {grande && <span style={{ fontSize: 'calc(11px * var(--escala-texto, 1))', fontWeight: 600, lineHeight: 1.1, maxWidth: '92%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.nombre}</span>}
+            {(grande || medio) && <span style={{ fontSize: grande ? 'calc(11px * var(--escala-texto, 1))' : 'calc(9.5px * var(--escala-texto, 1))', fontWeight: 600, lineHeight: 1.1, maxWidth: '92%', overflow: 'hidden', textOverflow: 'ellipsis', whiteSpace: 'nowrap' }}>{f.nombre}</span>}
           </div>
         );
       })}

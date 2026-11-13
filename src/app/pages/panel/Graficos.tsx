@@ -72,7 +72,8 @@ export function OperativosPorMes({ meses, colorBarras, colorLinea, tope: topeFij
         <span style={{ display: 'inline-flex', alignItems: 'center', gap: 6 }}><span style={{ width: 16, height: 3, borderRadius: 2, background: colorLinea }} />Máximo abiertos a la vez</span>
       </div>
       <div ref={ref} style={{ position: 'relative', width: '100%', flex: 1, minHeight: 0 }}>
-        <svg viewBox={`0 0 ${W} ${H}`} width={W} height={H} style={{ display: 'block', position: 'absolute', inset: 0 }} role="img"
+        {/* Hasta que el contenedor tiene tamaño (W = 0 en el primer cuadro) los anchos darían negativos (QA 13/11, QA-05). */}
+        {W > M.l + M.r && H > M.t + M.b && <svg viewBox={`0 0 ${W} ${H}`} width={W} height={H} style={{ display: 'block', position: 'absolute', inset: 0 }} role="img"
           aria-label={`Operativos por mes: ${meses.map(m => `${m.etiqueta} ${m.iniciados}`).join(', ')}`} onMouseLeave={() => setSobre(null)}>
           {rango && <rect x={M.l + ancho * rango.lo} y={M.t - 6} width={ancho * (rango.hi - rango.lo + 1)} height={H - M.t - M.b + 6} rx={8} fill={colorBarras} opacity={0.12} />}
           {marcas.map(v => (
@@ -100,8 +101,8 @@ export function OperativosPorMes({ meses, colorBarras, colorLinea, tope: topeFij
               onPointerDown={onSeleccion ? e => { e.preventDefault(); setDrag({ a: i, b: i }); } : undefined}
               onPointerEnter={() => { setSobre(i); if (dragRef.current) setDrag(d => d && { ...d, b: i }); }} />
           ))}
-        </svg>
-        {act !== null && meses[act] && (
+        </svg>}
+        {act !== null && meses[act] && W > 0 && (
           <Globo fin={act >= meses.length - 2} x={`${(xc(act) / W) * 100}%`} y={`${((y(Math.max(meses[act].iniciados, meses[act].maxSimultaneos)) - 16) / H) * 100}%`}>
             <strong>{meses[act].etiqueta}</strong><br />Iniciados: {meses[act].iniciados} · Máximo a la vez: {meses[act].maxSimultaneos}
           </Globo>

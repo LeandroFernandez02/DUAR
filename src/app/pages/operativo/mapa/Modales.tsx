@@ -10,6 +10,7 @@ import {
   ApiError, GPX_MAX_BYTES, TIPOS_INSTALACION, tracksApi,
   type AnalisisGpxApi, type GrupoApi, type PersonalOperativoApi, type TipoInstalacionApi, type TrackApi,
 } from '../../../services/api';
+import { coincideDni } from '../../../utils/validacionUsuario';
 import { Boton, Campo, ErrorTexto, Modal, Selector, SIMBOLOS, rotulo } from './piezas';
 import { GrillaTiposSci } from './Paneles';
 import { area, distancia, fmtArea, fmtCoord, fmtDist, fmtKm, type LatLng } from './geo';
@@ -76,7 +77,7 @@ export function ModalCargarGpx({ operativoId, personal, grupos, onCancel, onCarg
   const grupoDe = (a: PersonalOperativoApi) => grupos.find(g => g.id === a.grupoId);
   const sugeridos = useMemo(() => personal.filter(a => {
     const g = grupoDe(a);
-    return !qa.trim() || normalizar(`${a.nombre} ${a.apellido} ${a.dni} ${g?.nombre ?? ''} ${a.institucionNombre ?? ''}`).includes(normalizar(qa.trim()));
+    return !qa.trim() || normalizar(`${a.nombre} ${a.apellido} ${a.dni} ${g?.nombre ?? ''} ${a.institucionNombre ?? ''}`).includes(normalizar(qa.trim())) || coincideDni(a.dni, qa);
   }).slice(0, 8), [personal, qa]); // eslint-disable-line react-hooks/exhaustive-deps
 
   const elegir = async (f: File | undefined) => {

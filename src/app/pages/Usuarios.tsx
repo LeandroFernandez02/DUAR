@@ -19,7 +19,7 @@ import {
   validarNombre, validarApellido, validarDni, validarTelefono,
   validarFechaNacimiento,
   validarEmail, validarPassword, filtrarEmail, PASSWORD_MAX,
-  soloDigitos, formatearDni, formatearTelefono, limpiarTexto,
+  soloDigitos, formatearDni, coincideDni, formatearTelefono, limpiarTexto,
   digitosAntesDelCursor, reponerCursor,
   AYUDA_PASSWORD, AYUDA_TELEFONO, PLACEHOLDER_TELEFONO,
 } from '../utils/validacionUsuario';
@@ -139,7 +139,7 @@ export default function Usuarios() {
   const filtered = usuariosVisibles.filter(u => {
     const q = search.toLowerCase();
     const matchSearch = !q || u.nombre.toLowerCase().includes(q) || u.apellido.toLowerCase().includes(q) ||
-      u.email.toLowerCase().includes(q) || u.dni.includes(q);
+      u.email.toLowerCase().includes(q) || coincideDni(u.dni, q);
     return matchSearch && (!roles.length || roles.includes(u.rol)) && (!estados.length || estados.includes(u.estado));
   });
 
@@ -423,7 +423,7 @@ export default function Usuarios() {
           ))}
         </div>
       ) : (
-        <TablaFija cols={[{ l: 'Usuario', w: 250 }, { l: 'DNI', w: 120 }, { l: 'Rol', w: 150 }, { l: 'Especialidad', w: 170 }, { l: 'Institución', w: 220 }, { l: 'Estado', w: 120 }, { l: '', w: 110 }]}>
+        <TablaFija cols={[{ l: 'Usuario', w: 230 }, { l: 'DNI', w: 110 }, { l: 'Rol', w: 150 }, { l: 'Especialidad', w: 140 }, { l: 'Institución', w: 200 }, { l: 'Estado', w: 110 }, { l: '', w: 100 }]}>
           <tbody>
             {filtered.map((u, i) => (
               <tr key={u.id} style={{ borderBottom: i < filtered.length - 1 ? '1px solid var(--border)' : 'none', fontSize: 'var(--text-base)', color: 'var(--foreground)' }}>

@@ -7,7 +7,7 @@ import {
   PersonalOperativoApi, UsuarioApi,
 } from '../../services/api';
 import { aviso } from '../../utils/aviso';
-import { formatearDni } from '../../utils/validacionUsuario';
+import { formatearDni, coincideDni } from '../../utils/validacionUsuario';
 import { haceCuanto } from '../../utils/tiempo';
 import TableroGrupos, { type TableroGruposHandle } from './TableroGrupos';
 import EditarAgenteModal, { ESTADO_OP_CONFIG } from '../../components/shared/EditarAgenteModal';
@@ -140,7 +140,7 @@ export default function Agentes() {
       const q = query.trim().toLowerCase();
       list = ordenarPorNombre(list.filter(a =>
         `${a.nombre} ${a.apellido}`.toLowerCase().includes(q) ||
-        a.dni.toLowerCase().includes(q) ||
+        coincideDni(a.dni, q) ||
         (a.especialidadNombre ?? '').toLowerCase().includes(q) ||
         (a.institucionNombre ?? '').toLowerCase().includes(q) ||
         (a.dependenciaNombre ?? '').toLowerCase().includes(q)
@@ -189,7 +189,7 @@ export default function Agentes() {
     if (!q) return disponibles;
     return ordenarPorNombre(disponibles.filter(u =>
       `${u.nombre} ${u.apellido}`.toLowerCase().includes(q) ||
-      u.dni.toLowerCase().includes(q) ||
+      coincideDni(u.dni, q) ||
       (u.institucionNombre ?? '').toLowerCase().includes(q) ||
       (u.dotacionNombre ?? '').toLowerCase().includes(q) ||
       (u.especialidadNombre ?? '').toLowerCase().includes(q)
@@ -364,7 +364,7 @@ export default function Agentes() {
             ))}
           </div>
         ) : (
-          <TablaFija cols={[{ l: 'Agente', w: 270 }, { l: 'Estado Op.', w: 250 }, { l: 'Institución', w: 230 }, { l: 'Especialidad', w: 180 }, { l: '', w: 130 }]}>
+          <TablaFija cols={[{ l: 'Agente', w: 270 }, { l: 'Estado Op.', w: 230 }, { l: 'Institución', w: 230 }, { l: 'Especialidad', w: 180 }, { l: '', w: 130 }]}>
             <tbody>
               {filtrados.map((agente, i) => (
                 <tr key={agente.id} style={{ borderBottom: i < filtrados.length - 1 ? '1px solid var(--border)' : 'none', fontSize: 'var(--text-base)', color: 'var(--foreground)' }}>

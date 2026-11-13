@@ -83,6 +83,8 @@ export default function Arbol(p: Props) {
   const fInst = inst.filter(x => coincide(x.nombre)), fHal = hall.filter(x => coincide(x.nombre)), fPoi = poi.filter(x => coincide(x.nombre));
   const verP0 = !!p.puntoCero && coincide('Punto Cero LSP');
   const nMarc = p.marcadores.length + (p.puntoCero ? 1 : 0);
+  // Mientras se busca, los contadores dicen cuántos coinciden (QA 13/11, QA-10).
+  const nMarcF = fInst.length + fHal.length + fPoi.length + (verP0 ? 1 : 0);
   const abierta = (k: keyof Abiertas, n: number) => (q ? n > 0 : p.abiertas[k]);
   const tog = (k: keyof Abiertas) => (v: boolean) => p.setAbiertas(a => ({ ...a, [k]: v }));
   const porPoligono = [
@@ -161,7 +163,7 @@ export default function Arbol(p: Props) {
           </SeccionArbol>
         )}
 
-        <SeccionArbol titulo="Polígonos" icono={Pentagon} insignia={p.poligonos.length} abierta={abierta('poligonos', fPols.length)} onToggle={tog('poligonos')} marcada={overlays.poligonos} onMarcar={v => setOv('poligonos', v)}>
+        <SeccionArbol titulo="Polígonos" icono={Pentagon} insignia={q ? fPols.length : p.poligonos.length} abierta={abierta('poligonos', fPols.length)} onToggle={tog('poligonos')} marcada={overlays.poligonos} onMarcar={v => setOv('poligonos', v)}>
           {fPols.map(x => (
             <FilaArbol key={x.id} marcada={visible(x.id)} onMarcar={() => p.alternar(x.id)}
               muestra={<span style={{ width: 12, height: 12, borderRadius: 3, background: `${x.color}40`, border: `1.5px ${x.grupos.length ? 'solid' : 'dashed'} ${x.color}`, flexShrink: 0, boxSizing: 'border-box' }} />}
@@ -171,7 +173,7 @@ export default function Arbol(p: Props) {
           {!fPols.length && vacio(q ? 'Sin coincidencias.' : 'Todavía no hay polígonos dibujados.')}
         </SeccionArbol>
 
-        <SeccionArbol titulo="Marcadores tácticos / POI" icono={MapPin} insignia={nMarc} abierta={abierta('marcadores', fInst.length + fHal.length + fPoi.length + (verP0 ? 1 : 0))} onToggle={tog('marcadores')} marcada={overlays.marcadores} onMarcar={v => setOv('marcadores', v)}>
+        <SeccionArbol titulo="Marcadores tácticos / POI" icono={MapPin} insignia={q ? nMarcF : nMarc} abierta={abierta('marcadores', fInst.length + fHal.length + fPoi.length + (verP0 ? 1 : 0))} onToggle={tog('marcadores')} marcada={overlays.marcadores} onMarcar={v => setOv('marcadores', v)}>
           {verP0 && <FilaArbol marcada={overlays.marcadores && overlays.puntoCero} onMarcar={v => { if (v && !overlays.marcadores) setOv('marcadores', true); setOv('puntoCero', v); }} muestra={<Simbolo tipo="puntoCero" />} etiqueta="Punto Cero (LSP)" seleccionada={p.esSel('puntoCero:p0')} onClick={p.onPuntoCero} />}
           {(!q || fInst.length > 0) && <FilaArbol fuerte etiqueta="Instalaciones SCI" marcada={overlays.marcadores && overlays.instalaciones} onMarcar={grupoMarc('instalaciones')} meta={inst.length} />}
           {fInst.map(i => <FilaArbol key={i.id} sangria={1} marcada={subMarcado('instalaciones', i.id)} onMarcar={hijo('instalaciones', i.id)} muestra={<Simbolo tipo={i.tipoInstalacion!} />} etiqueta={i.nombre} seleccionada={p.esSel(`marcador:${i.id}`)} onClick={() => p.onMarcador(i)} />)}
@@ -181,7 +183,7 @@ export default function Arbol(p: Props) {
           {fPoi.map(x => <FilaArbol key={x.id} sangria={1} marcada={subMarcado('poi', x.id)} onMarcar={hijo('poi', x.id)} muestra={<Simbolo tipo="POI" />} etiqueta={x.nombre} seleccionada={p.esSel(`marcador:${x.id}`)} onClick={() => p.onMarcador(x)} />)}
         </SeccionArbol>
 
-        <SeccionArbol titulo="Trazabilidad y tracks GPX" icono={Route} insignia={p.tracks.length} abierta={abierta('tracks', fTr.length)} onToggle={tog('tracks')} marcada={overlays.trazas} onMarcar={v => setOv('trazas', v)}>
+        <SeccionArbol titulo="Trazabilidad y tracks GPX" icono={Route} insignia={q ? fTr.length : p.tracks.length} abierta={abierta('tracks', fTr.length)} onToggle={tog('tracks')} marcada={overlays.trazas} onMarcar={v => setOv('trazas', v)}>
           {porPoligono.map(b => {
             const abierto = !!q || !cerrados[b.id];
             const todos = b.items.every(t => visible(t.id));

@@ -179,7 +179,9 @@ export function ScrollFade({ children, minHeight = 0 }: { children: ReactNode; m
   });
   return (
     <div style={{ position: 'relative', flex: 1, minHeight }}>
-      <div ref={ref} className="sin-barra" onScroll={medir} style={{ position: 'absolute', inset: 0, overflowY: 'auto', overflowX: 'hidden', padding: '0 4px 8px', margin: '0 -4px' }}>{children}</div>
+      {/* 12 px a la derecha, fuera del contenido: ahí se dibuja la barra de scroll superpuesta (utils/scrollSuave.ts),
+          que si no tapaba el borde de lo que hay en la lista, como los medidores de cobertura (QA 13/11, QA-06). */}
+      <div ref={ref} className="sin-barra" onScroll={medir} style={{ position: 'absolute', inset: 0, overflowY: 'auto', overflowX: 'hidden', padding: '0 12px 8px 4px', margin: '0 -12px 0 -4px' }}>{children}</div>
       {mas && <div style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 32, pointerEvents: 'none', background: 'linear-gradient(to bottom, transparent, var(--card))' }} />}
     </div>
   );
@@ -223,6 +225,13 @@ export const ESPECIALIDADES_PANEL: { nombre: string; color: string; icono: Lucid
   { nombre: 'K-9', color: '#14B8A6', icono: Dog },
   { nombre: 'Acuático', color: '#06B6D4', icono: Droplets },
 ];
+/**
+ * Los recuadros «Especialidades críticas» (Panel general) y «Recursos Críticos» (Panel del operativo)
+ * muestran sólo los recursos especiales: Caminante y Conductor son `es_recurso_critico = false` en el
+ * catálogo (migraciones 033 y 035), así que no van (QA 13/11, QA-04).
+ */
+const NO_CRITICAS = new Set(['Caminante', 'Conductor']);
+export const ESPECIALIDADES_CRITICAS = ESPECIALIDADES_PANEL.filter(e => !NO_CRITICAS.has(e.nombre));
 export const estiloEspecialidad = (nombre: string) =>
   ESPECIALIDADES_PANEL.find(e => e.nombre === nombre) ?? { nombre, color: ACENTO.grisClaro, icono: HelpCircle };
 

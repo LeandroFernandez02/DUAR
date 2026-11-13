@@ -215,6 +215,7 @@ export function MapPickerModal({ onConfirm, initialLat, initialLng, localidad }:
       {/* ── Modal overlay ── */}
       {isOpen && (
         <div
+          data-submodal
           className="fixed inset-0 flex items-center justify-center"
           style={{ zIndex: 99999, background: 'rgba(0,0,0,0.65)' }}
         >
