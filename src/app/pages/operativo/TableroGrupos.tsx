@@ -10,7 +10,7 @@
  */
 import { forwardRef, useCallback, useEffect, useImperativeHandle, useMemo, useRef, useState } from 'react';
 import { Users, AlertCircle, Loader2, X } from 'lucide-react';
-import { aviso } from '../../utils/aviso';
+import { aviso as notificar } from '../../utils/aviso';
 import {
   agentesOperativoApi, gruposApi, ApiError,
   type AccionGrupo, type GrupoApi, type IntegranteGrupoApi, type PersonalOperativoApi,
@@ -68,10 +68,10 @@ const TableroGrupos = forwardRef<TableroGruposHandle, Props>(function TableroGru
     enCurso.current.add(grupo.id);
     gruposApi.accion(operativoId, grupo.id, { accion: a })
       .then(r => {
-        if (r.resultado === 'CONFIRMACION') aviso.info(`${grupo.nombre}: ya estaba registrado, lo informó el Líder desde su celular.`);
-        else aviso.exito(`${grupo.nombre} pasó a ${ETIQUETA_ESTADO_GRUPO[ACCION_INFO[a].hacia]}.`);
+        if (r.resultado === 'CONFIRMACION') notificar.info(`${grupo.nombre}: ya estaba registrado, lo informó el Líder desde su celular.`);
+        else notificar.exito(`${grupo.nombre} pasó a ${ETIQUETA_ESTADO_GRUPO[ACCION_INFO[a].hacia]}.`);
       })
-      .catch(err => aviso.error(err instanceof ApiError ? err.message : 'No se pudo registrar el cambio. Revisá la conexión.'))
+      .catch(err => notificar.error(err instanceof ApiError ? err.message : 'No se pudo registrar el cambio. Revisá la conexión.'))
       .finally(() => { enCurso.current.delete(grupo.id); void cargar(); });
   };
 
@@ -125,7 +125,7 @@ const TableroGrupos = forwardRef<TableroGruposHandle, Props>(function TableroGru
     const nombre = `${agente.nombre} ${agente.apellido}`;
     try {
       await gruposApi.mover(operativoId, agente.id, destino?.id ?? null);
-      aviso.exito(destino ? `${nombre} sumado a ${destino.nombre}.` : `${nombre} quedó sin grupo.`);
+      notificar.exito(destino ? `${nombre} sumado a ${destino.nombre}.` : `${nombre} quedó sin grupo.`);
     } catch (err) {
       setAviso(err instanceof ApiError ? err.message : 'No se pudo mover al agente.');
     }
@@ -177,7 +177,7 @@ const TableroGrupos = forwardRef<TableroGruposHandle, Props>(function TableroGru
         onArmadoAutomatico={() => setArmado(true)}
         onAccion={irAAccion}
         onLineaTiempo={setHistoria}
-        onAviso={t => aviso.info(t)}
+        onAviso={t => notificar.info(t)}
         onNuevoGrupo={() => setCrear(true)}
       />
 

@@ -583,3 +583,13 @@ html { overscroll-behavior-y: none; }
 }
 @media (display-mode: standalone) { html.pagina-fija .mapa-inmersivo { height: 100lvh !important; } }
 .mapa-inmersivo:fullscreen { padding: 0; }
+
+/* ── iPhone/iPad: campos de 16 px como mínimo (QA 12/11, HP-01) ──
+   Safari de iOS agranda la página al tocar un campo con letra de menos de 16 px y la deja corrida.
+   Sólo en iOS (`-webkit-touch-callout` existe únicamente ahí): en Android y en la computadora los
+   campos quedan como están. El !important le gana al tamaño puesto en línea en cada campo. */
+@supports (-webkit-touch-callout: none) {
+  input:not([type="checkbox"]):not([type="radio"]):not([type="range"]), textarea, select {
+    font-size: max(16px, 1em) !important;
+  }
+}

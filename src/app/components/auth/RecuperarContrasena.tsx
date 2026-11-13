@@ -9,8 +9,8 @@ import { CampoAcceso, AlertaAcceso, BotonAcceso, TituloAcceso } from './Acceso';
  * una ventana aparte): pedir el correo → «Solicitud enviada». El mensaje es neutro, exista o no
  * ese correo (CU-03 paso 4.1: no se revela qué cuentas existen).
  */
-export default function RecuperarContrasena({ onVolver }: { onVolver: () => void }) {
-  const [email, setEmail] = useState('');
+export default function RecuperarContrasena({ onVolver, emailInicial = '' }: { onVolver: () => void; emailInicial?: string }) {
+  const [email, setEmail] = useState(emailInicial);
   const [error, setError] = useState('');
   const [enviado, setEnviado] = useState(false);
   const [cargando, setCargando] = useState(false);
@@ -31,7 +31,7 @@ export default function RecuperarContrasena({ onVolver }: { onVolver: () => void
   if (enviado) return (
     <>
       <TituloAcceso icono={MailCheck} titulo="Solicitud enviada" />
-      <AlertaAcceso tono="info" icono={Info}>Si el correo está registrado, recibirá un enlace pronto.</AlertaAcceso>
+      <AlertaAcceso tono="info" icono={Info}>Si el correo está registrado, vas a recibir un enlace en unos minutos.</AlertaAcceso>
       <p style={{ margin: 0, fontSize: 'var(--text-label)', color: 'var(--muted-foreground)', lineHeight: 1.6 }}>
         El enlace expira en <strong style={{ color: 'var(--foreground)' }}>60 minutos</strong>. Revisá también la carpeta de spam. Si no lo recibís, podés volver a intentarlo.
       </p>
@@ -41,7 +41,7 @@ export default function RecuperarContrasena({ onVolver }: { onVolver: () => void
   return (
     <form onSubmit={enviar} noValidate className="flex flex-col gap-4">
       <TituloAcceso icono={KeyRound} titulo="Recuperar contraseña" texto="Ingresá el correo registrado en el sistema y te enviaremos un enlace de recuperación." />
-      <CampoAcceso label="Email registrado" icono={Mail} type="email" value={email} maxLength={EMAIL_MAX} autoFocus
+      <CampoAcceso label="Correo electrónico" icono={Mail} type="email" value={email} maxLength={EMAIL_MAX} autoFocus
         onChange={v => { setEmail(filtrarEmail(v)); setError(''); }} autoComplete="email" placeholder="usuario@duar.cba.gob.ar" error={error} />
       <BotonAcceso type="submit" cargando={cargando}>{cargando ? 'Enviando...' : 'Enviar enlace de recuperación'}</BotonAcceso>
       <BotonAcceso tono="secundario" onClick={onVolver}>Cancelar</BotonAcceso>

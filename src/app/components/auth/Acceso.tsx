@@ -125,20 +125,24 @@ export function BotonAcceso({ children, onClick, type = 'button', tono = 'primar
   );
 }
 
-/** Enlace de texto subrayado en turquesa («¿Olvidó su contraseña?», «Volver»). */
+/** Enlace de texto subrayado en turquesa («¿Olvidaste tu contraseña?», «Volver»). Área táctil de 44 px de alto (QA 12/11, HP-07). */
 export function EnlaceAcceso({ children, onClick }: { children: ReactNode; onClick: () => void }) {
   return (
-    <button type="button" onClick={onClick} className="self-center"
-      style={{ background: 'none', border: 'none', padding: 4, cursor: 'pointer', color: 'var(--foreground)', fontFamily: 'var(--font-family-primary)', fontSize: 'var(--text-label)', fontWeight: 500, textDecoration: 'underline', textUnderlineOffset: 3, textDecorationColor: 'var(--primary)' }}>
+    <button type="button" onClick={onClick} className="self-center inline-flex items-center"
+      style={{ background: 'none', border: 'none', padding: '0 8px', minHeight: 44, margin: '-8px 0', cursor: 'pointer', color: 'var(--foreground)', fontFamily: 'var(--font-family-primary)', fontSize: 'var(--text-label)', fontWeight: 500, textDecoration: 'underline', textUnderlineOffset: 3, textDecorationColor: 'var(--primary)' }}>
       {children}
     </button>
   );
 }
 
-/** Layout de todas las pantallas de acceso: logo vertical y tarjeta centrada; `arriba` va entre los dos (p. ej. el operativo del QR). */
+/**
+ * Layout de todas las pantallas de acceso: logo vertical y tarjeta; `arriba` va entre los dos (p. ej. el operativo del QR).
+ * El bloque se ancla arriba, con un margen que lo deja más o menos centrado en pantallas altas: centrado de verdad, un
+ * aviso de error que agranda la tarjeta movía todo hacia arriba justo cuando se iba a tocar el botón (QA 12/11, HP-02).
+ */
 export function MarcoAcceso({ children, pie, arriba }: { children: ReactNode; pie?: ReactNode; arriba?: ReactNode }) {
   return (
-    <div className="flex items-center justify-center" style={{ minHeight: '100dvh', padding: 'calc(32px + var(--reloj-arriba)) 20px calc(32px + env(safe-area-inset-bottom))', background: 'var(--background)', fontFamily: 'var(--font-family-primary)', color: 'var(--foreground)' }}>
+    <div className="flex items-start justify-center" style={{ minHeight: '100dvh', padding: 'calc(max(32px, (100dvh - 640px) / 2) + var(--reloj-arriba)) 20px calc(32px + env(safe-area-inset-bottom))', background: 'var(--background)', fontFamily: 'var(--font-family-primary)', color: 'var(--foreground)' }}>
       <div className="w-full flex flex-col items-center gap-6" style={{ maxWidth: 420 }}>
         <div className="flex flex-col items-center" style={{ gap: 8 }}>
           <Logo variante="vertical" tono="auto" ancho={160} alto={100} />

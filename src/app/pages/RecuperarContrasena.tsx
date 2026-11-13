@@ -89,7 +89,7 @@ export default function RecuperarContrasena() {
             <li>El enlace fue copiado de forma incompleta</li>
           </ul>
         </AlertaAcceso>
-        {/* El pedido de un enlace nuevo se hace desde «¿Olvidó su contraseña?» del inicio de sesión. */}
+        {/* El pedido de un enlace nuevo se hace desde «¿Olvidaste tu contraseña?» del inicio de sesión. */}
         <BotonAcceso icono={RefreshCw} onClick={() => navigate('/login')}>Solicitar nuevo enlace</BotonAcceso>
         <BotonAcceso tono="secundario" icono={ArrowLeft} onClick={() => navigate('/login')}>Volver al inicio de sesión</BotonAcceso>
       </MarcoAcceso>

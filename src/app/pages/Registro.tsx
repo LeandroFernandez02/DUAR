@@ -468,7 +468,7 @@ export default function Registro() {
             <BotonAcceso type="submit" cargando={loading}>{loading ? 'Verificando...' : 'Ingresar al operativo'}</BotonAcceso>
             <div className="flex items-center justify-between gap-2 flex-wrap">
               <EnlaceAcceso onClick={volverAlInicio}>Volver</EnlaceAcceso>
-              <EnlaceAcceso onClick={() => { setError(''); setModo('recuperar'); }}>¿Olvidó su contraseña?</EnlaceAcceso>
+              <EnlaceAcceso onClick={() => { setError(''); setModo('recuperar'); }}>¿Olvidaste tu contraseña?</EnlaceAcceso>
             </div>
           </form>
         )}
