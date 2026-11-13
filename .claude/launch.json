@@ -4,21 +4,23 @@
     {
       "name": "DUAR (Vite dev)",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["run", "dev"],
+      "runtimeArgs": [
+        "run",
+        "dev"
+      ],
       "port": 5173
     },
     {
       "name": "DUAR API",
       "runtimeExecutable": "npm",
-      "runtimeArgs": ["--prefix", "server", "run", "dev"],
+      "runtimeArgs": [
+        "--prefix",
+        "server",
+        "run",
+        "dev"
+      ],
       "port": 3001,
       "autoPort": false
-    },
-    {
-      "name": "Diseño del mapa",
-      "runtimeExecutable": "python",
-      "runtimeArgs": ["-m", "http.server", "4321", "--bind", "127.0.0.1", "--directory", "diseno"],
-      "port": 4321
     }
   ]
 }

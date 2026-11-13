@@ -11,8 +11,7 @@ https://tesis-duar.vercel.app (front y API en Vercel, base PostgreSQL en Supabas
 | `server/` | API: Node/Express en MVC (`src/routes`, `src/controllers`, `src/models`), pruebas en `tests/`, fuentes del informe PDF en `assets/`. |
 | `api/` | Punto de entrada de la API como función de Vercel. |
 | `db/` | Esquema base y migraciones numeradas (`db/migrations`); se aplican a mano, en orden. |
-| `public/` | Íconos y logos de CALÍVAR (la app es instalable en el celular). |
-| `diseno/` | Prototipo del Mapa (Módulo 5) hecho en Claude Design: referencia visual, no es código de la app. |
+| `public/` | Íconos de CALÍVAR (la app es instalable en el celular). |
 
 ## Comandos
 

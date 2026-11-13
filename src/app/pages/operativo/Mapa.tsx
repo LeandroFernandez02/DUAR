@@ -1,6 +1,6 @@
 /**
  * Mapa operacional (Módulo 5 · CU-29 a CU-41), según el diseño de Claude
- * Design guardado en diseno/ui_kits/mapa: árbol «Gestión del mapa» a la
+ * Design del 12/10 (ya no se guarda en el repositorio): árbol «Gestión del mapa» a la
  * izquierda, herramientas y vistas sobre el mapa, globos de información,
  * paneles de detalle a la derecha y modales para crear y confirmar.
  *

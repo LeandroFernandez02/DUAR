@@ -1,6 +1,6 @@
 /**
  * Piezas visuales del mapa operacional, traducidas del prototipo de Claude
- * Design (diseno/components/core y diseno/components/map): botón, modal,
+ * Design del Módulo 5 (12/10; ya no se guarda en el repositorio): botón, modal,
  * campos, marcadores, árbol, barra de herramientas, leyenda, barra de
  * cobertura, perfil de elevación, globo y panel de detalle.
  */
