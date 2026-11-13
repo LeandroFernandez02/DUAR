@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { createPortal } from 'react-dom';
 import { FileText, Download, Loader2, AlertCircle, Clock, Lock, X } from 'lucide-react';
-import { toast } from 'sonner';
+import { aviso } from '../../utils/aviso';
 import { informesApi, InformeApi, TipoInformeApi, DescargaInformeApi } from '../../services/api';
 
 /**
@@ -54,10 +54,10 @@ export default function InformeModal({ operativoId, onClose }: { operativoId: st
     try {
       const r = await informesApi.generar(operativoId);
       bajar(r);
-      toast.success(r.nuevo === false ? `Se descargó el informe final ${r.informe.codigo}.` : `Informe ${r.informe.codigo} generado y guardado.`);
+      aviso.exito(r.nuevo === false ? `Se descargó el informe final ${r.informe.codigo}.` : `Informe ${r.informe.codigo} generado y guardado.`);
       await cargar();
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'No se pudo generar el informe. Intentá de nuevo.');
+      aviso.error(e instanceof Error ? e.message : 'No se pudo generar el informe. Intentá de nuevo.');
     } finally {
       setGenerando(false);
     }
@@ -68,7 +68,7 @@ export default function InformeModal({ operativoId, onClose }: { operativoId: st
     try {
       bajar(await informesApi.descargar(operativoId, inf.id));
     } catch (e) {
-      toast.error(e instanceof Error ? e.message : 'No se pudo descargar el informe.');
+      aviso.error(e instanceof Error ? e.message : 'No se pudo descargar el informe.');
     } finally {
       setBajando(null);
     }

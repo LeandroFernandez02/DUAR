@@ -529,3 +529,57 @@ html { overscroll-behavior-y: none; }
 @media (min-width: 3800px) { .panel-raiz { zoom: 1.9; } }
 @keyframes reloj-ping { 0% { box-shadow: 0 0 0 0 rgba(16,185,129,.6); } 70% { box-shadow: 0 0 0 7px rgba(16,185,129,0); } 100% { box-shadow: 0 0 0 0 rgba(16,185,129,0); } }
 .fila-otras:hover { background: var(--muted); }
+
+/* ── Avisos del sistema (13/11): caja horizontal con franja de color, ícono, título y detalle ──
+   Estructura en utils/aviso.ts; el Toaster está en App.tsx. Los selectores llevan
+   [data-sonner-toaster] para ganarle a los estilos que sonner inyecta en tiempo de ejecución. */
+[data-sonner-toaster] .aviso[data-sonner-toast] {
+  --aviso-color: var(--primary);
+  align-items: center;
+  gap: 12px;
+  padding: 12px 14px 12px 12px;
+  background: var(--card);
+  color: var(--foreground);
+  border: 1px solid var(--border);
+  border-left: 4px solid var(--aviso-color);
+  border-radius: var(--radius);
+  box-shadow: var(--elevation-md);
+  font-family: var(--font-family-primary);
+}
+[data-sonner-toaster] .aviso[data-sonner-toast][data-type="success"] { --aviso-color: #16a34a; }
+[data-sonner-toaster] .aviso[data-sonner-toast][data-type="error"] { --aviso-color: #dc2626; }
+[data-sonner-toaster] .aviso[data-sonner-toast][data-type="warning"] { --aviso-color: #d97706; }
+[data-sonner-toaster] .aviso[data-sonner-toast][data-type="info"] { --aviso-color: #0ea5e9; }
+[data-sonner-toaster] .aviso[data-sonner-toast] [data-icon] {
+  width: 34px; height: 34px; margin: 0; justify-content: center; border-radius: 999px;
+  color: var(--aviso-color);
+  background: color-mix(in srgb, var(--aviso-color) 14%, transparent);
+}
+[data-sonner-toaster] .aviso[data-sonner-toast] [data-content] { flex: 1; min-width: 0; gap: 2px; }
+[data-sonner-toaster] .aviso[data-sonner-toast] [data-title] {
+  font-weight: 700; font-size: calc(14px * var(--escala-texto, 1)); line-height: 1.3; color: var(--foreground);
+}
+[data-sonner-toaster] .aviso[data-sonner-toast] [data-description] {
+  font-weight: 400; font-size: calc(13px * var(--escala-texto, 1)); line-height: 1.4; color: var(--muted-foreground);
+}
+[data-sonner-toaster] .aviso[data-sonner-toast] [data-button] {
+  flex-shrink: 0; height: 32px; padding: 0 12px; margin-left: 4px; border-radius: var(--radius-md, 8px);
+  background: var(--aviso-color); color: #fff; font-weight: 600; font-size: calc(12px * var(--escala-texto, 1));
+}
+
+/* ── Mapa en pantalla completa (13/11) ──
+   En iPhone no hay pantalla completa del navegador para una página: el mapa se fija sobre toda la
+   pantalla y tapa el encabezado del operativo y el menú inferior. Los controles quedan por debajo
+   de la hora y de la barra de gestos. En la pantalla completa nativa (Android, escritorio) es igual. */
+.mapa-inmersivo {
+  position: fixed !important;
+  inset: 0;
+  z-index: 3000;
+  height: 100dvh !important;
+  min-height: 0 !important;
+  padding-top: env(safe-area-inset-top);
+  padding-bottom: env(safe-area-inset-bottom);
+  box-sizing: border-box;
+}
+@media (display-mode: standalone) { html.pagina-fija .mapa-inmersivo { height: 100lvh !important; } }
+.mapa-inmersivo:fullscreen { padding: 0; }

@@ -6,7 +6,7 @@ import {
   agentesOperativoApi, gruposApi, usuariosApi, ApiError,
   PersonalOperativoApi, UsuarioApi,
 } from '../../services/api';
-import { toast } from 'sonner';
+import { aviso } from '../../utils/aviso';
 import { formatearDni } from '../../utils/validacionUsuario';
 import { haceCuanto } from '../../utils/tiempo';
 import TableroGrupos, { type TableroGruposHandle } from './TableroGrupos';
@@ -115,7 +115,7 @@ export default function Agentes() {
         const { personal } = await agentesOperativoApi.listar(operativo.id);
         // Quien aparece entre una consulta y otra se sumó solo (alta por QR, CU-17): se avisa.
         const antes = idsVistos.current;
-        personal.filter(a => !antes.has(a.id)).forEach(a => toast(`Nuevo agente dado de alta por QR: ${a.nombre} ${a.apellido}`));
+        personal.filter(a => !antes.has(a.id)).forEach(a => aviso.info(`${a.nombre} ${a.apellido} se dio de alta escaneando el QR.`, { titulo: 'Nuevo agente' }));
         setAgentes(personal);
       } catch { /* se reintenta en el próximo ciclo */ }
     }, INTERVALO_MS);

@@ -1,6 +1,6 @@
 import { useState, useEffect } from 'react';
 import { Plus, Search, Edit2, Trash2, X, Shield, ShieldCheck, UserCheck, Footprints, AlertCircle, MailCheck } from 'lucide-react';
-import { toast } from 'sonner';
+import { aviso } from '../utils/aviso';
 import { useApp } from '../context/AppContext';
 import { Usuario, Rol, EstadoUsuario, esDuar, catInstituciones, catEspecialidades, catAlergias, dotacionesDe, institucionLabel, especialidadNombrePorId } from '../data/mockData';
 import { usuariosApi, ApiError, UsuarioApi } from '../services/api';
@@ -170,9 +170,9 @@ export default function Usuarios() {
     setReenviando(u.id);
     try {
       await usuariosApi.reenviarConfirmacion(u.id);
-      toast.success(`Correo de confirmación reenviado a ${u.email}.`);
+      aviso.exito(`Correo de confirmación reenviado a ${u.email}.`);
     } catch (err) {
-      toast.error(err instanceof ApiError ? err.message : 'No se pudo reenviar el correo.');
+      aviso.error(err instanceof ApiError ? err.message : 'No se pudo reenviar el correo.');
     } finally {
       setReenviando(null);
     }
@@ -273,7 +273,7 @@ export default function Usuarios() {
         const { usuario: alta, reactivado, correoEnviado } = await usuariosApi.crear({ ...datos, password: form.password });
         // CU-07 (05/10): el DNI era de una cuenta eliminada → se recuperó esa misma, con su historial.
         if (reactivado) {
-          toast.success(`Se reactivó la cuenta de ${alta.nombre} ${alta.apellido}, que estaba eliminada: conserva su historial de operativos.`);
+          aviso.exito(`Se reactivó la cuenta de ${alta.nombre} ${alta.apellido}, que estaba eliminada: conserva su historial de operativos.`);
         }
         avisarCorreo(alta.email, correoEnviado);
       } else if (selected) {
@@ -307,8 +307,8 @@ export default function Usuarios() {
 
   /** Resultado del correo de confirmación (Testeo 13/10, puntos 5 y 8). */
   const avisarCorreo = (para: string, enviado?: boolean) => {
-    if (enviado) toast.success(`Se envió el correo de confirmación a ${para}. La cuenta queda Pendiente hasta que lo confirme.`);
-    else toast.warning(`La cuenta quedó Pendiente, pero el correo de confirmación a ${para} no salió. Reenvialo desde el listado.`);
+    if (enviado) aviso.exito(`Se envió el correo de confirmación a ${para}. La cuenta queda Pendiente hasta que lo confirme.`);
+    else aviso.atencion(`La cuenta quedó Pendiente, pero el correo de confirmación a ${para} no salió. Reenvialo desde el listado.`);
   };
 
   /** CU-07 Eliminar — baja lógica + invalidación de sesiones, todo en el backend. */

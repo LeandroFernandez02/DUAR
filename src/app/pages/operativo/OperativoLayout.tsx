@@ -1,7 +1,7 @@
 import { useCallback, useEffect, useState } from 'react';
 import { Outlet, useParams, Navigate, useNavigate, useLocation } from 'react-router';
 import { Operativo } from '../../data/mockData';
-import { toast } from 'sonner';
+import { aviso } from '../../utils/aviso';
 import { operativosApi, marcadoresApi, ApiError } from '../../services/api';
 import { mapearOperativo } from '../../utils/mapearOperativo';
 import OperativoHeader from './OperativoHeader';
@@ -43,11 +43,12 @@ function useAvisoLideres(operativoId: string | undefined) {
         for (const n of r.novedades) {
           const que = n.clase === 'HALLAZGO' ? 'Nuevo hallazgo' : 'Nuevo punto de interés';
           const fuera = n.fueraPoligonoM !== null ? ' · fuera del polígono' : '';
-          (n.clase === 'HALLAZGO' ? toast.warning : toast.info)(`${que}: ${n.nombre}`, {
-            description: `Cargado por el Líder del grupo ${n.grupoNombre}${n.creadoPor ? ` (${n.creadoPor})` : ''}${fuera}.`,
-            duration: 12_000,
-            action: { label: 'Ver en el mapa', onClick: () => navigate(`/operativo/${operativoId}/mapa`) },
-          });
+          (n.clase === 'HALLAZGO' ? aviso.atencion : aviso.info)(
+            `${n.nombre} · cargado por el Líder del grupo ${n.grupoNombre}${n.creadoPor ? ` (${n.creadoPor})` : ''}${fuera}.`, {
+              titulo: que,
+              duracion: 12_000,
+              accion: { label: 'Ver en el mapa', onClick: () => navigate(`/operativo/${operativoId}/mapa`) },
+            });
         }
       } catch { /* sin conexión: se reintenta en la próxima vuelta */ }
     };

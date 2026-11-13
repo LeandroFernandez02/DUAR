@@ -13,7 +13,7 @@ import { useOutletContext } from 'react-router';
 import type L from 'leaflet';
 import {
   MousePointer2, Ruler, Pentagon, Circle, Square, MapPinPlus, Flag, Crosshair, House, Layers, Plus, Minus, Maximize, Minimize,
-  PanelLeftOpen, ChevronDown, ChevronUp, Info, Undo2, Check, Eraser, X, CircleCheck, Map as MapaIcono, Mountain, Satellite,
+  PanelLeftOpen, ChevronDown, ChevronUp, Info, Undo2, Check, Eraser, X, Map as MapaIcono, Mountain, Satellite,
   type LucideIcon,
 } from 'lucide-react';
 import {
@@ -34,6 +34,7 @@ import {
 } from './mapa/Modales';
 import { aPoligono, fmtDist, fmtRadio, formaArrastre, largo, type LatLng } from './mapa/geo';
 import { EVENTO_NOVEDAD_LIDER } from './OperativoLayout';
+import { aviso } from '../../utils/aviso';
 import {
   COLOR_SIN_GRUPO, OVERLAYS_INICIALES, PALETA_RADIOS, aPoligonoVista, aTrackVista, colorDeGrupo, guardarPreferencias, leerPreferencias,
   type Preferencias,
@@ -147,7 +148,6 @@ export default function Mapa() {
   const [q, setQ] = useState('');
   const [gruposAbierto, setGruposAbierto] = useState(false);
   const [basePop, setBasePop] = useState(false);
-  const [aviso, setAviso] = useState<{ msg: string; error?: boolean } | null>(null);
   const [vuelo, setVuelo] = useState<Vuelo | null>(null);
   const [guardandoModo, setGuardandoModo] = useState(false);
   const [detallePol, setDetallePol] = useState<PoligonoDetalleApi | null>(null);
@@ -155,13 +155,9 @@ export default function Mapa() {
   const mapRef = useRef<L.Map | null>(null);
   const raiz = useRef<HTMLDivElement>(null);
   const encuadreInicial = useRef(false);
-  const tAviso = useRef<ReturnType<typeof setTimeout> | undefined>(undefined);
 
-  const avisar = (msg: string, error = false) => {
-    setAviso({ msg, error });
-    clearTimeout(tAviso.current);
-    tAviso.current = setTimeout(() => setAviso(null), error ? 5000 : 2800);
-  };
+  // Avisos con el formato único del sistema (utils/aviso.ts, 13/11).
+  const avisar = (msg: string, error = false) => { if (error) aviso.error(msg); else aviso.exito(msg); };
   const volar = (pts: LatLng[], extra?: Partial<Vuelo>) => setVuelo({ pts, k: Math.random(), ...extra });
   const offsetDe = (t: Seleccion['tipo']) => (t === 'track' ? -4 : t === 'puntoCero' ? -42 : -38);
   const abrirGlobo = (tipo: Seleccion['tipo'], id: string, latlng: LatLng, conVuelo = false) => {
@@ -213,10 +209,25 @@ export default function Mapa() {
     document.addEventListener('fullscreenchange', f);
     return () => document.removeEventListener('fullscreenchange', f);
   }, []);
+  // En iPhone no existe la pantalla completa del navegador para una página (sólo para videos), así
+  // que el mapa además se fija sobre toda la pantalla, tapando encabezado y menú (`.mapa-inmersivo`
+  // en theme.css). Donde sí existe (Android, escritorio, iPad) se pide igual (13/11).
   const pantallaCompleta = () => {
     if (inmersivo) { if (document.fullscreenElement) document.exitFullscreen().catch(() => {}); setInmersivo(false); }
     else { raiz.current?.requestFullscreen?.().catch(() => {}); setInmersivo(true); }
   };
+  useEffect(() => {
+    if (!inmersivo) return;
+    // Sin pantalla completa nativa, Esc también sale (en la nativa lo hace el navegador).
+    const k = (e: KeyboardEvent) => { if (e.key === 'Escape' && !document.fullscreenElement) setInmersivo(false); };
+    window.addEventListener('keydown', k);
+    return () => window.removeEventListener('keydown', k);
+  }, [inmersivo]);
+  useEffect(() => {
+    // Leaflet tiene que volver a medir el contenedor al cambiar de tamaño.
+    const t = setTimeout(() => mapRef.current?.invalidateSize(), 60);
+    return () => clearTimeout(t);
+  }, [inmersivo]);
 
   /* ── Teclado: Esc cancela, Enter cierra el polígono ── */
   const terminarPoligono = () => {
@@ -402,7 +413,7 @@ export default function Mapa() {
   }
 
   return (
-    <div ref={raiz} className={[compacto && 'mapa-compacto', chico && 'mapa-movil', panelAbierto && 'mapa-panel'].filter(Boolean).join(' ')}
+    <div ref={raiz} className={[compacto && 'mapa-compacto', chico && 'mapa-movil', panelAbierto && 'mapa-panel', inmersivo && 'mapa-inmersivo'].filter(Boolean).join(' ')}
       style={{
         height: '100%', minHeight: compacto ? 0 : 520, display: 'flex', position: 'relative',
         // Los z-index de Leaflet (400–1100) quedan dentro del mapa y no tapan la hoja de Perfil ni el
@@ -453,7 +464,7 @@ export default function Mapa() {
               onGrupo={g => {
                 const pol = poligonos.find(p => p.id === g.poligonoId);
                 if (pol) { setSel({ tipo: 'poligono', id: pol.id }); setGlobo(null); volar(pol.vertices, { panel: true }); setGruposAbierto(false); }
-                else avisar(`${g.nombre} no tiene polígono asignado`);
+                else aviso.info(`${g.nombre} no tiene polígono asignado.`);
               }} />
           </div>
         )}
@@ -549,11 +560,6 @@ export default function Mapa() {
             onMarcador={m => { setSel(null); abrirGlobo('marcador', m.id, [m.lat, m.lng], true); }} />
         )}
 
-        {aviso && (
-          <div role="status" style={{ position: 'absolute', left: '50%', bottom: 72, transform: 'translateX(-50%)', zIndex: 1200, display: 'flex', alignItems: 'center', gap: 10, padding: '11px 16px', borderRadius: 'var(--radius)', background: 'var(--card)', border: `1px solid ${aviso.error ? 'color-mix(in srgb, var(--destructive) 35%, transparent)' : 'var(--border)'}`, boxShadow: 'var(--elevation-md)', fontSize: 'calc(13px * var(--escala-texto))', color: aviso.error ? 'var(--destructive)' : 'var(--foreground)', maxWidth: '80%' }}>
-            {aviso.error ? <Info size={16} color="#dc2626" /> : <CircleCheck size={16} color="#16a34a" />}{aviso.msg}
-          </div>
-        )}
       </div>
 
       {/* Modales */}

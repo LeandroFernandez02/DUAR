@@ -539,7 +539,6 @@ export function PanelInstalacion({ m, soloLectura, onClose, onGuardar, onReubica
       {!soloLectura && (
         <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
           <p style={rotulo}>Ubicación</p>
-          <p style={{ margin: 0, fontSize: 'calc(12px * var(--escala-texto))', color: 'var(--muted-foreground)' }}>Si la instalación se trasladó, reubicala en el mapa. La ubicación anterior queda en la auditoría del operativo.</p>
           <div><Boton variante="outline" icono={Move} onClick={onReubicar}>Reubicar en el mapa</Boton></div>
         </div>
       )}

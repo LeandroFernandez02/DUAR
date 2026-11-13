@@ -5,7 +5,7 @@ import {
   Search, AlertCircle,
   Crosshair, Lock, Flag, CheckCircle2, Clock,
 } from 'lucide-react';
-import { toast } from 'sonner';
+import { aviso } from '../utils/aviso';
 import StatusBadge from '../components/shared/StatusBadge';
 import { AccionCabecera } from '../components/layout/Movil';
 import { MapPickerModal } from '../components/shared/MapPickerModal';
@@ -341,19 +341,10 @@ export default function Operativos() {
       await operativosApi.finalizar(selected.id, finalizeResultado, finalizeNota.trim() || undefined);
       setModal(null);
       await cargarOperativos();
-      toast.success('Operativo finalizado correctamente. Personal liberado.', {
-        duration: 5000,
-        style: {
-          background: '#f0fdf4',
-          border: '1px solid #86efac',
-          color: '#15803d',
-          fontFamily: 'var(--font-family-primary)',
-          fontSize: 'var(--text-base)',
-        },
-      });
+      aviso.exito('Se liberó al personal y se emitió el informe final.', { titulo: 'Operativo finalizado' });
     } catch (err) {
       setModal(null);
-      toast.error(err instanceof ApiError ? err.message : 'No se pudo finalizar el operativo.');
+      aviso.error(err instanceof ApiError ? err.message : 'No se pudo finalizar el operativo.');
     } finally {
       setFinalizando(false);
     }
@@ -467,7 +458,7 @@ export default function Operativos() {
       await cargarOperativos();
     } catch (err) {
       setModal(null);
-      toast.error(err instanceof ApiError ? err.message : 'No se pudo eliminar el operativo.');
+      aviso.error(err instanceof ApiError ? err.message : 'No se pudo eliminar el operativo.');
     }
   };
 
