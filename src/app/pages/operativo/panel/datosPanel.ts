@@ -154,12 +154,13 @@ export interface ColumnaDespliegue { etiqueta: string; porInst: Record<string, n
 /**
  * Agentes que estuvieron EN TERRENO (Desplegado, Rastrillando o Replegado) al menos una vez en
  * cada día / semana / mes del operativo, por institución: cada persona cuenta una vez por período.
- * Los días que todavía no pasaron quedan vacíos.
+ * Los días que todavía no pasaron quedan vacíos. «Día N» y «Sem N» se cuentan cada 24 h desde la HORA de
+ * inicio, igual que el «Día N del operativo» del encabezado (QA 13/11, decisión del usuario).
  */
 export function despliegue(part: Participacion[], inicioOp: string, finOp: string | undefined, vista: VistaDespliegue): ColumnaDespliegue[] {
   const DIA = 86_400_000;
+  const t0 = new Date(inicioOp).getTime();
   const ini = new Date(inicioOp); ini.setHours(0, 0, 0, 0);
-  const hoy = new Date(); hoy.setHours(0, 0, 0, 0);
   const ultimo = finOp ? Math.min(new Date(finOp).getTime(), Date.now()) : Date.now();
   const contar = (a: number, b: number) => {
     const m: Record<string, number> = {};
@@ -171,17 +172,17 @@ export function despliegue(part: Participacion[], inicioOp: string, finOp: strin
   };
   const cols: ColumnaDespliegue[] = [];
   if (vista === '7d') {
-    const dias = Math.floor((Math.min(hoy.getTime(), ultimo) - ini.getTime()) / DIA) + 1;
+    const dias = Math.floor((ultimo - t0) / DIA) + 1;
     const primero = Math.max(1, dias - 6);
     for (let n = primero; n < primero + 7; n++) {
-      const a = ini.getTime() + (n - 1) * DIA;
+      const a = t0 + (n - 1) * DIA;
       cols.push({ etiqueta: `Día ${n}`, porInst: a <= ultimo ? contar(a, a + DIA) : null });
     }
   } else if (vista === 'sem') {
-    const semanas = Math.floor((ultimo - ini.getTime()) / (7 * DIA)) + 1;
+    const semanas = Math.floor((ultimo - t0) / (7 * DIA)) + 1;
     const total = Math.max(4, semanas + 1);
     for (let n = 1; n <= total; n++) {
-      const a = ini.getTime() + (n - 1) * 7 * DIA;
+      const a = t0 + (n - 1) * 7 * DIA;
       cols.push({ etiqueta: `Sem ${n}`, porInst: a <= ultimo ? contar(a, a + 7 * DIA) : null });
     }
   } else {

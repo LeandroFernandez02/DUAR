@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { createPortal } from 'react-dom';
-import { differenceInCalendarDays } from 'date-fns';
+import { differenceInDays } from 'date-fns';
 import {
   MapPin, Calendar, Clock, Target,
   QrCode, FileText, ChevronLeft,
@@ -33,8 +33,8 @@ export default function OperativoHeader({ operativo, movil = false, onRecargar, 
   // `fechaInicio` ya viene como datetime ISO completo (mapearOperativo lee
   // `fechaHoraInicio` de la API) — no es una fecha "pelada" para concatenarle hora.
   const inicio = new Date(operativo.fechaInicio);
-  // Días de calendario (el día en que empezó es el Día 1), igual que el gráfico de despliegue del panel (QA 13/11).
-  const diasOperativo = Math.max(0, differenceInCalendarDays(today, inicio));
+  // Cada 24 h desde la hora de inicio (decisión del 13/11); el gráfico de despliegue del panel cuenta igual (datosPanel.ts).
+  const diasOperativo = Math.max(0, differenceInDays(today, inicio));
   const { actual } = climaMock;
 
   const [showInfoModal, setShowInfoModal] = useState(false);
