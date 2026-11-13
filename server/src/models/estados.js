@@ -107,8 +107,9 @@ export function entraARastrillaje({ esRecursoCritico, esConductor }) {
  */
 export function motivoLiderNoApto({ esDuar, esRecursoCritico, esConductor }, clase) {
   if (clase === 'ESPECIAL') return null;
-  if (esRecursoCritico) return 'recurso_especial_en_rastrillaje';
+  // El conductor va primero: desde la 036 también es recurso crítico, pero el motivo es que maneja (13/11).
   if (esConductor) return 'lider_conductor';
+  if (esRecursoCritico) return 'recurso_especial_en_rastrillaje';
   if (!esDuar) return 'lider_no_duar';
   return null;
 }

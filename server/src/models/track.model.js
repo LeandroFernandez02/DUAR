@@ -196,6 +196,18 @@ export async function listarDeAgente(agenteOperativoId) {
   return rows.map(({ geometria, ...r }) => r);
 }
 
+/** Portal: los recorridos de esta participación y los que este usuario cargó por otros en el operativo (13/11). */
+export async function listarDelPortal(alta, usuarioId) {
+  const { rows } = await query(
+    `${SELECT_TRACK}
+      WHERE (t.agente_operativo_id = $1 OR (t.cargado_por = $2 AND t.operativo_id = $3))
+        AND t.eliminado_en IS NULL
+      ORDER BY t.inicio NULLS LAST, t.cargado_en`,
+    [alta.id, usuarioId, alta.operativoId]
+  );
+  return rows.map(({ geometria, ...r }) => r);
+}
+
 async function bloquearTrack(client, operativoId, trackId) {
   const { rows } = await client.query(
     `SELECT id, poligono_id AS "poligonoId", notas FROM tracks_gpx

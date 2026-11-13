@@ -812,7 +812,7 @@ export const catEspecialidades: CatEspecialidad[] = [
   { id: 'eb010f9d-406e-4248-ba27-d88ca045ca4f', nombre: 'K-9',           slug: 'k-9',           esRecursoCritico: true  },
   { id: '4ff8d2fe-647c-4fda-b036-3d315c43d7e9', nombre: 'Acuático',      slug: 'acuático',      esRecursoCritico: true  },
   // El conductor pasó a ser una especialidad (07/11, migración 035): un agente es una sola cosa a la vez.
-  { id: '39c9654d-b11c-487d-a3ca-45636957d599', nombre: 'Conductor',     slug: 'conductor',     esRecursoCritico: false, esConductor: true },
+  { id: '39c9654d-b11c-487d-a3ca-45636957d599', nombre: 'Conductor',     slug: 'conductor',     esRecursoCritico: true,  esConductor: true },
 ];
 
 /* ────────────────────────────────────────────────────────────────────────────

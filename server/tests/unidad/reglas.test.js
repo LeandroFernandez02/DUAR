@@ -82,6 +82,9 @@ describe('Reglas puras del modelo de estados y de composición', () => {
     assert.equal(motivoLiderNoApto({ ...duar, esDuar: false }, 'RASTRILLAJE'), 'lider_no_duar');
     assert.equal(motivoLiderNoApto({ ...duar, esRecursoCritico: true }, 'RASTRILLAJE'), 'recurso_especial_en_rastrillaje');
     assert.equal(motivoLiderNoApto({ ...duar, esConductor: true }, 'RASTRILLAJE'), 'lider_conductor');
+    // 036: el conductor también es recurso crítico; el motivo sigue siendo que maneja.
+    assert.equal(motivoLiderNoApto({ ...duar, esRecursoCritico: true, esConductor: true }, 'RASTRILLAJE'), 'lider_conductor');
+    assert.equal(entraARastrillaje({ esRecursoCritico: true, esConductor: true }), true);
   });
 
   test('CU-23 · un grupo especial lo lidera cualquiera, incluso un conductor de afuera', () => {

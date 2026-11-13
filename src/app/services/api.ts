@@ -1090,9 +1090,12 @@ export const portalApi = {
   /** CU-32 pasos 3 a 5: el resumen del archivo antes de confirmar. */
   analizarMiTrack: (archivo: File) =>
     requestFormData<{ analisis: AnalisisGpxApi }>('/mis-tracks/analizar', formularioGpx(archivo)),
-  /** CU-32: queda «recorrido de» y «cargado por» uno mismo. */
-  cargarMiTrack: (archivo: File, notas?: string) =>
-    requestFormData<{ track: TrackApi }>('/mis-tracks', formularioGpx(archivo, { notas })),
+  /**
+   * CU-32: queda «recorrido de» y «cargado por» uno mismo. Con `agenteOperativoId`, el Líder carga el
+   * recorrido de un integrante de su grupo (13/11): «recorrido de» él, «cargado por» el Líder.
+   */
+  cargarMiTrack: (archivo: File, notas?: string, agenteOperativoId?: string) =>
+    requestFormData<{ track: TrackApi }>('/mis-tracks', formularioGpx(archivo, { notas, agenteOperativoId })),
   /** «Mi sector»: el polígono de mi grupo (null sin grupo o sin polígono). `soyLider` habilita marcar. */
   miSector: () => api.get<{ sector: MiSectorApi | null; soyLider?: boolean }>('/mi-sector'),
   /** Sólo el Líder: los puntos de interés y hallazgos de su polígono (03/11). */

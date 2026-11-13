@@ -7,11 +7,14 @@
  * queda a su nombre, el original se guarda tal cual y la cobertura del
  * polígono se recalcula sola. Lo que se corrige después (polígono, notas) lo
  * hace el coordinador desde el mapa (CU-33).
+ *
+ * El Líder (13/11) también carga el recorrido de un integrante de su grupo —por ejemplo el
+ * conductor que tuvo que rastrillar, o alguien sin batería—: elige de quién es antes de confirmar.
  */
 import { useCallback, useEffect, useRef, useState } from 'react';
 import { Route, Upload, Loader2, MapPin, Check, X, AlertCircle } from 'lucide-react';
 import {
-  portalApi, ApiError, GPX_MAX_BYTES, type AnalisisGpxApi, type TrackApi,
+  portalApi, ApiError, GPX_MAX_BYTES, type AnalisisGpxApi, type TrackApi, type GrupoApi,
 } from '../../services/api';
 import {
   Overlay, IconBox, Titulo, Texto, BotonSecundario, BotonPrimario, ErrorCaja, Etiqueta, estiloCampo,
@@ -63,20 +66,30 @@ export default function MisRecorridos() {
   const [errorModal, setErrorModal] = useState<string | null>(null);
   const [aviso, setAviso] = useState<string | null>(null);
   const input = useRef<HTMLInputElement>(null);
+  // Mi participación y, si soy el Líder, los integrantes de mi grupo (para cargar por ellos).
+  const [miId, setMiId] = useState<string | null>(null);
+  const [integrantes, setIntegrantes] = useState<GrupoApi['integrantes']>([]);
+  const [deQuien, setDeQuien] = useState('');
 
   const cargar = useCallback(async () => {
     try {
-      setTracks((await portalApi.misTracks()).tracks);
+      const [t, g] = await Promise.all([portalApi.misTracks(), portalApi.miGrupo().catch(() => null)]);
+      setTracks(t.tracks);
+      if (g) {
+        setMiId(g.agente?.id ?? null);
+        setIntegrantes(g.grupo?.soyLider ? g.grupo.integrantes : []);
+      }
     } catch { /* sin señal: queda la última lista */ }
     finally { setCargando(false); }
   }, []);
+  const otros = integrantes.filter(i => i.id !== miId);
 
   useEffect(() => { cargar(); }, [cargar]);
 
   const mensaje = (err: unknown) =>
     err instanceof ApiError && err.status < 500 ? err.message : 'No se pudo enviar el archivo: revisá la conexión e intentá de nuevo.';
 
-  const limpiar = () => { setArchivo(null); setAnalisis(null); setNotas(''); setErrorModal(null); };
+  const limpiar = () => { setArchivo(null); setAnalisis(null); setNotas(''); setErrorModal(null); setDeQuien(''); };
   const cerrar = () => { if (!trabajando) limpiar(); };
 
   /** CU-32 pasos 2 a 5: se valida el archivo y se muestra el resumen. */
@@ -104,10 +117,11 @@ export default function MisRecorridos() {
     setErrorModal(null);
     setTrabajando('guardando');
     try {
-      const { track } = await portalApi.cargarMiTrack(archivo, notas.trim() || undefined);
+      const { track } = await portalApi.cargarMiTrack(archivo, notas.trim() || undefined, deQuien || undefined);
+      const de = deQuien ? `de ${track.agente} ` : '';
       setAviso(track.poligonoNombre
-        ? `Recorrido cargado en el polígono ${track.poligonoNombre}. Ya suma a su cobertura.`
-        : 'Recorrido cargado fuera de polígono: el coordinador lo puede asignar desde el mapa.');
+        ? `Recorrido ${de}cargado en el polígono ${track.poligonoNombre}. Ya suma a su cobertura.`
+        : `Recorrido ${de}cargado fuera de polígono: el coordinador lo puede asignar desde el mapa.`);
       limpiar();
       await cargar();
     } catch (err) {
@@ -158,7 +172,9 @@ export default function MisRecorridos() {
                 </p>
                 <p style={{ fontSize: 'calc(11px * var(--escala-texto))', color: 'var(--muted-foreground)', lineHeight: 1.4 }}>
                   {franja(t.inicio, t.fin)}
-                  {t.cargadoPor !== t.agente && ` · cargado por ${t.cargadoPor}`}
+                  {miId && t.agenteOperativoId !== miId
+                    ? ` · recorrido de ${t.agente}`
+                    : t.cargadoPor !== t.agente && ` · cargado por ${t.cargadoPor}`}
                 </p>
               </div>
             </li>
@@ -211,6 +227,22 @@ export default function MisRecorridos() {
                 valor={analisis.conElevacion ? `+${analisis.desnivelPositivoM} m / −${analisis.desnivelNegativoM} m` : 'sin elevación'} />
             </div>
             <p style={{ fontSize: 'calc(11.5px * var(--escala-texto))', color: 'var(--muted-foreground)' }}>{franja(analisis.inicio, analisis.fin)}</p>
+
+            {otros.length > 0 && (
+              <div>
+                <Etiqueta htmlFor="recorrido-de">¿De quién es el recorrido?</Etiqueta>
+                <select id="recorrido-de" value={deQuien} onChange={e => setDeQuien(e.target.value)} disabled={!!trabajando}
+                  className="w-full px-3 py-2" style={estiloCampo}>
+                  <option value="">Mío</option>
+                  {otros.map(i => (
+                    <option key={i.id} value={i.id}>{i.nombre} {i.apellido}{i.especialidadNombre ? ` · ${i.especialidadNombre}` : ''}</option>
+                  ))}
+                </select>
+                <p style={{ fontSize: 'calc(11px * var(--escala-texto))', color: 'var(--muted-foreground)', lineHeight: 1.45, marginTop: 4 }}>
+                  Como Líder, podés cargar el recorrido de alguien de tu grupo (por ejemplo, el conductor). Queda a su nombre y cargado por vos.
+                </p>
+              </div>
+            )}
 
             <div>
               <Etiqueta htmlFor="notas-recorrido">Notas (opcional)</Etiqueta>

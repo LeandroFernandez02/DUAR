@@ -11,6 +11,7 @@ import * as Track from '../models/track.model.js';
 import * as Operativo from '../models/operativo.model.js';
 import * as AgenteOperativo from '../models/agenteOperativo.model.js';
 import * as Auditoria from '../models/auditoria.model.js';
+import * as Grupo from '../models/grupo.model.js';
 
 const ENTIDAD = 'tracks_gpx';
 const RE_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -165,27 +166,45 @@ export async function misTracksAnalizar(req, res, next) {
   } catch (err) { next(err); }
 }
 
-/** POST /api/mis-tracks — queda «recorrido de» y «cargado por» él mismo. */
+/**
+ * POST /api/mis-tracks — queda «recorrido de» y «cargado por» él mismo.
+ * Con `agenteOperativoId` (13/11): el Líder carga el recorrido de un integrante de SU grupo
+ * (por ejemplo el conductor, o alguien sin batería). Queda «recorrido de» el integrante y
+ * «cargado por» el Líder. Si el integrante cambió de grupo, se lo carga el Líder del grupo actual.
+ */
 export async function misTracksCrear(req, res, next) {
   try {
     if (faltaArchivo(req, res)) return;
     const no = leerNotas(req.body?.notas);
     if (no.error) return invalido(res, no.error);
+    const otro = req.body?.agenteOperativoId;
+    if (otro !== undefined && otro !== '' && !esUuid(otro)) return invalido(res, 'Elegí de quién es el recorrido.', 'agente_requerido');
     const alta = await miAlta(req, res);
     if (!alta || !(await operativoEditable(alta.operativoId, res))) return;
+    let deQuien = alta.id;
+    if (otro && otro !== alta.id) {
+      const grupo = await Grupo.grupoDelAgente(alta);
+      if (!grupo?.soyLider) {
+        return res.status(403).json({ error: 'Sólo el Líder del grupo carga recorridos de otros integrantes.', motivo: 'no_es_lider' });
+      }
+      if (!grupo.integrantes.some(i => i.id === otro)) {
+        return res.status(403).json({ error: 'Esa persona no está en tu grupo.', motivo: 'no_es_del_grupo' });
+      }
+      deQuien = otro;
+    }
     const track = await Track.crear(alta.operativoId, {
-      agenteOperativoId: alta.id, buffer: req.file.buffer, archivoNombre: nombreArchivo(req), notas: no.notas ?? null,
+      agenteOperativoId: deQuien, buffer: req.file.buffer, archivoNombre: nombreArchivo(req), notas: no.notas ?? null,
     }, req.usuario.id);
     await auditar(req, Auditoria.ACCION.CREAR, track.id, null, track);
     res.status(201).json({ track: sinGeometria(track) });
   } catch (err) { next(err); }
 }
 
-/** GET /api/mis-tracks — los recorridos suyos en el operativo en el que está. */
+/** GET /api/mis-tracks — los recorridos suyos y los que cargó él (el Líder, por otros) en el operativo en el que está. */
 export async function misTracksListar(req, res, next) {
   try {
     const alta = await AgenteOperativo.altaActivaDe(req.usuario.id);
-    res.json({ tracks: alta ? await Track.listarDeAgente(alta.id) : [] });
+    res.json({ tracks: alta ? await Track.listarDelPortal(alta, req.usuario.id) : [] });
   } catch (err) { next(err); }
 }
 
