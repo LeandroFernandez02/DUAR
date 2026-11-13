@@ -202,9 +202,6 @@ export function ModalNuevoMarcador({ ll, onCancel, onGuardar }: {
             return <button key={tp} type="button" aria-pressed={on} onClick={() => setClase(tp)} style={{ display: 'flex', alignItems: 'center', gap: 7, padding: '9px 10px', borderRadius: 'var(--radius-md)', cursor: 'pointer', border: on ? `1.5px solid ${k.color}` : '1.5px solid var(--border)', background: on ? k.bg : 'transparent', color: on ? k.color : 'var(--foreground)', fontFamily: 'var(--font-family-primary)', fontSize: 'calc(12.5px * var(--escala-texto))', fontWeight: 600 }}><I size={14} />{k.label}</button>;
           })}
         </div>
-        <p style={{ margin: 0, fontSize: 'calc(11.5px * var(--escala-texto))', color: 'var(--muted-foreground)', lineHeight: 1.5 }}>
-          {clase === 'HALLAZGO' ? 'Un hallazgo es evidencia del caso (una prenda, un rastro, un objeto): queda con hora y autor, y no se elimina.' : 'Un lugar útil u orientador: refugio, cruce de arroyo, acceso.'}
-        </p>
         <Campo etiqueta="Nombre" requerido valor={nombre} onChange={setNombre} maxLength={120} autoFocus placeholder={clase === 'HALLAZGO' ? 'Ej.: Campera roja' : 'Ej.: Refugio de piedra'} />
         <Campo etiqueta="Descripción" valor={desc} onChange={setDesc} maxLength={300} placeholder="Descripción breve…" />
         <Campo etiqueta="Detalle" multilinea filas={3} valor={det} onChange={setDet} maxLength={4000} placeholder="Condiciones del lugar, quién lo encontró, hora…" />
