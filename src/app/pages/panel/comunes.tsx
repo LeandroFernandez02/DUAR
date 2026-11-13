@@ -225,13 +225,6 @@ export const ESPECIALIDADES_PANEL: { nombre: string; color: string; icono: Lucid
   { nombre: 'K-9', color: '#14B8A6', icono: Dog },
   { nombre: 'Acuático', color: '#06B6D4', icono: Droplets },
 ];
-/**
- * Los recuadros «Especialidades críticas» (Panel general) y «Recursos Críticos» (Panel del operativo)
- * muestran sólo los recursos especiales: Caminante y Conductor son `es_recurso_critico = false` en el
- * catálogo (migraciones 033 y 035), así que no van (QA 13/11, QA-04).
- */
-const NO_CRITICAS = new Set(['Caminante', 'Conductor']);
-export const ESPECIALIDADES_CRITICAS = ESPECIALIDADES_PANEL.filter(e => !NO_CRITICAS.has(e.nombre));
 export const estiloEspecialidad = (nombre: string) =>
   ESPECIALIDADES_PANEL.find(e => e.nombre === nombre) ?? { nombre, color: ACENTO.grisClaro, icono: HelpCircle };
 

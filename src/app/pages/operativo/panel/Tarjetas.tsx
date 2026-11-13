@@ -80,7 +80,7 @@ export function GruposActivos({ grupos }: { grupos: GrupoApi[] }) {
   );
 }
 
-/* ── Recursos críticos ──────────────────────────────────────────────────── */
+/* ── Especialidades de Agentes (decisión del 13/11: todas, no sólo las críticas) ──────────────────────────────────────────────── */
 
 type Recurso = ReturnType<typeof recursos>[number];
 
@@ -129,14 +129,14 @@ export function RecursosCriticos({ personal }: { personal: PersonalOperativoApi[
     <section style={{ ...tarjeta, padding: 20, display: 'flex', flexDirection: 'column', width: '100%', height: '100%', minHeight: 330 }}>
       <Tit icono={ShieldAlert} color={ACENTO.naranja} info="Unidades en base listas para asignación"
         der={<BotonPildora abierto={abierto} onClick={() => setAbierto(v => !v)}>{abierto ? 'Ocultar detalle' : `Ver detalle (${conBase.length} disponibles)`}</BotonPildora>}>
-        Recursos Críticos
+        Especialidades de Agentes
       </Tit>
       <div className="rc-fila" style={{ display: 'flex', flexWrap: 'nowrap', gap: 16, alignItems: 'center', justifyContent: 'center', height: 265, flexShrink: 0, margin: 'auto 0' }}>
         <div style={{ flex: '1 1 0', height: '100%', maxWidth: abierto ? 'none' : 440, minWidth: 0, display: 'flex', alignItems: 'center', justifyContent: 'center' }}>
           {conBase.length >= 3
             ? <Radar datos={conBase} />
             : <p style={{ margin: 0, textAlign: 'center', fontSize: 'var(--text-label)', color: 'var(--muted-foreground)' }}>
-                {conBase.length ? `En base: ${conBase.map(r => `${r.nombre} (${r.base})`).join(' · ')}` : 'No hay recursos listos en base.'}
+                {conBase.length ? `En base: ${conBase.map(r => `${r.nombre} (${r.base})`).join(' · ')}` : 'No hay agentes listos en base.'}
                 <br />{!abierto && 'Abrí el detalle para ver cada especialidad.'}
               </p>}
         </div>

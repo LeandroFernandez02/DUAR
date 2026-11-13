@@ -3,7 +3,7 @@ import {
   panelApi,
   type PersonalOperativoApi, type GrupoApi, type PoligonoPanelApi, type TrackPanelApi, type EstadoGrupoApi, type EventoCoberturaApi,
 } from '../../../services/api';
-import { ESPECIALIDADES_CRITICAS, ACENTO } from '../../panel/comunes';
+import { ESPECIALIDADES_PANEL, ACENTO } from '../../panel/comunes';
 import { leerPanel, guardarPanel } from '../../../utils/memoriaPanel';
 
 /**
@@ -84,7 +84,7 @@ export function gruposPorEstado(grupos: GrupoApi[]) {
 
 /** Por especialidad: total en el operativo, en terreno y listos en base (ni en terreno ni «No disponible»). */
 export function recursos(personal: PersonalOperativoApi[]) {
-  return ESPECIALIDADES_CRITICAS.map(e => {
+  return ESPECIALIDADES_PANEL.map(e => {
     const de = personal.filter(a => a.especialidadNombre === e.nombre);
     const terreno = de.filter(a => EN_TERRENO.has(a.estado)).length;
     const base = de.filter(a => !EN_TERRENO.has(a.estado) && a.estado !== 'NO_DISPONIBLE').length;
