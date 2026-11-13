@@ -5,7 +5,7 @@
  * crear; una cuenta Pendiente se edita pero su estado no se elige; cambiar el
  * correo obliga a confirmarlo de nuevo; espacios de más y fechas imposibles.
  * Usa cuentas propias (auto.testeo*, DNI 98000970–98000973) para no tocar a
- * los agentes fijos de las otras pruebas.
+ * los agentes fijos de las otras pruebas (y auto.testeo5, DNI 98000975, para el reenvío del 13/11).
  */
 import { describe, test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -131,5 +131,25 @@ describe('Usuarios: arreglos del Testeo del 13/10 (CU-02, CU-03, CU-05, CU-06)',
     assert.equal(debil.status, 400);
     assert.match(debil.json.error, /carácter especial/);
     motivo(await api('POST', '/auth/restablecer-contrasena', { token, password: 'NuevaClave9#' }), 200);
+  });
+  test('13/11 · «Reenviar correo» mira si el correo está confirmado, no el estado de la cuenta', async () => {
+    const r = await crear('testeo5', '98000975');
+    motivo(r, 201);
+    const id = r.json.usuario.id;
+    // Una cuenta que quedó Activa sin confirmar el correo (pasó con juan test) puede pedirlo.
+    await ctx.query(`UPDATE usuarios SET estado = 'ACTIVO' WHERE id = $1`, [id]);
+    const token = (await api('POST', '/auth/login', { email: 'auto.testeo5@prueba.duar', password: CLAVE })).json.token;
+    for (const pedido of [
+      await api('POST', '/auth/reenviar-confirmacion', undefined, token),
+      await ctx.api('POST', `/usuarios/${id}/reenviar-confirmacion`),
+    ]) {
+      assert.notEqual(pedido.json?.motivo, 'ya_confirmado', JSON.stringify(pedido.json));
+      assert.ok([200, 429].includes(pedido.status), JSON.stringify(pedido.json));   // 429 = el enfriamiento de 2 min tras el alta
+    }
+    // Ya confirmado, no.
+    await confirmarCorreo(id);
+    motivo(await api('POST', '/auth/reenviar-confirmacion', undefined, token), 400, 'ya_confirmado');
+    motivo(await ctx.api('POST', `/usuarios/${id}/reenviar-confirmacion`), 400, 'ya_confirmado');
+    await liberar('98000975', 'auto.testeo5@prueba.duar');
   });
 });

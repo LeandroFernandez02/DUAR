@@ -339,7 +339,7 @@ export default function Usuarios() {
     if (soloConsulta) return null;   // El Jefe de Operativo mira las cuentas, no las modifica (02/11).
     return (
       <div className="flex items-center gap-0.5 shrink-0">
-        {u.estado === 'pendiente' && (
+        {!u.emailConfirmado && u.estado !== 'eliminado' && (
           <BotonIcono icono={MailCheck} title="Reenviar correo de confirmación" disabled={reenviando === u.id} onClick={() => handleReenviarConfirmacion(u)} />
         )}
         <BotonIcono icono={Edit2} title="Editar usuario" onClick={() => openEdit(u)} />

@@ -433,7 +433,7 @@ export async function reenviarConfirmacion(req, res, next) {
   try {
     const usuario = await Usuario.buscarPorId(req.params.id);
     if (!usuario || usuario.estado === 'ELIMINADO' || !visiblePara(req, usuario)) return noEncontrado(res);
-    if (usuario.estado !== 'PENDIENTE') {
+    if (usuario.emailConfirmado) {   // el correo, no el estado (13/11)
       return res.status(400).json({ error: 'Este usuario ya confirmó su correo.', motivo: 'ya_confirmado' });
     }
 

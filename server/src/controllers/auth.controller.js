@@ -255,7 +255,9 @@ export async function restablecerContrasena(req, res, next) {
  */
 export async function reenviarConfirmacion(req, res, next) {
   try {
-    if (req.usuario.estado !== 'PENDIENTE') {
+    // Se mira el correo, no el estado: una cuenta Activa con el correo sin confirmar también
+    // puede pedirlo (13/11: juan test quedó Activo sin confirmar y el botón decía «ya está confirmada»).
+    if (req.usuario.emailConfirmado) {
       return res.status(400).json({ error: 'Tu cuenta ya está confirmada.', motivo: 'ya_confirmado' });
     }
 
