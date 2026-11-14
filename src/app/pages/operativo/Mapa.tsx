@@ -162,6 +162,9 @@ export default function Mapa() {
   const offsetDe = (t: Seleccion['tipo']) => (t === 'track' ? -4 : t === 'puntoCero' ? -42 : -38);
   const abrirGlobo = (tipo: Seleccion['tipo'], id: string, latlng: LatLng, conVuelo = false) => {
     const abrir = () => setGlobo({ tipo, id, latlng, offset: offsetDe(tipo), k: Math.random() });
+    // Por debajo de 700 px el árbol tapa la mitad del mapa: al elegir algo de la lista se cierra,
+    // para que el globo se lea entero (QA 14/11, QA2-03). En tablet se esquiva con margenIzquierdo.
+    if (conVuelo && compacto && !tablet) setIzquierda(false);
     if (conVuelo) { setGlobo(null); volar([latlng], { luego: abrir }); } else abrir();
   };
   const cancelarModo = () => { setHerr('select'); setBorrador([]); setMedida([]); setEditVerts(null); setMoviendo(null); };
@@ -441,7 +444,7 @@ export default function Mapa() {
           poligonos={polDibujo} tracks={trDibujo} marcadores={mkDibujo} puntoCero={puntoCero}
           radios={radiosDibujo} radiosCentro={modal?.tipo === 'puntoCero' ? modal.hasta : puntoCero} radiosVistaPrevia={modal?.tipo === 'puntoCero'}
           sel={sel} globo={globoLienzo} contenidoGlobo={contenidoGlobo}
-          herr={herr} borrador={borrador} medida={medida} editVerts={editVerts} moviendo={moviendo} vuelo={vuelo} margenDerecho={panel ? 340 : 0}
+          herr={herr} borrador={borrador} medida={medida} editVerts={editVerts} moviendo={moviendo} vuelo={vuelo} margenDerecho={panel ? 340 : 0} margenIzquierdo={compacto && !chico && izquierda ? 320 : 0}
           onReady={m => { mapRef.current = m; }}
           onClicMapa={onClicMapa} onDobleClic={() => { if (herr === 'poligono') terminarPoligono(); }}
           onForma={(t, a, b) => { if (largo([a, b]) > 5) setModal({ tipo: 'nuevoPoligono', vertices: formaArrastre(t, a, b) }); }}

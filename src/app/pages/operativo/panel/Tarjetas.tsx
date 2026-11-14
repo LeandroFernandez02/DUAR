@@ -43,7 +43,7 @@ export function GruposActivos({ grupos }: { grupos: GrupoApi[] }) {
   const todos = porEstado.flatMap(e => e.grupos.map(g => ({ g, e })));
   const MAX = 15, cab = todos.length > MAX ? todos.slice(0, MAX - 1) : todos;
   const enTerreno = grupos.filter(g => g.zonaAsignada && ['ASIGNADO', 'DESPLEGADO', 'RASTRILLANDO', 'REPLEGADO'].includes(g.estado));
-  const detalle = enTerreno.length ? enTerreno.map(g => `${g.nombre} (${g.zonaAsignada})`).join(' · ') : 'Ningún grupo tiene sector asignado';
+  const detalle = enTerreno.length ? enTerreno.map(g => `${g.nombre} (${g.zonaAsignada})`).join(' · ') : 'Ningún grupo tiene polígono asignado';
   const d = useDemora();
   return (
     <section className="grupos-fila" style={{ ...tarjeta, flex: '1 1 auto', width: '100%', minHeight: 188, padding: '16px 24px', display: 'flex', flexWrap: 'wrap', alignItems: 'center', gap: '24px 32px' }}>
@@ -264,7 +264,7 @@ export function Poligonos({ poligonos, grupos }: { poligonos: PoligonoPanelApi[]
   };
   return (
     <section style={{ ...tarjeta, padding: 20, display: 'flex', flexDirection: 'column', width: '100%', height: '100%', minHeight: 345 }}>
-      <Tit icono={MapPin} info="Rastrillaje métrico y cuadrillas desplegadas por sector"
+      <Tit icono={MapPin} info="Rastrillaje métrico y cuadrillas desplegadas por polígono"
         der={completos.length > 0 ? <BotonPildora abierto={ver} onClick={() => setVer(v => !v)}>{ver ? `Ocultar completados (${completos.length})` : `Ver completados (${completos.length})`}</BotonPildora> : undefined}>
         Polígonos y Cobertura Operativa
       </Tit>
@@ -274,13 +274,13 @@ export function Poligonos({ poligonos, grupos }: { poligonos: PoligonoPanelApi[]
         {ver && completos.length > 0 && <>
           <div style={{ display: 'flex', alignItems: 'center', gap: 16, padding: '12px 0' }}>
             <div style={{ height: 1, background: 'var(--border)', flex: 1 }} />
-            <span style={{ fontSize: 10, fontWeight: 700, color: ACENTO.grisClaro, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Sectores completados</span>
+            <span style={{ fontSize: 10, fontWeight: 700, color: ACENTO.grisClaro, textTransform: 'uppercase', letterSpacing: '0.08em' }}>Polígonos completados</span>
             <div style={{ height: 1, background: 'var(--border)', flex: 1 }} />
           </div>
           {completos.map(fila)}
         </>}
       </ScrollFade>
-      <p style={{ margin: '16px 0 0', fontSize: chico, color: 'var(--muted-foreground)' }}>{completos.length} de {poligonos.length} sectores completados</p>
+      <p style={{ margin: '16px 0 0', fontSize: chico, color: 'var(--muted-foreground)' }}>{completos.length} de {poligonos.length} polígonos completados</p>
     </section>
   );
 }

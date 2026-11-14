@@ -276,6 +276,10 @@ export default function GruposDnD({
 
   const iniciarTactil = (a: Arrastre, e: React.PointerEvent) => {
     if (enCurso) return;
+    // En celular, mientras se arrastra desde «Sin grupo» se ven sólo los grupos y la página se achica:
+    // al soltar se vuelve a donde estaba la lista (QA 14/11, QA2-04).
+    const contenedor = raiz.current?.closest<HTMLElement>('.scroll-contenido') ?? null;
+    const posicion = contenedor?.scrollTop ?? 0;
     empezar(a);
     navigator.vibrate?.(20);
     const zonaBajo = (x: number, y: number) => document.elementFromPoint(x, y)?.closest<HTMLElement>('[data-zona]')?.dataset.zona ?? null;
@@ -311,6 +315,7 @@ export default function GruposDnD({
       const zona = ev.type === 'pointerup' ? zonaBajo(ev.clientX, ev.clientY) : null;
       terminar();
       if (ev.type === 'pointerup') soltarRef.current(a, zona);
+      if (movil && contenedor) requestAnimationFrame(() => requestAnimationFrame(() => { contenedor.scrollTop = posicion; }));
     };
     window.addEventListener('pointermove', mov, { passive: false });
     window.addEventListener('pointerup', fin);
@@ -432,7 +437,7 @@ export default function GruposDnD({
           <p className="flex items-center flex-wrap" style={{ margin: '0 0 12px 20px', gap: 4, fontSize: 'calc(11px * var(--escala-texto))', color: 'var(--muted-foreground)' }}
             title={`Desde ${horaExacta(g.estadoActualizadoEn)}`}>
             <Pentagon size={11} style={{ color: g.color || 'var(--muted-foreground)', fill: g.color ? `color-mix(in srgb, ${g.color} 25%, transparent)` : 'none', flexShrink: 0 }} />
-            {g.zonaAsignada || 'Sin sector asignado'} · {g.integrantes.length} integrante{g.integrantes.length !== 1 ? 's' : ''} · {haceCuanto(g.estadoActualizadoEn)}
+            {g.zonaAsignada || 'Sin polígono asignado'} · {g.integrantes.length} integrante{g.integrantes.length !== 1 ? 's' : ''} · {haceCuanto(g.estadoActualizadoEn)}
             {!rastrillaje && <span title="Grupo especial: recursos especiales, con agentes de apoyo" style={{ marginLeft: 2 }}><Chip>Especial</Chip></span>}
           </p>
 

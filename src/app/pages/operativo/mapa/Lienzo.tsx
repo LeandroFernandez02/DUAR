@@ -65,6 +65,8 @@ interface Props {
   vuelo: Vuelo | null;
   /** Ancho que tapa el panel de la derecha: los vuelos y los globos lo esquivan. */
   margenDerecho: number;
+  /** Ancho que tapa el árbol de la izquierda cuando flota sobre el mapa (tablet); también se esquiva (QA 14/11). */
+  margenIzquierdo?: number;
   onReady: (m: L.Map) => void;
   onClicMapa: (ll: LatLng) => void;
   onDobleClic: () => void;
@@ -238,15 +240,16 @@ export default function Lienzo(props: Props) {
     if (!f || !map || !f.pts.length) return;
     const w = map.getSize().x;
     const margen = Math.max(f.panel ? Math.min(380, w * 0.45) : 0, cb.current.margenDerecho);
-    const opts = { maxZoom: 16, paddingTopLeft: L.point(80, 80), paddingBottomRight: L.point(margen + 80, 60) };
+    const izq = cb.current.margenIzquierdo ?? 0;
+    const opts = { maxZoom: 16, paddingTopLeft: L.point(izq + 80, 80), paddingBottomRight: L.point(margen + 80, 60) };
     const uno = f.pts.length === 1;
     // Con radio: el zoom (fraccionario) que hace entrar el diámetro en lo que queda visible, con 40 px de aire.
-    const visible = Math.max(120, Math.min(map.getSize().x - margen, map.getSize().y) - 80);
+    const visible = Math.max(120, Math.min(map.getSize().x - margen - izq, map.getSize().y) - 80);
     const z = uno && f.radioM
       ? Math.log2((156543.03392 * Math.cos((f.pts[0][0] * Math.PI) / 180) * visible) / (2 * f.radioM))
       : Math.max(map.getZoom(), 15);
-    // Un punto solo se centra en lo que queda visible (sin el panel).
-    const destino = uno ? map.unproject(map.project(f.pts[0], z).add([margen / 2, 0]), z) : null;
+    // Un punto solo se centra en lo que queda visible (sin los paneles de los costados).
+    const destino = uno ? map.unproject(map.project(f.pts[0], z).add([(margen - izq) / 2, 0]), z) : null;
     let hecho = false;
     const fin = () => { if (hecho) return; hecho = true; f.luego?.(); };
     map.once('moveend', fin);
@@ -268,6 +271,7 @@ export default function Lienzo(props: Props) {
     if (g) {
       pop.options.offset = L.point(0, g.offset);
       pop.options.autoPanPaddingBottomRight = L.point(props.margenDerecho + 40, 70);
+      pop.options.autoPanPaddingTopLeft = L.point((props.margenIzquierdo ?? 0) + 40, 70);
       pop.setLatLng(g.latlng).setContent(popEl);
       if (!map.hasLayer(pop)) pop.openOn(map); else pop.update();
     } else if (map.hasLayer(pop)) map.closePopup(pop);

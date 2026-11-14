@@ -60,7 +60,7 @@ function MapaSector({ pts, marcadores = [] }: { pts: [number, number][]; marcado
         .bindTooltip(m.nombre).addTo(c);
     }
   }, [marcadores, pts]);
-  return <div ref={el} style={{ height: 240, borderRadius: 'var(--radius-md)', overflow: 'hidden', border: '1px solid var(--border)', zIndex: 0 }} aria-label="Mapa del sector" />;
+  return <div ref={el} style={{ height: 240, borderRadius: 'var(--radius-md)', overflow: 'hidden', border: '1px solid var(--border)', zIndex: 0 }} aria-label="Mapa del polígono" />;
 }
 
 function BotonDesplegar({ icono: I, abierto, onClick, children }: { icono: typeof List; abierto: boolean; onClick: () => void; children: string }) {
@@ -187,7 +187,9 @@ export default function MiSector() {
   }, [cargarMarcadores]);
 
   useEffect(() => { cargar(); verCola(); mandarCola(); }, [cargar, verCola, mandarCola]);
-  useEffect(() => escucharCola(verCola), [verCola]);
+  // Cada vez que cambia la cola (se guardó algo o terminó de enviarse) se vuelve a pedir la lista:
+  // si no, lo recién enviado no aparecía hasta recargar (QA 14/11, QA2-02).
+  useEffect(() => escucharCola(() => { verCola(); if (soyLider) void cargarMarcadores(); }), [verCola, cargarMarcadores, soyLider]);
   useEffect(() => {
     const id = setInterval(() => { if (document.visibilityState === 'visible') { cargar(); mandarCola(); } }, INTERVALO_MS);
     const alVolver = () => { cargar(); mandarCola(); };
@@ -212,7 +214,7 @@ export default function MiSector() {
 
   return (
     <section className="p-4 flex flex-col gap-3" style={tarjetaBase} aria-labelledby="mi-sector-titulo">
-      <p id="mi-sector-titulo" style={rotuloPortal}>Mi sector</p>
+      <p id="mi-sector-titulo" style={rotuloPortal}>Mi polígono</p>
       <div className="flex items-center justify-between gap-3">
         <p className="flex items-center gap-2 min-w-0" style={{ margin: 0, fontSize: 'var(--text-h4)', fontWeight: 700, color: 'var(--foreground)' }}>
           <Pentagon size={15} style={{ color: 'var(--primary)', flexShrink: 0 }} /><span className="truncate">{sector.nombre}</span>
@@ -257,7 +259,7 @@ export default function MiSector() {
             <ul className="flex flex-col gap-1.5" style={{ margin: 0, padding: 0, listStyle: 'none' }}>{pendientes.map(p => <FilaPendiente key={p.id} p={p} />)}</ul>
           )}
           {soyLider && (marcadores.length === 0 && pendientes.length === 0 ? (
-            <p style={chico}>Todavía no hay nada marcado en este sector. Lo que marques lo ve el coordinador en el mapa del operativo.</p>
+            <p style={chico}>Todavía no hay nada marcado en este polígono. Lo que marques lo ve el coordinador en el mapa del operativo.</p>
           ) : (
             <ul className="flex flex-col gap-1.5" style={{ margin: 0, padding: 0, listStyle: 'none' }}>
               {marcadores.map(m => (

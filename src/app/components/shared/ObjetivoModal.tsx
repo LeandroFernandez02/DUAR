@@ -730,9 +730,12 @@ export default function ObjetivoModal({ operativoId, onClose, soloConsulta = fal
                       fontFamily: 'var(--font-family-primary)',
                       marginTop: 6, marginBottom: 20, textAlign: 'center', maxWidth: 300,
                     }}>
-                      Todavía no hay datos del objetivo. Presioná "Cargar" para agregar la información.
+                      {soloConsulta
+                        ? 'Todavía no hay datos del objetivo. Los carga un coordinador.'
+                        : 'Todavía no hay datos del objetivo. Presioná "Cargar" para agregar la información.'}
                     </p>
-                    <button
+                    {/* El Jefe de Operativo sólo consulta (QA 14/11, QA2-01). */}
+                    {!soloConsulta && <button
                       onClick={enterEdit}
                       className="flex items-center gap-2 px-5 py-2.5 rounded-[var(--radius-button)] transition-opacity hover:opacity-88"
                       style={{
@@ -742,7 +745,7 @@ export default function ObjetivoModal({ operativoId, onClose, soloConsulta = fal
                       }}
                     >
                       <Plus size={16} /> Cargar objetivo buscado
-                    </button>
+                    </button>}
                   </div>
                 ) : objetivo.tipo === 'PERSONA' ? (
                   <PersonaView objetivo={objetivo} fotos={fotosVista} onOpenLightbox={setLightboxIdx} />

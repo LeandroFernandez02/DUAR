@@ -247,7 +247,7 @@ export default function MarcarPunto({ sector, onClose, onGuardado }: {
         <div className="px-5 pt-5 flex items-start gap-3">
           <IconBox bg="color-mix(in srgb, #d97706 14%, transparent)"><AlertTriangle size={17} style={{ color: '#d97706' }} /></IconBox>
           <div className="min-w-0">
-            <Titulo>El punto queda fuera de tu sector</Titulo>
+            <Titulo>El punto queda fuera de tu polígono</Titulo>
             <Texto>Está a unos {fmtM(confirmarFuera)} del borde de {sector.nombre}. Si lo guardás igual, el coordinador lo va a ver marcado «Fuera del polígono».</Texto>
           </div>
         </div>
@@ -264,7 +264,7 @@ export default function MarcarPunto({ sector, onClose, onGuardado }: {
       <div className="px-5 pt-5 flex items-start gap-3">
         <IconBox bg={`color-mix(in srgb, ${C.color} 12%, transparent)`}><C.icono size={17} style={{ color: C.color }} /></IconBox>
         <div className="min-w-0">
-          <Titulo>Marcar en mi sector</Titulo>
+          <Titulo>Marcar en mi polígono</Titulo>
           <Texto>{sector.nombre} · lo ve el coordinador en el mapa del operativo.</Texto>
         </div>
       </div>

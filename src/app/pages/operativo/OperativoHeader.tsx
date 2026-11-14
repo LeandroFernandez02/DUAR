@@ -145,7 +145,7 @@ export default function OperativoHeader({ operativo, movil = false, onRecargar, 
           {/* Objetivo Buscado */}
           <button
             onClick={() => setShowObjetivoModal(true)}
-            title="Ver / editar objetivo buscado"
+            title={soloConsulta ? 'Ver objetivo buscado' : 'Ver / editar objetivo buscado'}
             className={`flex items-center gap-1.5 ${relleno} py-1.5 rounded-[var(--radius-button)] transition-all`}
             style={hasObjetivo
               ? {

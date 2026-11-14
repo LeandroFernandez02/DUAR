@@ -66,11 +66,11 @@ export default function PanelOperativo() {
       </div>
 
       <div className="cc-bloque">
-        <Seccion icono={Compass} color={ACENTO.violeta}>Georreferenciación y sectores tácticos</Seccion>
+        <Seccion icono={Compass} color={ACENTO.violeta}>Georreferenciación y polígonos</Seccion>
         <div className="cc-grid">
           <div className="cc-izq">
             <div className="cc-kpis">
-              <Kpi icono={Waypoints} color={ACENTO.verde} valor={pol.length} unidad={pol.length === 1 ? 'sector' : 'sectores'} etiqueta="Polígonos de rastrillaje"
+              <Kpi icono={Waypoints} color={ACENTO.verde} valor={pol.length} unidad={pol.length === 1 ? 'polígono' : 'polígonos'} etiqueta="De rastrillaje"
                 tip={`Desglose: ${completos} completo${completos === 1 ? '' : 's'} · ${pol.length - completos} en curso · ${conGrupo} con grupo asignado`} />
               <Kpi destacado color={ACENTO.violeta} valor={radioKm === null ? '—' : num(radioKm)} unidad="km" etiqueta="Radio de búsqueda" extra={<MiniRadio />}
                 tip={radioKm === null ? 'Todavía no se trazó ningún radio desde el Punto 0 (se hace desde el Mapa)' : `Distancia máxima desde el Punto 0 (${datos.radios.length} radio${datos.radios.length === 1 ? '' : 's'} trazado${datos.radios.length === 1 ? '' : 's'})`} />
