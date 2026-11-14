@@ -154,13 +154,14 @@ describe('Puesto de comando: turno y Jefe de Operativo (CU-16)', () => {
     motivo(await ingreso('hotel', { puesto: 'OPERADOR_MESA' }), 409, 'ya_presente');
   });
 
-  test('CU-16 · registrar el egreso de otro coordinador exige motivo; el propio no', async () => {
+  test('CU-16 · registrar un egreso exige motivo, el de otro y también el propio (14/11)', async () => {
     motivo(await egreso('hotel', { usuarioId: india }), 400, 'motivo_requerido');
     motivo(await egreso('hotel', { usuarioId: india, motivo: 'Finalización de turno' }), 200);
-    motivo(await egreso('hotel'), 200);
+    motivo(await egreso('hotel'), 400, 'motivo_requerido');
+    motivo(await egreso('hotel', { motivo: 'Finalización de turno' }), 200);
     const m = await ctx.mando();
     assert.equal(m.presentes.length, 0);
-    assert.equal(m.historialPresencias.find(p => p.usuarioId === hotel).motivo, 'Terminó su turno');
+    assert.equal(m.historialPresencias.find(p => p.usuarioId === hotel).motivo, 'Finalización de turno');
   });
 
   /* ── Jefe de Operativo, contra la API ── */
@@ -287,7 +288,7 @@ describe('Puesto de comando: turno y Jefe de Operativo (CU-16)', () => {
     const g = await como('hotel', 'POST', `/operativos/${ctx.op}/grupos`,
       { nombre: 'Mando', liderId: ctx.agentes.alfa.id, clase: 'RASTRILLAJE' });
     motivo(g, 201);
-    motivo(await egreso('hotel'), 200);
+    motivo(await egreso('hotel', { motivo: 'Finalización de turno' }), 200);
     motivo(await como('hotel', 'POST', `/operativos/${ctx.op}/grupos/mover`,
       { agenteOperativoId: ctx.agentes.bravo.id, destinoGrupoId: g.json.grupo.id }), 200);
     const delGrupo = (await ctx.api('GET', `/operativos/${ctx.op}/grupos/${g.json.grupo.id}/linea-tiempo`)).json.eventos;

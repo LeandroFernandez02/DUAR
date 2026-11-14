@@ -70,6 +70,9 @@ export default function MisRecorridos() {
   const [miId, setMiId] = useState<string | null>(null);
   const [integrantes, setIntegrantes] = useState<GrupoApi['integrantes']>([]);
   const [deQuien, setDeQuien] = useState('');
+  // 14/11: el integrante carga el suyo sólo en el terreno; el Líder, siempre. null = todavía no se sabe.
+  const [puedeCargar, setPuedeCargar] = useState<boolean | null>(null);
+  const [tieneGrupo, setTieneGrupo] = useState(false);
 
   const cargar = useCallback(async () => {
     try {
@@ -78,6 +81,8 @@ export default function MisRecorridos() {
       if (g) {
         setMiId(g.agente?.id ?? null);
         setIntegrantes(g.grupo?.soyLider ? g.grupo.integrantes : []);
+        setTieneGrupo(!!g.grupo);
+        setPuedeCargar(!!g.grupo?.soyLider || ['DESPLEGADO', 'RASTRILLANDO', 'REPLEGADO'].includes(g.agente?.estado ?? ''));
       }
     } catch { /* sin señal: queda la última lista */ }
     finally { setCargando(false); }
@@ -159,7 +164,9 @@ export default function MisRecorridos() {
         <div className="flex justify-center py-2"><Loader2 size={16} className="animate-spin" style={{ color: 'var(--muted-foreground)' }} /></div>
       ) : tracks.length === 0 ? (
         <p style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-label)', lineHeight: 1.5 }}>
-          Al volver de rastrillar, cargá acá el archivo .gpx de tu recorrido: así queda registrado por dónde pasaste.
+          {puedeCargar === false
+            ? 'Todavía no hay recorridos tuyos cargados.'
+            : 'Cargá acá el archivo .gpx de tu recorrido: así queda registrado por dónde pasaste.'}
         </p>
       ) : (
         <ul className="flex flex-col gap-1.5">
@@ -184,7 +191,14 @@ export default function MisRecorridos() {
 
       <input ref={input} type="file" accept=".gpx,application/gpx+xml" className="hidden"
         onChange={e => elegir(e.target.files?.[0])} aria-label="Archivo GPX del recorrido" />
-      <button type="button" onClick={() => input.current?.click()} disabled={!!trabajando}
+{puedeCargar === false ? (
+        <p className="px-3 py-2.5 rounded-[var(--radius-input)]" style={{ background: 'var(--muted)', color: 'var(--muted-foreground)', fontSize: 'var(--text-label)', lineHeight: 1.5 }}>
+          {tieneGrupo
+            ? 'Tu recorrido lo podés cargar sólo mientras tu grupo está en el terreno (desplegado, rastrillando o volviendo). Fuera de eso, pasale el archivo .gpx al Líder de tu grupo para que lo cargue por vos.'
+            : 'Tu recorrido lo podés cargar mientras estás en el terreno con un grupo. Si no, pasale el archivo .gpx al coordinador.'}
+        </p>
+      ) : (
+            <button type="button" onClick={() => input.current?.click()} disabled={!!trabajando}
         className="flex items-center justify-center gap-2 px-4 py-3 rounded-[var(--radius-input)]"
         style={{
           border: '1.5px dashed var(--border)', background: 'var(--card)', color: 'var(--foreground)',
@@ -194,6 +208,7 @@ export default function MisRecorridos() {
           ? <><Loader2 size={15} className="animate-spin" /> Leyendo el archivo…</>
           : <><Upload size={15} /> Cargar recorrido GPX</>}
       </button>
+      )}
 
       {/* ── CU-32 paso 5: resumen y confirmación ── */}
       {analisis && archivo && (
@@ -214,7 +229,7 @@ export default function MisRecorridos() {
               {analisis.poligono ? <MapPin size={14} style={{ flexShrink: 0, marginTop: 2 }} /> : <AlertCircle size={14} style={{ flexShrink: 0, marginTop: 2 }} />}
               <span style={{ fontSize: 'var(--text-label)', lineHeight: 1.45 }}>
                 {analisis.poligono
-                  ? <>Polígono <b>{analisis.poligono.nombre}</b> ({Math.round(analisis.deteccionPct)} % de los puntos adentro).</>
+                  ? <>{/^pol[ií]gono/i.test(analisis.poligono.nombre) ? '' : 'Polígono '}<b>{analisis.poligono.nombre}</b> ({Math.round(analisis.deteccionPct)} % de los puntos adentro).</>
                   : <>No cae en ningún polígono ({Math.round(analisis.deteccionPct)} % de los puntos en el más cercano; hace falta 30 %). Se carga igual, como «Fuera de polígono», y el coordinador lo puede asignar.</>}
               </span>
             </div>

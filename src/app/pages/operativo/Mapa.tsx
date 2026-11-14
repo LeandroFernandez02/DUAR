@@ -513,7 +513,8 @@ export default function Mapa() {
           </div>
         )}
         {soloLectura && (
-          <div style={{ position: 'absolute', top: arriba, left: '50%', transform: 'translateX(-50%)', zIndex: 950, padding: '6px 14px', borderRadius: 'var(--radius)', background: 'rgba(0,0,0,0.72)', color: '#fff', fontSize: 'calc(12px * var(--escala-texto))' }}>
+          // Centrado en la parte visible: con el árbol abierto encima del mapa se corre su ancho (QA 14/11).
+          <div style={{ position: 'absolute', top: arriba, left: `calc(50% + ${(compacto && !chico && izquierda ? 320 : 0) / 2}px)`, transform: 'translateX(-50%)', maxWidth: `calc(100% - ${(compacto && !chico && izquierda ? 320 : 0) + 24}px)`, textAlign: 'center', zIndex: 950, padding: '6px 14px', borderRadius: 'var(--radius)', background: 'rgba(0,0,0,0.72)', color: '#fff', fontSize: 'calc(12px * var(--escala-texto))' }}>
             {cerrado ? `El operativo está ${operativo.estado}: el mapa es de sólo lectura.` : 'Modo consulta: el mapa es de sólo lectura.'}
           </div>
         )}
@@ -685,9 +686,10 @@ function BannerModo({ herr, borrador, medida, editando, moviendo, guardando, onD
     <div style={{
       position: 'absolute', top: arriba, left: izquierda, zIndex: 950, display: 'flex', alignItems: 'center', gap: 10, padding: '6px 6px 6px 14px',
       borderRadius: 'var(--radius)', background: 'rgba(0,0,0,0.78)', backdropFilter: 'blur(4px)', color: '#fff', fontSize: 'calc(12px * var(--escala-texto))', transition: 'left .2s',
-      ...(compacto ? { right: 12, flexWrap: 'wrap' as const } : { width: 'max-content', maxWidth: 'calc(100% - 390px)' }),
+      // En escritorio también puede bajar de renglón: si no, los botones aplastaban el texto (QA 14/11).
+      ...(compacto ? { right: 12, flexWrap: 'wrap' as const } : { width: 'max-content', maxWidth: 'calc(100% - 390px)', flexWrap: 'wrap' as const }),
     }}>
-      <Info size={14} style={{ flexShrink: 0 }} /><span style={{ flex: compacto ? '1 1 160px' : '1 1 auto', minWidth: 0, lineHeight: 1.4 }}>{txt}</span>
+      <Info size={14} style={{ flexShrink: 0 }} /><span style={{ flex: '1 1 160px', minWidth: 0, lineHeight: 1.4 }}>{txt}</span>
       <span style={{ display: 'flex', alignItems: 'center', gap: 6, marginLeft: 'auto', flexShrink: 0 }}>
         {acc}
         <Boton variante="ghost" icono={X} onClick={onCancelar} style={{ color: '#fff', padding: '6px 8px' }} title="Cancelar (Esc)" />

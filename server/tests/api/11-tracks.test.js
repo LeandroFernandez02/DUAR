@@ -141,6 +141,13 @@ describe('Módulo 5 · Tracks GPX y cobertura (CU-32, 32, 38, 40)', () => {
   test('CU-32 flujo principal · el agente analiza y carga su propio recorrido desde el portal', async () => {
     const bravo = ctx.usuarios.bravo.token;
     const contenido = gpx(ZIGZAG.map(([x, y]) => [x + 0.0002, y]), '2026-10-12T15:00:00Z');   // sin elevación
+    // 14/11: un integrante carga su .gpx sólo en el terreno; Disponible (en la base) → 409.
+    motivo(await ctx.subir('/mis-tracks/analizar', archivo(contenido), bravo), 409, 'fuera_del_terreno');
+    const G = (await ctx.crearGrupo('Tracks del portal', 'alfa')).json.grupo.id;
+    await ctx.mover('bravo', G);
+    motivo(await ctx.accion(G, { accion: 'confirmar' }), 200);
+    motivo(await ctx.accion(G, { accion: 'asignar', poligonoId: P }), 200);
+    motivo(await ctx.accion(G, { accion: 'salir' }), 200);   // Desplegado: ya puede
     const a = await ctx.subir('/mis-tracks/analizar', archivo(contenido), bravo);
     motivo(a, 200);
     assert.equal(a.json.analisis.poligono?.id, P);
@@ -156,6 +163,9 @@ describe('Módulo 5 · Tracks GPX y cobertura (CU-32, 32, 38, 40)', () => {
 
     const mios = (await ctx.api('GET', '/mis-tracks', undefined, bravo)).json.tracks;
     assert.deepEqual(mios.map(t => t.id), [T3], 've sólo los suyos');
+    // El grupo vuelve a la base: si quedara en el terreno, el polígono no se podría eliminar (CU-39, abajo).
+    motivo(await ctx.accion(G, { accion: 'volver' }), 200);
+    motivo(await ctx.accion(G, { accion: 'llegar_base' }), 200);
     assert.ok((await detallePol()).coberturaPct > coberturaConT1);
   });
 

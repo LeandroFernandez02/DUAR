@@ -10,7 +10,7 @@ import {
   ApiError, GPX_MAX_BYTES, TIPOS_INSTALACION, tracksApi,
   type AnalisisGpxApi, type GrupoApi, type PersonalOperativoApi, type TipoInstalacionApi, type TrackApi,
 } from '../../../services/api';
-import { coincideDni } from '../../../utils/validacionUsuario';
+import { coincideDni, formatearDni } from '../../../utils/validacionUsuario';
 import { Boton, Campo, ErrorTexto, Modal, Selector, SIMBOLOS, rotulo } from './piezas';
 import { GrillaTiposSci } from './Paneles';
 import { area, distancia, fmtArea, fmtCoord, fmtDist, fmtKm, type LatLng } from './geo';
@@ -144,7 +144,7 @@ export function ModalCargarGpx({ operativoId, personal, grupos, onCancel, onCarg
                 <span style={{ width: 30, height: 30, borderRadius: '50%', flexShrink: 0, display: 'flex', alignItems: 'center', justifyContent: 'center', background: colorDeGrupo(grupos, agente.grupoId) ?? '#64748b', color: '#fff' }}><Footprints size={14} /></span>
                 <div style={{ flex: 1, minWidth: 0 }}>
                   <p style={{ margin: 0, fontSize: 'calc(13px * var(--escala-texto))', fontWeight: 600, color: 'var(--foreground)' }}>{agente.nombre} {agente.apellido}</p>
-                  <p style={{ margin: 0, fontSize: 'calc(11.5px * var(--escala-texto))', color: 'var(--muted-foreground)' }}>DNI {agente.dni} · {grupoDe(agente)?.nombre ?? 'Sin grupo'}{agente.institucionNombre ? ` · ${agente.institucionNombre}` : ''}</p>
+                  <p style={{ margin: 0, fontSize: 'calc(11.5px * var(--escala-texto))', color: 'var(--muted-foreground)' }}>DNI {formatearDni(agente.dni)} · {grupoDe(agente)?.nombre ?? 'Sin grupo'}{agente.institucionNombre ? ` · ${agente.institucionNombre}` : ''}</p>
                 </div>
                 <Boton variante="ghost" icono={X} onClick={() => { setAgenteId(''); setQa(''); }}>Cambiar</Boton>
               </div>
@@ -166,7 +166,7 @@ export function ModalCargarGpx({ operativoId, personal, grupos, onCancel, onCarg
                         style={{ display: 'flex', alignItems: 'center', gap: 10, width: '100%', padding: '7px 8px', borderRadius: 'var(--radius-sm)', border: 'none', background: 'none', cursor: 'pointer', textAlign: 'left', fontFamily: 'var(--font-family-primary)' }}>
                         <span style={{ width: 8, height: 8, borderRadius: 2, flexShrink: 0, background: colorDeGrupo(grupos, a.grupoId) ?? '#cbd5e1' }} />
                         <span style={{ flex: 1, minWidth: 0, fontSize: 'calc(12.5px * var(--escala-texto))', fontWeight: 500, color: 'var(--foreground)' }}>{a.nombre} {a.apellido}</span>
-                        <span style={{ fontSize: 'calc(11px * var(--escala-texto))', color: 'var(--muted-foreground)', whiteSpace: 'nowrap' }}>{g?.nombre ?? 'Sin grupo'} · {a.dni}</span>
+                        <span style={{ fontSize: 'calc(11px * var(--escala-texto))', color: 'var(--muted-foreground)', whiteSpace: 'nowrap' }}>{g?.nombre ?? 'Sin grupo'} · {formatearDni(a.dni)}</span>
                       </button>
                     );
                   })}

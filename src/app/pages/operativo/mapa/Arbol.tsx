@@ -110,7 +110,7 @@ export default function Arbol(p: Props) {
           <span style={{ width: 30, height: 30, borderRadius: 'var(--radius-md)', background: 'color-mix(in srgb, var(--primary) 10%, transparent)', color: 'var(--primary)', display: 'flex', alignItems: 'center', justifyContent: 'center' }}><Layers size={15} /></span>
           <div style={{ flex: 1, minWidth: 0 }}>
             <p style={{ margin: 0, fontSize: 'calc(14px * var(--escala-texto))', fontWeight: 600, color: 'var(--foreground)', lineHeight: 1.3 }}>Gestión del mapa</p>
-            <p style={{ margin: 0, fontSize: 'calc(11px * var(--escala-texto))', color: 'var(--muted-foreground)' }}>{p.poligonos.length} polígonos · {p.tracks.length} tracks · {nMarc} marcadores</p>
+            <p style={{ margin: 0, fontSize: 'calc(11px * var(--escala-texto))', color: 'var(--muted-foreground)' }}>{p.poligonos.length} {p.poligonos.length === 1 ? 'polígono' : 'polígonos'} · {p.tracks.length} {p.tracks.length === 1 ? 'track' : 'tracks'} · {nMarc} {nMarc === 1 ? 'marcador' : 'marcadores'}</p>
           </div>
           <button type="button" onClick={p.onCerrar} title="Ocultar panel" aria-label="Ocultar panel" style={{ background: 'none', border: 'none', padding: 4, cursor: 'pointer', color: 'var(--muted-foreground)', display: 'flex' }}><ChevronLeft size={17} /></button>
         </div>
@@ -136,7 +136,7 @@ export default function Arbol(p: Props) {
               <FilaRadio key={r.id} r={r} visible={visible(r.id)} soloLectura={p.soloLectura} onVisible={() => p.alternar(r.id)}
                 onCambiar={d => p.onRadio(r.id, d)} onQuitar={() => p.onQuitarRadio(r)} />
             ))}
-            {!p.radios.length && vacio('Sin radios. Agregá uno para guiarte desde el Punto Cero.')}
+            {!p.radios.length && vacio(p.soloLectura ? 'Sin radios.' : 'Sin radios. Agregá uno para guiarte desde el Punto Cero.')}
             {!p.soloLectura && (
               <div style={{ display: 'flex', alignItems: 'center', gap: 5, rowGap: 6, flexWrap: 'wrap', padding: '8px 8px 0' }}>
                 <span style={{ flexBasis: '100%', fontSize: 'calc(11px * var(--escala-texto))', color: 'var(--muted-foreground)' }}>Agregar</span>

@@ -1,7 +1,8 @@
 /**
  * Decisión del 13/11: el Líder de un grupo carga desde el portal el .gpx de cualquier integrante
  * de su grupo (por ejemplo, el conductor que tuvo que rastrillar). Queda «recorrido de» el
- * integrante y «cargado por» el Líder. Todo agente, también el conductor, sigue cargando el suyo.
+ * integrante y «cargado por» el Líder. 14/11: el integrante carga el suyo sólo en el terreno
+ * (Desplegado, Rastrillando o Replegado); el Líder, en cualquier estado.
  */
 import { describe, test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
@@ -46,8 +47,19 @@ describe('13/11 · el Líder carga el recorrido de un integrante de su grupo', (
     assert.ok(delIntegrante.some(t => t.id === r.json.track.id));
   });
 
-  test('cada uno sigue cargando el suyo, sin elegir a nadie', async () => {
-    const r = await ctx.subir('/mis-tracks', gpx('2026-11-13T11:00:00Z', 0.0001), token('bravo'));
+  test('14/11 · en la base el integrante no carga el suyo (se lo pasa al Líder); el Líder sí, en cualquier estado', async () => {
+    motivo(await ctx.subir('/mis-tracks', gpx('2026-11-13T11:00:00Z', 0.0001), token('bravo')), 409, 'fuera_del_terreno');
+    motivo(await ctx.subir('/mis-tracks/analizar', gpx('2026-11-13T11:00:00Z', 0.0001), token('bravo')), 409, 'fuera_del_terreno');
+    const propio = await ctx.subir('/mis-tracks', gpx('2026-11-13T11:30:00Z', 0.0002), token('alfa'));
+    motivo(propio, 201);
+    assert.equal(propio.json.track.agenteOperativoId, ctx.agentes.alfa.id);
+  });
+
+  test('14/11 · en el terreno el integrante carga el suyo, sin elegir a nadie', async () => {
+    motivo(await ctx.accion(G, { accion: 'confirmar' }), 200);
+    motivo(await ctx.accion(G, { accion: 'asignar', zona: 'Tracks del Líder en terreno' }), 200);
+    motivo(await ctx.accion(G, { accion: 'salir' }), 200);
+    const r = await ctx.subir('/mis-tracks', gpx('2026-11-13T12:00:00Z', 0.0001), token('bravo'));
     motivo(r, 201);
     assert.equal(r.json.track.agenteOperativoId, ctx.agentes.bravo.id);
   });

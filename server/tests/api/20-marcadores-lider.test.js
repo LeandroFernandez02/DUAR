@@ -148,6 +148,20 @@ describe('Pedido del 03/11 · el Líder marca puntos de interés y hallazgos en 
     assert.equal(enMapa.grupoNombre, 'Marcadores del Líder');
   });
 
+  test('14/11 · mientras el grupo vuelve (Replegado) el Líder sigue marcando en su último polígono; en la base, no', async () => {
+    motivo(await ctx.accion(G, { accion: 'salir' }), 200);
+    motivo(await ctx.accion(G, { accion: 'volver' }), 200);
+    const sector = await ctx.api('GET', '/mi-sector', undefined, token('alfa'));
+    assert.equal(sector.json.sector?.id, P, 'a la vuelta se sigue viendo el polígono');
+    const r = await crear('alfa', punto({ nombre: 'Encontrado a la vuelta', poligonoId: undefined }));
+    motivo(r, 201);
+    assert.equal(r.json.marcador.poligonoId, P);
+    const lista = (await ctx.api('GET', '/mi-sector/marcadores', undefined, token('alfa'))).json.marcadores;
+    assert.ok(lista.some(m => m.nombre === 'Encontrado a la vuelta'));
+    motivo(await ctx.accion(G, { accion: 'llegar_base' }), 200);
+    assert.equal((await ctx.api('GET', '/mi-sector', undefined, token('alfa'))).json.sector, null, 'en la base ya no');
+  });
+
   test('si el Líder pasa a ser otro, el anterior ya no carga', async () => {
     const { rows: [b] } = await ctx.query(
       `SELECT ao.id FROM agentes_operativo ao JOIN usuarios u ON u.id = ao.usuario_id

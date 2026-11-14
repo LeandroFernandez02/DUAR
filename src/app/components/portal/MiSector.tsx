@@ -181,7 +181,15 @@ export default function MiSector() {
 
   // La cola del celular: se muestra siempre (aunque el grupo ya no tenga el sector, para ver qué no
   // llegó) y se manda al abrir, al volver la señal y en cada refresco.
-  const verCola = useCallback(async () => setPendientes(await listarPendientes()), []);
+  // Cuando la cola queda vacía, el aviso de «se está enviando / se envía cuando vuelva la señal» pasa a
+  // decir que ya llegó (QA 14/11): si no, quedaba diciendo que faltaba enviar algo que ya se envió.
+  const verCola = useCallback(async () => {
+    const lista = await listarPendientes();
+    setPendientes(lista);
+    if (!lista.length) {
+      setAviso(a => a?.replace(/ (Se está enviando al coordinador|Se envía solo cuando vuelva la señal|Se están enviando|Se envían cuando vuelva la señal)\.$/, ' Ya le llegó al coordinador.') ?? a);
+    }
+  }, []);
   const mandarCola = useCallback(async () => {
     if ((await enviarPendientes()) > 0) await cargarMarcadores();
   }, [cargarMarcadores]);

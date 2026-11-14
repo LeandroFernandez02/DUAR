@@ -147,9 +147,11 @@ export async function miSector(req, res, next) {
     const alta = await AgenteOperativo.altaActivaDe(req.usuario.id);
     if (!alta?.grupoId) return res.json({ sector: null });
     const grupo = await Grupo.grupoDelAgente(alta);
-    if (!grupo?.poligonoId) return res.json({ sector: null });
-    // soyLider: sólo el Líder marca puntos de interés y hallazgos en el sector (03/11).
-    res.json({ sector: await Poligono.paraAgente(alta.operativoId, grupo.poligonoId), soyLider: grupo.soyLider });
+    // Mientras el grupo vuelve (Replegado) se sigue mostrando el último polígono (14/11).
+    const poligonoId = grupo?.poligonoDelLider;
+    if (!poligonoId) return res.json({ sector: null });
+    // soyLider: sólo el Líder marca puntos de interés y hallazgos en el polígono (03/11).
+    res.json({ sector: await Poligono.paraAgente(alta.operativoId, poligonoId), soyLider: grupo.soyLider });
   } catch (err) { next(err); }
 }
 

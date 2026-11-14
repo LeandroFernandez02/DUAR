@@ -3,11 +3,11 @@
  *
  *   GET  /api/operativos/:id/mando           → Jefe de Operativo, turno e historiales
  *   POST /api/operativos/:id/mando/ingreso   { usuarioId?, puesto, trasladar? }
- *   POST /api/operativos/:id/mando/retiro    { usuarioId?, motivo? }
+ *   POST /api/operativos/:id/mando/retiro    { usuarioId?, motivo }
  *   PUT  /api/operativos/:id/mando/jefe      { usuarioId | null }   (null = «No asignado»)
  *
  * Turno: sin `usuarioId`, el coordinador opera sobre sí mismo. Un administrador registra a
- * otros, pero no figura él mismo. Registrar el egreso de OTRO exige motivo.
+ * otros, pero no figura él mismo. Registrar un egreso exige motivo, también el propio (decisión del 14/11).
  * Jefe: lo asignan, cambian o quitan coordinadores, administradores y jefes de operativo.
  * Las reglas viven en mando.model.js; acá la forma del pedido y la auditoría.
  */
@@ -59,13 +59,13 @@ export async function retiro(req, res, next) {
     if (!usuarioId) return invalido(res, 'Elegí qué coordinador egresa del turno.', 'usuario_requerido');
     const propio = usuarioId === req.usuario.id;
     const motivo = String(req.body?.motivo ?? '').trim();
-    if (!propio && motivo.length < 3) {
-      return invalido(res, 'Registrar el egreso de otro coordinador requiere un motivo.', 'motivo_requerido');
+    if (motivo.length < 3) {
+      return invalido(res, propio ? 'Elegí el motivo de tu egreso.' : 'Registrar el egreso de otro coordinador requiere un motivo.', 'motivo_requerido');
     }
     await Mando.retirar({
-      operativoId: req.params.id, usuarioId, autorId: req.usuario.id, motivo: motivo || 'Terminó su turno',
+      operativoId: req.params.id, usuarioId, autorId: req.usuario.id, motivo,
     });
-    await auditar(req, 'retiro', { usuarioId, motivo: motivo || null });
+    await auditar(req, 'retiro', { usuarioId, motivo });
     res.json({ mando: await Mando.estado(req.params.id) });
   } catch (err) { next(err); }
 }

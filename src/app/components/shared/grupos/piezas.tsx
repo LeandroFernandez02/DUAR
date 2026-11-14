@@ -3,7 +3,7 @@
  * portal del Líder. Mismo lenguaje que el modal de extracción original: overlay
  * con desenfoque, encabezado con ícono, botón primario rojo.
  */
-import type { ReactNode } from 'react';
+import { useEffect, useRef, type ReactNode } from 'react';
 import { createPortal } from 'react-dom';
 import { AlertCircle } from 'lucide-react';
 import type { AccionGrupo, AccionTerreno, ClaseGrupoApi, EstadoGrupoApi } from '../../../services/api';
@@ -105,6 +105,19 @@ export function EtiquetaConductor() {
  * recibiendo toques con el modal abierto.
  */
 export function Overlay({ children, onClose, ancho = 480 }: { children: ReactNode; onClose: () => void; ancho?: number }) {
+  // Esc cierra el modal de más arriba (QA 14/11): si hay otro abierto encima, sólo ése.
+  const ref = useRef<HTMLDivElement>(null);
+  const cerrar = useRef(onClose);
+  cerrar.current = onClose;
+  useEffect(() => {
+    const alTeclear = (e: KeyboardEvent) => {
+      if (e.key !== 'Escape') return;
+      const dialogos = document.querySelectorAll('[role="dialog"]');
+      if (dialogos[dialogos.length - 1] === ref.current) cerrar.current();
+    };
+    document.addEventListener('keydown', alTeclear);
+    return () => document.removeEventListener('keydown', alTeclear);
+  }, []);
   return createPortal(
     <div
       className="fixed inset-0 z-[60] flex items-center justify-center p-4"
@@ -112,6 +125,7 @@ export function Overlay({ children, onClose, ancho = 480 }: { children: ReactNod
       onClick={onClose}
     >
       <div
+        ref={ref}
         role="dialog"
         aria-modal="true"
         className="w-full rounded-[var(--radius-card)] overflow-hidden flex flex-col"

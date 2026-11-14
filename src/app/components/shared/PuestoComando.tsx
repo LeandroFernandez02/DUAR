@@ -284,7 +284,7 @@ function PuestoComandoModal({ operativoId, mando, soloLectura, onCambio, onClose
           )}
           {/* Un jefe de operativo se puede asignar a sí mismo con un toque. */}
           {puedeJefe && soyJefeDeOtro && !cambiandoJefe && (
-            <div><BotonSecundario onClick={() => asignarJefe(yoId)}>{mando.jefe ? 'Quedar yo como Jefe' : 'Asignarme como Jefe'}</BotonSecundario></div>
+            <div className="flex" style={{ maxWidth: 260 }}><BotonSecundario onClick={() => asignarJefe(yoId)}>{mando.jefe ? 'Quedar yo como Jefe' : 'Asignarme como Jefe'}</BotonSecundario></div>
           )}
           {cambiandoJefe && (
             <div className="flex flex-col gap-2 px-3 py-3 rounded-[var(--radius-input)]" style={{ border: '1px solid var(--border)', background: 'var(--card)' }}>

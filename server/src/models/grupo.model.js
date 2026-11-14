@@ -1090,7 +1090,19 @@ export async function grupoDelAgente(alta) {
   if (!alta?.grupoId) return null;
   const grupo = await buscar(alta.operativoId, alta.grupoId);
   if (!grupo) return null;
-  return { ...grupo, soyLider: grupo.liderId === alta.id };
+  return { ...grupo, soyLider: grupo.liderId === alta.id, poligonoDelLider: await poligonoDelLider(grupo) };
+}
+
+/**
+ * Polígono en el que el Líder marca puntos (decisión del 14/11): el asignado o, mientras el grupo
+ * vuelve (Replegado), el último que tuvo, porque sigue en el terreno.
+ */
+async function poligonoDelLider(grupo) {
+  if (grupo.poligonoId) return grupo.poligonoId;
+  if (grupo.estado !== 'REPLEGADO') return null;
+  const { rows } = await query(
+    `SELECT poligono_id FROM poligono_grupos WHERE grupo_id = $1 ORDER BY asignado_en DESC LIMIT 1`, [grupo.id]);
+  return rows[0]?.poligono_id ?? null;
 }
 
 /** Estado y Líder del grupo de un agente (para las guardas del portal y del CU-19). */

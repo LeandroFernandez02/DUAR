@@ -156,12 +156,31 @@ async function miAlta(req, res) {
 
 const sinGeometria = ({ geometria, ...t }) => t;
 
+/**
+ * Decisión del 14/11: un integrante carga su .gpx sólo mientras está en el terreno (Desplegado,
+ * Rastrillando o Replegado); en cualquier otro estado se lo pasa al Líder, que carga en cualquier estado.
+ */
+export const ESTADOS_CARGA_GPX = ['DESPLEGADO', 'RASTRILLANDO', 'REPLEGADO'];
+async function puedeCargarPropio(alta, res) {
+  if (ESTADOS_CARGA_GPX.includes(alta.estado)) return true;
+  const grupo = await Grupo.grupoDelAgente(alta);
+  if (grupo?.soyLider) return true;
+  res.status(409).json({
+    error: grupo
+      ? 'Tu recorrido lo podés cargar sólo mientras tu grupo está en el terreno (desplegado, rastrillando o volviendo). Pasale el archivo .gpx al Líder de tu grupo para que lo cargue por vos.'
+      : 'Sólo podés cargar tu recorrido mientras estás en el terreno con un grupo. Pasale el archivo .gpx al coordinador.',
+    motivo: 'fuera_del_terreno',
+  });
+  return false;
+}
+
 /** POST /api/mis-tracks/analizar */
 export async function misTracksAnalizar(req, res, next) {
   try {
     if (faltaArchivo(req, res)) return;
     const alta = await miAlta(req, res);
     if (!alta || !(await operativoEditable(alta.operativoId, res))) return;
+    if (!(await puedeCargarPropio(alta, res))) return;
     res.json({ analisis: await Track.analizar(alta.operativoId, req.file.buffer) });
   } catch (err) { next(err); }
 }
@@ -182,7 +201,9 @@ export async function misTracksCrear(req, res, next) {
     const alta = await miAlta(req, res);
     if (!alta || !(await operativoEditable(alta.operativoId, res))) return;
     let deQuien = alta.id;
-    if (otro && otro !== alta.id) {
+    if (!otro || otro === alta.id) {
+      if (!(await puedeCargarPropio(alta, res))) return;
+    } else {
       const grupo = await Grupo.grupoDelAgente(alta);
       if (!grupo?.soyLider) {
         return res.status(403).json({ error: 'Sólo el Líder del grupo carga recorridos de otros integrantes.', motivo: 'no_es_lider' });

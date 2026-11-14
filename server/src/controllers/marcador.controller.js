@@ -246,8 +246,8 @@ export async function listarDelLider(req, res, next) {
   try {
     const ctx = await liderConPoligono(req, res);
     if (!ctx) return;
-    if (!ctx.grupo.poligonoId) return res.json({ marcadores: [] });
-    res.json({ marcadores: await Marcador.listarDelPoligono(ctx.alta.operativoId, ctx.grupo.poligonoId) });
+    if (!ctx.grupo.poligonoDelLider) return res.json({ marcadores: [] });
+    res.json({ marcadores: await Marcador.listarDelPoligono(ctx.alta.operativoId, ctx.grupo.poligonoDelLider) });
   } catch (err) { next(err); }
 }
 
@@ -297,12 +297,13 @@ export async function crearDelLider(req, res, next) {
       return invalido(res, 'La hora en que se marcó es anterior al inicio del operativo.', 'hora_invalida');
     }
 
-    // El polígono: el que el grupo tiene ahora o, si se marcó sin señal, el que tenía a esa hora.
-    const poligonoId = esUuid(b.poligonoId) ? b.poligonoId : grupo.poligonoId;
+    // El polígono: el que el grupo tiene ahora (o el último, si está volviendo) o, si se marcó sin
+    // señal, el que tenía a esa hora.
+    const poligonoId = esUuid(b.poligonoId) ? b.poligonoId : grupo.poligonoDelLider;
     if (!poligonoId) {
       return res.status(409).json({ error: 'Tu grupo no tiene un polígono asignado.', motivo: 'sin_poligono' });
     }
-    if (poligonoId !== grupo.poligonoId && !(await Marcador.grupoTeniaPoligono(grupo.id, poligonoId, ocurrido))) {
+    if (poligonoId !== grupo.poligonoDelLider && !(await Marcador.grupoTeniaPoligono(grupo.id, poligonoId, ocurrido))) {
       return res.status(409).json({ error: 'Ese polígono no era de tu grupo cuando marcaste el punto.', motivo: 'poligono_ajeno' });
     }
 
