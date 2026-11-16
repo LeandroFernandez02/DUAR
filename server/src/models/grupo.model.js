@@ -803,9 +803,11 @@ export async function moverAgente(operativoId, { agenteOperativoId, destinoGrupo
  *    que rastrille, el coordinador tiene que aceptar el riesgo. El grupo NO cambia
  *    de estado (decisión 24/09: sigue, con la alerta visible en el tablero).
  *  · El período se CIERRA con motivo, nunca se borra (obs. 1).
+ *  · fuente (15/11): 'COORDINADOR' desde el tablero, 'PORTAL_LIDER' cuando lo retira el Líder
+ *    desde su portal; queda así en la línea de tiempo y en el informe.
  */
 export async function extraerAgente(operativoId, grupoId,
-  { agenteOperativoId, motivo, nuevoLiderId = null, riesgoAceptado = false }, usuarioId) {
+  { agenteOperativoId, motivo, nuevoLiderId = null, riesgoAceptado = false, fuente = 'COORDINADOR' }, usuarioId) {
   const antes = await buscar(operativoId, grupoId);
 
   await withTransaction(async (client) => {
@@ -850,15 +852,17 @@ export async function extraerAgente(operativoId, grupoId,
       [agente.id]
     );
     await client.query(
+      // GREATEST (15/11): el período puede haber arrancado con la hora del celular del Líder, que a
+      // veces adelanta; el cierre nunca queda antes del inicio (lo exige agentes_grupo_historial_periodo_valido).
       `UPDATE agentes_grupo_historial
-          SET fecha_fin = CURRENT_TIMESTAMP, motivo_salida = $2, registrado_por = $3
+          SET fecha_fin = GREATEST(CURRENT_TIMESTAMP, fecha_inicio), motivo_salida = $2, registrado_por = $3
         WHERE agente_operativo_id = $1 AND fecha_fin IS NULL`,
       [agente.id, String(motivo).slice(0, 100), usuarioId]
     );
     await Evento.registrar(client, {
       operativoId, entidad: 'AGENTE', grupoId, agenteOperativoId: agente.id, accion: 'retiro',
       estadoAnterior: agente.estado, estadoNuevo: 'REPLEGADO', registradoPor: usuarioId,
-      fuente: 'COORDINADOR', motivo,
+      fuente, motivo,
     });
   });
 

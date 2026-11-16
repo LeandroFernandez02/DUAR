@@ -8,13 +8,16 @@
  *  · Si es el Líder: informa lo que pasa en el terreno ("Salimos hacia el
  *    polígono", "Llegamos, empezamos a rastrillar", "Volvemos", "Llegamos a la
  *    base"). No elige estados ni disuelve: eso es del coordinador.
+ *  · Si es el Líder (15/11): retira a un integrante de su grupo en el terreno
+ *    (baja de contingencia, CU-28), con las mismas reglas que el coordinador.
+ *    No se retira a sí mismo: eso lo hace el coordinador, que elige al nuevo Líder.
  *
  * Sin señal (decisión del 28/09): el aviso no se guarda en el celular. El
  * Líder llama por radio al coordinador, que lo registra en el sistema.
  */
 import { useCallback, useEffect, useState } from 'react';
 import {
-  Users, ShieldCheck, AlertCircle, AlertTriangle, Loader2, MapPin, CloudOff, Radio, Check, X, Footprints, Truck,
+  Users, ShieldCheck, AlertCircle, AlertTriangle, Loader2, MapPin, CloudOff, Radio, Check, X, Footprints, Truck, UserMinus,
 } from 'lucide-react';
 import {
   portalApi, ApiError, type AccionTerreno, type GrupoApi, type MiEstadoApi,
@@ -26,8 +29,9 @@ import AvatarAgente from '../shared/AvatarAgente';
 import { tarjetaBase } from '../shared/Listados';
 import {
   Overlay, IconBox, Titulo, Texto, BotonSecundario, BotonPrimario, ErrorCaja,
-  ACCION_INFO, ACCIONES_TERRENO, BOTON_LIDER,
+  ACCION_INFO, ACCIONES_TERRENO, BOTON_LIDER, EN_OPERACION,
 } from '../shared/grupos/piezas';
+import ExtraerAgenteModal from '../shared/ExtraerAgenteModal';
 import type { EstadoOperativoAgente } from '../../data/mockData';
 import { haceCuanto, horaExacta } from '../../utils/tiempo';
 
@@ -104,6 +108,8 @@ export default function PanelTactico() {
   const [sinConexion, setSinConexion] = useState(false);
   const [ultimoDato, setUltimoDato] = useState<string | null>(null);
   const [resultado, setResultado] = useState<Resultado | null>(null);
+  // CU-28 desde el portal (15/11): a quién está retirando el Líder.
+  const [retirar, setRetirar] = useState<GrupoApi['integrantes'][number] | null>(null);
 
   const cargar = useCallback(async () => {
     try {
@@ -185,6 +191,8 @@ export default function PanelTactico() {
   const resto = grupo ? grupo.integrantes.filter(i => i.id !== grupo.liderId) : [];
   const agentesG = resto.filter(i => !i.esConductor);
   const conductores = resto.filter(i => i.esConductor);
+  // El Líder retira integrantes sólo con el grupo en el terreno y si queda alguien operando (CU-28).
+  const puedeRetirar = !!grupo?.soyLider && EN_OPERACION.includes(grupo.estado) && grupo.integrantes.length >= 2;
   /** Fila de un integrante: la propia, resaltada con «(vos)». */
   const fila = (i: (typeof resto)[number]) => {
     const yo = i.id === agente.id;
@@ -200,6 +208,13 @@ export default function PanelTactico() {
         <span className="flex-1 min-w-0 truncate" style={{ fontSize: 'var(--text-label)', color: 'var(--foreground)', fontWeight: 600 }}>
           {i.nombre} {i.apellido}{yo && ' (vos)'}
         </span>
+        {puedeRetirar && !yo && (
+          <button type="button" onClick={() => setRetirar(i)} aria-label={`Retirar a ${i.nombre} ${i.apellido} del grupo`}
+            className="flex items-center gap-1.5 shrink-0"
+            style={{ minHeight: 36, padding: '0 10px', borderRadius: 'var(--radius-md)', border: '1px solid var(--border)', background: 'var(--card)', color: 'var(--foreground)', cursor: 'pointer', fontFamily: 'var(--font-family-primary)', fontSize: 'calc(11.5px * var(--escala-texto))', fontWeight: 600 }}>
+            <UserMinus size={13} />Retirar
+          </button>
+        )}
       </li>
     );
   };
@@ -415,6 +430,12 @@ export default function PanelTactico() {
             </BotonPrimario>
           </div>
         </Overlay>
+      )}
+
+      {/* CU-28 desde el portal: el Líder retira a un integrante (mismo modal que el coordinador). */}
+      {retirar && grupo && (
+        <ExtraerAgenteModal operativoId={agente.operativoId} grupo={grupo} integrante={retirar} desdePortal
+          onClose={() => setRetirar(null)} onHecho={() => { void cargar(); }} />
       )}
     </div>
   );

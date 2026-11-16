@@ -21,6 +21,8 @@ router.get('/mi-operativo', requiereSesion, registro.miOperativoActual);
 // (grupos.lider_id), en el modelo. El Líder ya no disuelve.
 router.get( '/mi-grupo',         requiereSesion, portal.miGrupo);
 router.post('/mi-grupo/eventos', requiereSesion, portal.eventosMiGrupo);
+// CU-28 desde el portal (15/11): el Líder retira a un integrante de su grupo en el terreno.
+router.post('/mi-grupo/retirar', requiereSesion, portal.retirarDeMiGrupo);
 router.put( '/mi-estado',        requiereSesion, portal.miEstado);
 
 // Portal CALÍVAR (23/10): «Mi sector» y «Objetivo buscado», sólo lectura y sólo del operativo propio.

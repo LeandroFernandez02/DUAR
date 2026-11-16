@@ -1082,6 +1082,9 @@ export const portalApi = {
       resultados: { id: string; resultado: EventoEstadoApi['resultado']; mensaje?: string }[];
       grupo: (GrupoApi & { soyLider: boolean }) | null;
     }>('/mi-grupo/eventos', { eventos }),
+  /** CU-28 desde el portal (15/11): el Líder retira a un integrante de su grupo en el terreno. */
+  retirarDeMiGrupo: (datos: { agenteOperativoId: string; motivo: string; riesgoAceptado: boolean }) =>
+    api.post<{ grupo: (GrupoApi & { soyLider: boolean }) | null; alertaBinomio: boolean }>('/mi-grupo/retirar', datos),
   /** El agente SIN grupo se marca Disponible o No disponible. */
   cambiarMiEstado: (estado: 'DISPONIBLE' | 'NO_DISPONIBLE') =>
     api.put<{ agente: MiEstadoApi }>('/mi-estado', { estado }),

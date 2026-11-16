@@ -281,7 +281,7 @@ export async function finalizar(id, { notaFinal = null, resultado = null, usuari
     );
     await client.query(
       `UPDATE agentes_grupo_historial h
-          SET fecha_fin = CURRENT_TIMESTAMP, motivo_salida = 'Operativo finalizado'
+          SET fecha_fin = GREATEST(CURRENT_TIMESTAMP, h.fecha_inicio), motivo_salida = 'Operativo finalizado'
          FROM agentes_operativo ao
         WHERE h.agente_operativo_id = ao.id AND ao.operativo_id = $1 AND h.fecha_fin IS NULL`,
       [id]

@@ -20,6 +20,7 @@ import * as Auditoria from '../models/auditoria.model.js';
 import * as Poligono from '../models/poligono.model.js';
 import * as Objetivo from '../models/objetivo.model.js';
 import * as Storage from '../services/storage.service.js';
+import * as Operativo from '../models/operativo.model.js';
 import { ESTADOS_AGENTE_ELEGIBLES } from '../models/estados.js';
 
 const RE_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
@@ -102,6 +103,65 @@ export async function eventosMiGrupo(req, res, next) {
 
     const vigente = await AgenteOperativo.altaActivaDe(req.usuario.id);
     res.json({ resultados, grupo: vigente ? await Grupo.grupoDelAgente(vigente) : null });
+  } catch (err) { next(err); }
+}
+
+const MOTIVO_RETIRO_MAX = 100;
+
+/**
+ * POST /api/mi-grupo/retirar — CU-28 desde el portal (pedido del 15/11): el Líder retira a un
+ * integrante de su grupo en el terreno (baja de contingencia), con las mismas reglas que el
+ * coordinador: grupo Desplegado, Rastrillando o Replegado, al menos 2 integrantes, motivo, y en
+ * uno de rastrillaje confirmar el riesgo si queda una sola persona rastrillando. El retirado queda
+ * Replegado y sin grupo. El Líder no se retira a sí mismo: eso lo hace el coordinador, que elige
+ * al nuevo Líder.
+ * body: { agenteOperativoId, motivo, riesgoAceptado }
+ */
+export async function retirarDeMiGrupo(req, res, next) {
+  try {
+    const b = req.body ?? {};
+    if (!RE_UUID.test(b.agenteOperativoId ?? '')) {
+      return res.status(400).json({ error: 'Elegí a quién retirar.', motivo: 'datos_invalidos' });
+    }
+    const motivo = typeof b.motivo === 'string' ? b.motivo.trim() : '';
+    if (!motivo) return res.status(400).json({ error: 'Indicá el motivo de la baja.', motivo: 'motivo_requerido' });
+    if (motivo.length > MOTIVO_RETIRO_MAX) {
+      return res.status(400).json({ error: `El motivo admite hasta ${MOTIVO_RETIRO_MAX} caracteres.`, motivo: 'datos_invalidos' });
+    }
+    const alta = await altaVigente(req, res);
+    if (!alta) return;
+    const operativo = await Operativo.buscarPorId(alta.operativoId);
+    if (!operativo || Operativo.ESTADOS_SOLO_LECTURA.includes(operativo.estado)) {
+      return res.status(409).json({ error: 'El operativo ya no admite cambios.', motivo: 'operativo_cerrado' });
+    }
+    const grupo = await Grupo.grupoDelAgente(alta);
+    if (!grupo?.soyLider) {
+      return res.status(403).json({ error: 'Sólo el Líder del grupo retira integrantes.', motivo: 'no_es_lider' });
+    }
+    if (b.agenteOperativoId === alta.id) {
+      return res.status(409).json({ error: 'Para dejar el grupo, avisale al coordinador: él elige al nuevo Líder.', motivo: 'lider_se_retira' });
+    }
+    if (!grupo.integrantes.some(i => i.id === b.agenteOperativoId)) {
+      return res.status(403).json({ error: 'Esa persona no está en tu grupo.', motivo: 'no_es_del_grupo' });
+    }
+
+    const resultado = await Grupo.extraerAgente(alta.operativoId, grupo.id, {
+      agenteOperativoId: b.agenteOperativoId,
+      motivo,
+      riesgoAceptado: b.riesgoAceptado === true,
+      fuente: 'PORTAL_LIDER',
+    }, req.usuario.id);
+
+    await Auditoria.registrar({
+      usuarioId: req.usuario.id, accion: Auditoria.ACCION.MODIFICAR, entidad: 'grupos',
+      registroId: grupo.id, valoresPrevios: resultado.antes,
+      valoresNuevos: {
+        ...resultado.despues,
+        retiro: { agenteOperativoId: b.agenteOperativoId, motivo, alertaBinomio: resultado.alertaBinomio, origen: 'portal_lider' },
+      },
+      ip: req.ip,
+    });
+    res.json({ grupo: await Grupo.grupoDelAgente(alta), alertaBinomio: resultado.alertaBinomio });
   } catch (err) { next(err); }
 }
 

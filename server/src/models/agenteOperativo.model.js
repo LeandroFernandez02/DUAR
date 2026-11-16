@@ -127,7 +127,7 @@ export async function darDeAlta({
         // dejarlo abierto falsearía el informe forense (CU-28).
         await client.query(
           `UPDATE agentes_grupo_historial
-              SET fecha_fin = CURRENT_TIMESTAMP, motivo_salida = 'Cambio de operativo'
+              SET fecha_fin = GREATEST(CURRENT_TIMESTAMP, fecha_inicio), motivo_salida = 'Cambio de operativo'
             WHERE agente_operativo_id = $1 AND fecha_fin IS NULL`,
           [previa.id]
         );
@@ -395,7 +395,7 @@ export async function egresar(id, usuarioId = null) {
     // abierto diría que sigue trabajando en el grupo después de irse.
     await client.query(
       `UPDATE agentes_grupo_historial
-          SET fecha_fin = CURRENT_TIMESTAMP, motivo_salida = 'Baja del operativo', registrado_por = $2
+          SET fecha_fin = GREATEST(CURRENT_TIMESTAMP, fecha_inicio), motivo_salida = 'Baja del operativo', registrado_por = $2
         WHERE agente_operativo_id = $1 AND fecha_fin IS NULL`,
       [id, usuarioId]
     );
@@ -442,7 +442,7 @@ async function dejarOperativosCon(client, usuarioId, autorId, MOTIVO, { porElimi
     );
     await client.query(
       `UPDATE agentes_grupo_historial
-          SET fecha_fin = CURRENT_TIMESTAMP, motivo_salida = $2, registrado_por = $3
+          SET fecha_fin = GREATEST(CURRENT_TIMESTAMP, fecha_inicio), motivo_salida = $2, registrado_por = $3
         WHERE agente_operativo_id = $1 AND fecha_fin IS NULL`,
       [alta.id, MOTIVO, autorId]
     );

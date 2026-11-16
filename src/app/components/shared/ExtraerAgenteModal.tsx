@@ -21,7 +21,7 @@
  */
 import { useState } from 'react';
 import { AlertTriangle, UserMinus, ShieldAlert, Check, X } from 'lucide-react';
-import { gruposApi, ApiError, type GrupoApi, type IntegranteGrupoApi } from '../../services/api';
+import { gruposApi, portalApi, ApiError, type GrupoApi, type IntegranteGrupoApi } from '../../services/api';
 import {
   Overlay, IconBox, Titulo, Texto, Etiqueta, BotonSecundario, BotonPrimario, ErrorCaja,
   estiloCampo, EN_OPERACION, ETIQUETA_ESTADO_GRUPO,
@@ -38,16 +38,21 @@ interface Props {
   onClose: () => void;
   /** Se llama después de una extracción exitosa, para recargar el tablero. */
   onHecho: () => void;
+  /**
+   * El Líder retira a un integrante desde su portal (15/11): mismas reglas, por /mi-grupo/retirar.
+   * No se retira a sí mismo (eso lo hace el coordinador, que elige al nuevo Líder).
+   */
+  desdePortal?: boolean;
 }
 
-export default function ExtraerAgenteModal({ operativoId, grupo, integrante, onClose, onHecho }: Props) {
+export default function ExtraerAgenteModal({ operativoId, grupo, integrante, onClose, onHecho, desdePortal = false }: Props) {
   const [motivo, setMotivo] = useState('');
   const [motivoOtro, setMotivoOtro] = useState('');
   const [nuevoLider, setNuevoLider] = useState('');
   const [riesgoAceptado, setRiesgoAceptado] = useState(false);
   const [enviando, setEnviando] = useState(false);
   const [error, setError] = useState<string | null>(null);
-  const [resultado, setResultado] = useState<{ alertaBinomio: boolean } | null>(null);
+  const [resultado, setResultado] = useState<{ alertaBinomio: boolean; restantes: number } | null>(null);
 
   const motivoFinal = (motivo === 'Otro' ? motivoOtro : motivo).trim();
   const requiereSucesion = grupo.liderId === integrante.id;
@@ -68,7 +73,9 @@ export default function ExtraerAgenteModal({ operativoId, grupo, integrante, onC
     bloqueo = 'Es el Líder y no queda otro integrante del DUAR que pueda asumir el mando. Sumá a alguien del DUAR al grupo antes de retirarlo.';
   }
 
-  if (bloqueo) {
+  // Ya retirado, el grupo se recarga sin esa persona: no se vuelven a evaluar las precondiciones
+  // (si no, en vez del «retirado» aparecía «tiene un solo integrante», QA 15/11).
+  if (bloqueo && !resultado) {
     return (
       <Overlay onClose={onClose}>
         <div className="px-5 py-4 flex items-start gap-3" style={{ borderBottom: '1px solid var(--border)' }}>
@@ -96,13 +103,16 @@ export default function ExtraerAgenteModal({ operativoId, grupo, integrante, onC
     setEnviando(true);
     setError(null);
     try {
-      const r = await gruposApi.extraer(operativoId, grupo.id, {
-        agenteOperativoId: integrante.id,
-        motivo: motivoFinal,
-        nuevoLiderId: requiereSucesion ? nuevoLider : undefined,
-        riesgoAceptado,
-      });
-      setResultado({ alertaBinomio: r.alertaBinomio });
+      const r = desdePortal
+        ? await portalApi.retirarDeMiGrupo({ agenteOperativoId: integrante.id, motivo: motivoFinal, riesgoAceptado })
+        : await gruposApi.extraer(operativoId, grupo.id, {
+          agenteOperativoId: integrante.id,
+          motivo: motivoFinal,
+          nuevoLiderId: requiereSucesion ? nuevoLider : undefined,
+          riesgoAceptado,
+        });
+      // Los que quedan se cuentan ANTES de recargar: después el grupo ya viene sin el retirado.
+      setResultado({ alertaBinomio: r.alertaBinomio, restantes });
       onHecho();
       setTimeout(onClose, 1400);
     } catch (err) {
@@ -123,8 +133,8 @@ export default function ExtraerAgenteModal({ operativoId, grupo, integrante, onC
           <Texto>
             {integrante.nombre} queda Replegado, volviendo a la base.{' '}
             {resultado.alertaBinomio
-              ? `${grupo.nombre} sigue con una sola persona rastrillando: queda marcado en rojo en el tablero.`
-              : `${grupo.nombre} sigue operando con ${restantes} ${restantes === 1 ? 'integrante' : 'integrantes'}.`}
+              ? `${grupo.nombre} sigue con una sola persona rastrillando: ${desdePortal ? 'el coordinador lo ve marcado en rojo.' : 'queda marcado en rojo en el tablero.'}`
+              : `${grupo.nombre} sigue operando con ${resultado.restantes} ${resultado.restantes === 1 ? 'integrante' : 'integrantes'}.`}
           </Texto>
         </div>
       </Overlay>
@@ -202,7 +212,7 @@ export default function ExtraerAgenteModal({ operativoId, grupo, integrante, onC
           <p className="px-3 py-2.5 rounded-[var(--radius-input)]"
             style={{ background: 'var(--muted)', color: 'var(--muted-foreground)', fontSize: 'var(--text-label)', lineHeight: 1.5, fontFamily: 'var(--font-family-primary)' }}>
             {integrante.nombre} queda <strong style={{ color: 'var(--foreground)' }}>Replegado</strong> y sin grupo: vuelve del
-            polígono. Cuando llegue, su estado pasa a Disponible o No disponible desde su portal o desde la pestaña Agentes.
+            polígono. Cuando llegue, su estado pasa a Disponible o No disponible {desdePortal ? 'desde su portal o lo marca el coordinador' : 'desde su portal o desde la pestaña Agentes'}.
             {rastrillaje && rastrillanRestantes === 0 && ' Atención: en el grupo no queda nadie que rastrille el polígono.'}
           </p>
 
@@ -214,7 +224,7 @@ export default function ExtraerAgenteModal({ operativoId, grupo, integrante, onC
                 onChange={e => setRiesgoAceptado(e.target.checked)} style={{ marginTop: 2, flexShrink: 0 }} />
               <span style={{ fontSize: 'var(--text-label)', color: 'color-mix(in srgb, #fde68a var(--tinte-oscuro, 0%), #713f12)', lineHeight: 1.5, fontFamily: 'var(--font-family-primary)' }}>
                 <strong>Advertencia:</strong> el grupo quedará con una sola persona rastrillando, por debajo
-                del binomio mínimo. Sigue en el terreno y el tablero lo marca en rojo hasta que
+                del binomio mínimo. Sigue en el terreno y {desdePortal ? 'el coordinador lo ve' : 'el tablero lo marca'} en rojo hasta que
                 vuelva. Confirmo ser consciente del riesgo.
               </span>
             </label>
