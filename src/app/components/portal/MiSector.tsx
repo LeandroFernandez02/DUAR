@@ -1,7 +1,7 @@
 /**
- * Portal del Agente — «Mi sector» (diseño CALÍVAR, 23/10): el polígono asignado a mi grupo,
- * para ubicarse en el terreno. Nombre, área, notas del coordinador, las coordenadas de los
- * vértices (para cargar en el GPS) y un mapa chico con la forma. Sólo lectura: el polígono
+ * Portal del Agente — «Mi polígono» (diseño CALÍVAR, 23/10): el polígono asignado a mi grupo,
+ * para ubicarse en el terreno. Nombre, área, notas del coordinador, las coordenadas del centro
+ * (15/11: reemplazan la lista de vértices; se copian al tocarlas) y un mapa chico con la forma. Sólo lectura: el polígono
  * lo dibuja y lo asigna el coordinador (CU-30/30). Sin grupo o sin polígono no se muestra.
  *
  * El Líder del grupo, además (pedido del 03/11), marca puntos de interés y hallazgos en su sector,
@@ -15,7 +15,7 @@ import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import {
-  ChevronDown, ChevronUp, List, Map as MapaIcono, Pentagon, Plus, CloudOff, AlertCircle, Camera, Check, Copy, X, Trash2,
+  ChevronDown, ChevronUp, List, Map as MapaIcono, Pentagon, Plus, CloudOff, AlertCircle, Camera, Check, Copy, Crosshair, X, Trash2,
 } from 'lucide-react';
 import { portalApi, type MarcadorApi, type MiSectorApi } from '../../services/api';
 import { useApp } from '../../context/AppContext';
@@ -96,6 +96,32 @@ function CartelCoordenada({ punto, onCerrar }: { punto: [number, number]; onCerr
         </button>
       </div>
     </div>
+  );
+}
+
+/** Las coordenadas del centro del polígono, a la vista; al tocarlas se copian (como el cartel del mapa). */
+function CentroPoligono({ punto }: { punto: [number, number] }) {
+  const [copiado, setCopiado] = useState(false);
+  const texto = textoCoordenada(punto);
+  useEffect(() => {
+    if (!copiado) return;
+    const t = setTimeout(() => setCopiado(false), 2000);
+    return () => clearTimeout(t);
+  }, [copiado]);
+  return (
+    <button type="button" onClick={async () => setCopiado(await copiar(texto))}
+      aria-label={copiado ? `Copiado: centro del polígono ${texto}` : `Copiar el centro del polígono: ${texto}`}
+      className="flex items-center gap-3 text-left"
+      style={{ minHeight: 48, padding: '8px 12px', borderRadius: 'var(--radius-md)', background: 'var(--muted)', border: '1px solid var(--border)', cursor: 'pointer', fontFamily: 'var(--font-family-primary)' }}>
+      <Crosshair size={16} style={{ color: 'var(--primary)', flexShrink: 0 }} />
+      <span className="flex-1 min-w-0">
+        <span style={{ display: 'block', ...chico }}>Centro del polígono</span>
+        <span className="block truncate" style={{ fontFamily: 'var(--font-family-mono, monospace)', fontSize: 'calc(13px * var(--escala-texto))', color: 'var(--foreground)', fontWeight: 600 }}>{texto}</span>
+      </span>
+      {copiado
+        ? <Check size={15} style={{ color: '#16a34a', flexShrink: 0 }} />
+        : <Copy size={15} style={{ color: 'var(--muted-foreground)', flexShrink: 0 }} />}
+    </button>
   );
 }
 
@@ -241,7 +267,7 @@ export default function MiSector() {
   const { usuario } = useApp();
   const [sector, setSector] = useState<MiSectorApi | null>(null);
   const [soyLider, setSoyLider] = useState(false);
-  const [ver, setVer] = useState<'coordenadas' | 'mapa' | null>(null);
+  const [verMapa, setVerMapa] = useState(false);
   const [marcadores, setMarcadores] = useState<MarcadorApi[]>([]);
   const [pendientes, setPendientes] = useState<Pendiente[]>([]);
   const [marcar, setMarcar] = useState(false);
@@ -314,21 +340,12 @@ export default function MiSector() {
       {sector.notas && (
         <p style={{ margin: 0, fontSize: 'var(--text-label)', color: 'var(--muted-foreground)', lineHeight: 1.5 }}>{sector.notas}</p>
       )}
+      {/* Centro del polígono (15/11): reemplaza la lista de vértices; se copia al tocarlo. */}
+      <CentroPoligono punto={[sector.centroLat, sector.centroLng]} />
       <div className="flex gap-2">
-        <BotonDesplegar icono={List} abierto={ver === 'coordenadas'} onClick={() => setVer(v => (v === 'coordenadas' ? null : 'coordenadas'))}>Ver coordenadas</BotonDesplegar>
-        <BotonDesplegar icono={MapaIcono} abierto={ver === 'mapa'} onClick={() => setVer(v => (v === 'mapa' ? null : 'mapa'))}>Ver mapa</BotonDesplegar>
+        <BotonDesplegar icono={MapaIcono} abierto={verMapa} onClick={() => setVerMapa(v => !v)}>Ver mapa</BotonDesplegar>
       </div>
-      {ver === 'coordenadas' && (
-        <ol className="flex flex-col gap-1" style={{ margin: 0, padding: 0, listStyle: 'none' }}>
-          {pts.map(([lat, lng], i) => (
-            <li key={i} className="flex items-center gap-3" style={{ padding: '6px 10px', borderRadius: 'var(--radius-md)', background: 'var(--muted)', fontFamily: 'var(--font-family-mono, monospace)', fontSize: 'calc(12px * var(--escala-texto))', color: 'var(--foreground)' }}>
-              <span style={{ color: 'var(--muted-foreground)', minWidth: 22 }}>V{i + 1}</span>
-              <span>{lat.toFixed(5)}°, {lng.toFixed(5)}°</span>
-            </li>
-          ))}
-        </ol>
-      )}
-      {ver === 'mapa' && <MapaSector pts={pts} marcadores={soyLider ? marcadores : []} />}
+      {verMapa && <MapaSector pts={pts} marcadores={soyLider ? marcadores : []} />}
 
       {/* ── Sólo el Líder: puntos de interés y hallazgos del sector (03/11) ── */}
       {(soyLider || pendientes.length > 0) && (

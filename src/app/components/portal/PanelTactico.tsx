@@ -2,8 +2,8 @@
  * Portal del Agente — lo táctico (modelo de estados del 24/09):
  *
  *  · "Mi estado": SIN grupo, el agente se marca Disponible o No disponible
- *    (también al volver Replegado de un retiro, CU-28). CON grupo, su estado
- *    lo define el grupo y acá sólo se muestra.
+ *    (también al volver Replegado de un retiro, CU-28). CON grupo no se muestra
+ *    (15/11): su estado lo define el grupo y se ve en "Mi grupo".
  *  · "Mi grupo": con quién sale, en qué estado está, qué polígono tiene.
  *  · Si es el Líder: informa lo que pasa en el terreno ("Salimos hacia el
  *    polígono", "Llegamos, empezamos a rastrillar", "Volvemos", "Llegamos a la
@@ -220,7 +220,9 @@ export default function PanelTactico() {
         </div>
       )}
 
-      {/* ── Mi estado ── */}
+      {/* ── Mi estado: sólo sin grupo (15/11). En un grupo su estado lo maneja el grupo y ya se ve en
+           «Mi grupo»; mostrar los dos confundía al agente. ── */}
+      {!enGrupo && (
       <section className="p-4" style={tarjeta} aria-labelledby="mi-estado-titulo">
         <div className="flex items-center justify-between gap-3" style={{ marginBottom: 10 }}>
           <p id="mi-estado-titulo" style={rotulo}>Mi estado</p>
@@ -229,13 +231,7 @@ export default function PanelTactico() {
             <EstadoAgenteBadge estado={agente.estado.toLowerCase() as EstadoOperativoAgente} size="sm" />
           </span>
         </div>
-        {enGrupo ? (
-          <p style={{ margin: 0, color: 'var(--muted-foreground)', fontSize: 'var(--text-label)', lineHeight: 1.5 }}>
-            Estás en un grupo: tu estado lo maneja el grupo{grupo ? ` (${grupo.nombre})` : ''}.
-            Si no podés seguir, avisale {grupo?.soyLider ? 'al coordinador' : 'a tu Líder o al coordinador'} para que te retiren.
-          </p>
-        ) : (
-          <>
+        <>
             {agente.estado === 'REPLEGADO' && (
               <p className="mb-3" style={{ color: 'var(--muted-foreground)', fontSize: 'var(--text-label)', lineHeight: 1.5 }}>
                 Te retiraron de tu grupo y estás volviendo. Cuando llegues a la base, marcá cómo estás.
@@ -265,9 +261,9 @@ export default function PanelTactico() {
                 );
               })}
             </div>
-          </>
-        )}
+        </>
       </section>
+      )}
 
       {/* ── Mi grupo ── */}
       <section className="overflow-hidden" style={tarjeta} aria-labelledby="mi-grupo-titulo">

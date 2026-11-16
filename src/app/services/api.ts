@@ -1123,6 +1123,9 @@ export interface MiSectorApi {
   areaM2: number;
   perimetroM: number;
   coberturaPct: number | null;
+  /** Centro del polígono (siempre adentro), para ir hasta él con otro mapa o GPS (15/11). */
+  centroLat: number;
+  centroLng: number;
 }
 
 /* ── Objetivo Buscado (Módulo 3 · CU-13..14) ─────────────────────────────── */

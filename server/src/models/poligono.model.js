@@ -347,8 +347,16 @@ export async function paraAgente(operativoId, poligonoId) {
             ST_AsGeoJSON(p.geom)::json AS geometria,
             round(p.area_m2)::int      AS "areaM2",
             round(p.perimetro_m)::int  AS "perimetroM",
-            p.cobertura_pct::float     AS "coberturaPct"
+            p.cobertura_pct::float     AS "coberturaPct",
+            ST_Y(c.punto)              AS "centroLat",
+            ST_X(c.punto)              AS "centroLng"
        FROM poligonos p
+       -- Centro del polígono para el portal (15/11): el centroide si cae adentro; si el polígono
+       -- tiene forma de L o de U y el centroide queda afuera, un punto que seguro está adentro.
+       CROSS JOIN LATERAL (
+         SELECT CASE WHEN ST_Intersects(p.geom, ST_Centroid(p.geom)) THEN ST_Centroid(p.geom)
+                     ELSE ST_PointOnSurface(p.geom) END AS punto
+       ) c
       WHERE p.id = $1 AND p.operativo_id = $2 AND p.eliminado_en IS NULL`,
     [poligonoId, operativoId]
   );
