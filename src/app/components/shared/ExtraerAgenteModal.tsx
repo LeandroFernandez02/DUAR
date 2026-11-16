@@ -2,7 +2,8 @@
  * ExtraerAgenteModal — CU-28: Extraer Agente de Grupo Activo (Baja Parcial / Contingencia)
  *
  * Retira a un agente de su cuadrilla en el terreno SIN desarmar el grupo:
- *  · Paso 3   → motivo de la baja. El retirado queda siempre REPLEGADO y sin
+ *  · Paso 3   → motivo de la baja. El retirado queda NO DISPONIBLE y sin grupo (16/11; antes
+ *               Replegado). Cuando está listo, él o el coordinador lo pasan a Disponible.
  *               grupo: vuelve del polígono (decisión del 24/09). Al llegar, él
  *               o el coordinador lo marcan Disponible o No disponible.
  *  · Paso 4.1 → Sucesión de Mando: si el que sale es el Líder, es obligatorio
@@ -131,7 +132,7 @@ export default function ExtraerAgenteModal({ operativoId, grupo, integrante, onC
           </div>
           <Titulo>Agente retirado del grupo</Titulo>
           <Texto>
-            {integrante.nombre} queda Replegado, volviendo a la base.{' '}
+            {integrante.nombre} queda No disponible y sin grupo.{' '}
             {resultado.alertaBinomio
               ? `${grupo.nombre} sigue con una sola persona rastrillando: ${desdePortal ? 'el coordinador lo ve marcado en rojo.' : 'queda marcado en rojo en el tablero.'}`
               : `${grupo.nombre} sigue operando con ${resultado.restantes} ${resultado.restantes === 1 ? 'integrante' : 'integrantes'}.`}
@@ -208,11 +209,11 @@ export default function ExtraerAgenteModal({ operativoId, grupo, integrante, onC
             )}
           </div>
 
-          {/* ── Paso 3 · Estado al salir: siempre Replegado ── */}
+          {/* ── Paso 3 · Estado al salir: No disponible (16/11) ── */}
           <p className="px-3 py-2.5 rounded-[var(--radius-input)]"
             style={{ background: 'var(--muted)', color: 'var(--muted-foreground)', fontSize: 'var(--text-label)', lineHeight: 1.5, fontFamily: 'var(--font-family-primary)' }}>
-            {integrante.nombre} queda <strong style={{ color: 'var(--foreground)' }}>Replegado</strong> y sin grupo: vuelve del
-            polígono. Cuando llegue, su estado pasa a Disponible o No disponible {desdePortal ? 'desde su portal o lo marca el coordinador' : 'desde su portal o desde la pestaña Agentes'}.
+            {integrante.nombre} queda <strong style={{ color: 'var(--foreground)' }}>No disponible</strong> y sin grupo. Cuando esté
+            listo para rastrillar de nuevo, se pasa a Disponible {desdePortal ? 'desde su portal o lo hace el coordinador' : 'desde su portal o desde la pestaña Agentes'}.
             {rastrillaje && rastrillanRestantes === 0 && ' Atención: en el grupo no queda nadie que rastrille el polígono.'}
           </p>
 

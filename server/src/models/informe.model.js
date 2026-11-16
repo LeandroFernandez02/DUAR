@@ -121,6 +121,9 @@ export async function reunirDatos(operativoId, corteEn) {
          FROM objetivo_buscado ob WHERE ob.operativo_id = $1`),
     q(`SELECT m.id, m.nombre, m.descripcion, m.detalle, m.creado_en AS "creadoEn",
               ST_Y(m.geom) AS lat, ST_X(m.geom) AS lng, ${nombre('u')} AS "registradoPor",
+              -- Eliminado (16/11, migración 037): sigue en el informe, con quién, cuándo y por qué.
+              m.eliminado_en AS "eliminadoEn", m.motivo_eliminacion AS "motivoEliminacion",
+              (SELECT ${nombre('ue')} FROM usuarios ue WHERE ue.id = m.eliminado_por) AS "eliminadoPor",
               (SELECT round(ST_Distance(m.geom::geography, o.punto_cero::geography))::int
                  FROM operativos o WHERE o.id = m.operativo_id) AS "distanciaPuntoCeroM",
               -- Cargado por el Líder (03/11): su polígono aunque haya quedado afuera; si no, el que lo contiene.
@@ -239,7 +242,8 @@ export async function reunirDatos(operativoId, corteEn) {
        SELECT 'Polígono', p.nombre, p.eliminado_en, ${nombre('u')}, NULL
          FROM poligonos p LEFT JOIN usuarios u ON u.id = p.eliminado_por WHERE p.operativo_id = $1 AND p.eliminado_en IS NOT NULL
        UNION ALL
-       SELECT CASE m.clase WHEN 'POI' THEN 'Punto de interés' ELSE 'Instalación' END, m.nombre, m.eliminado_en, ${nombre('u')}, NULL
+       SELECT CASE m.clase WHEN 'POI' THEN 'Punto de interés' WHEN 'HALLAZGO' THEN 'Hallazgo' ELSE 'Instalación' END,
+              m.nombre, m.eliminado_en, ${nombre('u')}, m.motivo_eliminacion
          FROM marcadores m LEFT JOIN usuarios u ON u.id = m.eliminado_por WHERE m.operativo_id = $1 AND m.eliminado_en IS NOT NULL
        ORDER BY 3`),
     q(`SELECT m.clase, m.tipo_instalacion AS "tipoInstalacion", m.nombre, m.creado_en AS "creadoEn", ${nombre('u')} AS "registradoPor"
@@ -407,7 +411,9 @@ export function armarCronologia(d) {
     add(a.desde, 'Personal', `${a.n === 1 ? 'Ingresa 1 agente' : `Ingresan ${a.n} agentes`}${como}${rango} (detalle en «Personal interviniente»).`, a.fuente === 'QR' ? 'QR' : a.quien);
   }
   for (const e of d.eventosAgente.filter(x => x.accion === 'retiro')) {
-    add(e.ocurridoEn, 'Personal', `${e.agente} se retira ${e.grupo ? `d${elDe('grupo', e.grupo)}` : 'de su grupo'} y vuelve a la base.`, e.registradoPor, e.motivo ? { nota: `Motivo: ${e.motivo}` } : {});
+    // Hasta el 16/11 el retirado quedaba Replegado (volvía a la base); desde entonces, No disponible.
+    const queda = e.estadoNuevo === 'REPLEGADO' ? 'y vuelve a la base' : 'y queda No disponible';
+    add(e.ocurridoEn, 'Personal', `${e.agente} se retira ${e.grupo ? `d${elDe('grupo', e.grupo)}` : 'de su grupo'} ${queda}.`, e.registradoPor, e.motivo ? { nota: `Motivo: ${e.motivo}` } : {});
   }
   for (const e of d.eventosAgente.filter(x => x.accion === 'baja' && x.motivo !== 'Operativo finalizado')) {
     add(e.ocurridoEn, 'Personal', `${e.agente} deja el operativo.`, e.registradoPor, e.motivo ? { nota: `Motivo: ${e.motivo}` } : {});
@@ -461,7 +467,14 @@ export function armarCronologia(d) {
     add(m.creadoEn, 'Mapa', m.clase === 'POI' ? `Se marca el punto de interés «${m.nombre}».` : `Se marca la instalación «${m.nombre}».`, m.registradoPor);
   }
   for (const b of d.bajas.filter(x => x.clase !== 'Track' && x.clase !== 'Polígono')) {
-    add(b.eliminadoEn, 'Mapa', `Se da de baja ${b.clase === 'Punto de interés' ? 'el punto de interés' : 'la instalación'} «${b.nombre}».`, b.eliminadoPor);
+    if (b.clase === 'Hallazgo') {
+      // Resaltado como el hallazgo mismo (16/11): se eliminó evidencia y el motivo queda a la vista.
+      add(b.eliminadoEn, 'Hallazgo', `Se elimina el hallazgo «${b.nombre}».`, b.eliminadoPor,
+        { clave: true, ...(b.motivo ? { nota: `Motivo: ${b.motivo}` } : {}) });
+      continue;
+    }
+    add(b.eliminadoEn, 'Mapa', `Se da de baja ${b.clase === 'Punto de interés' ? 'el punto de interés' : 'la instalación'} «${b.nombre}».`, b.eliminadoPor,
+      b.motivo ? { nota: `Motivo: ${b.motivo}` } : {});
   }
   for (const i of d.informesPrevios) {
     add(i.generadoEn, 'Informe', `Se emite el informe ${i.tipo === 'FINAL' ? 'final' : 'parcial'} ${i.codigo}.`, i.generadoPor);

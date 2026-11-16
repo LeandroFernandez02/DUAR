@@ -1,13 +1,15 @@
 /**
  * Módulo 5 · Marcadores, Punto Cero y radios (CU-35, CU-36, CU-37, CU-39; y
  * el Punto Cero de CU-08 / CU-09), con las decisiones del 12/10: un hallazgo
- * es evidencia (no se elimina, no cambia de clase, sus fotos no se quitan);
+ * es evidencia (no cambia de clase, sus fotos no se quitan; desde el 16/11,
+ * migración 037, se elimina sólo con motivo y sigue en el informe);
  * sólo las instalaciones se reubican; el Punto Cero tiene historial y, con el
  * operativo en curso, moverlo pide motivo; los radios son del operativo.
  */
 import { describe, test, before, after } from 'node:test';
 import assert from 'node:assert/strict';
 import { preparar, terminar } from '../ayudantes/entorno.js';
+import { armarCronologia } from '../../src/models/informe.model.js';
 
 let ctx;
 let POI, HALLAZGO, INST, R2K;
@@ -67,12 +69,13 @@ describe('Módulo 5 · Marcadores, Punto Cero y radios (CU-35, 35, 36, 38)', () 
     assert.match(f.json.marcador.fotos[0].url ?? '', /^https:\/\//);
   });
 
-  test('CU-39 · un hallazgo no se elimina, no pasa a punto de interés y sus fotos no se quitan', async () => {
-    motivo(await marc('DELETE', `/${HALLAZGO}`), 409, 'hallazgo_no_se_elimina');
+  test('CU-39 · un hallazgo no se elimina sin motivo, no pasa a punto de interés y sus fotos no se quitan', async () => {
+    motivo(await marc('DELETE', `/${HALLAZGO}`), 400, 'motivo_requerido');
+    motivo(await marc('DELETE', `/${HALLAZGO}`, { motivo: 'no' }), 400, 'motivo_invalido');
     motivo(await marc('PUT', `/${HALLAZGO}`, { clase: 'POI' }), 409, 'hallazgo_fijo');
     const { fotos: [foto] } = (await marc('GET', `/${HALLAZGO}`)).json.marcador;
     motivo(await marc('DELETE', `/${HALLAZGO}/fotos/${foto.id}`), 409, 'foto_de_hallazgo');
-    // La base lo garantiza también, aunque alguien lo intente por fuera de la API.
+    // La base lo garantiza también, aunque alguien lo intente por fuera de la API (sin motivo, 037).
     await assert.rejects(ctx.query(`UPDATE marcadores SET eliminado_en = now() WHERE id = $1`, [HALLAZGO]));
     await assert.rejects(ctx.query(`UPDATE marcadores SET clase = 'POI' WHERE id = $1`, [HALLAZGO]));
   });
@@ -119,6 +122,39 @@ describe('Módulo 5 · Marcadores, Punto Cero y radios (CU-35, 35, 36, 38)', () 
     assert.ok(!ids.includes(POI) && !ids.includes(INST) && ids.includes(HALLAZGO));
     const { rows: [f] } = await ctx.query(`SELECT eliminado_en, eliminado_por FROM marcadores WHERE id = $1`, [POI]);
     assert.ok(f.eliminado_en && f.eliminado_por, 'la fila sigue, dada de baja');
+  });
+
+  test('CU-39 (16/11) · un hallazgo se elimina con motivo: sale del mapa y el informe lo sigue mostrando', async () => {
+    motivo(await marc('DELETE', `/${HALLAZGO}`, { motivo: 'Cargado por error: era de otro operativo' }), 204);
+    const ids = (await marc('GET')).json.marcadores.map(m => m.id);
+    assert.ok(!ids.includes(HALLAZGO), 'ya no está en el mapa');
+    const { rows: [f] } = await ctx.query(
+      `SELECT eliminado_en, eliminado_por, motivo_eliminacion,
+              (SELECT count(*)::int FROM marcador_fotos x WHERE x.marcador_id = m.id AND x.eliminado_en IS NULL) AS fotos
+         FROM marcadores m WHERE id = $1`, [HALLAZGO]);
+    assert.ok(f.eliminado_en && f.eliminado_por, 'la fila sigue, dada de baja');
+    assert.equal(f.motivo_eliminacion, 'Cargado por error: era de otro operativo');
+    assert.ok(f.fotos > 0, 'las fotos quedan');
+
+    // El informe se arma igual que desde la pantalla (con el hallazgo eliminado adentro). No se llama
+    // al modelo desde acá: abre muchas consultas a la vez y pasa el límite de conexiones de Supabase.
+    motivo(await ctx.api('POST', `/operativos/${ctx.op}/informes`), 201);
+
+    // En la cronología, la baja de un hallazgo va resaltada y con el motivo.
+    const base = {
+      operativo: { creadoEn: new Date('2026-11-16T10:00:00Z'), titulo: 'x', creadoPor: 'Ana' },
+      auditoriaOperativo: [], mandos: [], jefes: [], presencias: [], eventosAgente: [], grupos: [], eventosGrupo: [],
+      hallazgos: [], puntoCero: [], eventosPoligono: [], otrosMarcadores: [], informesPrevios: [], cambiosCaratula: [],
+    };
+    const lista = armarCronologia({ ...base, bajas: [{
+      clase: 'Hallazgo', nombre: 'Campera roja', eliminadoEn: new Date('2026-11-16T12:00:00Z'), eliminadoPor: 'Ana',
+      motivo: 'Cargado por error: era de otro operativo',
+    }] });
+    const e = lista.find(x => /Se elimina el hallazgo «Campera roja»/.test(x.texto));
+    assert.ok(e, JSON.stringify(lista));
+    assert.equal(e.tipo, 'Hallazgo');
+    assert.equal(e.clave, true);
+    assert.equal(e.nota, 'Motivo: Cargado por error: era de otro operativo');
   });
 
   /* ── Radios ── */

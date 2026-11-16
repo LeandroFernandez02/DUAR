@@ -286,19 +286,31 @@ export function ModalPuntoCero({ desde, hasta, nRadios, requiereMotivo, onCambio
 }
 
 /* ── CU-39 ── */
-export function ModalEliminar({ tipo, nombre, extra, onCancel, onConfirmar }: {
-  tipo: string; nombre: string; extra: string; onCancel: () => void; onConfirmar: () => Promise<unknown>;
+/** Motivo de la baja de un hallazgo (16/11, migración 037): entre 3 y 300 caracteres. */
+const MOTIVO_HALLAZGO_MAX = 300;
+
+export function ModalEliminar({ tipo, nombre, extra, pedirMotivo = false, onCancel, onConfirmar }: {
+  tipo: string; nombre: string; extra: string;
+  /** Un hallazgo se elimina sólo con motivo (sale en el informe). */
+  pedirMotivo?: boolean;
+  onCancel: () => void; onConfirmar: (motivo?: string) => Promise<unknown>;
 }) {
   const e = useEnvio();
+  const [motivo, setMotivo] = useState('');
+  const faltaMotivo = pedirMotivo && motivo.trim().length < 3;
   return (
     <Modal titulo={`Eliminar ${tipo}`} onClose={onCancel} ancho={440}
-      pie={<><Boton variante="outline" tam="md" onClick={onCancel}>Cancelar</Boton><Boton variante="danger" tam="md" icono={Trash2} disabled={e.enviando} onClick={() => e.enviar(onConfirmar, 'No se pudo eliminar.')}>{e.enviando ? 'Eliminando…' : 'Eliminar'}</Boton></>}>
+      pie={<><Boton variante="outline" tam="md" onClick={onCancel}>Cancelar</Boton><Boton variante="danger" tam="md" icono={Trash2} disabled={e.enviando || faltaMotivo} onClick={() => e.enviar(() => onConfirmar(pedirMotivo ? motivo.trim() : undefined), 'No se pudo eliminar.')}>{e.enviando ? 'Eliminando…' : 'Eliminar'}</Boton></>}>
       <div style={{ display: 'flex', gap: 12 }}>
         <span style={{ width: 36, height: 36, borderRadius: 'var(--radius-md)', background: 'color-mix(in srgb, var(--destructive) calc(10% + var(--tinte-oscuro, 0%) * 0.1), transparent)', color: '#dc2626', display: 'flex', alignItems: 'center', justifyContent: 'center', flexShrink: 0 }}><TriangleAlert size={17} /></span>
         <div style={{ display: 'flex', flexDirection: 'column', gap: 6 }}>
           <p style={{ margin: 0, fontSize: 'calc(14px * var(--escala-texto))', color: 'var(--foreground)', lineHeight: 1.55 }}>¿Eliminar <strong>{nombre}</strong> del mapa?</p>
           <p style={{ margin: 0, fontSize: 'calc(12px * var(--escala-texto))', color: 'var(--muted-foreground)', lineHeight: 1.55 }}>{extra}</p>
           <p style={{ margin: 0, fontSize: 'calc(12px * var(--escala-texto))', color: 'var(--muted-foreground)', lineHeight: 1.55 }}>Es una baja con registro: deja de verse para todos, pero queda qué era, quién lo eliminó y cuándo.</p>
+          {pedirMotivo && (
+            <Campo etiqueta="Motivo" requerido multilinea filas={2} valor={motivo} onChange={setMotivo} maxLength={MOTIVO_HALLAZGO_MAX}
+              placeholder="Ej.: cargado por error, duplicado, no correspondía al objetivo…" autoFocus />
+          )}
           {e.error && <ErrorTexto>{e.error}</ErrorTexto>}
         </div>
       </div>

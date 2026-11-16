@@ -126,7 +126,8 @@ export const api = {
     request<T>(ruta, { method: 'POST', body: body ? JSON.stringify(body) : undefined }),
   put:  <T>(ruta: string, body?: unknown) =>
     request<T>(ruta, { method: 'PUT', body: body ? JSON.stringify(body) : undefined }),
-  del:  <T>(ruta: string) => request<T>(ruta, { method: 'DELETE' }),
+  del:  <T>(ruta: string, body?: unknown) =>
+    request<T>(ruta, { method: 'DELETE', body: body ? JSON.stringify(body) : undefined }),
 };
 
 /* ── Tipos que devuelve el backend ──────────────────────────────────────── */
@@ -961,9 +962,9 @@ export const marcadoresApi = {
   /** CU-36: un hallazgo no cambia de clase; sólo las instalaciones se reubican. */
   actualizar: (operativoId: string, marcadorId: string, datos: DatosMarcador) =>
     api.put<{ marcador: MarcadorApi }>(`/operativos/${operativoId}/marcadores/${marcadorId}`, datos),
-  /** CU-39: un hallazgo no se elimina. */
-  eliminar: (operativoId: string, marcadorId: string) =>
-    api.del<void>(`/operativos/${operativoId}/marcadores/${marcadorId}`),
+  /** CU-39: baja con registro. Un hallazgo pide motivo (16/11, migración 037) y sigue en el informe. */
+  eliminar: (operativoId: string, marcadorId: string, motivo?: string) =>
+    api.del<void>(`/operativos/${operativoId}/marcadores/${marcadorId}`, motivo ? { motivo } : undefined),
   /** Hasta 8 por marcador; no en instalaciones. */
   subirFotos: (operativoId: string, marcadorId: string, archivos: File[]) => {
     const f = new FormData();
@@ -1038,7 +1039,7 @@ export const gruposApi = {
   /** CU-23 paso 6 / CU-26: arrastrar, sólo con grupos En formación. `destinoGrupoId: null` = "Sin grupo". */
   mover: (operativoId: string, agenteOperativoId: string, destinoGrupoId: string | null) =>
     api.post<{ agente: unknown }>(`/operativos/${operativoId}/grupos/mover`, { agenteOperativoId, destinoGrupoId }),
-  /** CU-28: el retirado queda Replegado y sin grupo. */
+  /** CU-28: el retirado queda No disponible y sin grupo (16/11). */
   extraer: (operativoId: string, grupoId: string, datos: {
     agenteOperativoId: string; motivo: string; nuevoLiderId?: string; riesgoAceptado?: boolean;
   }) => api.post<{ grupo: GrupoApi; alertaBinomio: boolean }>(`/operativos/${operativoId}/grupos/${grupoId}/extraer`, datos),

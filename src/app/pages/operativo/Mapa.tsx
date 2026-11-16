@@ -53,7 +53,7 @@ type ModalMapa =
   | { tipo: 'marcador'; ll: LatLng }
   | { tipo: 'instalacion'; ll: LatLng }
   | { tipo: 'puntoCero'; hasta: LatLng }
-  | { tipo: 'eliminar'; que: 'poligono' | 'track' | 'marcador'; id: string; nombre: string; titulo: string; extra: string };
+  | { tipo: 'eliminar'; que: 'poligono' | 'track' | 'marcador'; id: string; nombre: string; titulo: string; extra: string; pedirMotivo?: boolean };
 
 const LEYENDA: ItemLeyenda[] = [
   { tipo: 'linea', color: '#2563EB', etiqueta: 'Track GPX (color del grupo)' },
@@ -319,10 +319,10 @@ export default function Mapa() {
       abrirGlobo('marcador', r.marcador.id, [r.marcador.lat, r.marcador.lng]);
     } catch (err) { avisar(mensaje(err, 'No se pudo reubicar.'), true); } finally { setGuardandoModo(false); }
   };
-  const confirmarEliminar = async (m: Extract<ModalMapa, { tipo: 'eliminar' }>) => {
+  const confirmarEliminar = async (m: Extract<ModalMapa, { tipo: 'eliminar' }>, motivo?: string) => {
     if (m.que === 'poligono') await poligonosApi.eliminar(opId, m.id);
     if (m.que === 'track') await tracksApi.eliminar(opId, m.id);
-    if (m.que === 'marcador') await marcadoresApi.eliminar(opId, m.id);
+    if (m.que === 'marcador') await marcadoresApi.eliminar(opId, m.id, motivo);
     setModal(null); setSel(null); setGlobo(null);
     await despues(`${m.nombre} eliminado del mapa`);
   };
@@ -548,7 +548,11 @@ export default function Mapa() {
         {selMk && selMk.clase !== 'INSTALACION' && (
           <PanelMarcador m={selMk} soloLectura={soloLectura} onClose={() => setSel(null)}
             onGuardar={async d => { await marcadoresApi.actualizar(opId, selMk.id, d); await despues(d.clase === 'HALLAZGO' ? 'Marcado como hallazgo' : 'Marcador actualizado'); }}
-            onEliminar={() => setModal({ tipo: 'eliminar', que: 'marcador', id: selMk.id, nombre: selMk.nombre, titulo: 'punto de interés', extra: 'Se quita del mapa con sus fotos.' })}
+            onEliminar={() => setModal(selMk.clase === 'HALLAZGO'
+              // Hallazgo (16/11, migración 037): con motivo; sigue en el informe del operativo.
+              ? { tipo: 'eliminar', que: 'marcador', id: selMk.id, nombre: selMk.nombre, titulo: 'hallazgo', pedirMotivo: true,
+                  extra: 'Se quita del mapa, pero sigue en el informe del operativo, marcado como eliminado, con sus fotos y el motivo.' }
+              : { tipo: 'eliminar', que: 'marcador', id: selMk.id, nombre: selMk.nombre, titulo: 'punto de interés', extra: 'Se quita del mapa con sus fotos.' })}
             onSubirFotos={async f => { await marcadoresApi.subirFotos(opId, selMk.id, f); await despues(f.length === 1 ? 'Foto agregada' : `${f.length} fotos agregadas`); }}
             onQuitarFoto={async fid => { await marcadoresApi.eliminarFoto(opId, selMk.id, fid); await despues('Foto quitada'); }} />
         )}
@@ -612,7 +616,8 @@ export default function Mapa() {
           }} />
       )}
       {modal?.tipo === 'eliminar' && (
-        <ModalEliminar tipo={modal.titulo} nombre={modal.nombre} extra={modal.extra} onCancel={() => setModal(null)} onConfirmar={() => confirmarEliminar(modal)} />
+        <ModalEliminar tipo={modal.titulo} nombre={modal.nombre} extra={modal.extra} pedirMotivo={modal.pedirMotivo}
+          onCancel={() => setModal(null)} onConfirmar={motivo => confirmarEliminar(modal, motivo)} />
       )}
     </div>
   );

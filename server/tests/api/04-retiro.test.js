@@ -52,9 +52,9 @@ describe('Retiro de un agente en el terreno (CU-28)', () => {
     assert.equal(r.json.grupo.liderId, ctx.agentes.bravo.id);
   });
 
-  test('CU-28 · el retirado queda Replegado y sin grupo, y su período se cierra con el motivo', async () => {
+  test('CU-28 · el retirado queda No disponible y sin grupo (16/11), y su período se cierra con el motivo', async () => {
     const a = await ctx.refrescar();
-    assert.equal(a.alfa.estado, 'REPLEGADO');
+    assert.equal(a.alfa.estado, 'NO_DISPONIBLE');
     assert.equal(a.alfa.grupoId, null);
     const { rows } = await ctx.query(
       `SELECT fecha_fin, motivo_salida FROM agentes_grupo_historial

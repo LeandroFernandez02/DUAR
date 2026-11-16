@@ -294,7 +294,7 @@ export async function generarPdf(d, meta) {
   }
 
   /* 4 · Hallazgos */
-  add({ text: '', pageBreak: 'before' }, seccion('Hallazgos', 'Un hallazgo no se puede eliminar ni cambiar de tipo en el sistema: lo que figura acá es todo lo registrado.'));
+  add({ text: '', pageBreak: 'before' }, seccion('Hallazgos', 'Todo lo registrado como hallazgo. Un hallazgo no cambia de tipo; si se eliminó del mapa, sigue figurando acá, marcado como eliminado, con quién lo hizo, cuándo y por qué.'));
   if (!d.hallazgos.length) add(vacio('No se registraron hallazgos.'));
   d.hallazgos.forEach((h, i) => {
     add({
@@ -305,7 +305,11 @@ export async function generarPdf(d, meta) {
             { width: 26, table: { widths: [18], body: [[{ text: `H${i + 1}`, color: '#ffffff', bold: true, fontSize: 8, alignment: 'center' }]] },
               layout: { fillColor: () => C.duar, hLineWidth: () => 0, vLineWidth: () => 0, paddingTop: () => 4, paddingBottom: () => 4, paddingLeft: () => 0, paddingRight: () => 0 } },
             { width: '*', stack: [
-              { text: h.nombre, font: 'InterNegra', fontSize: 9.5, margin: [0, 0, 0, 2] },
+              { text: h.eliminadoEn ? [h.nombre, { text: '  ELIMINADO', color: '#b91c1c', fontSize: 7.5 }] : h.nombre, font: 'InterNegra', fontSize: 9.5, margin: [0, 0, 0, 2] },
+              ...(h.eliminadoEn ? [{
+                text: `Eliminado del mapa el ${fechaHora(h.eliminadoEn)} por ${h.eliminadoPor ?? '—'}. Motivo: ${h.motivoEliminacion ?? '—'}`,
+                color: '#b91c1c', fontSize: 7.8, margin: [0, 0, 0, 3],
+              }] : []),
               ...(h.descripcion ? [{ text: h.descripcion, margin: [0, 0, 0, 2] }] : []),
               ...(h.detalle ? [{ text: h.detalle, color: C.tenue, margin: [0, 0, 0, 3] }] : []),
               ficha([
@@ -427,13 +431,15 @@ export async function generarPdf(d, meta) {
   add(d.bajasPersonal.length
     ? tabla(['Hora', 'Agente', 'Qué pasó', 'Motivo', 'Registró'], d.bajasPersonal.map(b => [
       mono(fechaCorta(b.ocurridoEn)), b.agente,
-      b.accion === 'retiro' ? `Retirado del grupo ${b.grupo ?? ''}`.trim() + ' y vuelve a la base' : 'Deja el operativo',
+      b.accion === 'retiro'
+        ? `Retirado del grupo ${b.grupo ?? ''}`.trim() + (b.estadoNuevo === 'REPLEGADO' ? ' y vuelve a la base' : ' y queda No disponible')
+        : 'Deja el operativo',
       b.motivo || '—', b.registradoPor ?? '—',
     ]), [58, 100, '*', 130, 80])
     : vacio('No hubo bajas de personal.'));
 
   /* 11 · Elementos del mapa dados de baja: una baja es un registro, nada se borra de verdad */
-  add(seccion('Elementos dados de baja', 'Polígonos, tracks, puntos de interés e instalaciones que se quitaron del mapa. Quedan registrados con quién los quitó y cuándo.'));
+  add(seccion('Elementos dados de baja', 'Polígonos, tracks, puntos de interés, hallazgos e instalaciones que se quitaron del mapa. Quedan registrados con quién los quitó, cuándo y, si se indicó, por qué.'));
   add(d.bajas.length
     ? tabla(['Hora', 'Elemento', 'Motivo', 'Registró'], d.bajas.map(b => [
       mono(fechaCorta(b.eliminadoEn)), `${b.clase} «${b.nombre}»`, b.motivo || '—', b.eliminadoPor ?? '—',

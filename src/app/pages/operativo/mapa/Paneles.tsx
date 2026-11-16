@@ -5,7 +5,7 @@
  *   · Punto de interés / hallazgo (CU-36, fotos) · Instalación SCI (CU-36)
  *   · Punto Cero (CU-37, con su historial)
  */
-import { useEffect, useRef, useState, type ReactNode } from 'react';
+import { useEffect, useLayoutEffect, useRef, useState, type ReactNode } from 'react';
 import {
   Pentagon, Pencil, Plus, Save, Spline, Trash2, X, Repeat, Users, Dog, UserRound, Info, Route, Download, Move, Crosshair,
   ImagePlus, Loader2, LogIn, LogOut, Upload, FilePen, History, TriangleAlert,
@@ -234,7 +234,7 @@ function HistorialPoligono({ detalle, agenteDe }: { detalle: PoligonoDetalleApi 
           </div>
         ) : <span style={{ fontSize: 'calc(12px * var(--escala-texto))', color: 'var(--muted-foreground)' }}>Ningún grupo trabajó todavía en este polígono.</span>}
       </div>
-      <div style={{ display: 'flex', flexDirection: 'column' }}>
+      <ListaConScroll>
         {detalle.historial.map((e, i) => {
           const c = e.grupoColor ?? '#64748b';
           const I = ICONO_EVENTO[e.tipo] ?? LogOut;
@@ -249,7 +249,31 @@ function HistorialPoligono({ detalle, agenteDe }: { detalle: PoligonoDetalleApi 
             </div>
           );
         })}
+      </ListaConScroll>
+    </div>
+  );
+}
+
+/**
+ * Historial con scroll propio (16/11): con muchos eventos el panel se volvía un scroll infinito y
+ * había que bajar mucho para llegar a las notas y los tracks. La lista tiene una altura máxima y se
+ * desplaza sola; el resto del panel sigue con su scroll. Abajo, un degradado avisa que hay más.
+ */
+const HISTORIAL_ALTO_MAX = 280;
+function ListaConScroll({ children }: { children: ReactNode }) {
+  const ref = useRef<HTMLDivElement>(null);
+  const [mas, setMas] = useState(false);
+  const medir = () => { const el = ref.current; if (el) setMas(el.scrollHeight - el.scrollTop - el.clientHeight > 4); };
+  useLayoutEffect(medir);
+  return (
+    <div style={{ position: 'relative' }}>
+      <div ref={ref} onScroll={medir} tabIndex={0} aria-label="Historial del polígono"
+        style={{ display: 'flex', flexDirection: 'column', maxHeight: HISTORIAL_ALTO_MAX, overflowY: 'auto', overscrollBehavior: 'contain', paddingRight: 4, outline: 'none' }}>
+        {children}
       </div>
+      {mas && (
+        <span aria-hidden style={{ position: 'absolute', left: 0, right: 0, bottom: 0, height: 28, pointerEvents: 'none', background: 'linear-gradient(to bottom, transparent, var(--card))' }} />
+      )}
     </div>
   );
 }
@@ -394,7 +418,7 @@ export function PanelMarcador({ m, soloLectura, onClose, onGuardar, onEliminar, 
     <PanelDetalle chip={<Simbolo tipo={tipo} variante="chip" />} titulo={nombre || 'Sin nombre'} insignia={pastilla(c.label, c.color)} onClose={onClose} sub={fmtCoord(m.lat, m.lng)}
       pie={soloLectura ? undefined : <>
         <Boton tam="md" icono={Save} disabled={!sucio || !nombre.trim() || g.guardando} onClick={() => g.guardar(() => onGuardar(cambios))} style={{ flex: 1 }}>{g.guardando ? 'Guardando…' : 'Guardar cambios'}</Boton>
-        {!hallazgo && <Boton variante="ghost" icono={Trash2} onClick={onEliminar} style={{ color: '#dc2626' }}>Eliminar</Boton>}
+        <Boton variante="ghost" icono={Trash2} onClick={onEliminar} style={{ color: '#dc2626' }}>Eliminar</Boton>
       </>}>
       <div style={{ display: 'flex', flexDirection: 'column', gap: 8 }}>
         <p style={rotulo}>Tipo</p>
@@ -413,7 +437,7 @@ export function PanelMarcador({ m, soloLectura, onClose, onGuardar, onEliminar, 
           })}
         </div>
         {!hallazgo && clase === 'HALLAZGO' && (
-          <p style={{ margin: 0, display: 'flex', gap: 6, fontSize: 'calc(11.5px * var(--escala-texto))', color: 'color-mix(in srgb, #fcd34d var(--tinte-oscuro, 0%), #92400e)', lineHeight: 1.45 }}><TriangleAlert size={13} style={{ flexShrink: 0, marginTop: 1 }} />Pasar a hallazgo no se deshace: un hallazgo es evidencia y no se elimina.</p>
+          <p style={{ margin: 0, display: 'flex', gap: 6, fontSize: 'calc(11.5px * var(--escala-texto))', color: 'color-mix(in srgb, #fcd34d var(--tinte-oscuro, 0%), #92400e)', lineHeight: 1.45 }}><TriangleAlert size={13} style={{ flexShrink: 0, marginTop: 1 }} />Pasar a hallazgo no se deshace: un hallazgo es evidencia y no vuelve a ser punto de interés. Si se elimina, pide motivo y sigue en el informe.</p>
         )}
       </div>
       {/* Cargado por el Líder desde el portal (03/11): grupo, horas, precisión y si quedó fuera del polígono. */}

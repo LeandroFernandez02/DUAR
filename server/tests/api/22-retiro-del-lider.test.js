@@ -1,6 +1,6 @@
 /**
  * Pedido del 15/11 · CU-28 desde el portal: el Líder hace la baja de contingencia de un integrante
- * de su grupo, con las mismas reglas que el coordinador. El retirado queda Replegado y sin grupo, y
+ * de su grupo, con las mismas reglas que el coordinador. El retirado queda No disponible y sin grupo, y
  * el evento queda como informado por el Líder (PORTAL_LIDER). El Líder no se retira a sí mismo.
  */
 import { describe, test, before, after } from 'node:test';
@@ -42,12 +42,12 @@ describe('15/11 · el Líder retira a un integrante de su grupo desde el portal 
     motivo(await ctx.api('POST', '/mi-grupo/retirar', { agenteOperativoId: ctx.agentes.charlie.id, motivo: '  ' }, token('alfa')), 400, 'motivo_requerido');
   });
 
-  test('el Líder retira a un integrante: queda Replegado, sin grupo, y el evento lo informa el Líder', async () => {
+  test('el Líder retira a un integrante: queda No disponible (16/11), sin grupo, y el evento lo informa el Líder', async () => {
     const r = await retirar('charlie', 'alfa');
     motivo(r, 200);
     assert.equal(r.json.grupo.integrantes.length, 2);
     await ctx.refrescar();
-    assert.equal(ctx.agentes.charlie.estado, 'REPLEGADO');
+    assert.equal(ctx.agentes.charlie.estado, 'NO_DISPONIBLE');
     assert.equal(ctx.agentes.charlie.grupoId, null);
     const ev = (await ctx.query(
       `SELECT fuente::text AS fuente, motivo FROM eventos_estado

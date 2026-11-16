@@ -795,8 +795,9 @@ export async function moverAgente(operativoId, { agenteOperativoId, destinoGrupo
 
 /**
  * Baja parcial en el terreno (grupo DESPLEGADO, RASTRILLANDO o REPLEGADO, con
- * al menos 2 integrantes). El retirado queda REPLEGADO y sin grupo: vuelve a la
- * base, y al llegar él o el coordinador lo marca Disponible o No disponible.
+ * al menos 2 integrantes). El retirado queda NO DISPONIBLE y sin grupo (decisión del 16/11:
+ * antes quedaba Replegado). Se lo saca por una lesión o algo parecido; cuando está listo para
+ * rastrillar de nuevo, él desde su portal o el coordinador lo pasan a Disponible.
  *  · Sucesión de mando obligatoria si sale el Líder (4.1), con la regla de
  *    Líder de la clase del grupo.
  *  · Binomio (5.1), sólo en los de rastrillaje: si quedaría exactamente UNO
@@ -848,7 +849,7 @@ export async function extraerAgente(operativoId, grupoId,
     }
 
     await client.query(
-      `UPDATE agentes_operativo SET grupo_id = NULL, estado = 'REPLEGADO', estado_actualizado_en = CURRENT_TIMESTAMP WHERE id = $1`,
+      `UPDATE agentes_operativo SET grupo_id = NULL, estado = 'NO_DISPONIBLE', estado_actualizado_en = CURRENT_TIMESTAMP WHERE id = $1`,
       [agente.id]
     );
     await client.query(
@@ -861,7 +862,7 @@ export async function extraerAgente(operativoId, grupoId,
     );
     await Evento.registrar(client, {
       operativoId, entidad: 'AGENTE', grupoId, agenteOperativoId: agente.id, accion: 'retiro',
-      estadoAnterior: agente.estado, estadoNuevo: 'REPLEGADO', registradoPor: usuarioId,
+      estadoAnterior: agente.estado, estadoNuevo: 'NO_DISPONIBLE', registradoPor: usuarioId,
       fuente, motivo,
     });
   });

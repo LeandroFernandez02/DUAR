@@ -1,6 +1,6 @@
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import { useLocation, useOutletContext } from 'react-router';
-import { UserPlus, Users, Search, X, Check, Pencil, ShieldCheck, AlertTriangle, Loader2, History, Plus } from 'lucide-react';
+import { UserPlus, Users, Search, X, Check, Pencil, ShieldCheck, AlertTriangle, Loader2, History, Plus, RefreshCw } from 'lucide-react';
 import { OperativoOutletContext } from './OperativoLayout';
 import {
   agentesOperativoApi, gruposApi, usuariosApi, ApiError,
@@ -121,6 +121,21 @@ export default function Agentes() {
     }, INTERVALO_MS);
     return () => clearInterval(id);
   }, [pestana, operativo.id]);
+
+  // Actualizar a mano (16/11): sin esperar la próxima consulta automática, y sin vaciar la lista.
+  const [actualizando, setActualizando] = useState(false);
+  const actualizarAhora = async () => {
+    if (actualizando) return;
+    setActualizando(true);
+    try {
+      const { personal } = await agentesOperativoApi.listar(operativo.id);
+      setAgentes(personal);
+    } catch {
+      aviso.error('No se pudo actualizar el listado. Revisá la conexión e intentá de nuevo.');
+    } finally {
+      setActualizando(false);
+    }
+  };
 
   // ── Búsqueda + filtros + vista ──
   const [vista, setVista] = useVistaListado('agentes', usuario?.id);
@@ -302,6 +317,12 @@ export default function Agentes() {
             <div className="flex items-center gap-3" style={{ padding: '16px 16px 12px' }}>
               <Buscador value={query} onChange={setQuery} placeholder="Buscar por nombre, DNI, institución, especialidad..." />
               <SelectorVista value={vista} onChange={setVista} />
+              <button type="button" onClick={actualizarAhora} disabled={actualizando}
+                title="Actualizar listado" aria-label={actualizando ? 'Actualizando listado' : 'Actualizar listado'}
+                className="flex items-center justify-center shrink-0"
+                style={{ width: 38, height: 38, borderRadius: 'var(--radius-input)', border: '1px solid var(--border)', background: 'var(--muted)', color: 'var(--muted-foreground)', cursor: actualizando ? 'default' : 'pointer' }}>
+                <RefreshCw size={15} className={actualizando ? 'animate-spin' : undefined} />
+              </button>
             </div>
             <BarraFiltros>
               <FiltroDesplegable<EstadoOperativoAgente> titulo="Estado" seleccion={estadosSel} onCambiar={setEstadosSel} opciones={

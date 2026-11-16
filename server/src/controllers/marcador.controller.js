@@ -19,6 +19,7 @@ const ENTIDAD = 'marcadores';
 const ENTIDAD_FOTOS = 'marcador_fotos';
 const RE_UUID = /^[0-9a-f]{8}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{4}-[0-9a-f]{12}$/i;
 const LARGOS = { nombre: 120, descripcion: 300, detalle: 4000, responsable: 120, notas: 2000 };
+const MOTIVO_BAJA_MAX = 300;   // motivo de la baja (037): obligatorio en un hallazgo
 const COORDENADAS_INVALIDAS = 'Ingresá coordenadas válidas en grados decimales (latitud entre −90 y 90, longitud entre −180 y 180).';
 
 const esUuid = (v) => typeof v === 'string' && RE_UUID.test(v);
@@ -165,10 +166,15 @@ export async function eliminar(req, res, next) {
   try {
     if (!esUuid(req.params.marcadorId)) return noEncontrado(res);
     if (!(await operativoEditable(req.params.id, res))) return;
+    // Motivo (16/11, migración 037): obligatorio para un hallazgo; opcional para el resto.
+    const motivo = typeof req.body?.motivo === 'string' ? req.body.motivo.trim() : '';
+    if (motivo && (motivo.length < 3 || motivo.length > MOTIVO_BAJA_MAX)) {
+      return invalido(res, `El motivo tiene que tener entre 3 y ${MOTIVO_BAJA_MAX} caracteres.`, 'motivo_invalido');
+    }
     const previo = await Marcador.detalle(req.params.id, req.params.marcadorId);
     if (!previo) return noEncontrado(res);
-    await Marcador.eliminar(req.params.id, req.params.marcadorId, req.usuario.id);
-    await auditar(req, Auditoria.ACCION.ELIMINAR, ENTIDAD, previo.id, previo, { eliminado: true });
+    await Marcador.eliminar(req.params.id, req.params.marcadorId, req.usuario.id, motivo || null);
+    await auditar(req, Auditoria.ACCION.ELIMINAR, ENTIDAD, previo.id, previo, { eliminado: true, ...(motivo ? { motivo } : {}) });
     res.status(204).end();
   } catch (err) { next(err); }
 }

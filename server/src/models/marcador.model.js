@@ -164,16 +164,19 @@ export async function actualizar(operativoId, marcadorId, cambios) {
   });
 }
 
-/** CU-39: baja con registro. Un hallazgo no se elimina. */
-export async function eliminar(operativoId, marcadorId, usuarioId) {
+/**
+ * CU-39: baja con registro (la fila y las fotos quedan). Desde el 16/11 (migración 037) también un
+ * hallazgo, pero sólo con motivo: sale del mapa y el informe lo sigue mostrando como eliminado.
+ */
+export async function eliminar(operativoId, marcadorId, usuarioId, motivo = null) {
   return withTransaction(async (client) => {
     const previo = await bloquear(client, operativoId, marcadorId);
-    if (previo.clase === 'HALLAZGO') {
-      throw new ReglaError(409, 'hallazgo_no_se_elimina', 'Un hallazgo es evidencia: no se elimina, sólo se corrigen sus datos.');
+    if (previo.clase === 'HALLAZGO' && !motivo) {
+      throw new ReglaError(400, 'motivo_requerido', 'Para eliminar un hallazgo, indicá el motivo.');
     }
     await client.query(
-      `UPDATE marcadores SET eliminado_en = CURRENT_TIMESTAMP, eliminado_por = $2 WHERE id = $1`,
-      [marcadorId, usuarioId]
+      `UPDATE marcadores SET eliminado_en = CURRENT_TIMESTAMP, eliminado_por = $2, motivo_eliminacion = $3 WHERE id = $1`,
+      [marcadorId, usuarioId, motivo]
     );
     return previo;
   });

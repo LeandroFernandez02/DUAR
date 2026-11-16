@@ -113,7 +113,7 @@ const MOTIVO_RETIRO_MAX = 100;
  * integrante de su grupo en el terreno (baja de contingencia), con las mismas reglas que el
  * coordinador: grupo Desplegado, Rastrillando o Replegado, al menos 2 integrantes, motivo, y en
  * uno de rastrillaje confirmar el riesgo si queda una sola persona rastrillando. El retirado queda
- * Replegado y sin grupo. El Líder no se retira a sí mismo: eso lo hace el coordinador, que elige
+ * No disponible y sin grupo (16/11). El Líder no se retira a sí mismo: eso lo hace el coordinador, que elige
  * al nuevo Líder.
  * body: { agenteOperativoId, motivo, riesgoAceptado }
  */

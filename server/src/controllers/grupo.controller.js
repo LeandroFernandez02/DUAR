@@ -213,7 +213,7 @@ export async function mover(req, res, next) {
 /**
  * POST /api/operativos/:id/grupos/:grupoId/extraer — CU-28.
  * body: { agenteOperativoId, motivo, nuevoLiderId?, riesgoAceptado? }
- * El retirado queda siempre REPLEGADO y sin grupo (decisión 21/09 y 24/09).
+ * El retirado queda No disponible y sin grupo (decisión del 16/11; antes, Replegado).
  */
 export async function extraer(req, res, next) {
   try {

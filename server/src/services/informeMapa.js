@@ -109,7 +109,7 @@ export async function mapaSvg({ poligonos, tracks, marcadores, hallazgos, radios
   poligonos.forEach(p => anillos(p.geom).forEach(a => pts.push(...a)));
   tracks.forEach(t => lineas(t.geom).forEach(l => pts.push(...l)));
   marcadores.forEach(m => pts.push([m.lng, m.lat]));
-  hallazgos.forEach(h => pts.push([h.lng, h.lat]));
+  hallazgos.forEach(h => { if (!h.eliminadoEn) pts.push([h.lng, h.lat]); });
   puntoCeroAnteriores.forEach(p => pts.push([p.lng, p.lat]));
   if (puntoCero) pts.push([puntoCero.lng, puntoCero.lat]);
   if (!pts.length) return null;
@@ -211,6 +211,7 @@ export async function mapaSvg({ poligonos, tracks, marcadores, hallazgos, radios
     partes.push(rotulo(x - 8, y - 7, 'Punto Cero', { tam: 7.5, ancla: 'end', relleno: ROJO_OSCURO }));
   }
   hallazgos.forEach((h, i) => {
+    if (h.eliminadoEn) return;   // eliminado (037): no va en el mapa; el número H sigue siendo el de la lista
     const [x, y] = P(h.lng, h.lat);
     partes.push(`<circle cx="${f(x)}" cy="${f(y)}" r="7" fill="${VERDE}" stroke="${BLANCO}" stroke-width="1.2"/>`);
     partes.push(`<text x="${f(x)}" y="${f(y + 2.4)}" font-size="6.5" font-weight="bold" text-anchor="middle" fill="${BLANCO}">H${i + 1}</text>`);
