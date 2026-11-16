@@ -7,12 +7,15 @@
  * El Líder del grupo, además (pedido del 03/11), marca puntos de interés y hallazgos en su sector,
  * con fotos, y ve los que ya hay en el polígono (en la lista y en el mapa). Lo que marcó sin señal
  * queda «Pendiente de envío» hasta que vuelve la conexión. Los demás integrantes no ven esta parte.
+ *
+ * En el mapa (15/11), el agente y el Líder tocan un lugar: queda un punto chico y un cartel flotante
+ * con sus coordenadas, que se copian al tocarlo.
  */
 import { useCallback, useEffect, useMemo, useRef, useState } from 'react';
 import L from 'leaflet';
 import 'leaflet/dist/leaflet.css';
 import {
-  ChevronDown, ChevronUp, List, Map as MapaIcono, Pentagon, Plus, CloudOff, AlertCircle, Camera, Check, X, Trash2,
+  ChevronDown, ChevronUp, List, Map as MapaIcono, Pentagon, Plus, CloudOff, AlertCircle, Camera, Check, Copy, X, Trash2,
 } from 'lucide-react';
 import { portalApi, type MarcadorApi, type MiSectorApi } from '../../services/api';
 import { useApp } from '../../context/AppContext';
@@ -36,9 +39,71 @@ const area = (m2: number) => (m2 >= 1e6
   ? `${(m2 / 1e6).toLocaleString('es-AR', { maximumFractionDigits: 1 })} km²`
   : `${(m2 / 1e4).toLocaleString('es-AR', { maximumFractionDigits: 1 })} ha`);
 
+/** "-31.990500, -64.949500": el formato que aceptan Google Maps, OsmAnd, Wikiloc o un GPS al pegarlo. */
+const textoCoordenada = ([lat, lng]: [number, number]) => `${lat.toFixed(6)}, ${lng.toFixed(6)}`;
+
+async function copiar(texto: string): Promise<boolean> {
+  try {
+    await navigator.clipboard.writeText(texto);
+    return true;
+  } catch {
+    // Navegadores viejos o sin permiso de portapapeles.
+    const t = document.createElement('textarea');
+    t.value = texto;
+    t.setAttribute('readonly', '');
+    t.style.position = 'fixed';
+    t.style.opacity = '0';
+    document.body.appendChild(t);
+    t.select();
+    const ok = document.execCommand('copy');
+    t.remove();
+    return ok;
+  }
+}
+
+/**
+ * Pedido del 15/11: el agente y el Líder tocan el mapa y queda un punto chico donde tocaron, con un
+ * cartel flotante con sus coordenadas; al tocar el cartel se copian, para usarlas en otro mapa o GPS.
+ * Sin explicaciones en pantalla: el punto y el cartel aparecen solos.
+ */
+function CartelCoordenada({ punto, onCerrar }: { punto: [number, number]; onCerrar: () => void }) {
+  const [copiado, setCopiado] = useState(false);
+  const texto = textoCoordenada(punto);
+  useEffect(() => {
+    setCopiado(false);
+  }, [texto]);
+  useEffect(() => {
+    if (!copiado) return;
+    const t = setTimeout(() => setCopiado(false), 2000);
+    return () => clearTimeout(t);
+  }, [copiado]);
+  return (
+    <div className="flex items-stretch" role="group" aria-label="Coordenadas del punto"
+      style={{ position: 'absolute', top: 8, right: 8, left: 52, zIndex: 1000, justifyContent: 'flex-end', pointerEvents: 'none' }}>
+      <div className="flex items-stretch" style={{ pointerEvents: 'auto', maxWidth: '100%', borderRadius: 'var(--radius-md)', background: 'var(--card)', border: '1px solid var(--border)', boxShadow: '0 4px 14px rgba(0,0,0,0.25)', overflow: 'hidden' }}>
+        <button type="button" onClick={async () => setCopiado(await copiar(texto))}
+          aria-label={copiado ? `Copiado: ${texto}` : `Copiar ${texto}`}
+          className="flex items-center gap-2 min-w-0"
+          style={{ minHeight: 44, padding: '0 12px', background: 'none', border: 'none', cursor: 'pointer', color: 'var(--foreground)', fontFamily: 'var(--font-family-mono, monospace)', fontSize: 'calc(12.5px * var(--escala-texto))' }}>
+          <span className="truncate">{texto}</span>
+          {copiado
+            ? <Check size={14} style={{ color: '#16a34a', flexShrink: 0 }} />
+            : <Copy size={14} style={{ color: 'var(--muted-foreground)', flexShrink: 0 }} />}
+        </button>
+        <button type="button" onClick={onCerrar} aria-label="Cerrar"
+          style={{ width: 40, minHeight: 44, display: 'flex', alignItems: 'center', justifyContent: 'center', background: 'none', border: 'none', borderLeft: '1px solid var(--border)', cursor: 'pointer', color: 'var(--muted-foreground)' }}>
+          <X size={14} />
+        </button>
+      </div>
+    </div>
+  );
+}
+
 function MapaSector({ pts, marcadores = [] }: { pts: [number, number][]; marcadores?: MarcadorApi[] }) {
   const el = useRef<HTMLDivElement>(null);
   const capa = useRef<L.LayerGroup | null>(null);
+  const capaPunto = useRef<L.LayerGroup | null>(null);
+  const [punto, setPunto] = useState<[number, number] | null>(null);
   useEffect(() => {
     if (!el.current || pts.length < 3) return;
     const mapa = L.map(el.current, { zoomControl: true, attributionControl: true, scrollWheelZoom: false });
@@ -47,8 +112,20 @@ function MapaSector({ pts, marcadores = [] }: { pts: [number, number][]; marcado
     const forma = L.polygon(pts, { color: '#00c2b3', weight: 2.5, fillOpacity: 0.18 }).addTo(mapa);
     mapa.fitBounds(forma.getBounds(), { padding: [16, 16] });
     capa.current = L.layerGroup().addTo(mapa);
-    return () => { mapa.remove(); capa.current = null; };
+    capaPunto.current = L.layerGroup().addTo(mapa);
+    // Tocar el mapa (también adentro del polígono) marca el punto.
+    mapa.on('click', (e: L.LeafletMouseEvent) => setPunto([e.latlng.lat, e.latlng.lng]));
+    return () => { mapa.remove(); capa.current = null; capaPunto.current = null; setPunto(null); };
   }, [pts]);
+  // El punto tocado: chico, para no tapar la imagen, y con borde oscuro para verse sobre el satélite.
+  useEffect(() => {
+    const c = capaPunto.current;
+    if (!c) return;
+    c.clearLayers();
+    if (punto) {
+      L.circleMarker(punto, { radius: 4, color: '#111827', weight: 1.5, fillColor: '#facc15', fillOpacity: 1, interactive: false }).addTo(c);
+    }
+  }, [punto]);
   // Los puntos del sector (sólo para el Líder): se redibujan los marcadores, no el mapa.
   useEffect(() => {
     const c = capa.current;
@@ -60,7 +137,12 @@ function MapaSector({ pts, marcadores = [] }: { pts: [number, number][]; marcado
         .bindTooltip(m.nombre).addTo(c);
     }
   }, [marcadores, pts]);
-  return <div ref={el} style={{ height: 240, borderRadius: 'var(--radius-md)', overflow: 'hidden', border: '1px solid var(--border)', zIndex: 0 }} aria-label="Mapa del polígono" />;
+  return (
+    <div style={{ position: 'relative' }}>
+      <div ref={el} style={{ height: 240, borderRadius: 'var(--radius-md)', overflow: 'hidden', border: '1px solid var(--border)', zIndex: 0 }} aria-label="Mapa del polígono" />
+      {punto && <CartelCoordenada punto={punto} onCerrar={() => setPunto(null)} />}
+    </div>
+  );
 }
 
 function BotonDesplegar({ icono: I, abierto, onClick, children }: { icono: typeof List; abierto: boolean; onClick: () => void; children: string }) {

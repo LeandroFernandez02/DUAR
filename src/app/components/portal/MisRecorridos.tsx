@@ -24,6 +24,8 @@ import { horaCorta } from '../../utils/tiempo';
 import { tarjetaBase } from '../shared/Listados';
 
 const NOTAS_MAX = 2000;
+/** Igual que el panel del grupo: el estado del terreno cambia por radio o desde el portal del Líder. */
+const INTERVALO_MS = 10_000;
 
 const tarjeta = tarjetaBase;
 const rotulo = {
@@ -90,6 +92,19 @@ export default function MisRecorridos() {
   const otros = integrantes.filter(i => i.id !== miId);
 
   useEffect(() => { cargar(); }, [cargar]);
+  // Se vuelve a mirar el estado cada tanto (QA en celular, 15/11): antes se miraba una sola vez al abrir
+  // el portal, y si el grupo salía al terreno después, el botón de carga seguía oculto.
+  useEffect(() => {
+    const id = setInterval(() => { if (document.visibilityState === 'visible') cargar(); }, INTERVALO_MS);
+    const alVolver = () => { if (document.visibilityState === 'visible') cargar(); };
+    document.addEventListener('visibilitychange', alVolver);
+    window.addEventListener('online', cargar);
+    return () => {
+      clearInterval(id);
+      document.removeEventListener('visibilitychange', alVolver);
+      window.removeEventListener('online', cargar);
+    };
+  }, [cargar]);
 
   const mensaje = (err: unknown) =>
     err instanceof ApiError && err.status < 500 ? err.message : 'No se pudo enviar el archivo: revisá la conexión e intentá de nuevo.';
