@@ -113,7 +113,7 @@ export function BotonIcono({ icono: I, title, onClick, tono, disabled }: { icono
   );
 }
 
-/** Dato rotulado de las tarjetas (DNI, Dotación, Especialidad…). */
+/** Dato rotulado de las tarjetas (DNI, Dependencia, Especialidad…). */
 export function Dato({ titulo, children }: { titulo: string; children: ReactNode }) {
   return (
     <div className="min-w-0">

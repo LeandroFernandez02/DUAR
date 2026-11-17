@@ -42,6 +42,16 @@ const ORIGENES = new Set([
 ].filter(Boolean).map(o => o.replace(/\/$/, '')));
 app.use(cors({ origin: (origen, cb) => cb(null, !origen || ORIGENES.has(origen)) }));
 app.use(express.json({ limit: '5mb' }));
+// TRANSITORIO (17/11, migración 038): «dotación» pasó a llamarse «dependencia». Un celular con la pantalla
+// vieja guardada todavía manda dotacionId: se toma como dependenciaId para no perder el dato en silencio.
+// Borrar junto con el alias de catalogo.controller cuando ya no queden clientes viejos (unas semanas).
+app.use((req, _res, next) => {
+  const b = req.body;
+  if (b && typeof b === 'object' && !Array.isArray(b) && b.dotacionId !== undefined && b.dependenciaId === undefined) {
+    b.dependenciaId = b.dotacionId;
+  }
+  next();
+});
 app.set('trust proxy', true);            // para registrar la IP real en las sesiones
 
 /** Chequeo de salud: confirma que la API responde y que la base está viva. */

@@ -138,12 +138,12 @@ export interface Usuario {
   institucionId?: string;
   /** Dependencia dentro de esa institución (en pantalla "Dependencia"). Con
    *  Policía · DUAR, `esDuar()` lo habilita a ser Líder. */
-  dotacionId?: string;
+  dependenciaId?: string;
   /**
    * Especialidad TÉCNICA del perfil global (FK a cat_especialidades).
    * `especialidad` (el slug) sigue existiendo para el override TÁCTICO en
    * AgenteOperativo (Decisión C); acá, a nivel de perfil, se referencia por id
-   * — mismo patrón que institucionId/dotacionId — porque viene de la API real.
+   * — mismo patrón que institucionId/dependenciaId — porque viene de la API real.
    */
   especialidadId?: string;
   especialidad?: Especialidad;
@@ -352,7 +352,7 @@ export const initialData: AppData = {
       rol: 'coordinador',
       fechaNacimiento: '1984-06-14',
       telefono: '351-4201234',
-      institucionId: '80ac6de6-9133-45f1-85c3-d3099894a45a', dotacionId: 'c4816e1e-a8df-4c71-a7f5-55575a443450', // Policía · DUAR
+      institucionId: '80ac6de6-9133-45f1-85c3-d3099894a45a', dependenciaId: 'c4816e1e-a8df-4c71-a7f5-55575a443450', // Policía · DUAR
       estado: 'activo',
       createdAt: '2025-01-15',
       emailConfirmado: true,
@@ -370,7 +370,7 @@ export const initialData: AppData = {
       especialidad: 'caminante',
       grupo_sanguineo: 'A+',
       alergias: 'Ninguna',
-      institucionId: '80ac6de6-9133-45f1-85c3-d3099894a45a', dotacionId: 'c4816e1e-a8df-4c71-a7f5-55575a443450', // Policía · DUAR
+      institucionId: '80ac6de6-9133-45f1-85c3-d3099894a45a', dependenciaId: 'c4816e1e-a8df-4c71-a7f5-55575a443450', // Policía · DUAR
       estado: 'activo',
       createdAt: '2025-02-01',
       emailConfirmado: true,
@@ -405,7 +405,7 @@ export const initialData: AppData = {
       telefono: '351-5553003',
       grupo_sanguineo: 'B-',
       alergias: 'Ninguna',
-      institucionId: '80ac6de6-9133-45f1-85c3-d3099894a45a', dotacionId: 'c4816e1e-a8df-4c71-a7f5-55575a443450', // Policía · DUAR
+      institucionId: '80ac6de6-9133-45f1-85c3-d3099894a45a', dependenciaId: 'c4816e1e-a8df-4c71-a7f5-55575a443450', // Policía · DUAR
       estado: 'activo',
       createdAt: '2025-02-10',
       emailConfirmado: true,
@@ -441,7 +441,7 @@ export const initialData: AppData = {
       especialidad: 'caminante',
       grupo_sanguineo: 'O-',
       alergias: 'Ninguna',
-      institucionId: '80ac6de6-9133-45f1-85c3-d3099894a45a', dotacionId: 'c4816e1e-a8df-4c71-a7f5-55575a443450', // Policía · DUAR
+      institucionId: '80ac6de6-9133-45f1-85c3-d3099894a45a', dependenciaId: 'c4816e1e-a8df-4c71-a7f5-55575a443450', // Policía · DUAR
       estado: 'activo',
       createdAt: '2025-02-18',
       emailConfirmado: true,
@@ -458,7 +458,7 @@ export const initialData: AppData = {
       telefono: '351-5556006',
       grupo_sanguineo: 'A-',
       alergias: 'Aspirina',
-      institucionId: '80ac6de6-9133-45f1-85c3-d3099894a45a', dotacionId: 'c4816e1e-a8df-4c71-a7f5-55575a443450', // Policía · DUAR
+      institucionId: '80ac6de6-9133-45f1-85c3-d3099894a45a', dependenciaId: 'c4816e1e-a8df-4c71-a7f5-55575a443450', // Policía · DUAR
       estado: 'inactivo',
       createdAt: '2025-01-25',
       emailConfirmado: true,
@@ -493,7 +493,7 @@ export const initialData: AppData = {
       telefono: '351-5558008',
       grupo_sanguineo: 'A+',
       alergias: 'Ninguna',
-      institucionId: '80ac6de6-9133-45f1-85c3-d3099894a45a', dotacionId: 'c4816e1e-a8df-4c71-a7f5-55575a443450', // Policía · DUAR
+      institucionId: '80ac6de6-9133-45f1-85c3-d3099894a45a', dependenciaId: 'c4816e1e-a8df-4c71-a7f5-55575a443450', // Policía · DUAR
       estado: 'activo',
       createdAt: '2025-03-05',
       emailConfirmado: true,
@@ -816,12 +816,12 @@ export const catEspecialidades: CatEspecialidad[] = [
 ];
 
 /* ────────────────────────────────────────────────────────────────────────────
- * Institución y Dotación — espejo de cat_instituciones / cat_dotaciones
+ * Institución y Dependencia — espejo de cat_instituciones / cat_dependencias
  * ────────────────────────────────────────────────────────────────────────────
- * Reemplazan al viejo campo de texto libre `Usuario.dotacion`, que obligaba a
- * resolver la regla del Líder con un `dotacion.includes('duar')`. Los datos de
+ * Reemplazan al viejo campo de texto libre `Usuario.dependencia`, que obligaba a
+ * resolver la regla del Líder con un `dependencia.includes('duar')`. Los datos de
  * prueba ya mostraban por qué eso fallaba: existían "DUAR Champaquí" y "DUAR
- * Traslasierra", que no son dotaciones reales del organismo.
+ * Traslasierra", que no son dependencias reales del organismo.
  *
  * Los `id` son los UUID REALES de `duar-test`: al conectar el backend, estas
  * constantes se reemplazan por un fetch sin tocar nada más.
@@ -832,7 +832,7 @@ export interface CatInstitucion {
   nombre: string;
 }
 
-export interface CatDotacion {
+export interface CatDependencia {
   id: string;
   nombre: string;
   /** Dependencia DENTRO de una institución (en pantalla: "Dependencia"). */
@@ -859,7 +859,7 @@ const ID_POLICIA = '80ac6de6-9133-45f1-85c3-d3099894a45a';
 const ID_BOMBEROS_VOL = 'e9abb177-b4ff-4beb-9200-7c06f07deb5a';
 
 /** Dependencias por institución: Policía (9) y Bomberos Voluntarios (14). */
-export const catDotaciones: CatDotacion[] = [
+export const catDependencias: CatDependencia[] = [
   // Policía (05/11, migración 033)
   { id: 'd77c4166-5a55-4f44-aacc-43f69399ffd9', nombre: 'Investigaciones', institucionId: ID_POLICIA },
   { id: 'c4816e1e-a8df-4c71-a7f5-55575a443450', nombre: 'DUAR',            institucionId: ID_POLICIA, esDuar: true },
@@ -891,22 +891,22 @@ export function getInstitucion(id?: string): CatInstitucion | undefined {
   return id ? catInstituciones.find(i => i.id === id) : undefined;
 }
 
-export function getDotacion(id?: string): CatDotacion | undefined {
-  return id ? catDotaciones.find(d => d.id === id) : undefined;
+export function getDependencia(id?: string): CatDependencia | undefined {
+  return id ? catDependencias.find(d => d.id === id) : undefined;
 }
 
 /**
- * Dependencias (`cat_dotaciones`) de una institución.
+ * Dependencias (`cat_dependencias`) de una institución.
  * El formulario muestra el desplegable "Dependencia" sólo si esto devuelve
  * algo: hoy Policía y Bomberos Voluntarios, sin ningún "if" por nombre.
  */
-export function dotacionesDe(institucionId?: string): CatDotacion[] {
-  return institucionId ? catDotaciones.filter(d => d.institucionId === institucionId) : [];
+export function dependenciasDe(institucionId?: string): CatDependencia[] {
+  return institucionId ? catDependencias.filter(d => d.institucionId === institucionId) : [];
 }
 
 /** ¿Es Policía · DUAR? Se lee del catálogo (dependencia con esDuar), nunca del nombre. */
-export function esDuar(u?: { dotacionId?: string }): boolean {
-  return getDotacion(u?.dotacionId)?.esDuar ?? false;
+export function esDuar(u?: { dependenciaId?: string }): boolean {
+  return getDependencia(u?.dependenciaId)?.esDuar ?? false;
 }
 
 /**
@@ -916,15 +916,15 @@ export function esDuar(u?: { dotacionId?: string }): boolean {
  * Se encapsula acá a propósito: si mañana el cliente habilita a otra fuerza,
  * se cambia esta única función y no los ~20 lugares que la consultan.
  */
-export function puedeSerLider(u?: { dotacionId?: string }): boolean {
+export function puedeSerLider(u?: { dependenciaId?: string }): boolean {
   return esDuar(u);
 }
 
 /** Etiqueta legible: "Policía · DUAR", "Bomberos Voluntarios · Saldán" o sólo "Defensa Civil". */
-export function institucionLabel(u?: { institucionId?: string; dotacionId?: string }): string {
+export function institucionLabel(u?: { institucionId?: string; dependenciaId?: string }): string {
   const inst = getInstitucion(u?.institucionId);
   if (!inst) return '—';
-  const dot = getDotacion(u?.dotacionId);
+  const dot = getDependencia(u?.dependenciaId);
   return dot ? `${inst.nombre} · ${dot.nombre}` : inst.nombre;
 }
 

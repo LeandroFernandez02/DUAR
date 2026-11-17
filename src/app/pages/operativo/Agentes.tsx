@@ -32,7 +32,7 @@ const ESPECIALIDADES_FILTRO = [
 ];
 
 /** Institución · dependencia. Policía · DUAR lleva el escudo. */
-function Dotacion({ agente }: { agente: PersonalOperativoApi }) {
+function Dependencia({ agente }: { agente: PersonalOperativoApi }) {
   if (!agente.institucionNombre) return <span style={{ color: 'var(--muted-foreground)' }}>—</span>;
   return (
     <span className="inline-flex items-center gap-1" style={{ color: 'var(--foreground)' }}>
@@ -56,7 +56,7 @@ function EstadoConTiempo({ agente }: { agente: PersonalOperativoApi }) {
 /**
  * Orden de los resultados de una búsqueda (Testeo 25/10, punto 34): primero los que tienen un
  * nombre o apellido que empieza con lo buscado, después los que lo contienen en el nombre, y al
- * final los que coinciden por DNI, dotación o especialidad. Dentro de cada grupo, por apellido.
+ * final los que coinciden por DNI, dependencia o especialidad. Dentro de cada grupo, por apellido.
  */
 function ordenarPorNombre<T extends { nombre: string; apellido: string }>(lista: T[], q: string): T[] {
   const puntaje = (p: T) => {
@@ -206,7 +206,7 @@ export default function Agentes() {
       `${u.nombre} ${u.apellido}`.toLowerCase().includes(q) ||
       coincideDni(u.dni, q) ||
       (u.institucionNombre ?? '').toLowerCase().includes(q) ||
-      (u.dotacionNombre ?? '').toLowerCase().includes(q) ||
+      (u.dependenciaNombre ?? '').toLowerCase().includes(q) ||
       (u.especialidadNombre ?? '').toLowerCase().includes(q)
     ), q);
   }, [disponibles, busquedaUsuario]);
@@ -376,7 +376,7 @@ export default function Agentes() {
                 </div>
                 <div className="mt-3"><EstadoConTiempo agente={agente} /></div>
                 <div className="grid grid-cols-2 gap-2 mt-3 pt-3" style={{ borderTop: '1px solid var(--border)' }}>
-                  <Dato titulo="Institución"><Dotacion agente={agente} /></Dato>
+                  <Dato titulo="Institución"><Dependencia agente={agente} /></Dato>
                   <Dato titulo="Especialidad">
                     {agente.especialidadNombre ?? <span style={{ color: 'var(--muted-foreground)', fontWeight: 400 }}>Sin especialidad</span>}
                   </Dato>
@@ -399,7 +399,7 @@ export default function Agentes() {
                     </div>
                   </td>
                   <td style={{ padding: '12px 16px' }}><EstadoConTiempo agente={agente} /></td>
-                  <td className="truncate" style={{ padding: '12px 16px' }}><Dotacion agente={agente} /></td>
+                  <td className="truncate" style={{ padding: '12px 16px' }}><Dependencia agente={agente} /></td>
                   <td className="truncate" style={{ padding: '12px 16px' }}>{agente.especialidadNombre ?? <span style={{ color: 'var(--muted-foreground)' }}>—</span>}</td>
                   <td style={{ padding: '12px 16px' }}>{acciones(agente)}</td>
                 </tr>

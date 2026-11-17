@@ -119,7 +119,7 @@ async function catalogos() {
   const { rows: inst } = await query(`SELECT id, nombre FROM cat_instituciones`);
   const { rows: esp } = await query(`SELECT id, nombre, es_recurso_critico FROM cat_especialidades`);
   const { rows: dot } = await query(
-    `SELECT d.id, d.nombre, i.nombre AS institucion FROM cat_dotaciones d JOIN cat_instituciones i ON i.id = d.institucion_id`
+    `SELECT d.id, d.nombre, i.nombre AS institucion FROM cat_dependencias d JOIN cat_instituciones i ON i.id = d.institucion_id`
   );
   const por = (filas, n) => {
     const f = filas.find(x => x.nombre === n);
@@ -155,7 +155,7 @@ async function asegurarUsuarios(admin, cat) {
         dni: String(98000001 + i), nombre: nombre(u.clave), apellido: 'Prueba Automatica',
         email: email(u.clave), password, rol, fechaNacimiento: '1990-05-15',
         institucionId: cat.institucion(u.institucion),
-        dotacionId: u.dependencia ? cat.dependencia(u.institucion, u.dependencia) : null,
+        dependenciaId: u.dependencia ? cat.dependencia(u.institucion, u.dependencia) : null,
         especialidadId: u.especialidad ? cat.especialidad(u.especialidad) : null,
       }, admin);
       if (r.status !== 201) throw new Error(`No se pudo crear ${email(u.clave)}: ${r.status} ${JSON.stringify(r.json)}`);

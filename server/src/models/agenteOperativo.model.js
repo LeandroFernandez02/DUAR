@@ -200,7 +200,7 @@ export async function actualizarFoto(client, agenteOperativoId) {
         SET especialidad_nombre = (SELECT e.nombre FROM cat_especialidades e WHERE e.id = ao.especialidad_id),
             institucion_nombre  = (SELECT i.nombre FROM usuarios u JOIN cat_instituciones i ON i.id = u.institucion_id
                                     WHERE u.id = ao.usuario_id),
-            dependencia_nombre  = (SELECT d.nombre FROM usuarios u JOIN cat_dotaciones d ON d.id = u.dotacion_id
+            dependencia_nombre  = (SELECT d.nombre FROM usuarios u JOIN cat_dependencias d ON d.id = u.dependencia_id
                                     WHERE u.id = ao.usuario_id)
       WHERE ao.id = $1 AND ao.fecha_egreso IS NULL`,
     [agenteOperativoId]
@@ -523,7 +523,7 @@ export async function listarDeOperativo(operativoId) {
        JOIN usuarios u ON u.id = ao.usuario_id
        LEFT JOIN cat_especialidades e ON e.id = ao.especialidad_id
        LEFT JOIN cat_instituciones  i ON i.id = u.institucion_id
-       LEFT JOIN cat_dotaciones    dd ON dd.id = u.dotacion_id
+       LEFT JOIN cat_dependencias    dd ON dd.id = u.dependencia_id
       WHERE ao.operativo_id = $1 AND ao.fecha_egreso IS NULL
       ORDER BY ao.fecha_ingreso DESC`,
     [operativoId]

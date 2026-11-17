@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react';
 import { Plus, Search, Edit2, Trash2, X, Shield, ShieldCheck, UserCheck, Footprints, AlertCircle, MailCheck } from 'lucide-react';
 import { aviso } from '../utils/aviso';
 import { useApp } from '../context/AppContext';
-import { Usuario, Rol, EstadoUsuario, esDuar, catInstituciones, catEspecialidades, catAlergias, dotacionesDe, institucionLabel, especialidadNombrePorId } from '../data/mockData';
+import { Usuario, Rol, EstadoUsuario, esDuar, catInstituciones, catEspecialidades, catAlergias, dependenciasDe, institucionLabel, especialidadNombrePorId } from '../data/mockData';
 import { usuariosApi, ApiError, UsuarioApi } from '../services/api';
 import StatusBadge from '../components/shared/StatusBadge';
 import { AccionCabecera } from '../components/layout/Movil';
@@ -42,7 +42,7 @@ function mapearUsuario(u: UsuarioApi): Usuario {
     // El campo de fecha sólo entiende «YYYY-MM-DD» (Testeo 13/10, punto 10).
     fechaNacimiento: u.fechaNacimiento ? u.fechaNacimiento.slice(0, 10) : undefined,
     institucionId: u.institucionId ?? undefined,
-    dotacionId: u.dotacionId ?? undefined,
+    dependenciaId: u.dependenciaId ?? undefined,
     especialidadId: u.especialidadId ?? undefined,
     alergiaIds: u.alergias.map(a => a.id),
     grupo_sanguineo: u.grupoSanguineo ?? undefined,
@@ -83,7 +83,7 @@ function RolPill({ rol }: { rol: Rol }) {
 const esDelDuar = (u: Usuario) => esDuar(u);
 const iniciales = (u: Usuario) => `${u.nombre.charAt(0)}${u.apellido.charAt(0)}`.toUpperCase();
 
-function Dotacion({ u }: { u: Usuario }) {
+function Dependencia({ u }: { u: Usuario }) {
   return (
     <span className="inline-flex items-center gap-1 min-w-0 max-w-full align-bottom" title={institucionLabel(u)}>
       {esDelDuar(u) && <ShieldCheck size={12} style={{ color: 'var(--primary)', flexShrink: 0 }} />}
@@ -96,7 +96,7 @@ const emptyForm = {
   dni: '', nombre: '', apellido: '', email: '', password: '', passwordConfirm: '',
   rol: 'agente' as Rol, fechaNacimiento: '', telefono: '',
   alergiaIds: [] as string[],
-  institucionId: '', dotacionId: '', especialidadId: '', grupo_sanguineo: '',
+  institucionId: '', dependenciaId: '', especialidadId: '', grupo_sanguineo: '',
   estado: 'activo' as EstadoUsuario,
 };
 
@@ -188,7 +188,7 @@ export default function Usuarios() {
       email: u.email, password: u.password, passwordConfirm: '',
       rol: u.rol, fechaNacimiento: u.fechaNacimiento || '',
       telefono: u.telefono || '', alergiaIds: u.alergiaIds || [],
-      institucionId: u.institucionId || '', dotacionId: u.dotacionId || '', especialidadId: u.especialidadId || '',
+      institucionId: u.institucionId || '', dependenciaId: u.dependenciaId || '', especialidadId: u.especialidadId || '',
       grupo_sanguineo: u.grupo_sanguineo || '', estado: u.estado,
     });
     setErroresForm({});
@@ -252,7 +252,7 @@ export default function Usuarios() {
       telefono: form.telefono || undefined,
       fechaNacimiento: form.fechaNacimiento || undefined,
       institucionId: form.institucionId || undefined,
-      dotacionId: form.dotacionId || undefined,
+      dependenciaId: form.dependenciaId || undefined,
       // BUG reportado: faltaba mandar esto. El backend siempre lo soportó
       // (usuario.model.js ya tenía especialidad_id en el UPDATE); el payload
       // simplemente nunca lo incluía.
@@ -416,7 +416,7 @@ export default function Usuarios() {
               <div className="flex items-center gap-1.5 flex-wrap mt-3"><RolPill rol={u.rol} /><StatusBadge estado={u.estado} size="sm" /></div>
               <div className="grid grid-cols-2 gap-2 mt-3 pt-3" style={{ borderTop: '1px solid var(--border)' }}>
                 <Dato titulo="DNI">{formatearDni(u.dni)}</Dato>
-                <Dato titulo="Institución"><Dotacion u={u} /></Dato>
+                <Dato titulo="Institución"><Dependencia u={u} /></Dato>
                 <Dato titulo="Especialidad">{u.especialidadId ? especialidadNombrePorId(u.especialidadId) : <span style={{ color: 'var(--muted-foreground)', fontWeight: 400 }}>Sin especialidad</span>}</Dato>
               </div>
             </div>
@@ -439,7 +439,7 @@ export default function Usuarios() {
                 <td style={{ padding: '12px 16px', whiteSpace: 'nowrap', fontSize: 'var(--text-label)' }}>{formatearDni(u.dni)}</td>
                 <td style={{ padding: '12px 16px' }}><RolPill rol={u.rol} /></td>
                 <td style={{ padding: '12px 16px' }}>{u.especialidadId ? especialidadNombrePorId(u.especialidadId) : <span style={{ color: 'var(--muted-foreground)' }}>—</span>}</td>
-                <td style={{ padding: '12px 16px' }}><Dotacion u={u} /></td>
+                <td style={{ padding: '12px 16px' }}><Dependencia u={u} /></td>
                 <td style={{ padding: '12px 16px' }}><StatusBadge estado={u.estado} size="sm" /></td>
                 <td style={{ padding: '12px 16px' }}>{acciones(u)}</td>
               </tr>
@@ -579,9 +579,9 @@ export default function Usuarios() {
                 <label className="block mb-1" style={{ color: 'var(--foreground)', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)' }}>Institución</label>
                 <select
                   value={form.institucionId}
-                  // Al cambiar de institución se limpia la dotación: una base del
+                  // Al cambiar de institución se limpia la dependencia: una base del
                   // DUAR no puede quedar colgada de la Policía (la BD lo rechaza).
-                  onChange={e => setForm({ ...form, institucionId: e.target.value, dotacionId: '' })}
+                  onChange={e => setForm({ ...form, institucionId: e.target.value, dependenciaId: '' })}
                   className="w-full px-3 py-2 rounded-lg border outline-none"
                   style={fieldStyle}
                 >
@@ -593,17 +593,17 @@ export default function Usuarios() {
               </div>
 
               {/* ── Dependencia: sólo si la institución elegida tiene dependencias ── */}
-              {dotacionesDe(form.institucionId).length > 0 && (
+              {dependenciasDe(form.institucionId).length > 0 && (
                 <div>
                   <label className="block mb-1" style={{ color: 'var(--foreground)', fontSize: 'var(--text-label)', fontWeight: 'var(--font-weight-semibold)' }}>Dependencia</label>
                   <select
-                    value={form.dotacionId}
-                    onChange={e => setForm({ ...form, dotacionId: e.target.value })}
+                    value={form.dependenciaId}
+                    onChange={e => setForm({ ...form, dependenciaId: e.target.value })}
                     className="w-full px-3 py-2 rounded-lg border outline-none"
                     style={fieldStyle}
                   >
                     <option value="">— Seleccioná la dependencia —</option>
-                    {dotacionesDe(form.institucionId).map(d => (
+                    {dependenciasDe(form.institucionId).map(d => (
                       <option key={d.id} value={d.id}>{d.nombre}</option>
                     ))}
                   </select>

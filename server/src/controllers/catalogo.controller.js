@@ -7,14 +7,15 @@ import * as Catalogo from '../models/catalogo.model.js';
 
 export async function todos(req, res, next) {
   try {
-    const [roles, instituciones, dotaciones, especialidades, alergias] = await Promise.all([
+    const [roles, instituciones, dependencias, especialidades, alergias] = await Promise.all([
       Catalogo.roles(),
       Catalogo.instituciones(),
-      Catalogo.dotaciones(),
+      Catalogo.dependencias(),
       Catalogo.especialidades(),
       Catalogo.alergias(),
     ]);
-    res.json({ roles, instituciones, dotaciones, especialidades, alergias });
+    // `dotaciones`: alias TRANSITORIO (17/11, migración 038) para las pantallas viejas que todavía lo leen.
+    res.json({ roles, instituciones, dependencias, dotaciones: dependencias, especialidades, alergias });
   } catch (err) {
     next(err);
   }

@@ -2,7 +2,7 @@
  * MODELO · Catálogos
  *
  * Estos datos hoy están hardcodeados en `mockData.ts` (catInstituciones,
- * catDotaciones, catEspecialidades) con los UUID reales de la base. Este modelo
+ * catDependencias, catEspecialidades) con los UUID reales de la base. Este modelo
  * es su reemplazo: el frontend pasa a leerlos de acá y deja de duplicarlos.
  */
 import { query } from '../config/db.js';
@@ -20,10 +20,10 @@ export async function instituciones() {
   return rows;
 }
 
-export async function dotaciones() {
+export async function dependencias() {
   const { rows } = await query(
     `SELECT id, nombre, institucion_id AS "institucionId", es_duar AS "esDuar"
-       FROM cat_dotaciones ORDER BY nombre`
+       FROM cat_dependencias ORDER BY nombre`
   );
   return rows;
 }

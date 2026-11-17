@@ -62,10 +62,10 @@ async function main() {
     const hash = await bcrypt.hash(ADMIN.password, 10);
     // El admin es del DUAR (Policía · DUAR), si el catálogo ya está cargado.
     const { rows: dep } = await query(
-      `SELECT id, institucion_id FROM cat_dotaciones WHERE es_duar = true LIMIT 1`
+      `SELECT id, institucion_id FROM cat_dependencias WHERE es_duar = true LIMIT 1`
     );
     await query(
-      `INSERT INTO usuarios (dni, nombre, apellido, email, password_hash, rol_id, institucion_id, dotacion_id)
+      `INSERT INTO usuarios (dni, nombre, apellido, email, password_hash, rol_id, institucion_id, dependencia_id)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8)`,
       [ADMIN.dni, ADMIN.nombre, ADMIN.apellido, ADMIN.email, hash, rolAdmin.id, dep[0]?.institucion_id ?? null, dep[0]?.id ?? null]
     );

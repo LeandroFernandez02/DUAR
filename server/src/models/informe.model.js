@@ -203,7 +203,7 @@ export async function reunirDatos(operativoId, corteEn) {
          FROM agentes_operativo ao
          JOIN usuarios u ON u.id = ao.usuario_id
          LEFT JOIN cat_instituciones i ON i.id = u.institucion_id
-         LEFT JOIN cat_dotaciones d ON d.id = u.dotacion_id
+         LEFT JOIN cat_dependencias d ON d.id = u.dependencia_id
          LEFT JOIN cat_especialidades e ON e.id = ao.especialidad_id
         WHERE ao.operativo_id = $1
         ORDER BY u.apellido, u.nombre, ao.fecha_ingreso`),

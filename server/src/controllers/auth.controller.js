@@ -295,7 +295,7 @@ export async function actualizarMisDatos(req, res, next) {
     const campos = {};
     for (const clave of [
       'nombre', 'apellido', 'telefono', 'fechaNacimiento', 'genero',
-      'institucionId', 'dotacionId', 'especialidadId', 'grupoSanguineo', 'alergiaIds',
+      'institucionId', 'dependenciaId', 'especialidadId', 'grupoSanguineo', 'alergiaIds',
     ]) {
       if (b[clave] !== undefined) campos[clave] = b[clave];
     }

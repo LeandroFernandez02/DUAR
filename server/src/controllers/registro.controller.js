@@ -113,7 +113,7 @@ export async function registrar(req, res, next) {
       fechaNacimiento: b.fechaNacimiento || null,
       genero: b.genero ?? null,
       institucionId: b.institucionId || null,
-      dotacionId: b.dotacionId || null,
+      dependenciaId: b.dependenciaId || null,
       especialidadId: b.especialidadId || null,
       grupoSanguineo: b.grupoSanguineo || null,
       alergiaIds: b.alergiaIds ?? [],

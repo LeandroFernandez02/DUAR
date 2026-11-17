@@ -11,7 +11,7 @@
 import { useState, type ReactNode } from 'react';
 import { ArrowLeft, Pencil, X, User, Phone, Shield, HeartPulse, AlertCircle, Loader2, Check } from 'lucide-react';
 import { useApp } from '../../context/AppContext';
-import { institucionLabel, especialidadNombrePorId, catInstituciones, catEspecialidades, catAlergias, dotacionesDe } from '../../data/mockData';
+import { institucionLabel, especialidadNombrePorId, catInstituciones, catEspecialidades, catAlergias, dependenciasDe } from '../../data/mockData';
 import CampoFecha from './CampoFecha';
 import {
   validarNombre, validarApellido, validarTelefono, validarFechaNacimiento,
@@ -73,7 +73,7 @@ export default function MisDatosModal({ pantalla = false, inicial = 'ver', onClo
     nombre: usuario?.nombre ?? '', apellido: usuario?.apellido ?? '',
     // El campo de fecha sólo entiende «YYYY-MM-DD» (Testeo 13/10, punto 10).
     telefono: usuario?.telefono ?? '', fechaNacimiento: (usuario?.fechaNacimiento ?? '').slice(0, 10),
-    institucionId: usuario?.institucionId ?? '', dotacionId: usuario?.dotacionId ?? '',
+    institucionId: usuario?.institucionId ?? '', dependenciaId: usuario?.dependenciaId ?? '',
     especialidadId: usuario?.especialidadId ?? '', grupoSanguineo: usuario?.grupo_sanguineo ?? '',
     alergiaIds: usuario?.alergiaIds ?? [],
   });
@@ -114,7 +114,7 @@ export default function MisDatosModal({ pantalla = false, inicial = 'ver', onClo
     const r = await actualizarPerfilPropio({
       nombre, apellido,
       telefono: f.telefono || undefined, fechaNacimiento: f.fechaNacimiento || undefined,
-      institucionId: f.institucionId || undefined, dotacionId: f.dotacionId || undefined,
+      institucionId: f.institucionId || undefined, dependenciaId: f.dependenciaId || undefined,
       especialidadId: f.especialidadId || undefined, grupoSanguineo: f.grupoSanguineo || undefined,
       alergiaIds: f.alergiaIds,
     });
@@ -202,16 +202,16 @@ export default function MisDatosModal({ pantalla = false, inicial = 'ver', onClo
       <Bloque titulo="Institución" icono={Shield}>
         <div className={`grid ${cols} gap-3`}>
           <Campo l="Institución">
-            <select value={f.institucionId} onChange={e => { poner('institucionId', e.target.value); poner('dotacionId', ''); }} style={campo}>
+            <select value={f.institucionId} onChange={e => { poner('institucionId', e.target.value); poner('dependenciaId', ''); }} style={campo}>
               <option value="">— Seleccioná la institución —</option>
               {catInstituciones.map(i => <option key={i.id} value={i.id}>{i.nombre}</option>)}
             </select>
           </Campo>
-          {dotacionesDe(f.institucionId).length > 0 && (
+          {dependenciasDe(f.institucionId).length > 0 && (
             <Campo l="Dependencia">
-              <select value={f.dotacionId} onChange={e => poner('dotacionId', e.target.value)} style={campo}>
+              <select value={f.dependenciaId} onChange={e => poner('dependenciaId', e.target.value)} style={campo}>
                 <option value="">— Seleccioná la dependencia —</option>
-                {dotacionesDe(f.institucionId).map(d => <option key={d.id} value={d.id}>{d.nombre}</option>)}
+                {dependenciasDe(f.institucionId).map(d => <option key={d.id} value={d.id}>{d.nombre}</option>)}
               </select>
             </Campo>
           )}

@@ -36,8 +36,8 @@ export const CAMPOS = `
   u.institucion_id     AS "institucionId",
   i.nombre             AS "institucionNombre",
   COALESCE(d.es_duar, false) AS "esDuar",   -- Policía · DUAR (migración 033)
-  u.dotacion_id        AS "dotacionId",
-  d.nombre             AS "dotacionNombre",
+  u.dependencia_id        AS "dependenciaId",
+  d.nombre             AS "dependenciaNombre",
   u.especialidad_id    AS "especialidadId",
   e.nombre             AS "especialidadNombre",
   u.grupo_sanguineo    AS "grupoSanguineo",
@@ -57,7 +57,7 @@ export const JOINS = `
   FROM usuarios u
   JOIN      cat_roles          r ON r.id = u.rol_id
   LEFT JOIN cat_instituciones  i ON i.id = u.institucion_id
-  LEFT JOIN cat_dotaciones     d ON d.id = u.dotacion_id
+  LEFT JOIN cat_dependencias     d ON d.id = u.dependencia_id
   LEFT JOIN cat_especialidades e ON e.id = u.especialidad_id
 `;
 
@@ -138,7 +138,7 @@ export async function existeDniOEmail(dni, email) {
 export async function crear({
   dni, nombre, apellido, email, passwordHash, rolId,
   telefono = null, fechaNacimiento = null, genero = null,
-  institucionId = null, dotacionId = null, especialidadId = null,
+  institucionId = null, dependenciaId = null, especialidadId = null,
   grupoSanguineo = null, alergiaIds = [],
 }) {
   // El alta y la carga de alergias son UNA operación: si algo falla a mitad
@@ -148,11 +148,11 @@ export async function crear({
     const { rows } = await client.query(
       `INSERT INTO usuarios
          (dni, nombre, apellido, email, password_hash, rol_id, telefono,
-          fecha_nacimiento, genero, institucion_id, dotacion_id, especialidad_id, grupo_sanguineo)
+          fecha_nacimiento, genero, institucion_id, dependencia_id, especialidad_id, grupo_sanguineo)
        VALUES ($1,$2,$3,$4,$5,$6,$7,$8,$9,$10,$11,$12, COALESCE($13,'DESCONOCIDO')::tipo_sangre)
        RETURNING id`,
       [dni, nombre, apellido, email, passwordHash, rolId, telefono,
-       fechaNacimiento, genero, institucionId, dotacionId, especialidadId, grupoSanguineo]
+       fechaNacimiento, genero, institucionId, dependenciaId, especialidadId, grupoSanguineo]
     );
     const nuevoId = rows[0].id;
     await sincronizarAlergias(client, nuevoId, alergiaIds);
@@ -177,7 +177,7 @@ export async function actualizar(id, campos, { antesCon = null, despuesCon = nul
   const permitidos = {
     dni: 'dni', nombre: 'nombre', apellido: 'apellido', email: 'email', telefono: 'telefono',
     fechaNacimiento: 'fecha_nacimiento', genero: 'genero', rolId: 'rol_id',
-    institucionId: 'institucion_id', dotacionId: 'dotacion_id',
+    institucionId: 'institucion_id', dependenciaId: 'dependencia_id',
     especialidadId: 'especialidad_id', grupoSanguineo: 'grupo_sanguineo',
     estado: 'estado', emailConfirmado: 'email_confirmado',
   };
@@ -243,7 +243,7 @@ export async function buscarEliminadoPorDni(dni) {
 export async function reactivar(id, {
   nombre, apellido, email, passwordHash, rolId,
   telefono = null, fechaNacimiento = null, genero = null,
-  institucionId = null, dotacionId = null, especialidadId = null,
+  institucionId = null, dependenciaId = null, especialidadId = null,
   grupoSanguineo = null, alergiaIds = [],
 }) {
   await withTransaction(async (client) => {
@@ -251,13 +251,13 @@ export async function reactivar(id, {
       `UPDATE usuarios
           SET nombre = $2, apellido = $3, email = $4, password_hash = $5, rol_id = $6,
               telefono = $7, fecha_nacimiento = $8, genero = $9,
-              institucion_id = $10, dotacion_id = $11, especialidad_id = $12,
+              institucion_id = $10, dependencia_id = $11, especialidad_id = $12,
               grupo_sanguineo = COALESCE($13, 'DESCONOCIDO')::tipo_sangre,
               estado = 'PENDIENTE', email_confirmado = false,
               eliminado_en = NULL, actualizado_en = CURRENT_TIMESTAMP
         WHERE id = $1 AND eliminado_en IS NOT NULL`,
       [id, nombre, apellido, email, passwordHash, rolId, telefono, fechaNacimiento, genero,
-       institucionId, dotacionId, especialidadId, grupoSanguineo]
+       institucionId, dependenciaId, especialidadId, grupoSanguineo]
     );
     // Otro pedido la reactivó un instante antes: que el controlador lo trate como duplicado.
     if (rowCount === 0) throw Object.assign(new Error('La cuenta ya no está eliminada.'), { code: '23505' });

@@ -121,7 +121,7 @@ const SELECT_GRUPO = `
     LEFT JOIN agentes_operativo  ao ON ao.grupo_id = g.id AND ao.fecha_egreso IS NULL
     LEFT JOIN usuarios            u ON u.id = ao.usuario_id
     LEFT JOIN cat_instituciones   i ON i.id = u.institucion_id
-    LEFT JOIN cat_dotaciones     dd ON dd.id = u.dotacion_id
+    LEFT JOIN cat_dependencias     dd ON dd.id = u.dependencia_id
     LEFT JOIN cat_especialidades  e ON e.id = ao.especialidad_id
 `;
 
@@ -182,7 +182,7 @@ async function bloquearAgente(client, operativoId, agenteOperativoId) {
        FROM agentes_operativo ao
        JOIN usuarios u ON u.id = ao.usuario_id
        LEFT JOIN cat_instituciones i ON i.id = u.institucion_id
-       LEFT JOIN cat_dotaciones dd ON dd.id = u.dotacion_id
+       LEFT JOIN cat_dependencias dd ON dd.id = u.dependencia_id
        LEFT JOIN cat_especialidades ce ON ce.id = ao.especialidad_id
       WHERE ao.id = $1 AND ao.operativo_id = $2 AND ao.fecha_egreso IS NULL
       FOR UPDATE OF ao`,
@@ -203,7 +203,7 @@ async function miembros(client, grupoId) {
        FROM agentes_operativo ao
        JOIN usuarios u ON u.id = ao.usuario_id
        LEFT JOIN cat_instituciones i ON i.id = u.institucion_id
-       LEFT JOIN cat_dotaciones dd ON dd.id = u.dotacion_id
+       LEFT JOIN cat_dependencias dd ON dd.id = u.dependencia_id
        LEFT JOIN cat_especialidades ce ON ce.id = ao.especialidad_id
       WHERE ao.grupo_id = $1 AND ao.fecha_egreso IS NULL
       FOR UPDATE OF ao`,
@@ -903,7 +903,7 @@ export async function armadoAutomatico(operativoId, { tamano }, usuarioId) {
          FROM agentes_operativo ao
          JOIN usuarios u ON u.id = ao.usuario_id
          LEFT JOIN cat_instituciones i ON i.id = u.institucion_id
-         LEFT JOIN cat_dotaciones dd ON dd.id = u.dotacion_id
+         LEFT JOIN cat_dependencias dd ON dd.id = u.dependencia_id
          LEFT JOIN cat_especialidades ce ON ce.id = ao.especialidad_id
         WHERE ao.operativo_id = $1 AND ao.fecha_egreso IS NULL
           AND ao.grupo_id IS NULL AND ao.estado = 'DISPONIBLE'

@@ -148,8 +148,8 @@ export interface UsuarioApi {
   institucionId: string | null;
   institucionNombre: string | null;
   esDuar: boolean;
-  dotacionId: string | null;
-  dotacionNombre: string | null;
+  dependenciaId: string | null;
+  dependenciaNombre: string | null;
   especialidadId: string | null;
   especialidadNombre: string | null;
   grupoSanguineo: string | null;
@@ -163,8 +163,8 @@ export interface UsuarioApi {
 export interface Catalogos {
   roles: { id: string; nombre: string }[];
   instituciones: { id: string; nombre: string }[];
-  /** Dependencias (en la base, `cat_dotaciones`). esDuar sólo en Policía · DUAR. */
-  dotaciones: { id: string; nombre: string; institucionId: string; esDuar: boolean }[];
+  /** Dependencias (en la base, `cat_dependencias`). esDuar sólo en Policía · DUAR. */
+  dependencias: { id: string; nombre: string; institucionId: string; esDuar: boolean }[];
   especialidades: { id: string; nombre: string; esRecursoCritico: boolean }[];
   alergias: { id: string; nombre: string }[];
 }
@@ -242,7 +242,7 @@ export interface CrearUsuarioPayload {
   rol: string;
   telefono?: string;
   institucionId?: string;
-  dotacionId?: string;
+  dependenciaId?: string;
   especialidadId?: string;
   grupoSanguineo?: string;
   fechaNacimiento?: string;
@@ -295,7 +295,7 @@ export interface RegistroQRPayload {
   telefono?: string;
   fechaNacimiento?: string;
   institucionId?: string;
-  dotacionId?: string;
+  dependenciaId?: string;
   especialidadId?: string;
   grupoSanguineo?: string;
   alergiaIds?: string[];

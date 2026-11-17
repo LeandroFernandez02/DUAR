@@ -91,7 +91,7 @@ export async function panelGeneral() {
              FROM agentes_operativo ao
              JOIN usuarios u ON u.id = ao.usuario_id
              LEFT JOIN cat_instituciones i ON i.id = u.institucion_id
-             LEFT JOIN cat_dotaciones d ON d.id = u.dotacion_id
+             LEFT JOIN cat_dependencias d ON d.id = u.dependencia_id
              LEFT JOIN cat_especialidades e ON e.id = ao.especialidad_id
             ORDER BY ao.operativo_id, ao.usuario_id, ao.fecha_ingreso DESC
          ) x

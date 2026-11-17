@@ -25,7 +25,7 @@ function mapearUsuarioApi(u: UsuarioApi): Usuario {
     telefono: u.telefono ?? undefined,
     fechaNacimiento: u.fechaNacimiento ?? undefined,
     institucionId: u.institucionId ?? undefined,
-    dotacionId: u.dotacionId ?? undefined,
+    dependenciaId: u.dependenciaId ?? undefined,
     especialidadId: u.especialidadId ?? undefined,
     alergiaIds: u.alergias.map(a => a.id),
     grupo_sanguineo: u.grupoSanguineo ?? undefined,

@@ -13,7 +13,7 @@ import {
 import StatusBadge from '../components/shared/StatusBadge';
 import EstadoAgenteBadge from '../components/shared/EstadoAgenteBadge';
 import { fechaHoraArgentina } from '../utils/fechaArgentina';
-import { catInstituciones, catEspecialidades, catAlergias, dotacionesDe } from '../data/mockData';
+import { catInstituciones, catEspecialidades, catAlergias, dependenciasDe } from '../data/mockData';
 import { qrApi, registroApi, authApi, setToken, ApiError, OperativoQRApi } from '../services/api';
 import {
   validarNombre, validarApellido, validarDni, validarTelefono,
@@ -55,7 +55,7 @@ export default function Registro() {
   const [loginForm, setLoginForm] = useState({ email: '', password: '' });
   const [regForm, setRegForm] = useState({
     dni: '', nombre: '', apellido: '', email: '', password: '',
-    fechaNacimiento: '', telefono: '', institucionId: '', dotacionId: '',
+    fechaNacimiento: '', telefono: '', institucionId: '', dependenciaId: '',
     especialidadId: '',
     alergiaIds: [] as string[],
     grupo_sanguineo: '',
@@ -360,7 +360,7 @@ export default function Registro() {
         telefono: regForm.telefono || undefined,
         fechaNacimiento: regForm.fechaNacimiento || undefined,
         institucionId: regForm.institucionId || undefined,
-        dotacionId: regForm.dotacionId || undefined,
+        dependenciaId: regForm.dependenciaId || undefined,
         especialidadId: regForm.especialidadId || undefined,
         grupoSanguineo: regForm.grupo_sanguineo || undefined,
         alergiaIds: regForm.alergiaIds,
@@ -504,13 +504,13 @@ export default function Registro() {
               <div className={fila}>
                 {/* Cambiar de institución limpia la dependencia: una dependencia no puede quedar colgada de otra institución (la BD lo rechaza). */}
                 <SelectAcceso label="Institución" requerido value={regForm.institucionId} placeholder="— Seleccioná tu institución —"
-                  onChange={v => setRegForm({ ...regForm, institucionId: v, dotacionId: '' })}
+                  onChange={v => setRegForm({ ...regForm, institucionId: v, dependenciaId: '' })}
                   opciones={catInstituciones.map(i => ({ value: i.id, label: i.nombre }))} />
                 {/* Dependencia: aparece sólo si la institución tiene dependencias */}
-                {dotacionesDe(regForm.institucionId).length > 0 && (
-                  <SelectAcceso label="Dependencia" requerido value={regForm.dotacionId} placeholder="— Seleccioná tu dependencia —"
-                    onChange={v => setRegForm({ ...regForm, dotacionId: v })}
-                    opciones={dotacionesDe(regForm.institucionId).map(d => ({ value: d.id, label: d.nombre }))} />
+                {dependenciasDe(regForm.institucionId).length > 0 && (
+                  <SelectAcceso label="Dependencia" requerido value={regForm.dependenciaId} placeholder="— Seleccioná tu dependencia —"
+                    onChange={v => setRegForm({ ...regForm, dependenciaId: v })}
+                    opciones={dependenciasDe(regForm.institucionId).map(d => ({ value: d.id, label: d.nombre }))} />
                 )}
               </div>
               {/* Se envía el id del catálogo, no el slug: de él el backend deriva si es un recurso crítico. */}
