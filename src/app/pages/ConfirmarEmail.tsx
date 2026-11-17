@@ -145,7 +145,7 @@ export default function ConfirmarEmail() {
           <AlertaAcceso tono="aviso" icono={AlertTriangle}>
             Ya estás activo en otro operativo. Volvé a entrar por el QR de <strong>{altaPendiente.operativoNombre}</strong> para decidir si te trasladás.
           </AlertaAcceso>
-          <BotonAcceso tono="secundario" onClick={irAlQR}>Ver operativo y decidir</BotonAcceso>
+          <BotonAcceso onClick={irAlQR}>Ver operativo y decidir</BotonAcceso>
         </>
       );
     }
@@ -156,7 +156,7 @@ export default function ConfirmarEmail() {
             Falta un paso para sumarte a <strong>{altaPendiente.operativoNombre}</strong>: volvé a la pantalla donde te
             registraste y tocá <strong>«Ya confirmé mi correo»</strong>, o iniciá sesión acá.
           </AlertaAcceso>
-          <BotonAcceso tono="secundario" onClick={irAlQR}>Iniciar sesión y unirme</BotonAcceso>
+          <BotonAcceso onClick={irAlQR}>Iniciar sesión y unirme</BotonAcceso>
         </>
       );
     }
@@ -195,7 +195,13 @@ export default function ConfirmarEmail() {
       navigate('/login');
     }
   };
-  const botonIrAlSistema = (
+  /**
+   * Con un alta al operativo todavía pendiente (falta iniciar sesión, decidir el traslado o se está
+   * sumando), «Ir al sistema» no se muestra (QA 16/11): llevaba al panel sin el operativo y cortaba el
+   * alta del personal. Queda sólo el camino que la completa.
+   */
+  const altaSinTerminar = estadoAlta === 'sin_sesion' || estadoAlta === 'conflicto' || estadoAlta === 'uniendo';
+  const botonIrAlSistema = altaSinTerminar ? null : (
     <BotonAcceso tono={otraSesion ? 'secundario' : 'primario'} onClick={handleIrAlPanel}>
       {otraSesion && usuario ? `Seguir como ${usuario.nombre}` : 'Ir al sistema'}
     </BotonAcceso>
